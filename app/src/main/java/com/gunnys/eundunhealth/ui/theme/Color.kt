@@ -1,0 +1,43 @@
+package com.gunnys.eundunhealth.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// Light theme colors - health/fitness green theme
+val md_theme_light_primary = Color(0xFF006D3C)
+val md_theme_light_onPrimary = Color(0xFFFFFFFF)
+val md_theme_light_primaryContainer = Color(0xFF98F7B6)
+val md_theme_light_onPrimaryContainer = Color(0xFF00210F)
+val md_theme_light_secondary = Color(0xFF4F6354)
+val md_theme_light_onSecondary = Color(0xFFFFFFFF)
+val md_theme_light_secondaryContainer = Color(0xFFD2E8D5)
+val md_theme_light_onSecondaryContainer = Color(0xFF0D1F14)
+val md_theme_light_tertiary = Color(0xFF3A6470)
+val md_theme_light_onTertiary = Color(0xFFFFFFFF)
+val md_theme_light_tertiaryContainer = Color(0xFFBDEAF7)
+val md_theme_light_onTertiaryContainer = Color(0xFF001F27)
+val md_theme_light_error = Color(0xFFBA1A1A)
+val md_theme_light_background = Color(0xFFFBFDF8)
+val md_theme_light_surface = Color(0xFFFBFDF8)
+val md_theme_light_onSurface = Color(0xFF191C19)
+val md_theme_light_surfaceVariant = Color(0xFFDDE5DB)
+val md_theme_light_outline = Color(0xFF727970)
+
+// Dark theme colors
+val md_theme_dark_primary = Color(0xFF7CDA9C)
+val md_theme_dark_onPrimary = Color(0xFF00391D)
+val md_theme_dark_primaryContainer = Color(0xFF00522C)
+val md_theme_dark_onPrimaryContainer = Color(0xFF98F7B6)
+val md_theme_dark_secondary = Color(0xFFB6CCB9)
+val md_theme_dark_onSecondary = Color(0xFF223528)
+val md_theme_dark_secondaryContainer = Color(0xFF384B3D)
+val md_theme_dark_onSecondaryContainer = Color(0xFFD2E8D5)
+val md_theme_dark_tertiary = Color(0xFFA2CEDB)
+val md_theme_dark_onTertiary = Color(0xFF023640)
+val md_theme_dark_tertiaryContainer = Color(0xFF214C57)
+val md_theme_dark_onTertiaryContainer = Color(0xFFBDEAF7)
+val md_theme_dark_error = Color(0xFFFFB4AB)
+val md_theme_dark_background = Color(0xFF191C19)
+val md_theme_dark_surface = Color(0xFF191C19)
+val md_theme_dark_onSurface = Color(0xFFE1E3DE)
+val md_theme_dark_surfaceVariant = Color(0xFF414941)
+val md_theme_dark_outline = Color(0xFF8B938A)

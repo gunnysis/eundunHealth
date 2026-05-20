@@ -1,0 +1,34 @@
+package com.gunnys.eundunhealth.data.remote.api
+
+import com.gunnys.eundunhealth.data.remote.api.dto.BadgeDto
+import com.gunnys.eundunhealth.data.remote.api.dto.CreateWeeklyPlanRequest
+import com.gunnys.eundunhealth.data.remote.api.dto.UserProfileDto
+import com.gunnys.eundunhealth.data.remote.api.dto.UserProfileRequest
+import com.gunnys.eundunhealth.data.remote.api.dto.WeeklyPlanDto
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
+
+interface EundunApi {
+    @GET("profile")
+    suspend fun getProfile(): UserProfileDto
+
+    @PUT("profile")
+    suspend fun updateProfile(@Body req: UserProfileRequest): Response<Unit>
+
+    @GET("weekly-plan")
+    suspend fun getWeeklyPlan(@Query("weekStart") weekStart: String): WeeklyPlanDto?
+
+    @POST("weekly-plan")
+    suspend fun createWeeklyPlan(@Body req: CreateWeeklyPlanRequest): WeeklyPlanDto
+
+    @GET("badges")
+    suspend fun getBadges(): List<BadgeDto>
+
+    @POST("badges/{key}")
+    suspend fun awardBadge(@Path("key") key: String): BadgeDto
+}
