@@ -33,6 +33,12 @@ fun Route.badgeRoutes() {
                 HttpStatusCode.BadRequest, mapOf("error" to "Badge key required")
             )
 
+            val validKeys = setOf("week_1_complete", "week_2_complete", "streak_3weeks")
+            if (key !in validKeys) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid badge key"))
+                return@post
+            }
+
             // Check if already earned
             val existing = dbQuery {
                 BadgesTable.selectAll().where {

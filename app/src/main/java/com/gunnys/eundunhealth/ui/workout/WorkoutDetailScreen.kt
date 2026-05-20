@@ -25,20 +25,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.gunnys.eundunhealth.ui.home.HomeUiState
-import com.gunnys.eundunhealth.ui.home.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutDetailScreen(
     exerciseId: String,
     onBack: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: WorkoutDetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val exercise = (uiState as? HomeUiState.Success)?.plan?.days
-        ?.flatMap { it.exercises }
-        ?.find { it.id == exerciseId }
+    val exercise by viewModel.exercise.collectAsState()
 
     Scaffold(
         topBar = {
@@ -53,8 +48,9 @@ fun WorkoutDetailScreen(
         }
     ) { padding ->
         if (exercise == null) {
-            Text("운동 정보를 찾을 수 없습니다", modifier = Modifier.padding(padding).padding(16.dp))
+            Text("운동 정보를 불러오는 중...", modifier = Modifier.padding(padding).padding(16.dp))
         } else {
+            val ex = exercise!!
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -63,28 +59,28 @@ fun WorkoutDetailScreen(
                     .padding(16.dp)
             ) {
                 AsyncImage(
-                    model = exercise.gifUrl,
-                    contentDescription = exercise.name,
+                    model = ex.gifUrl,
+                    contentDescription = ex.name,
                     modifier = Modifier.fillMaxWidth().height(250.dp),
                     contentScale = ContentScale.Fit
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(exercise.name, style = MaterialTheme.typography.headlineSmall)
+                Text(ex.name, style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "${exercise.bodyPart} | ${exercise.equipment}",
+                    "${ex.bodyPart} | ${ex.equipment}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "${exercise.sets}세트 x ${exercise.reps}회",
+                    "${ex.sets}세트 x ${ex.reps}회",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text("운동 방법", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                exercise.instructions.forEachIndexed { i, step ->
+                ex.instructions.forEachIndexed { i, step ->
                     Text(
                         "${i + 1}. $step",
                         modifier = Modifier.padding(vertical = 4.dp),

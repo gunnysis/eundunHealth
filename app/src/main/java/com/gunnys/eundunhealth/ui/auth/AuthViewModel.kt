@@ -3,6 +3,7 @@ package com.gunnys.eundunhealth.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.repository.UserRepository
+import androidx.compose.runtime.Immutable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -11,19 +12,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 sealed class AuthState {
-    object Loading : AuthState()
+    @Immutable
+    data object Loading : AuthState()
+    @Immutable
     data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : AuthState()
-    object Unauthenticated : AuthState()
+    @Immutable
+    data object Unauthenticated : AuthState()
+    @Immutable
     data class Error(val message: String) : AuthState()
 }
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val supabaseClient: SupabaseClient,
-    private val userRepo: UserRepository
+    private val userRepo: UserRepository,
+    private val tokenHolder: AtomicReference<String?>
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -37,6 +44,7 @@ class AuthViewModel @Inject constructor(
         try {
             val session = supabaseClient.auth.currentSessionOrNull()
             if (session != null) {
+                tokenHolder.set(session.accessToken)
                 val userId = session.user?.id ?: ""
                 val hasProfile = userRepo.getProfile().getOrNull() != null
                 _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
@@ -55,6 +63,7 @@ class AuthViewModel @Inject constructor(
                 this.email = email
                 this.password = password
             }
+            tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)
             val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
             val hasProfile = userRepo.getProfile().getOrNull() != null
             _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
@@ -70,11 +79,20 @@ class AuthViewModel @Inject constructor(
                 this.email = email
                 this.password = password
             }
+            tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)
             val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
             _authState.value = AuthState.Authenticated(userId, needsOnboarding = true)
         } catch (e: Exception) {
             _authState.value = AuthState.Error(e.message ?: "회원가입에 실패했습니다")
         }
+    }
+
+    fun logout() = viewModelScope.launch {
+        try {
+            supabaseClient.auth.signOut()
+        } catch (_: Exception) {}
+        tokenHolder.set(null)
+        _authState.value = AuthState.Unauthenticated
     }
 
     fun clearError() {

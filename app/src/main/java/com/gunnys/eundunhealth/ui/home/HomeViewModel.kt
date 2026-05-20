@@ -7,6 +7,7 @@ import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.GetOrCreateWeeklyPlanUseCase
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
+import androidx.compose.runtime.Immutable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,8 +16,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class HomeUiState {
-    object Loading : HomeUiState()
+    @Immutable
+    data object Loading : HomeUiState()
+    @Immutable
     data class Success(val plan: WeeklyPlan, val hasHealthPermission: Boolean = false) : HomeUiState()
+    @Immutable
     data class Error(val message: String) : HomeUiState()
 }
 

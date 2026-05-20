@@ -73,6 +73,7 @@ fun AppNavigation(
                     navController.navigate(Screen.WorkoutDetail.createRoute(exerciseId))
                 },
                 onBadgesClick = { navController.navigate(Screen.Badges.route) },
+                onLogout = { authViewModel.logout() },
                 onRequestHealthPermissions = onRequestHealthPermissions
             )
         }

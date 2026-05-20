@@ -1,7 +1,6 @@
 package com.gunnys.eundunhealth.plugins
 
 import com.gunnys.eundunhealth.routes.badgeRoutes
-import com.gunnys.eundunhealth.routes.healthRoutes
 import com.gunnys.eundunhealth.routes.profileRoutes
 import com.gunnys.eundunhealth.routes.weeklyPlanRoutes
 import io.ktor.http.*
@@ -14,9 +13,12 @@ import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     install(CORS) {
-        anyHost()
+        allowHost("localhost:8080")
+        allowHost("10.0.2.2:8080")  // Android emulator
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
+        allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Delete)
     }
     install(StatusPages) {
         exception<Throwable> { call, cause ->

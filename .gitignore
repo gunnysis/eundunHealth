@@ -14,7 +14,7 @@
 *.rar
 hs_err_pid*
 replay_pid*
-.kotlin/
+**/.kotlin/
 .gradle
 /local.properties
 /.idea

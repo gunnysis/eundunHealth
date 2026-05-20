@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Card
@@ -46,6 +47,7 @@ import java.util.Locale
 fun HomeScreen(
     onExerciseClick: (String) -> Unit,
     onBadgesClick: () -> Unit,
+    onLogout: () -> Unit,
     onRequestHealthPermissions: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -61,6 +63,9 @@ fun HomeScreen(
                     }
                     IconButton(onClick = onBadgesClick) {
                         Icon(Icons.Default.EmojiEvents, "배지")
+                    }
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, "로그아웃")
                     }
                 }
             )
@@ -84,7 +89,7 @@ fun HomeScreen(
                 }
             }
             is HomeUiState.Success -> {
-                LazyColumn(modifier = Modifier.padding(padding)) {
+                LazyColumn(contentPadding = padding) {
                     if (!state.hasHealthPermission) {
                         item {
                             Card(

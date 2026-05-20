@@ -9,11 +9,11 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -23,13 +23,23 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideTokenHolder(supabaseClient: SupabaseClient): AtomicReference<String?> {
+        val holder = AtomicReference<String?>(null)
+        // Initialize with current session token if available
+        try {
+            val token = supabaseClient.auth.currentSessionOrNull()?.accessToken
+            holder.set(token)
+        } catch (_: Exception) {}
+        return holder
+    }
+
+    @Provides
+    @Singleton
     @Named("backend")
-    fun provideBackendOkHttpClient(supabaseClient: SupabaseClient): OkHttpClient =
+    fun provideBackendOkHttpClient(tokenHolder: AtomicReference<String?>): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val token = runBlocking {
-                    supabaseClient.auth.currentSessionOrNull()?.accessToken
-                }
+                val token = tokenHolder.get()
                 val request = if (token != null) {
                     chain.request().newBuilder()
                         .addHeader("Authorization", "Bearer $token")

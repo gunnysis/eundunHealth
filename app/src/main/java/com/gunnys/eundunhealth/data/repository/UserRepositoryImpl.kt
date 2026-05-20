@@ -10,15 +10,20 @@ class UserRepositoryImpl @Inject constructor(
     private val api: EundunApi
 ) : UserRepository {
 
-    override suspend fun getProfile(): Result<UserProfile?> = runCatching {
+    override suspend fun getProfile(): Result<UserProfile?> = try {
         val dto = api.getProfile()
-        UserProfile(
+        Result.success(UserProfile(
             userId = dto.userId,
             heightCm = dto.heightCm,
             weightKg = dto.weightKg,
             bodyFatPercent = dto.bodyFatPct ?: 0f,
             muscleMassKg = dto.muscleMassKg ?: 0f
-        )
+        ))
+    } catch (e: retrofit2.HttpException) {
+        if (e.code() == 404) Result.success(null)
+        else Result.failure(e)
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 
     override suspend fun saveProfile(profile: UserProfile): Result<Unit> = runCatching {

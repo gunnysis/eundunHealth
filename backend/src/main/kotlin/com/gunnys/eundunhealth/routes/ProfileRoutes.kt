@@ -35,6 +35,19 @@ fun Route.profileRoutes() {
         put {
             val uid = call.userId
             val req = call.receive<UserProfileRequest>()
+            // Validate
+            if (req.heightCm !in 50f..300f || req.weightKg !in 10f..500f) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid profile data"))
+                return@put
+            }
+            if (req.bodyFatPct != null && req.bodyFatPct !in 1f..70f) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid body fat percentage"))
+                return@put
+            }
+            if (req.muscleMassKg != null && req.muscleMassKg !in 1f..200f) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid muscle mass"))
+                return@put
+            }
             dbQuery {
                 val existing = UserProfilesTable.selectAll().where { UserProfilesTable.userId eq uid }.singleOrNull()
                 if (existing != null) {

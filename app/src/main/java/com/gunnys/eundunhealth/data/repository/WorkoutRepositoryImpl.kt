@@ -14,9 +14,11 @@ import com.gunnys.eundunhealth.domain.model.ExerciseType
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
+import android.util.Log
 import java.time.DayOfWeek
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlin.random.Random
 
 class WorkoutRepositoryImpl @Inject constructor(
     private val api: EundunApi,
@@ -34,7 +36,8 @@ class WorkoutRepositoryImpl @Inject constructor(
                 val days = parseDayPlans(dto.dayPlans)
                 return@runCatching WeeklyPlan(dto.id, dto.userId, LocalDate.parse(dto.weekStart), days)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("WorkoutRepo", "Server fetch failed, trying cache", e)
             // Try local cache
             val cached = weeklyPlanDao.getPlan("", weekStart.toString())
             if (cached != null) {
@@ -56,27 +59,33 @@ class WorkoutRepositoryImpl @Inject constructor(
             try {
                 val exercises = exerciseDb.getStrengthExercises(bp, limit = 2)
                 strengthExercises.addAll(exercises.map { it.toDomain(sets, reps, ExerciseType.STRENGTH) })
-            } catch (_: Exception) { /* skip if API fails for this body part */ }
+            } catch (e: Exception) {
+                Log.w("WorkoutRepo", "Failed to fetch exercises for $bp", e)
+            }
         }
 
         val cardioExercises = try {
             exerciseDb.getCardioExercises(limit = 3).map { it.toDomain(1, 30, ExerciseType.CARDIO) }
-        } catch (_: Exception) { emptyList() }
+        } catch (e: Exception) {
+            Log.w("WorkoutRepo", "Failed to fetch cardio exercises", e)
+            emptyList()
+        }
 
-        // Build 7-day plan
+        // Build 7-day plan (deterministic shuffle per week)
+        val seed = Random(weekStart.toEpochDay())
         val days = (0L..6L).map { dayOffset ->
             val date = weekStart.plusDays(dayOffset)
             val dayOfWeek = date.dayOfWeek
             when (dayOfWeek) {
                 DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY -> {
-                    val dayExercises = strengthExercises.shuffled().take(4)
+                    val dayExercises = strengthExercises.shuffled(seed).take(4)
                     DayPlan(date, dayExercises, isRestDay = false, isCompleted = false)
                 }
                 DayOfWeek.TUESDAY, DayOfWeek.THURSDAY -> {
-                    DayPlan(date, cardioExercises.shuffled().take(2), isRestDay = false, isCompleted = false)
+                    DayPlan(date, cardioExercises.shuffled(seed).take(2), isRestDay = false, isCompleted = false)
                 }
                 DayOfWeek.SATURDAY -> {
-                    val mixed = (strengthExercises.shuffled().take(2) + cardioExercises.shuffled().take(1))
+                    val mixed = (strengthExercises.shuffled(seed).take(2) + cardioExercises.shuffled(seed).take(1))
                     DayPlan(date, mixed, isRestDay = false, isCompleted = false)
                 }
                 else -> DayPlan(date, emptyList(), isRestDay = true, isCompleted = false) // Sunday
@@ -112,7 +121,8 @@ class WorkoutRepositoryImpl @Inject constructor(
             val type = object : TypeToken<List<DayPlanJson>>() {}.type
             val dayJsons: List<DayPlanJson> = gson.fromJson(json, type)
             dayJsons.map { it.toDayPlan() }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e("WorkoutRepo", "Failed to parse day plans JSON", e)
             emptyList()
         }
     }

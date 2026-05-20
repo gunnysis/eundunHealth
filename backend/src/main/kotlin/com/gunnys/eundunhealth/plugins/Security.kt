@@ -12,12 +12,13 @@ import io.ktor.server.response.*
 fun Application.configureSecurity() {
     val env = dotenv { ignoreIfMissing = true }
     val jwtSecret = env["SUPABASE_JWT_SECRET"] ?: throw IllegalStateException("SUPABASE_JWT_SECRET not set")
+    val supabaseUrl = env["SUPABASE_URL"] ?: throw IllegalStateException("SUPABASE_URL not set")
 
     install(Authentication) {
         jwt("supabase-jwt") {
             verifier(
                 JWT.require(Algorithm.HMAC256(jwtSecret))
-                    .withIssuer("https://hcowzkqapzlvrvmawfcd.supabase.co/auth/v1")
+                    .withIssuer("$supabaseUrl/auth/v1")
                     .build()
             )
             validate { credential ->
@@ -32,4 +33,5 @@ fun Application.configureSecurity() {
 }
 
 val ApplicationCall.userId: String
-    get() = principal<JWTPrincipal>()!!.payload.subject
+    get() = principal<JWTPrincipal>()?.payload?.subject
+        ?: throw IllegalStateException("Unauthorized: No valid JWT principal")

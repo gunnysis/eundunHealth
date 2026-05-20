@@ -25,14 +25,24 @@ class OnboardingViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     fun saveProfile(heightCm: Float, weightKg: Float, bodyFatPct: Float, muscleMassKg: Float) =
         viewModelScope.launch {
             _isLoading.value = true
-            val userId = supabaseClient.auth.currentUserOrNull()?.id ?: return@launch
-            userRepo.saveProfile(
-                UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg)
-            )
-            _isLoading.value = false
-            _saved.value = true
+            _error.value = null
+            try {
+                val userId = supabaseClient.auth.currentUserOrNull()?.id
+                    ?: throw IllegalStateException("로그인이 필요합니다")
+                userRepo.saveProfile(
+                    UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg)
+                ).getOrThrow()
+                _saved.value = true
+            } catch (e: Exception) {
+                _error.value = e.message ?: "프로필 저장에 실패했습니다"
+            } finally {
+                _isLoading.value = false
+            }
         }
 }
