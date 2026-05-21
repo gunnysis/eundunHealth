@@ -23,7 +23,16 @@
 - sentry-android-okhttp → sentry-okhttp 모듈 전환 (deprecated 해결)
 - Sentry project slug `eundunhealth-android` → `eundunhealth` 수정 (404 에러 해결)
 
+### 리팩토링
+- AuthViewModel: SupabaseClient 직접 호출 제거 → AuthRepository 인터페이스 사용으로 전환
+- AuthRepository.restoreSession() 추가: 자동 로그인 시 tokenHolder 설정 (401 에러 근본 원인 수정)
+- WorkoutRepositoryImpl: `android.util.Log` → `Sentry.captureException()` 전환 (프로덕션 에러 추적)
+- DayPlanJson/ExerciseJson → `PlanJsonModels.kt` 별도 파일 분리 (단일 책임 원칙)
+- WeeklyPlanDao: 빈 userId 파라미터 제거, weekStart만으로 캐시 조회
+- ExerciseDB OkHttpClient에 RetryInterceptor + 15초 타임아웃 추가
+
 ### 빌드 개선
+- AGP 9.1.1 → 9.2.1 업데이트
 - gradle.properties에서 불필요한 deprecated 옵션 정리
 - AGP 9.x 호환성 모드 플래그 주석 문서화
 
