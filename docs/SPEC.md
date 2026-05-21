@@ -6,36 +6,46 @@
 
 - **패키지**: `com.gunnys.eundunhealth`
 - **최소 SDK**: 26 (Android 8.0)
-- **대상 SDK**: 36
+- **대상 SDK**: 37 (Android 17)
 
 ---
 
 ## 기술 스택
 
 ### Android (클라이언트)
-| 기술 | 용도 |
-|------|------|
-| Kotlin + Jetpack Compose | UI 프레임워크 |
-| Hilt | 의존성 주입 |
-| Room | 로컬 데이터베이스 (오프라인 캐시) |
-| Retrofit + OkHttp | 백엔드 API 통신 |
-| Coil | 이미지/GIF 로딩 |
-| DataStore | 설정 영속화 (다크모드) |
-| Supabase Kotlin SDK | 인증 (Auth) |
-| Health Connect | 운동 세션 자동 감지 |
-| Sentry Android SDK | 크래시/에러 모니터링 |
-| Navigation Compose | 화면 전환 |
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| Kotlin | 2.2.10 | 언어 |
+| Jetpack Compose (BOM) | 2026.05.01 | UI 프레임워크 |
+| Hilt | 2.59.2 | 의존성 주입 |
+| Room | 2.8.4 | 로컬 데이터베이스 (오프라인 캐시) |
+| Retrofit + OkHttp | 2.11.0 / 4.12.0 | 백엔드 API 통신 |
+| Coil | 2.7.0 | 이미지/GIF 로딩 |
+| DataStore | 1.1.4 | 설정 영속화 (다크모드) |
+| Supabase Kotlin SDK | 3.6.0 | 인증 (Auth) |
+| Health Connect | 1.1.0-rc01 | 운동 세션 자동 감지 |
+| Sentry Android SDK | 7.14.0 | 크래시/에러 모니터링 |
+| Navigation Compose | 2.9.0 | 화면 전환 |
+| Activity Compose | 1.13.0 | Activity + Compose 연동 |
 
 ### Backend (서버)
-| 기술 | 용도 |
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| Ktor (Netty) | 3.4.3 | HTTP 서버 |
+| Exposed ORM | 0.61.0 | 데이터베이스 쿼리 |
+| PostgreSQL (Azure) | 42.7.7 | 데이터 저장소 |
+| HikariCP | 6.2.1 | DB 커넥션 풀 |
+| Supabase JWT | java-jwt 4.5.0 | 인증 토큰 검증 |
+| Sentry JVM SDK | 7.14.0 | 서버 에러 모니터링 |
+| Shadow Plugin | 9.0.0-beta12 | Fat JAR 빌드 |
+
+### 빌드 도구
+| 기술 | 버전 |
 |------|------|
-| Ktor 3.4.3 (Netty) | HTTP 서버 |
-| Exposed ORM | 데이터베이스 쿼리 |
-| PostgreSQL (Azure) | 데이터 저장소 |
-| HikariCP | DB 커넥션 풀 |
-| Supabase JWT | 인증 토큰 검증 |
-| Sentry JVM SDK | 서버 에러 모니터링 |
-| Shadow Plugin | Fat JAR 빌드 |
+| AGP | 9.1.1 |
+| Gradle | 9.3.1 |
+| KSP | 2.3.2 |
+| Sentry Gradle Plugin | 4.14.1 |
 
 ### 인프라
 | 기술 | 용도 |
@@ -203,15 +213,27 @@ backend/src/main/kotlin/com/gunnys/eundunhealth/
 
 ---
 
+## 네트워크 보안
+
+- `network_security_config.xml`로 네트워크 정책 관리
+- `base-config cleartextTrafficPermitted="false"` — HTTP cleartext 기본 차단
+- localhost/10.0.2.2 cleartext는 개발용으로만 허용
+- Release 빌드에서 HTTP 로깅 비활성화 (`HttpLoggingInterceptor.Level.NONE`)
+- OkHttp RetryInterceptor: 최대 3회 재시도, exponential backoff (500ms/1s/2s)
+- OkHttp TokenAuthenticator: 401 응답 시 Supabase 토큰 자동 갱신 후 재시도
+
+---
+
 ## 모니터링
 
 ### Sentry
 - **Android**: 크래시, ANR, 네트워크 에러 자동 캡처
 - **Backend**: 500 에러, unhandled exception 자동 캡처
-- **OkHttp 트레이싱**: API 호출 성능 모니터링
+- **OkHttp 트레이싱**: sentry-okhttp 모듈로 API 호출 성능 모니터링
 - **ProGuard 매핑**: Release 빌드 시 자동 업로드 → 난독화 스택 트레이스 복원
 - **환경 구분**: development (debug) / production (release)
 - **샘플 레이트**: dev 100%, prod 20%
+- **Sentry org/project**: gunnys / eundunhealth
 
 ---
 
