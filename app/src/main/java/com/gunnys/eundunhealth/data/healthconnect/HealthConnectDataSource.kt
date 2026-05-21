@@ -20,6 +20,9 @@ class HealthConnectDataSource @Inject constructor(
         HealthPermission.getReadPermission(ExerciseSessionRecord::class)
     )
 
+    fun isAvailable(): Boolean =
+        HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
+
     suspend fun hasPermissions(): Boolean =
         client.permissionController.getGrantedPermissions().containsAll(permissions)
 

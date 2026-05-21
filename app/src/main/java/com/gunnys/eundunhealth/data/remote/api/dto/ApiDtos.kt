@@ -27,6 +27,18 @@ data class CreateWeeklyPlanRequest(
     val dayPlans: String
 )
 
+data class UpdateDayCompletionRequest(
+    val date: String,
+    val completed: Boolean
+)
+
+data class WeeklyPlanHistoryDto(
+    val plans: List<WeeklyPlanDto>,
+    val totalCount: Int,
+    val page: Int,
+    val size: Int
+)
+
 data class BadgeDto(
     val id: String,
     val userId: String,

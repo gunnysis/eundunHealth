@@ -19,7 +19,8 @@ data class BadgeDisplayItem(
     val key: String,
     val name: String,
     val description: String,
-    val earned: Boolean
+    val earned: Boolean,
+    val earnedAt: String? = null
 )
 
 @HiltViewModel
@@ -38,7 +39,17 @@ class BadgeViewModel @Inject constructor(
         val earned = badgeRepo.getEarnedBadges().getOrElse { emptyList() }
         _badges.value = BadgeCatalog.all.map { template ->
             val (name, desc) = BadgeCatalog.getInfo(template.key)
-            BadgeDisplayItem(template.key, name, desc, earned = earned.any { it.key == template.key })
+            val earnedBadge = earned.find { it.key == template.key }
+            BadgeDisplayItem(
+                key = template.key,
+                name = name,
+                description = desc,
+                earned = earnedBadge != null,
+                earnedAt = earnedBadge?.earnedAt?.let {
+                    java.time.LocalDateTime.ofInstant(it, java.time.ZoneId.systemDefault())
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d"))
+                }
+            )
         }
     }
 }

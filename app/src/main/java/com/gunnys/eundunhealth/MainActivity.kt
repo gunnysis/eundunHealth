@@ -4,15 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import com.gunnys.eundunhealth.data.preferences.ThemeMode
+import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.ui.navigation.AppNavigation
 import com.gunnys.eundunhealth.ui.theme.EundunHealthTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var themePreferences: ThemePreferences
 
     private val healthPermissions = setOf(
         HealthPermission.getReadPermission(ExerciseSessionRecord::class)
@@ -30,7 +37,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            EundunHealthTheme {
+            val themeMode by themePreferences.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
+            EundunHealthTheme(themeMode = themeMode) {
                 AppNavigation(
                     onRequestHealthPermissions = {
                         healthPermissionLauncher.launch(healthPermissions)

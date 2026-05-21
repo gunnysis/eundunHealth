@@ -40,6 +40,7 @@ class OnboardingViewModel @Inject constructor(
                 ).getOrThrow()
                 _saved.value = true
             } catch (e: Exception) {
+                io.sentry.Sentry.captureException(e)
                 _error.value = e.message ?: "프로필 저장에 실패했습니다"
             } finally {
                 _isLoading.value = false

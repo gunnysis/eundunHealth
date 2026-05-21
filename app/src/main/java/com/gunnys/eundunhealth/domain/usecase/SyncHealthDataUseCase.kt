@@ -12,7 +12,10 @@ class SyncHealthDataUseCase @Inject constructor(
     suspend operator fun invoke(plan: WeeklyPlan): Result<WeeklyPlan> = runCatching {
         if (!healthRepo.hasPermissions()) return@runCatching plan
 
-        val completedDates = healthRepo.getExerciseDatesThisWeek(plan.weekStart).getOrElse { emptyList() }
+        val completedDates = healthRepo.getExerciseDatesThisWeek(plan.weekStart).getOrElse {
+            io.sentry.Sentry.captureException(it)
+            emptyList()
+        }
         val updatedDays = plan.days.map { day ->
             if (!day.isRestDay && day.date in completedDates) {
                 day.copy(isCompleted = true)

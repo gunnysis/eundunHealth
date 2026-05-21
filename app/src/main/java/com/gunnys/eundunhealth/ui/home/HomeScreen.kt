@@ -17,15 +17,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -39,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gunnys.eundunhealth.domain.model.DayPlan
+import com.gunnys.eundunhealth.data.preferences.ThemeMode
+import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -47,19 +53,34 @@ import java.util.Locale
 fun HomeScreen(
     onExerciseClick: (String) -> Unit,
     onBadgesClick: () -> Unit,
+    onHistoryClick: () -> Unit = {},
     onLogout: () -> Unit,
     onRequestHealthPermissions: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("이번 주 운동 계획") },
                 actions = {
+                    IconButton(onClick = { viewModel.cycleTheme() }) {
+                        Icon(
+                            when (themeMode) {
+                                ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                                ThemeMode.DARK -> Icons.Default.DarkMode
+                                ThemeMode.LIGHT -> Icons.Default.LightMode
+                            },
+                            "테마"
+                        )
+                    }
                     IconButton(onClick = { viewModel.loadPlan() }) {
                         Icon(Icons.Default.Refresh, "새로고침")
+                    }
+                    IconButton(onClick = onHistoryClick) {
+                        Icon(Icons.Default.History, "기록")
                     }
                     IconButton(onClick = onBadgesClick) {
                         Icon(Icons.Default.EmojiEvents, "배지")
@@ -73,9 +94,7 @@ fun HomeScreen(
     ) { padding ->
         when (val state = uiState) {
             is HomeUiState.Loading -> {
-                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                SkeletonHomeContent(modifier = Modifier.padding(padding))
             }
             is HomeUiState.Error -> {
                 Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
@@ -90,6 +109,13 @@ fun HomeScreen(
             }
             is HomeUiState.Success -> {
                 LazyColumn(contentPadding = padding) {
+                    item {
+                        WeeklyProgressCard(
+                            completedCount = state.completedCount,
+                            totalDays = state.totalWorkoutDays,
+                            completionRate = state.completionRate
+                        )
+                    }
                     if (!state.hasHealthPermission) {
                         item {
                             Card(
@@ -110,7 +136,11 @@ fun HomeScreen(
                         }
                     }
                     items(state.plan.days, key = { it.date.toString() }) { day ->
-                        DayPlanCard(day = day, onExerciseClick = onExerciseClick)
+                        DayPlanCard(
+                            day = day,
+                            onExerciseClick = onExerciseClick,
+                            onToggleComplete = { viewModel.toggleDayCompletion(day.date) }
+                        )
                     }
                 }
             }
@@ -119,7 +149,32 @@ fun HomeScreen(
 }
 
 @Composable
-fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit) {
+fun WeeklyProgressCard(completedCount: Int, totalDays: Int, completionRate: Float) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("이번 주 진행률", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { completionRate },
+                modifier = Modifier.fillMaxWidth().height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "${completedCount}/${totalDays} 완료 (${(completionRate * 100).toInt()}%)",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit, onToggleComplete: () -> Unit) {
     val dayName = day.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)
     val dateStr = "${day.date.monthValue}/${day.date.dayOfMonth}"
     val containerColor by animateColorAsState(
@@ -129,6 +184,7 @@ fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit) {
     )
 
     Card(
+        onClick = { if (!day.isRestDay) onToggleComplete() },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {

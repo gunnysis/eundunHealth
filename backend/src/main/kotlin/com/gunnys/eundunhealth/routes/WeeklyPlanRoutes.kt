@@ -3,6 +3,8 @@ package com.gunnys.eundunhealth.routes
 import com.gunnys.eundunhealth.db.DatabaseFactory.dbQuery
 import com.gunnys.eundunhealth.db.tables.WeeklyPlansTable
 import com.gunnys.eundunhealth.models.CreateWeeklyPlanRequest
+import com.gunnys.eundunhealth.models.UpdateDayCompletionRequest
+import com.gunnys.eundunhealth.models.WeeklyPlanHistoryResponse
 import com.gunnys.eundunhealth.models.WeeklyPlanResponse
 import com.gunnys.eundunhealth.plugins.userId
 import io.ktor.http.*
@@ -35,6 +37,73 @@ fun Route.weeklyPlanRoutes() {
                 ))
             } else {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "No plan for this week"))
+            }
+        }
+
+        get("/history") {
+            val uid = call.userId
+            val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 0
+            val size = call.request.queryParameters["size"]?.toIntOrNull()?.coerceIn(1, 50) ?: 10
+
+            val (plans, totalCount) = dbQuery {
+                val total = WeeklyPlansTable.selectAll()
+                    .where { WeeklyPlansTable.userId eq uid }
+                    .count().toInt()
+
+                val rows = WeeklyPlansTable.selectAll()
+                    .where { WeeklyPlansTable.userId eq uid }
+                    .orderBy(WeeklyPlansTable.weekStart, SortOrder.DESC)
+                    .limit(size)
+                    .offset((page * size).toLong())
+                    .map { row ->
+                        WeeklyPlanResponse(
+                            id = row[WeeklyPlansTable.id].toString(),
+                            userId = row[WeeklyPlansTable.userId],
+                            weekStart = row[WeeklyPlansTable.weekStart].toString(),
+                            dayPlans = row[WeeklyPlansTable.dayPlans]
+                        )
+                    }
+                rows to total
+            }
+
+            call.respond(WeeklyPlanHistoryResponse(plans, totalCount, page, size))
+        }
+
+        patch("/complete") {
+            val uid = call.userId
+            val req = call.receive<UpdateDayCompletionRequest>()
+            val targetDate = LocalDate.parse(req.date)
+            val weekStart = targetDate.with(java.time.DayOfWeek.MONDAY)
+
+            val updated = dbQuery {
+                val plan = WeeklyPlansTable.selectAll().where {
+                    (WeeklyPlansTable.userId eq uid) and
+                    (WeeklyPlansTable.weekStart eq weekStart)
+                }.singleOrNull() ?: return@dbQuery false
+
+                val dayPlansJson = plan[WeeklyPlansTable.dayPlans]
+                val gson = com.google.gson.Gson()
+                val type = object : com.google.gson.reflect.TypeToken<List<MutableMap<String, Any>>>() {}.type
+                val days: MutableList<MutableMap<String, Any>> = gson.fromJson(dayPlansJson, type)
+
+                val dayIndex = days.indexOfFirst { it["date"] == req.date }
+                if (dayIndex == -1) return@dbQuery false
+
+                days[dayIndex]["isCompleted"] = req.completed
+
+                WeeklyPlansTable.update({
+                    (WeeklyPlansTable.userId eq uid) and
+                    (WeeklyPlansTable.weekStart eq weekStart)
+                }) {
+                    it[dayPlans] = gson.toJson(days)
+                }
+                true
+            }
+
+            if (updated) {
+                call.respond(mapOf("status" to "ok"))
+            } else {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Plan or date not found"))
             }
         }
 

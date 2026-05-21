@@ -1,5 +1,7 @@
 package com.gunnys.eundunhealth.plugins
 
+import com.gunnys.eundunhealth.config.AppConfig
+import com.gunnys.eundunhealth.db.DatabaseFactory.dbQuery
 import com.gunnys.eundunhealth.routes.badgeRoutes
 import com.gunnys.eundunhealth.routes.profileRoutes
 import com.gunnys.eundunhealth.routes.weeklyPlanRoutes
@@ -13,8 +15,7 @@ import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     install(CORS) {
-        allowHost("localhost:8080")
-        allowHost("10.0.2.2:8080")  // Android emulator
+        AppConfig.allowedOrigins.forEach { allowHost(it) }
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
         allowMethod(HttpMethod.Put)
@@ -22,12 +23,23 @@ fun Application.configureRouting() {
     }
     install(StatusPages) {
         exception<Throwable> { call, cause ->
+            io.sentry.Sentry.captureException(cause)
             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (cause.message ?: "Unknown error")))
         }
     }
     routing {
         get("/health") {
-            call.respond(mapOf("status" to "ok"))
+            try {
+                dbQuery {
+                    org.jetbrains.exposed.sql.transactions.TransactionManager.current().exec("SELECT 1")
+                }
+                call.respond(mapOf("status" to "ok"))
+            } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.ServiceUnavailable,
+                    mapOf("status" to "unhealthy", "error" to (e.message ?: ""))
+                )
+            }
         }
         authenticate("supabase-jwt") {
             profileRoutes()

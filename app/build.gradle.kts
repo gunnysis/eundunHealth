@@ -1,3 +1,10 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) load(file.inputStream())
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,9 +12,18 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.sentry)
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            storeFile = file(".key\\eundunhealth_upload_key")
+            storePassword = "Dmsensgpftm123!@#"
+            keyPassword = "Dmsensgpftm123!@#"
+            keyAlias = "eundunhealth_store_key"
+        }
+    }
     namespace = "com.gunnys.eundunhealth"
     compileSdk = 36
 
@@ -15,15 +31,16 @@ android {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 5
+        versionName = "0.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: ""}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${project.findProperty("SUPABASE_ANON_KEY") ?: ""}\"")
-        buildConfigField("String", "EXERCISEDB_API_KEY", "\"${project.findProperty("EXERCISEDB_API_KEY") ?: ""}\"")
-        buildConfigField("String", "BACKEND_BASE_URL", "\"${project.findProperty("BACKEND_BASE_URL") ?: "http://10.0.2.2:8080/"}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
+        buildConfigField("String", "EXERCISEDB_API_KEY", "\"${localProperties.getProperty("EXERCISEDB_API_KEY", "")}\"")
+        buildConfigField("String", "BACKEND_BASE_URL", "\"${localProperties.getProperty("BACKEND_BASE_URL", "http://10.0.2.2:8080/")}\"")
+        buildConfigField("String", "SENTRY_DSN", "\"${localProperties.getProperty("SENTRY_DSN", "")}\"")
     }
 
     buildTypes {
@@ -91,10 +108,27 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
+    // Sentry
+    implementation(libs.sentry.android)
+    implementation(libs.sentry.android.okhttp)
+
+    // DataStore
+    implementation(libs.datastore.preferences)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
 
     debugImplementation(libs.androidx.ui.tooling)
+}
+
+sentry {
+    org.set("gunnys")
+    projectName.set("eundunhealth-android")
+    authToken.set(localProperties.getProperty("SENTRY_AUTH_TOKEN", ""))
+    includeProguardMapping.set(true)
+    autoUploadProguardMapping.set(true)
+    uploadNativeSymbols.set(false)
+    includeNativeSources.set(false)
 }

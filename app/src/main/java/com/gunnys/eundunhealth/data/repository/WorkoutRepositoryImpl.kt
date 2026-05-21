@@ -113,7 +113,17 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit> = runCatching {
-        // For MVP, this is tracked locally via Health Connect sync
+        api.updateDayCompletion(
+            com.gunnys.eundunhealth.data.remote.api.dto.UpdateDayCompletionRequest(date.toString(), completed)
+        )
+    }
+
+    override suspend fun getHistory(page: Int, size: Int): Result<Pair<List<WeeklyPlan>, Int>> = runCatching {
+        val response = api.getWeeklyPlanHistory(page, size)
+        val plans = response.plans.map { dto ->
+            WeeklyPlan(dto.id, dto.userId, LocalDate.parse(dto.weekStart), parseDayPlans(dto.dayPlans))
+        }
+        plans to response.totalCount
     }
 
     private fun parseDayPlans(json: String): List<DayPlan> {

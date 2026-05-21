@@ -27,5 +27,7 @@ object CoilModule {
                 }
             }
             .crossfade(true)
+            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
             .build()
 }

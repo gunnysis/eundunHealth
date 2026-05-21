@@ -48,6 +48,14 @@ data class BadgeResponse(
 )
 
 @Serializable
+data class WeeklyPlanHistoryResponse(
+    val plans: List<WeeklyPlanResponse>,
+    val totalCount: Int,
+    val page: Int,
+    val size: Int
+)
+
+@Serializable
 data class ErrorResponse(val error: String)
 
 @Serializable

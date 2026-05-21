@@ -9,4 +9,5 @@ interface WorkoutRepository {
     suspend fun createWeeklyPlan(profile: UserProfile): Result<WeeklyPlan>
     suspend fun savePlanToServer(plan: WeeklyPlan): Result<Unit>
     suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit>
+    suspend fun getHistory(page: Int, size: Int): Result<Pair<List<WeeklyPlan>, Int>>
 }

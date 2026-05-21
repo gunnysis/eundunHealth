@@ -1,6 +1,7 @@
 package com.gunnys.eundunhealth.ui.navigation
 
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
     object Login : Screen("login")
     object Signup : Screen("signup")
     object Onboarding : Screen("onboarding")
@@ -9,4 +10,5 @@ sealed class Screen(val route: String) {
         fun createRoute(exerciseId: String) = "workout/$exerciseId"
     }
     object Badges : Screen("badges")
+    object History : Screen("history")
 }

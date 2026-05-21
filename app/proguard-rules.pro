@@ -16,3 +16,14 @@
 
 # Room
 -keep class * extends androidx.room.RoomDatabase
+
+# Sentry
+-keep class io.sentry.** { *; }
+-dontwarn io.sentry.**
+
+# DataStore
+-keep class androidx.datastore.** { *; }
+
+# Suppress warnings for JVM-only classes referenced by Ktor
+-dontwarn java.lang.management.ManagementFactory
+-dontwarn java.lang.management.RuntimeMXBean

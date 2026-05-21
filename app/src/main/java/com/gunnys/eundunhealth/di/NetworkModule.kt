@@ -3,6 +3,9 @@ package com.gunnys.eundunhealth.di
 import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.data.remote.api.EundunApi
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbApi
+import com.gunnys.eundunhealth.data.remote.interceptor.RetryInterceptor
+import com.gunnys.eundunhealth.data.remote.interceptor.TokenAuthenticator
+import io.sentry.android.okhttp.SentryOkHttpInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,6 +16,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Named
 import javax.inject.Singleton
@@ -36,8 +40,12 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("backend")
-    fun provideBackendOkHttpClient(tokenHolder: AtomicReference<String?>): OkHttpClient =
+    fun provideBackendOkHttpClient(
+        tokenHolder: AtomicReference<String?>,
+        supabaseClient: SupabaseClient
+    ): OkHttpClient =
         OkHttpClient.Builder()
+            .addInterceptor(RetryInterceptor())
             .addInterceptor { chain ->
                 val token = tokenHolder.get()
                 val request = if (token != null) {
@@ -49,9 +57,14 @@ object NetworkModule {
                 }
                 chain.proceed(request)
             }
+            .authenticator(TokenAuthenticator(supabaseClient, tokenHolder))
+            .addInterceptor(SentryOkHttpInterceptor())
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                        else HttpLoggingInterceptor.Level.NONE
             })
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
     @Provides

@@ -2,12 +2,15 @@ package com.gunnys.eundunhealth.data.remote.api
 
 import com.gunnys.eundunhealth.data.remote.api.dto.BadgeDto
 import com.gunnys.eundunhealth.data.remote.api.dto.CreateWeeklyPlanRequest
+import com.gunnys.eundunhealth.data.remote.api.dto.UpdateDayCompletionRequest
 import com.gunnys.eundunhealth.data.remote.api.dto.UserProfileDto
 import com.gunnys.eundunhealth.data.remote.api.dto.UserProfileRequest
 import com.gunnys.eundunhealth.data.remote.api.dto.WeeklyPlanDto
+import com.gunnys.eundunhealth.data.remote.api.dto.WeeklyPlanHistoryDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -25,6 +28,15 @@ interface EundunApi {
 
     @POST("weekly-plan")
     suspend fun createWeeklyPlan(@Body req: CreateWeeklyPlanRequest): WeeklyPlanDto
+
+    @PATCH("weekly-plan/complete")
+    suspend fun updateDayCompletion(@Body req: UpdateDayCompletionRequest): Response<Unit>
+
+    @GET("weekly-plan/history")
+    suspend fun getWeeklyPlanHistory(
+        @Query("page") page: Int,
+        @Query("size") size: Int
+    ): WeeklyPlanHistoryDto
 
     @GET("badges")
     suspend fun getBadges(): List<BadgeDto>

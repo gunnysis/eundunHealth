@@ -91,6 +91,13 @@ fun BadgeItem(badge: BadgeDisplayItem) {
                            else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(badge.description, style = MaterialTheme.typography.bodySmall)
+                if (badge.earned && badge.earnedAt != null) {
+                    Text(
+                        "획득: ${badge.earnedAt}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                }
             }
         }
     }

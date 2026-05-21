@@ -13,8 +13,10 @@ import androidx.navigation.navArgument
 import com.gunnys.eundunhealth.ui.auth.AuthState
 import com.gunnys.eundunhealth.ui.auth.AuthViewModel
 import com.gunnys.eundunhealth.ui.auth.LoginScreen
+import com.gunnys.eundunhealth.ui.splash.SplashScreen
 import com.gunnys.eundunhealth.ui.auth.SignupScreen
 import com.gunnys.eundunhealth.ui.badge.BadgeScreen
+import com.gunnys.eundunhealth.ui.history.HistoryScreen
 import com.gunnys.eundunhealth.ui.home.HomeScreen
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
 import com.gunnys.eundunhealth.ui.workout.WorkoutDetailScreen
@@ -45,7 +47,10 @@ fun AppNavigation(
         }
     }
 
-    NavHost(navController = navController, startDestination = Screen.Login.route) {
+    NavHost(navController = navController, startDestination = Screen.Splash.route) {
+        composable(Screen.Splash.route) {
+            SplashScreen()
+        }
         composable(Screen.Login.route) {
             LoginScreen(
                 onNavigateToSignup = { navController.navigate(Screen.Signup.route) },
@@ -73,6 +78,7 @@ fun AppNavigation(
                     navController.navigate(Screen.WorkoutDetail.createRoute(exerciseId))
                 },
                 onBadgesClick = { navController.navigate(Screen.Badges.route) },
+                onHistoryClick = { navController.navigate(Screen.History.route) },
                 onLogout = { authViewModel.logout() },
                 onRequestHealthPermissions = onRequestHealthPermissions
             )
@@ -88,6 +94,9 @@ fun AppNavigation(
         }
         composable(Screen.Badges.route) {
             BadgeScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.History.route) {
+            HistoryScreen(onBack = { navController.popBackStack() })
         }
     }
 }

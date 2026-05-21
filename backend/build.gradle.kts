@@ -7,6 +7,7 @@ plugins {
     application
     kotlin("jvm") version "2.3.0"
     kotlin("plugin.serialization") version "2.3.0"
+    id("com.gradleup.shadow") version "9.0.0-beta12"
 }
 
 application {
@@ -15,6 +16,13 @@ application {
 
 repositories {
     mavenCentral()
+}
+
+tasks.shadowJar {
+    archiveBaseName.set("eundunhealth-api")
+    archiveClassifier.set("")
+    archiveVersion.set("")
+    mergeServiceFiles()
 }
 
 dependencies {
@@ -42,6 +50,12 @@ dependencies {
 
     // dotenv
     implementation("io.github.cdimascio:dotenv-kotlin:6.5.0")
+
+    // Gson (for dayPlans JSON manipulation)
+    implementation("com.google.code.gson:gson:2.11.0")
+
+    // Sentry
+    implementation("io.sentry:sentry:7.14.0")
 
     // Logging
     implementation("ch.qos.logback:logback-classic:$logback_version")
