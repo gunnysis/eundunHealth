@@ -1,5 +1,34 @@
 # eundunHealth 작업 내역서
 
+## v0.0.3 (2026-05-21)
+
+### Android 17 (API 37) 대응
+- compileSdk/targetSdk 36 → 37, AndroidManifest tools:targetApi 37
+- 사이드 이펙트 분석: 앱 기능(인증, REST API, Health Connect, Room)에 영향 없음 확인
+
+### 의존성 업데이트 (API 37 호환)
+- Hilt 2.56.2 → 2.59.2 (AGP 9.x 호환성 개선)
+- Compose BOM 2025.05.01 → 2026.05.01 (최신 Compose)
+- Activity Compose 1.10.1 → 1.13.0 (edge-to-edge 대응)
+- Room 2.7.1 → 2.8.4 (버그 수정)
+- Supabase 3.1.4 → 3.6.0 (안정성 개선)
+- Ktor 3.1.2 → 3.5.0 (Supabase 호환)
+
+### 네트워크 보안 강화
+- network_security_config.xml에 `base-config cleartextTrafficPermitted="false"` 추가
+- Release 빌드에서 HTTP cleartext 통신 명시적 차단
+- CLEARTEXT communication to 10.0.2.2 에러 방어 처리
+
+### Sentry 설정 수정
+- sentry-android-okhttp → sentry-okhttp 모듈 전환 (deprecated 해결)
+- Sentry project slug `eundunhealth-android` → `eundunhealth` 수정 (404 에러 해결)
+
+### 빌드 개선
+- gradle.properties에서 불필요한 deprecated 옵션 정리
+- AGP 9.x 호환성 모드 플래그 주석 문서화
+
+---
+
 ## v0.0.2 (2026-05-21)
 
 ### Sentry 크래시 모니터링 통합
