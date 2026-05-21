@@ -31,7 +31,7 @@ android {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
+        versionCode = 6
         versionName = "0.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -125,7 +125,7 @@ dependencies {
 
 sentry {
     org.set("gunnys")
-    projectName.set("eundunhealth-android")
+    projectName.set("eundunhealth")
     authToken.set(localProperties.getProperty("SENTRY_AUTH_TOKEN", ""))
     includeProguardMapping.set(true)
     autoUploadProguardMapping.set(true)
