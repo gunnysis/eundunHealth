@@ -5,7 +5,7 @@ import com.gunnys.eundunhealth.data.remote.api.EundunApi
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbApi
 import com.gunnys.eundunhealth.data.remote.interceptor.RetryInterceptor
 import com.gunnys.eundunhealth.data.remote.interceptor.TokenAuthenticator
-import io.sentry.android.okhttp.SentryOkHttpInterceptor
+import io.sentry.okhttp.SentryOkHttpInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

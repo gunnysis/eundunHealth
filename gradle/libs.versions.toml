@@ -59,7 +59,7 @@ navigation-compose = { module = "androidx.navigation:navigation-compose", versio
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 
 sentry-android = { module = "io.sentry:sentry-android", version.ref = "sentry" }
-sentry-android-okhttp = { module = "io.sentry:sentry-android-okhttp", version.ref = "sentry" }
+sentry-okhttp = { module = "io.sentry:sentry-okhttp", version.ref = "sentry" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }
 
 junit = { group = "junit", name = "junit", version = "4.13.2" }

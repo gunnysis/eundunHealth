@@ -110,7 +110,7 @@ dependencies {
 
     // Sentry
     implementation(libs.sentry.android)
-    implementation(libs.sentry.android.okhttp)
+    implementation(libs.sentry.okhttp)
 
     // DataStore
     implementation(libs.datastore.preferences)
