@@ -40,6 +40,8 @@ class SyncHealthDataUseCaseTest {
         override suspend fun savePlanToServer(plan: WeeklyPlan): Result<Unit> = Result.success(Unit)
         override suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit> =
             Result.success(Unit)
+        override suspend fun getHistory(page: Int, size: Int): Result<Pair<List<WeeklyPlan>, Int>> =
+            Result.success(emptyList<WeeklyPlan>() to 0)
     }
 
     @Test

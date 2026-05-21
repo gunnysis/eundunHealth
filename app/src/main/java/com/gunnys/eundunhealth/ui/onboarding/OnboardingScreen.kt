@@ -8,13 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 
 @Composable
 fun OnboardingScreen(
@@ -69,6 +71,8 @@ fun OnboardingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
                 .animateContentSize()
         ) {
@@ -82,28 +86,24 @@ fun OnboardingScreen(
 
             ProfileSlider("키", height, 140f..210f, "cm", 0) { height = it }
             ProfileSlider("몸무게", weight, 40f..150f, "kg", 1) { weight = it }
-            ProfileSlider("체지방률", bodyFat, 5f..50f, "%", 1) { bodyFat = it }
             ProfileSlider("근육량", muscleMass, 10f..60f, "kg", 1) { muscleMass = it }
+            ProfileSlider("체지방률", bodyFat, 5f..50f, "%", 1) { bodyFat = it }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("입력 요약", style = MaterialTheme.typography.labelMedium)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("키: ${"%.0f".format(height)}cm | 몸무게: ${"%.1f".format(weight)}kg")
-                    Text("체지방: ${"%.1f".format(bodyFat)}% | 근육량: ${"%.1f".format(muscleMass)}kg")
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "입력한 정보를 기반으로 맞춤 주간 운동 계획이 생성됩니다",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            ProfileSummaryCard(
+                height = height,
+                weight = weight,
+                bodyFat = bodyFat,
+                muscleMass = muscleMass
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "입력한 정보를 기반으로 맞춤 주간 운동 계획이 생성됩니다",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(

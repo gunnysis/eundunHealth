@@ -31,8 +31,8 @@ android {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
         targetSdk = 37
-        versionCode = 7
-        versionName = "0.0.2"
+        versionCode = 11
+        versionName = "0.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -60,6 +60,11 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 }
 
@@ -124,11 +129,15 @@ dependencies {
 }
 
 sentry {
+    val token = System.getenv("SENTRY_AUTH_TOKEN")
+        ?: localProperties.getProperty("SENTRY_AUTH_TOKEN", "")
+    val hasToken = token.isNotBlank()
     org.set("gunnys")
     projectName.set("eundunhealth")
-    authToken.set(localProperties.getProperty("SENTRY_AUTH_TOKEN", ""))
-    includeProguardMapping.set(true)
-    autoUploadProguardMapping.set(true)
+    authToken.set(token)
+    includeProguardMapping.set(hasToken)
+    autoUploadProguardMapping.set(hasToken)
+    autoUploadSourceContext.set(false)
     uploadNativeSymbols.set(false)
     includeNativeSources.set(false)
 }

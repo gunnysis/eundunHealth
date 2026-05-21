@@ -1,3 +1,10 @@
+
+#custom
+.dev.md
+.key
+app/release
+
+# default
 *.iml
 *.class
 *.log
@@ -30,3 +37,4 @@ local.properties
 /backend/build
 /backend/.gradle
 /backend/.env
+

@@ -3,10 +3,9 @@ package com.gunnys.eundunhealth.ui.onboarding
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.UserProfile
+import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +15,7 @@ import javax.inject.Inject
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val userRepo: UserRepository,
-    private val supabaseClient: SupabaseClient
+    private val authRepo: AuthRepository
 ) : ViewModel() {
 
     private val _saved = MutableStateFlow(false)
@@ -33,14 +32,13 @@ class OnboardingViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             try {
-                val userId = supabaseClient.auth.currentUserOrNull()?.id
+                val userId = authRepo.getCurrentUserId()
                     ?: throw IllegalStateException("로그인이 필요합니다")
                 userRepo.saveProfile(
                     UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg)
                 ).getOrThrow()
                 _saved.value = true
             } catch (e: Exception) {
-                io.sentry.Sentry.captureException(e)
                 _error.value = e.message ?: "프로필 저장에 실패했습니다"
             } finally {
                 _isLoading.value = false

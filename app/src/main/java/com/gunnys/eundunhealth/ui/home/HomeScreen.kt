@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Circle
@@ -54,6 +55,7 @@ fun HomeScreen(
     onExerciseClick: (String) -> Unit,
     onBadgesClick: () -> Unit,
     onHistoryClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
     onLogout: () -> Unit,
     onRequestHealthPermissions: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
@@ -66,6 +68,9 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("이번 주 운동 계획") },
                 actions = {
+                    IconButton(onClick = onProfileClick) {
+                        Icon(Icons.Default.Person, "프로필")
+                    }
                     IconButton(onClick = { viewModel.cycleTheme() }) {
                         Icon(
                             when (themeMode) {

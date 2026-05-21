@@ -16,6 +16,11 @@
         android:theme="@style/Theme.EundunHealth"
         tools:targetApi="37">
 
+        <provider
+            android:name="io.sentry.android.core.SentryInitProvider"
+            android:authorities="${applicationId}.SentryInitProvider"
+            tools:node="remove" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

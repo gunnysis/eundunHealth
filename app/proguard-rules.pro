@@ -5,8 +5,8 @@
 -keepclassmembers class com.gunnys.eundunhealth.data.remote.** { *; }
 
 # Gson
--keep class com.gunnys.eundunhealth.data.repository.DayPlanJson { *; }
--keep class com.gunnys.eundunhealth.data.repository.ExerciseJson { *; }
+-keep class com.gunnys.eundunhealth.data.remote.api.dto.DayPlanJson { *; }
+-keep class com.gunnys.eundunhealth.data.remote.api.dto.ExerciseJson { *; }
 
 # Supabase
 -keep class io.github.jan.supabase.** { *; }

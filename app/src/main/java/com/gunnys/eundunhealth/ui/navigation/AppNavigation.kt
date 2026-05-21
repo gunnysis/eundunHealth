@@ -19,6 +19,7 @@ import com.gunnys.eundunhealth.ui.badge.BadgeScreen
 import com.gunnys.eundunhealth.ui.history.HistoryScreen
 import com.gunnys.eundunhealth.ui.home.HomeScreen
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
+import com.gunnys.eundunhealth.ui.profile.ProfileScreen
 import com.gunnys.eundunhealth.ui.workout.WorkoutDetailScreen
 
 @Composable
@@ -79,6 +80,7 @@ fun AppNavigation(
                 },
                 onBadgesClick = { navController.navigate(Screen.Badges.route) },
                 onHistoryClick = { navController.navigate(Screen.History.route) },
+                onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onLogout = { authViewModel.logout() },
                 onRequestHealthPermissions = onRequestHealthPermissions
             )
@@ -91,6 +93,9 @@ fun AppNavigation(
                 exerciseId = backStackEntry.arguments?.getString("exerciseId") ?: "",
                 onBack = { navController.popBackStack() }
             )
+        }
+        composable(Screen.Profile.route) {
+            ProfileScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.Badges.route) {
             BadgeScreen(onBack = { navController.popBackStack() })
