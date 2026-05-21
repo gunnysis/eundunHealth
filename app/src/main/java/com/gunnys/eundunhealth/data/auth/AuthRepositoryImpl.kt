@@ -44,4 +44,12 @@ class AuthRepositoryImpl @Inject constructor(
 
     override fun isLoggedIn(): Boolean =
         supabaseClient.auth.currentSessionOrNull() != null
+
+    override fun restoreSession(): String? {
+        val session = supabaseClient.auth.currentSessionOrNull()
+        if (session != null) {
+            tokenHolder.set(session.accessToken)
+        }
+        return session?.user?.id
+    }
 }

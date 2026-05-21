@@ -2,17 +2,14 @@ package com.gunnys.eundunhealth.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import androidx.compose.runtime.Immutable
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 sealed class AuthState {
@@ -28,9 +25,8 @@ sealed class AuthState {
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val supabaseClient: SupabaseClient,
-    private val userRepo: UserRepository,
-    private val tokenHolder: AtomicReference<String?>
+    private val authRepo: AuthRepository,
+    private val userRepo: UserRepository
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -42,10 +38,8 @@ class AuthViewModel @Inject constructor(
 
     private fun checkSession() = viewModelScope.launch {
         try {
-            val session = supabaseClient.auth.currentSessionOrNull()
-            if (session != null) {
-                tokenHolder.set(session.accessToken)
-                val userId = session.user?.id ?: ""
+            val userId = authRepo.restoreSession()
+            if (userId != null) {
                 val hasProfile = userRepo.getProfile().getOrNull() != null
                 _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
             } else {
@@ -58,40 +52,29 @@ class AuthViewModel @Inject constructor(
 
     fun login(email: String, password: String) = viewModelScope.launch {
         _authState.value = AuthState.Loading
-        try {
-            supabaseClient.auth.signInWith(Email) {
-                this.email = email
-                this.password = password
+        authRepo.signIn(email, password)
+            .onSuccess { userId ->
+                val hasProfile = userRepo.getProfile().getOrNull() != null
+                _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
             }
-            tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)
-            val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
-            val hasProfile = userRepo.getProfile().getOrNull() != null
-            _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
-        } catch (e: Exception) {
-            _authState.value = AuthState.Error(e.message ?: "로그인에 실패했습니다")
-        }
+            .onFailure {
+                _authState.value = AuthState.Error(it.message ?: "로그인에 실패했습니다")
+            }
     }
 
     fun signup(email: String, password: String) = viewModelScope.launch {
         _authState.value = AuthState.Loading
-        try {
-            supabaseClient.auth.signUpWith(Email) {
-                this.email = email
-                this.password = password
+        authRepo.signUp(email, password)
+            .onSuccess { userId ->
+                _authState.value = AuthState.Authenticated(userId, needsOnboarding = true)
             }
-            tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)
-            val userId = supabaseClient.auth.currentUserOrNull()?.id ?: ""
-            _authState.value = AuthState.Authenticated(userId, needsOnboarding = true)
-        } catch (e: Exception) {
-            _authState.value = AuthState.Error(e.message ?: "회원가입에 실패했습니다")
-        }
+            .onFailure {
+                _authState.value = AuthState.Error(it.message ?: "회원가입에 실패했습니다")
+            }
     }
 
     fun logout() = viewModelScope.launch {
-        try {
-            supabaseClient.auth.signOut()
-        } catch (_: Exception) {}
-        tokenHolder.set(null)
+        authRepo.signOut()
         _authState.value = AuthState.Unauthenticated
     }
 

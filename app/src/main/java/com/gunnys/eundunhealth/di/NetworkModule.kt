@@ -82,6 +82,7 @@ object NetworkModule {
     @Named("exercisedb")
     fun provideExerciseDbOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
+            .addInterceptor(RetryInterceptor())
             .addInterceptor { chain ->
                 chain.proceed(
                     chain.request().newBuilder()
@@ -90,6 +91,8 @@ object NetworkModule {
                         .build()
                 )
             }
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
     @Provides
