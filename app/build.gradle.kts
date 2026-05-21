@@ -25,13 +25,13 @@ android {
         }
     }
     namespace = "com.gunnys.eundunhealth"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 6
+        targetSdk = 37
+        versionCode = 7
         versionName = "0.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
