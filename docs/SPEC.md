@@ -42,7 +42,7 @@
 ### 빌드 도구
 | 기술 | 버전 |
 |------|------|
-| AGP | 9.1.1 |
+| AGP | 9.2.1 |
 | Gradle | 9.3.1 |
 | KSP | 2.3.2 |
 | Sentry Gradle Plugin | 4.14.1 |
@@ -123,7 +123,9 @@
 - **Supabase Auth** 이메일/비밀번호 기반
 - 세션 자동 저장/복원 (`autoSaveToStorage`, `autoLoadFromStorage`)
 - 토큰 자동 갱신 (`alwaysAutoRefresh`)
-- OkHttp TokenAuthenticator로 401 응답 시 토큰 재발급 후 재시도
+- `AuthRepository.restoreSession()`: 자동 로그인 시 세션 복원 + tokenHolder 설정
+- OkHttp TokenAuthenticator로 401 응답 시 Supabase 토큰 자동 갱신 후 재시도
+- AuthViewModel은 AuthRepository 인터페이스만 의존 (SupabaseClient 직접 참조 없음)
 
 ### 주간 운동 계획 생성
 - ExerciseDB API에서 부위별 운동 조회 (chest, back, upper legs, shoulders, upper arms)
@@ -179,7 +181,7 @@ app/src/main/java/com/gunnys/eundunhealth/
 │   ├── local/                     # Room (dao, entity, database)
 │   ├── preferences/ThemePreferences.kt
 │   ├── remote/
-│   │   ├── api/                   # EundunApi, ApiDtos
+│   │   ├── api/                   # EundunApi, ApiDtos, PlanJsonModels
 │   │   ├── exercisedb/            # ExerciseDB API
 │   │   └── interceptor/           # RetryInterceptor, TokenAuthenticator
 │   └── repository/                # *RepositoryImpl
@@ -219,8 +221,10 @@ backend/src/main/kotlin/com/gunnys/eundunhealth/
 - `base-config cleartextTrafficPermitted="false"` — HTTP cleartext 기본 차단
 - localhost/10.0.2.2 cleartext는 개발용으로만 허용
 - Release 빌드에서 HTTP 로깅 비활성화 (`HttpLoggingInterceptor.Level.NONE`)
-- OkHttp RetryInterceptor: 최대 3회 재시도, exponential backoff (500ms/1s/2s)
+- OkHttp RetryInterceptor: 최대 3회 재시도, exponential backoff (500ms/1s/2s) — Backend + ExerciseDB 양쪽 적용
 - OkHttp TokenAuthenticator: 401 응답 시 Supabase 토큰 자동 갱신 후 재시도
+- 연결/읽기 타임아웃: 15초 (Backend + ExerciseDB 양쪽 적용)
+- 에러 추적: `android.util.Log` 대신 `Sentry.captureException()` 사용 (프로덕션 모니터링)
 
 ---
 
