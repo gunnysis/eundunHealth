@@ -1,5 +1,47 @@
 # eundunHealth 작업 내역서
 
+## v0.0.3-2 (2026-05-22)
+
+### Sentry SDK 메이저 업그레이드
+- Sentry Android SDK 7.14.0 → 8.16.0 (16KB 페이지 정렬 네이티브 라이브러리 포함)
+- Sentry Gradle Plugin 4.14.1 → 5.8.0 (SDK 8.x 호환 필수)
+- AndroidManifest에서 SentryInitProvider 자동 초기화 비활성화 (`tools:node="remove"`)
+- EundunHealthApplication에서 DSN 빈값 시 `isEnabled = false` 처리 (크래시 방지)
+- `isEnableAutoSessionTracking` 제거 (8.x 기본값)
+- Sentry Gradle Plugin: 환경 변수 `SENTRY_AUTH_TOKEN` 우선 참조, 토큰 없으면 매핑 업로드 자동 비활성화
+- `packaging.jniLibs.useLegacyPackaging = false` 추가 (16KB ZIP 정렬)
+
+### 백엔드 JWT 인증 변경
+- Supabase JWT 서명 알고리즘 변경 대응: HMAC256 → JWKS 기반 ES256 공개키 검증
+- `com.auth0:jwks-rsa:0.22.1` 의존성 추가
+- JwkProviderBuilder로 JWKS 엔드포인트 캐시 (10키, 24시간, 분당 10회 제한)
+- `SUPABASE_JWT_SECRET` 환경 변수 더 이상 불필요 (공개키 자동 조회)
+
+### 프로필 편집 기능 추가
+- ProfileScreen / ProfileViewModel 신규 생성
+- 홈 상단바에 Person 아이콘 추가 → 프로필 편집 화면 진입
+- 서버에서 기존 프로필 로드 → 슬라이더 초기값 세팅 → 수정 후 저장
+- Screen.kt에 Profile route 추가, AppNavigation에 라우팅 연결
+
+### 인증 에러 UX 개선
+- AuthRepositoryImpl에 `mapAuthError()` 추가
+- Supabase 에러 코드를 한국어 사용자 메시지로 매핑 (invalid_credential, email_not_confirmed, weak_password 등)
+
+### 시스템 UI 겹침 해결
+- LoginScreen, SignupScreen: `imePadding()` + `verticalScroll()` 추가 (키보드가 입력 필드 가리는 문제)
+- OnboardingScreen, ProfileScreen: `imePadding()` + `verticalScroll()` 추가, `Spacer(weight)` → `Spacer(height)` (스크롤과 weight 충돌 제거)
+
+### 리팩토링
+- OnboardingViewModel, ProfileViewModel: SupabaseClient 직접 의존 제거 → `AuthRepository.getCurrentUserId()` 사용
+- ProfileViewModel: stringly-typed `saveResult: String?` → `SaveState` sealed class (Idle/Success/Error)
+- ProfileSummaryCard 공통 컴포넌트 추출 (OnboardingScreen, ProfileScreen에서 재사용)
+- OnboardingScreen, ProfileScreen에서 Card/CardDefaults 불필요 import 제거
+
+### 문서
+- CLAUDE.md 생성 및 업데이트 (배포 명령어, ViewModel 패턴, JWT 알고리즘, 시간대 등)
+
+---
+
 ## v0.0.3 (2026-05-21)
 
 ### Android 17 (API 37) 대응
