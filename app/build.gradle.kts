@@ -18,10 +18,10 @@ plugins {
 android {
     signingConfigs {
         create("release") {
-            storeFile = file(".key\\eundunhealth_upload_key")
-            storePassword = "Dmsensgpftm123!@#"
-            keyPassword = "Dmsensgpftm123!@#"
-            keyAlias = "eundunhealth_store_key"
+            storeFile = rootProject.file(".key/eundunhealth_upload_key")
+            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD", "")
+            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD", "")
+            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS", "eundunhealth_store_key")
         }
     }
     namespace = "com.gunnys.eundunhealth"
@@ -31,8 +31,8 @@ android {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
         targetSdk = 37
-        versionCode = 11
-        versionName = "0.0.3"
+        versionCode = 12
+        versionName = "0.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

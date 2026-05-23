@@ -11,7 +11,7 @@ eundunHealth(은둔헬스) is a Korean health/fitness Android app with a Ktor ba
 ### Android App (root project)
 ```bash
 ./gradlew clean assembleDebug          # Debug build
-./gradlew clean assembleRelease        # Release build (ProGuard enabled)
+./gradlew clean assembleRelease        # Release build (R8 enabled with ProGuard rules)
 ./gradlew :app:testDebugUnitTest       # Run all unit tests
 ./gradlew :app:testDebugUnitTest --tests "com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCaseTest"  # Single test class
 ```
@@ -31,6 +31,8 @@ bash C:/programming/docker/eundunhealth-api/redeploy.sh
 ```
 Builds shadowJar → Docker image → pushes to ACR `eundunhealthacr` → updates container app `eundunhealth-api`.
 
+Docker development location: `C:\programming\docker\eundunhealth-api`
+
 ### Device Testing
 ```bash
 # Install directly via adb (bypasses Android Studio 16KB alignment warning)
@@ -43,6 +45,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - **Root project** includes only `:app` (Android). Backend is a **separate** Gradle project under `backend/` with its own `build.gradle.kts` and `settings.gradle.kts`.
 - Dependency versions centralized in `gradle/libs.versions.toml`.
 - Build secrets (Supabase URL/key, ExerciseDB key, backend URL, Sentry DSN) loaded from `local.properties` into BuildConfig fields.
+- Release signing credentials should also be in `local.properties` or environment variables — never hardcode in `build.gradle.kts`.
 
 ### Android App (`app/`)
 Package: `com.gunnys.eundunhealth`
@@ -85,15 +88,24 @@ POST   /badges/{key}
 
 ## Key Technical Details
 
-- **Kotlin** throughout (Android + Backend)
-- **Gradle 9.4.1**, AGP 9.2.1, Kotlin 2.2.10 (app) / 2.3.0 (backend)
+### Android App
+- **Kotlin 2.2.10**, KSP 2.3.2 (KSP 버전은 Kotlin과 호환 필요 — 불일치 시 빌드 실패 주의)
+- **Gradle 9.4.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
-- **Sentry 8.16.0** (Android) — requires 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false` in build.gradle.kts
+- **App version**: versionName `0.0.4`, versionCode `12`
+- **Sentry 8.16.0** — requires 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false` in build.gradle.kts
 - Supabase JWT algorithm is **ES256** (ECDSA), not HMAC256 — backend uses JWKS public key verification
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - Korean timezone (KST) is the user-facing standard for dates
 
+### Backend
+- **Kotlin 2.3.0**, Ktor 3.4.3, Exposed 0.61.0
+- **Sentry 7.14.0**
+
 ## Documentation
 
-- `docs/SPEC.md` — Full feature specification
-- `docs/CHANGELOG.md` — Version history and work log
+- `@docs/SPEC.md` — Full feature specification
+- `@docs/CHANGELOG.md` — Version history and work log
+- `@docs/PRD.md` — Product Requirements Document
+- `@docs/TRD.md` — Technical Requirements Document
+- `@docs/constitution.md` — Constitution
