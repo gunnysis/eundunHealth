@@ -61,7 +61,7 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 - 앱 기능 (Supabase, Health Connect, 백엔드 DB)
 - 분석 (Sentry — 충돌 진단, 성능 모니터링)
 
-**“저장 위치”**: Supabase (US-East 또는 ap-northeast) + Azure PostgreSQL (Korea Central)
+**“저장 위치”**: Supabase (Korea 리전) + Azure PostgreSQL (Korea Central)
 **“삭제 요청 방법”**: 앱 내 **계정 삭제** 버튼 (이미 구현, ProfileScreen). Supabase Admin API + 앱 DB 일괄 삭제.
 
 ---
@@ -110,7 +110,7 @@ GitHub Pages 활성화: 리포 Settings → Pages → Branch: main / `/docs`.
 - 서비스 안정성 모니터링 및 버그 수정
 
 ## 3. 보관 및 처리 위치
-- Supabase: 인증 서비스 (US 리전)
+- Supabase: 인증 서비스 (Korea 리전)
 - Azure PostgreSQL: 신체·운동 데이터 (Korea Central)
 - Sentry: 익명 진단 데이터 (US 리전)
 
