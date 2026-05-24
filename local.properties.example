@@ -1,0 +1,28 @@
+# local.properties 예시 — 실제 값으로 채워서 local.properties 파일로 복사한다.
+# 이 파일은 git에 커밋되지만 local.properties 자체는 .gitignore되어 있다.
+
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+# 주의: SERVICE_ROLE_KEY는 절대 Android에 노출하지 않는다. 백엔드 환경변수로만 사용.
+
+# ExerciseDB (RapidAPI)
+EXERCISEDB_API_KEY=your-rapidapi-key
+
+# Backend
+# 에뮬레이터: http://10.0.2.2:8080/
+# 실기기 디버그: http://<host-ip>:8080/
+# 프로덕션: Container App FQDN
+BACKEND_BASE_URL=http://10.0.2.2:8080/
+
+# Sentry (Android 클라이언트용 DSN; 백엔드 DSN은 별도)
+SENTRY_DSN=https://...@sentry.io/...
+
+# Release Signing — keystore 비번/별칭 (release build 시 필요)
+RELEASE_STORE_PASSWORD=your-store-password
+RELEASE_KEY_PASSWORD=your-key-password
+RELEASE_KEY_ALIAS=eundunhealth_store_key
+
+# Sentry Gradle plugin (release 빌드에서 ProGuard mapping 업로드용)
+# 또는 환경변수 SENTRY_AUTH_TOKEN 사용 가능
+SENTRY_AUTH_TOKEN=sntrys_...

@@ -4,6 +4,12 @@
 .key
 app/release
 
+# Claude Code 로컬 설정
+.claude/
+
+# Gradle 자동 생성 (JVM 버전 캐시)
+gradle/gradle-daemon-jvm.properties
+
 # Python
 __pycache__/
 *.pyc
