@@ -105,7 +105,10 @@ async def test_user_data_is_isolated(client, sample_profile):
 # === JWT 미존재 (HTTPBearer가 403 반환) ===
 
 @pytest.mark.asyncio
-async def test_missing_authorization_header_returns_403(client_no_auth):
-    """Authorization 헤더 없이 보호 엔드포인트 호출 시 HTTPBearer가 403."""
+async def test_missing_authorization_header_is_rejected(client_no_auth):
+    """Authorization 헤더 없이 보호 엔드포인트 호출 시 401/403으로 거부.
+
+    starlette 0.49+에서 HTTPBearer의 기본 거부 코드가 403 → 401로 바뀌었다(RFC 7235).
+    """
     resp = await client_no_auth.get("/profile")
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)
