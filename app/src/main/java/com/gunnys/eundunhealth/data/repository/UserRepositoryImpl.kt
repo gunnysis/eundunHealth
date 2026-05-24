@@ -19,6 +19,7 @@ class UserRepositoryImpl @Inject constructor(
                 weightKg = dto.weightKg,
                 bodyFatPercent = dto.bodyFatPct ?: 0f,
                 muscleMassKg = dto.muscleMassKg ?: 0f,
+                restDay = dto.restDay,
             ),
         )
     } catch (e: retrofit2.HttpException) {
@@ -38,6 +39,7 @@ class UserRepositoryImpl @Inject constructor(
                 weightKg = profile.weightKg,
                 bodyFatPct = profile.bodyFatPercent,
                 muscleMassKg = profile.muscleMassKg,
+                restDay = profile.restDay,
             ),
         )
     }

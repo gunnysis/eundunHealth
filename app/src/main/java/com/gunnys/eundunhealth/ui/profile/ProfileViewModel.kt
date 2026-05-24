@@ -73,7 +73,13 @@ class ProfileViewModel @Inject constructor(
             }
     }
 
-    fun saveProfile(heightCm: Float, weightKg: Float, bodyFatPct: Float, muscleMassKg: Float) = viewModelScope.launch {
+    fun saveProfile(
+        heightCm: Float,
+        weightKg: Float,
+        bodyFatPct: Float,
+        muscleMassKg: Float,
+        restDay: Int = 7,
+    ) = viewModelScope.launch {
         _isSaving.value = true
         _saveState.value = SaveState.Idle
         val userId = authRepo.getCurrentUserId()
@@ -84,7 +90,7 @@ class ProfileViewModel @Inject constructor(
         }
         runCatching {
             userRepo.saveProfile(
-                UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg),
+                UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg, restDay),
             ).getOrThrow()
         }
             .onSuccess { _saveState.value = SaveState.Success }

@@ -98,25 +98,27 @@ class WorkoutRepositoryImpl @Inject constructor(
         val thuCardio = cardioShuffled.drop(2).take(2)
         val satCardio = cardioShuffled.drop(4).take(1)
 
+        // 휴식일은 profile.restDay(ISO 1=월~7=일)로 동적 결정.
+        // 나머지 6요일에 슬롯 순서대로 push/cardio_a/pull/cardio_b/legs/mixed 분배.
+        val restDayOfWeek = DayOfWeek.of(profile.restDay.coerceIn(1, 7))
+        val mixedStrength = (pushShuffled + pullShuffled + legsShuffled).shuffled(seed).take(2)
+        val workoutSlots: List<List<Exercise>> = listOf(
+            pushShuffled.take(4),
+            tueCardio,
+            pullShuffled.take(4),
+            thuCardio,
+            legsShuffled.take(4),
+            mixedStrength + satCardio,
+        )
+        var slotIdx = 0
         val days = (0L..6L).map { offset ->
             val date = weekStart.plusDays(offset)
-            when (date.dayOfWeek) {
-                DayOfWeek.MONDAY -> // PUSH 4종
-                    DayPlan(date, pushShuffled.take(4), isRestDay = false, isCompleted = false)
-                DayOfWeek.TUESDAY -> // 유산소 2종
-                    DayPlan(date, tueCardio, isRestDay = false, isCompleted = false)
-                DayOfWeek.WEDNESDAY -> // PULL 4종
-                    DayPlan(date, pullShuffled.take(4), isRestDay = false, isCompleted = false)
-                DayOfWeek.THURSDAY -> // 유산소 2종
-                    DayPlan(date, thuCardio, isRestDay = false, isCompleted = false)
-                DayOfWeek.FRIDAY -> // LEGS 4종
-                    DayPlan(date, legsShuffled.take(4), isRestDay = false, isCompleted = false)
-                DayOfWeek.SATURDAY -> { // 혼합 3종 (PUSH/PULL/LEGS에서 strength 2 + cardio 1)
-                    val mixedStrength = (pushShuffled + pullShuffled + legsShuffled).shuffled(seed).take(2)
-                    DayPlan(date, mixedStrength + satCardio, isRestDay = false, isCompleted = false)
-                }
-                DayOfWeek.SUNDAY -> // 휴식 (v0.3에서 profile.restDay로 동적 변경 예정)
-                    DayPlan(date, emptyList(), isRestDay = true, isCompleted = false)
+            if (date.dayOfWeek == restDayOfWeek) {
+                DayPlan(date, emptyList(), isRestDay = true, isCompleted = false)
+            } else {
+                val slot = workoutSlots.getOrElse(slotIdx) { emptyList() }
+                slotIdx++
+                DayPlan(date, slot, isRestDay = false, isCompleted = false)
             }
         }
 

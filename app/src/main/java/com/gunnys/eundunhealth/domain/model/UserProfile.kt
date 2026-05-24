@@ -6,6 +6,8 @@ data class UserProfile(
     val weightKg: Float,
     val bodyFatPercent: Float,
     val muscleMassKg: Float,
+    /** 휴식일 — ISO DayOfWeek 값 (1=월 ~ 7=일). 기본값 7(일요일). */
+    val restDay: Int = 7,
 ) {
     val bmi: Float get() = weightKg / ((heightCm / 100f) * (heightCm / 100f))
     val fitnessLevel: FitnessLevel get() = when {

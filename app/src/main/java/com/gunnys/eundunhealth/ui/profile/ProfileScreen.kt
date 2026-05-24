@@ -23,6 +23,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -33,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -128,6 +132,7 @@ fun ProfileScreen(
                     initialWeight = state.profile.weightKg,
                     initialBodyFat = state.profile.bodyFatPercent,
                     initialMuscleMass = state.profile.muscleMassKg,
+                    initialRestDay = state.profile.restDay,
                     isSaving = isSaving,
                     isDeleting = deleteState is DeleteState.Loading,
                     onSave = viewModel::saveProfile,
@@ -173,9 +178,10 @@ private fun ProfileEditContent(
     initialWeight: Float,
     initialBodyFat: Float,
     initialMuscleMass: Float,
+    initialRestDay: Int,
     isSaving: Boolean,
     isDeleting: Boolean,
-    onSave: (Float, Float, Float, Float) -> Unit,
+    onSave: (Float, Float, Float, Float, Int) -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -183,6 +189,7 @@ private fun ProfileEditContent(
     var weight by rememberSaveable { mutableFloatStateOf(initialWeight) }
     var bodyFat by rememberSaveable { mutableFloatStateOf(initialBodyFat) }
     var muscleMass by rememberSaveable { mutableFloatStateOf(initialMuscleMass) }
+    var restDay by rememberSaveable { mutableIntStateOf(initialRestDay.coerceIn(1, 7)) }
 
     Column(
         modifier = modifier
@@ -206,6 +213,25 @@ private fun ProfileEditContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        Text(
+            "휴식일",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        val dayLabels = listOf("월", "화", "수", "목", "금", "토", "일")
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            dayLabels.forEachIndexed { idx, label ->
+                val dayNumber = idx + 1
+                SegmentedButton(
+                    selected = restDay == dayNumber,
+                    onClick = { restDay = dayNumber },
+                    shape = SegmentedButtonDefaults.itemShape(index = idx, count = dayLabels.size),
+                ) { Text(label) }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         ProfileSummaryCard(
             height = height,
             weight = weight,
@@ -216,7 +242,7 @@ private fun ProfileEditContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
-            onClick = { onSave(height, weight, bodyFat, muscleMass) },
+            onClick = { onSave(height, weight, bodyFat, muscleMass, restDay) },
             modifier = Modifier.fillMaxWidth(),
             enabled = !isSaving && !isDeleting,
         ) {

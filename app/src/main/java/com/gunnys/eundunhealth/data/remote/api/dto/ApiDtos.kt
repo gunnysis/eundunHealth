@@ -6,6 +6,7 @@ data class UserProfileDto(
     val weightKg: Float,
     val bodyFatPct: Float?,
     val muscleMassKg: Float?,
+    val restDay: Int = 7,
 )
 
 data class UserProfileRequest(
@@ -13,6 +14,7 @@ data class UserProfileRequest(
     val weightKg: Float,
     val bodyFatPct: Float?,
     val muscleMassKg: Float?,
+    val restDay: Int = 7,
 )
 
 data class WeeklyPlanDto(
