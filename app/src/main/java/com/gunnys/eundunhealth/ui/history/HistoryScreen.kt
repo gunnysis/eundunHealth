@@ -43,6 +43,9 @@ import com.gunnys.eundunhealth.ui.components.EmptyContent
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import java.time.format.DateTimeFormatter
 
+// 카드마다 ofPattern을 호출하던 비용 제거 — Pattern은 immutable이므로 안전한 싱글톤
+private val WEEK_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
@@ -123,7 +126,6 @@ fun HistoryScreen(
 
 @Composable
 fun HistoryWeekCard(plan: WeeklyPlan) {
-    val formatter = DateTimeFormatter.ofPattern("M/d")
     val weekEnd = plan.weekStart.plusDays(6)
     val workoutDays = plan.days.count { !it.isRestDay }
     val completedDays = plan.days.count { !it.isRestDay && it.isCompleted }
@@ -134,7 +136,7 @@ fun HistoryWeekCard(plan: WeeklyPlan) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "${plan.weekStart.format(formatter)} - ${weekEnd.format(formatter)}",
+                "${plan.weekStart.format(WEEK_DATE_FORMATTER)} - ${weekEnd.format(WEEK_DATE_FORMATTER)}",
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(8.dp))

@@ -66,6 +66,7 @@ fun WorkoutDetailScreen(
                 SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(ex.gifUrl)
+                        .size(512)  // 네트워크 원본을 그대로 디코딩하지 않도록 최대 512px로 다운스케일
                         .crossfade(true)
                         .build(),
                     contentDescription = ex.name,

@@ -137,8 +137,12 @@ fun ProfileSlider(
     onValueChange: (Float) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
-    val formatPattern = if (decimals == 0) "%.0f" else "%.${decimals}f"
-    var textValue by remember(value) { mutableStateOf(formatPattern.format(value)) }
+    // 패턴 문자열 재계산 + format 호출을 입력 의존성 변경 시에만 수행하도록 캐싱
+    val formatPattern = remember(decimals) {
+        if (decimals == 0) "%.0f" else "%.${decimals}f"
+    }
+    val initialText = remember(value, formatPattern) { formatPattern.format(value) }
+    var textValue by remember(value) { mutableStateOf(initialText) }
     val isError = textValue.toFloatOrNull()?.let { it !in range } ?: textValue.isNotEmpty()
 
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
