@@ -34,7 +34,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Create stub local.properties
         # BuildConfig 필드(SUPABASE_URL 등)는 빌드 시 빈 문자열로 처리되어도 무방.
