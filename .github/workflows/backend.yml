@@ -11,6 +11,9 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/backend.yml'
+  # 수동 트리거 — secret rotation 검증, 긴급 재배포, paths 필터 우회용.
+  # `gh workflow run backend.yml --ref main` 또는 Actions UI에서 실행.
+  workflow_dispatch:
 
 env:
   ACR_NAME: eundunhealthacr
@@ -177,6 +180,27 @@ jobs:
         run: |
           docker push "$IMAGE_TAG"
           docker push "$IMAGE_LATEST"
+
+      # deploy step의 --set-env-vars가 참조하는 모든 secretref가 실제 Container App에
+      # 등록되어 있는지 사전 점검. 누락된 secret이 있으면 fast-fail해서 deploy step의
+      # ContainerAppSecretRefNotFound 에러를 PR 단계로 앞당긴다.
+      # 참조 인시던트: docs/ops/incident-log.md INC-2026-05-25-18.
+      - name: Verify required Container App secrets exist
+        run: |
+          REQUIRED="database-url supabase-url supabase-service-role-key sentry-dsn-backend"
+          EXISTING=$(az containerapp secret list \
+            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "[].name" -o tsv)
+          MISSING=""
+          for s in $REQUIRED; do
+            echo "$EXISTING" | grep -qx "$s" || MISSING="$MISSING $s"
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing Container App secrets:$MISSING"
+            echo "Run: az containerapp secret set --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP --secrets <name>=<value>"
+            exit 1
+          fi
+          echo "All required secrets present: $REQUIRED"
 
       - name: Deploy to Container App
         run: |
