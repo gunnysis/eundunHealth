@@ -15,3 +15,10 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    # Pydantic 2.13: alias_generator + populate_by_name 조합이 union/type-alias 필드에서
+    # alias/validation_alias/serialization_alias가 "no effect"라고 경고하지만,
+    # 실제 직렬화 동작은 정상(camelCase JSON in/out 테스트로 검증됨).
+    "ignore::pydantic.warnings.UnsupportedFieldAttributeWarning",
+]

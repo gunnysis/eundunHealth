@@ -1,14 +1,16 @@
+from typing import Annotated
+
 from pydantic import Field
 
 from app.schemas.base import CamelSchema
 
 
 class UserProfileRequest(CamelSchema):
-    height_cm: float = Field(ge=50, le=300)
-    weight_kg: float = Field(ge=10, le=500)
-    body_fat_pct: float | None = Field(None, ge=1, le=70)
-    muscle_mass_kg: float | None = Field(None, ge=1, le=200)
-    rest_day: int = Field(default=7, ge=1, le=7)
+    height_cm: Annotated[float, Field(ge=50, le=300)]
+    weight_kg: Annotated[float, Field(ge=10, le=500)]
+    body_fat_pct: Annotated[float | None, Field(ge=1, le=70)] = None
+    muscle_mass_kg: Annotated[float | None, Field(ge=1, le=200)] = None
+    rest_day: Annotated[int, Field(ge=1, le=7)] = 7
 
 
 class UserProfileResponse(CamelSchema):
