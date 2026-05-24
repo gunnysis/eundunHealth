@@ -229,6 +229,51 @@
 
 ---
 
+## INC-2026-05-25-17 — GitHub Actions deploy job이 `AZURE_CREDENTIALS` 부재로 실패
+
+**증상**: PR #15가 main에 머지된 직후 `backend.yml`의 `Build, Scan & Deploy` job이 시작 단계 `Azure login`에서 즉시 실패. 메시지:
+```
+Login failed with Error: Using auth-type: SERVICE_PRINCIPAL.
+Not all values are present. Ensure 'client-id' and 'tenant-id' are supplied.
+```
+
+**근본 원인**: GitHub repository secret `AZURE_CREDENTIALS`가 미등록(또는 빈 값). 옛 PR #1 시점에는 PR push라 deploy job이 paths 매치 후에도 `if: github.ref == 'refs/heads/main' && github.event_name == 'push'` 조건으로 SKIPPED → 잠재 문제가 표면화되지 않음. PR #15가 main에 머지된 첫 push에서 비로소 드러남.
+
+**운영 영향 없음**: 본 PR에 backend 코드 변경이 없어 새 이미지 빌드도 안 됨. Container App은 이전 이미지 그대로 정상 동작 (`/health` 200 OK 확인). 다만 **다음 backend 코드 변경 시점부터 자동 배포가 깨진 상태**.
+
+**복구 절차** (운영자 1회 작업):
+1. Service principal 생성 (Azure CLI 로컬에서):
+   ```bash
+   SUB_ID=$(az account show --query id -o tsv)
+   az ad sp create-for-rbac --name "eundunhealth-github-deploy" \
+     --role "Contributor" \
+     --scopes "/subscriptions/${SUB_ID}/resourceGroups/apps" \
+     --sdk-auth
+   # 출력 JSON 전체를 복사 (clientId/clientSecret/tenantId/subscriptionId 포함)
+   ```
+2. ACR push 권한 부여 (선택, 위 RBAC가 RG 전체이면 자동 포함):
+   ```bash
+   ACR_ID=$(az acr show --name eundunhealthacr --query id -o tsv)
+   az role assignment create --assignee "<clientId>" \
+     --scope "${ACR_ID}" --role "AcrPush"
+   ```
+3. GitHub secret 등록:
+   ```bash
+   # 위 JSON 전체를 stdin으로 전달 — shell history에 안 남기기.
+   gh secret set AZURE_CREDENTIALS --repo gunnysis/eundunHealth < <(pbpaste)
+   # Windows: 클립보드 → 파일로 임시 저장 후 gh secret set ... < file → 삭제
+   ```
+4. 다음 backend PR 머지로 검증, 또는 빈 commit + push로 강제 트리거:
+   ```bash
+   git commit --allow-empty -m "ci: AZURE_CREDENTIALS 검증" && git push origin main
+   ```
+
+**재발 방지**:
+- 본 incident가 표면화된 이유는 CI 워크플로 자체에 secret 존재 점검 단계가 없어서. 향후 backend.yml `deploy` job 첫 단계에 secret 존재 확인 추가 가능 — 단, secret 없는 PR에서 명시적 실패 메시지를 띄우는 효과만 있음. 진짜 방지는 secret 등록 자체.
+- Service principal의 secret이 만료될 가능성 — `--sdk-auth` 명령으로 생성 시 기본 2년. 만료 6개월 전 알림을 monitoring-and-cost.md §5 월간 체크리스트에 추가하면 좋음.
+
+---
+
 ## 본 세션 정착 자동화 (2026-05-25, 후속)
 
 각 인시던트의 "재발 방지"가 실제로 강제되는지 여부 매트릭스. 모든 ✅는 본 회고 PR에서 도입.
@@ -251,6 +296,7 @@
 | 14 Supabase orphan | CLAUDE.md 룰 5 + monitoring §6.4 | 정책 |
 | 15 Container App secret | monitoring §6.2 4단계 패턴 + PR template | secret 변경 시 |
 | 16 Sentry CLI warning | 수용 (무해) | — |
+| 17 AZURE_CREDENTIALS 부재 | 운영자 수동: `az ad sp create-for-rbac` + `gh secret set` (위 절차) | 1회 등록 후 만료 갱신 |
 | 공통 | ✅ `.github/PULL_REQUEST_TEMPLATE.md` destructive-ops 체크리스트 | 모든 PR |
 
 ## 변경 이력
