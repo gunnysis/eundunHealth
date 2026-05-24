@@ -142,6 +142,7 @@ az consumption budget create \
 - [ ] Container App revision 수 정리: `az containerapp revision list --name eundunhealth-api -o table` → 활성 외 inactive revision 정리
 - [ ] PostgreSQL slow query 확인: Azure Portal → Insights
 - [ ] 월간 비용 actual vs budget 비교
+- [ ] (분기별) GitHub Actions `AZURE_CREDENTIALS` service principal 만료 점검 — `az ad sp credential list --id <clientId> --query "[].endDate"`. 만료 6개월 전이면 갱신 (`az ad sp credential reset` + `gh secret set`). 참고: `docs/ops/incident-log.md` INC-17.
 
 ## 6. Destructive 명령 안전 패턴
 
