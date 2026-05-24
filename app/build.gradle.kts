@@ -111,6 +111,9 @@ dependencies {
     // Navigation
     implementation(libs.navigation.compose)
 
+    // Charts (Vico)
+    implementation(libs.vico.compose.m3)
+
     // Sentry
     implementation(libs.sentry.android)
     implementation(libs.sentry.okhttp)

@@ -21,6 +21,7 @@ import com.gunnys.eundunhealth.ui.history.HistoryScreen
 import com.gunnys.eundunhealth.ui.home.HomeScreen
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
 import com.gunnys.eundunhealth.ui.profile.ProfileScreen
+import com.gunnys.eundunhealth.ui.statistics.StatisticsScreen
 import com.gunnys.eundunhealth.ui.workout.WorkoutDetailScreen
 
 @Composable
@@ -88,6 +89,7 @@ fun AppNavigation(
                 },
                 onBadgesClick = { navController.navigate(Screen.Badges.route) },
                 onHistoryClick = { navController.navigate(Screen.History.route) },
+                onStatisticsClick = { navController.navigate(Screen.Statistics.route) },
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onLogout = { authViewModel.logout() },
                 onRequestHealthPermissions = onRequestHealthPermissions
@@ -116,6 +118,9 @@ fun AppNavigation(
         }
         composable(Screen.History.route) {
             HistoryScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Statistics.route) {
+            StatisticsScreen(onBack = { navController.popBackStack() })
         }
     }
 }

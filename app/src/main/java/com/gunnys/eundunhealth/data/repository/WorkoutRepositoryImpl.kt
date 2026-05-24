@@ -13,8 +13,10 @@ import com.gunnys.eundunhealth.data.remote.exercisedb.toDomain
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.domain.model.ExerciseType
+import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.model.WeeklyRate
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import java.time.DayOfWeek
@@ -144,6 +146,17 @@ class WorkoutRepositoryImpl @Inject constructor(
             WeeklyPlan(dto.id, dto.userId, LocalDate.parse(dto.weekStart), parseDayPlans(dto.dayPlans))
         }
         plans to response.totalCount
+    }
+
+    override suspend fun getStatistics(weeks: Int): Result<Statistics> = runCatching {
+        val dto = api.getStatistics(weeks)
+        Statistics(
+            weeklyRates = dto.weeklyRates.map {
+                WeeklyRate(weekStart = LocalDate.parse(it.weekStart), completionRate = it.completionRate)
+            },
+            currentStreak = dto.currentStreak,
+            longestStreak = dto.longestStreak,
+        )
     }
 
     private fun parseDayPlans(json: String): List<DayPlan> {

@@ -45,3 +45,14 @@ data class BadgeDto(
     val badgeKey: String,
     val earnedAt: String?
 )
+
+data class WeeklyRateDto(
+    val weekStart: String,
+    val completionRate: Float,
+)
+
+data class StatisticsDto(
+    val weeklyRates: List<WeeklyRateDto>,
+    val currentStreak: Int,
+    val longestStreak: Int,
+)
