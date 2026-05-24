@@ -271,6 +271,25 @@ Not all values are present. Ensure 'client-id' and 'tenant-id' are supplied.
 **재발 방지**:
 - 본 incident가 표면화된 이유는 CI 워크플로 자체에 secret 존재 점검 단계가 없어서. 향후 backend.yml `deploy` job 첫 단계에 secret 존재 확인 추가 가능 — 단, secret 없는 PR에서 명시적 실패 메시지를 띄우는 효과만 있음. 진짜 방지는 secret 등록 자체.
 - Service principal의 secret이 만료될 가능성 — `--sdk-auth` 명령으로 생성 시 기본 2년. 만료 6개월 전 알림을 monitoring-and-cost.md §5 월간 체크리스트에 추가하면 좋음.
+- ✅ **본 세션 적용 (2026-05-25)**: `scripts/register-azure-credentials.ps1` 도입. SP 생성/패치 + AcrPush 권한 + GitHub secret 등록을 한 PowerShell 스크립트로. `-Verify`로 push 검증까지. SP 만료 갱신 시 동일 스크립트 재실행.
+
+---
+
+## INC-2026-05-25-18 — `supabase-url` Container App secret 누락으로 deploy 실패
+
+**증상**: INC-17 해결(`AZURE_CREDENTIALS` 등록 + AcrPush role) 후 GitHub Actions의 `Build, Scan & Deploy` job이 처음으로 azure login·ACR push·trivy를 통과하고 `Deploy to Container App` step에서 다음 에러로 실패:
+```
+ERROR: (ContainerAppSecretRefNotFound) SecretRef 'supabase-url' defined for container 'eundunhealth-api' not found.
+```
+
+**근본 원인**: PR #15 시점에 backend.yml의 deploy step이 `SUPABASE_URL=secretref:supabase-url`을 참조하도록 작성됐으나 Container App에는 그 이름의 secret이 등록 안 됨. 그동안 `redeploy.sh`만 사용하면서 `--set-env-vars`를 명시하지 않아 환경변수 충돌이 노출되지 않았음. GitHub Actions에서 자동 배포가 처음 동작한 시점에 표면화.
+
+**복구**: `az containerapp secret set --secrets "supabase-url=https://ttzzbfoksncqazvcsfiu.supabase.co"`로 secret 등록 후 `gh run rerun <id> --failed`. 9개 step 모두 success → `/health` 200 OK 확인 → 새 revision `eundunhealth-api--0000006` 활성.
+
+**재발 방지**:
+- ✅ `backend.yml` deploy job에 **"Verify required Container App secrets exist"** step 추가. `database-url / supabase-url / supabase-service-role-key / sentry-dsn-backend` 4개 모두 등록돼 있는지 사전 점검. 하나라도 빠지면 `::error::Missing Container App secrets: ...`로 fast-fail.
+- ✅ `backend.yml`에 `workflow_dispatch` 트리거 추가. paths 필터 우회로 secret rotation 후 즉시 검증 가능(`gh workflow run backend.yml --ref main`). 빈 commit 트릭이 더 이상 필요 없음.
+- 향후 secret 추가 시 양쪽(deploy step `--set-env-vars` + Container App `secret set`)을 동시에 PR로 변경하는 패턴을 PR template에 반영 고려.
 
 ---
 
@@ -296,7 +315,8 @@ Not all values are present. Ensure 'client-id' and 'tenant-id' are supplied.
 | 14 Supabase orphan | CLAUDE.md 룰 5 + monitoring §6.4 | 정책 |
 | 15 Container App secret | monitoring §6.2 4단계 패턴 + PR template | secret 변경 시 |
 | 16 Sentry CLI warning | 수용 (무해) | — |
-| 17 AZURE_CREDENTIALS 부재 | 운영자 수동: `az ad sp create-for-rbac` + `gh secret set` (위 절차) | 1회 등록 후 만료 갱신 |
+| 17 AZURE_CREDENTIALS 부재 | ✅ `scripts/register-azure-credentials.ps1` + 운영자 1회 실행 | SP 만료 갱신 |
+| 18 supabase-url secret 누락 | ✅ `backend.yml` "Verify required Container App secrets" step + `workflow_dispatch` | 모든 deploy |
 | 공통 | ✅ `.github/PULL_REQUEST_TEMPLATE.md` destructive-ops 체크리스트 | 모든 PR |
 
 ## 변경 이력
@@ -305,3 +325,4 @@ Not all values are present. Ensure 'client-id' and 'tenant-id' are supplied.
 |------|------|
 | 2026-05-25 | 초안 작성 — 16건 incident 정리 |
 | 2026-05-25 (후속) | 권장 항목 자동화 정착 — alembic-autogen.sh, preflight-release.sh, PR template, CLAUDE.md 룰 5종 |
+| 2026-05-25 (배포 검증) | INC-17·18 해결 + 자동 배포 첫 end-to-end 성공 (revision 0000006). register-azure-credentials.ps1 / secret precheck / workflow_dispatch 정착 |
