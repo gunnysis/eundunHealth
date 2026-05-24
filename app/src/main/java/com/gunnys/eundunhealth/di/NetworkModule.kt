@@ -81,16 +81,9 @@ object NetworkModule {
     @Singleton
     @Named("exercisedb")
     fun provideExerciseDbOkHttpClient(): OkHttpClient =
+        // OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 헤더 불필요한 공개 API.
         OkHttpClient.Builder()
             .addInterceptor(RetryInterceptor())
-            .addInterceptor { chain ->
-                chain.proceed(
-                    chain.request().newBuilder()
-                        .addHeader("X-RapidAPI-Key", BuildConfig.EXERCISEDB_API_KEY)
-                        .addHeader("X-RapidAPI-Host", "exercisedb.p.rapidapi.com")
-                        .build()
-                )
-            }
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
@@ -99,7 +92,7 @@ object NetworkModule {
     @Singleton
     fun provideExerciseDbApi(@Named("exercisedb") client: OkHttpClient): ExerciseDbApi =
         Retrofit.Builder()
-            .baseUrl("https://exercisedb.p.rapidapi.com/")
+            .baseUrl("https://oss.exercisedb.dev/api/v1/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

@@ -1,13 +1,16 @@
 # local.properties 예시 — 실제 값으로 채워서 local.properties 파일로 복사한다.
 # 이 파일은 git에 커밋되지만 local.properties 자체는 .gitignore되어 있다.
 
-# Supabase
+# Android SDK (Android Studio가 자동 설정)
+# sdk.dir=C:\\Users\\<USER>\\AppData\\Local\\Android\\Sdk
+
+# Supabase (Android 클라이언트용 — anon key만)
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=eyJ...
-# 주의: SERVICE_ROLE_KEY는 절대 Android에 노출하지 않는다. 백엔드 환경변수로만 사용.
+# 주의: SERVICE_ROLE_KEY는 백엔드 환경변수로만 사용. Android local.properties에 두지 말 것.
 
-# ExerciseDB (RapidAPI)
-EXERCISEDB_API_KEY=your-rapidapi-key
+# ExerciseDB — OSS 공개 API 사용 중 (인증 없음)
+# https://oss.exercisedb.dev — RapidAPI 키 불필요. EXERCISEDB_API_KEY 항목은 제거됨.
 
 # Backend
 # 에뮬레이터: http://10.0.2.2:8080/
@@ -15,14 +18,16 @@ EXERCISEDB_API_KEY=your-rapidapi-key
 # 프로덕션: Container App FQDN
 BACKEND_BASE_URL=http://10.0.2.2:8080/
 
-# Sentry (Android 클라이언트용 DSN; 백엔드 DSN은 별도)
+# Sentry (Android 클라이언트 DSN; 백엔드 DSN은 백엔드 환경변수에 별도 설정)
 SENTRY_DSN=https://...@sentry.io/...
 
+# Sentry Gradle plugin (release 빌드의 ProGuard mapping 업로드용)
+# 또는 환경변수 SENTRY_AUTH_TOKEN을 export 해도 됨
+SENTRY_AUTH_TOKEN=sntrys_...
+
 # Release Signing — keystore 비번/별칭 (release build 시 필요)
+# RELEASE_KEY_ALIAS는 .key/eundunhealth_upload_key 파일의 실제 alias와 일치해야 함
+#   keytool -list -v -keystore .key/eundunhealth_upload_key 로 확인
 RELEASE_STORE_PASSWORD=your-store-password
 RELEASE_KEY_PASSWORD=your-key-password
-RELEASE_KEY_ALIAS=eundunhealth_store_key
-
-# Sentry Gradle plugin (release 빌드에서 ProGuard mapping 업로드용)
-# 또는 환경변수 SENTRY_AUTH_TOKEN 사용 가능
-SENTRY_AUTH_TOKEN=sntrys_...
+RELEASE_KEY_ALIAS=your-actual-alias
