@@ -3,7 +3,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.badge import Badge
 
-VALID_BADGE_KEYS = {"week_1_complete", "week_2_complete", "streak_3weeks"}
+VALID_BADGE_KEYS = {
+    # v0.1 — 주간 완료 + 스트릭
+    "week_1_complete",
+    "week_2_complete",
+    "streak_3weeks",
+    # v0.3 §N — 마일스톤 (워크아웃 누적 + 장기 스트릭)
+    "first_workout",
+    "workouts_10",
+    "workouts_50",
+    "streak_8weeks",
+    # v0.3 §N — 목표 달성
+    "goal_weight_achieved",
+    "goal_body_fat_achieved",
+}
 
 
 class BadgeRepository:

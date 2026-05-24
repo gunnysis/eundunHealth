@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user_id
+from app.schemas.goal import ProfileHistoryEntry
 from app.schemas.profile import UserProfileRequest, UserProfileResponse
 from app.services.profile_service import ProfileService
 
@@ -25,3 +26,13 @@ async def upsert_profile(
 ) -> dict[str, str]:
     await ProfileService(db).upsert_profile(user_id, req)
     return {"status": "ok"}
+
+
+@router.get("/profile/history", response_model=list[ProfileHistoryEntry])
+async def get_profile_history(
+    limit: int = Query(50, ge=1, le=200),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[ProfileHistoryEntry]:
+    """프로필 변경 이력 — 시간 오름차순 (차트 친화)."""
+    return await ProfileService(db).get_history(user_id, limit)
