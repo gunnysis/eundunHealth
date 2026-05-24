@@ -90,13 +90,23 @@ fun ProfileScreen(
                 }
             }
             is ProfileUiState.Empty -> {
-                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("프로필 정보를 불러올 수 없습니다", style = MaterialTheme.typography.bodyLarge)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        TextButton(onClick = { viewModel.loadProfile() }) { Text("다시 시도") }
-                        TextButton(onClick = onBack) { Text("돌아가기") }
-                    }
+                val currentError = error
+                if (currentError != null) {
+                    com.gunnys.eundunhealth.ui.components.ErrorContent(
+                        error = currentError,
+                        modifier = Modifier.padding(padding),
+                        onRetry = {
+                            viewModel.clearError()
+                            viewModel.loadProfile()
+                        },
+                    )
+                } else {
+                    com.gunnys.eundunhealth.ui.components.EmptyContent(
+                        message = "프로필 정보를 찾을 수 없습니다",
+                        modifier = Modifier.padding(padding),
+                        actionLabel = "다시 시도",
+                        onAction = { viewModel.loadProfile() },
+                    )
                 }
             }
             is ProfileUiState.Loaded -> {

@@ -36,6 +36,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
+import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
 import java.time.format.TextStyle
 import java.util.Locale
@@ -62,6 +65,8 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val pullState = rememberPullToRefreshState()
 
     Scaffold(
         topBar = {
@@ -97,25 +102,27 @@ fun HomeScreen(
             )
         }
     ) { padding ->
+        PullToRefreshBox(
+            isRefreshing = uiState is HomeUiState.Loading,
+            onRefresh = { viewModel.loadPlan() },
+            state = pullState,
+            modifier = Modifier.padding(padding),
+        ) {
         when (val state = uiState) {
             is HomeUiState.Loading -> {
-                SkeletonHomeContent(modifier = Modifier.padding(padding))
+                SkeletonHomeContent()
             }
             is HomeUiState.Empty -> {
-                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val errMsg = viewModel.error.collectAsState().value?.userMessage
-                            ?: "운동 계획을 불러올 수 없습니다"
-                        Text(errMsg, style = MaterialTheme.typography.bodyLarge)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        TextButton(onClick = {
-                            viewModel.clearError()
-                            viewModel.loadPlan()
-                        }) {
-                            Text("다시 시도")
-                        }
-                    }
-                }
+                ErrorContent(
+                    error = error ?: com.gunnys.eundunhealth.domain.model.AppError.Unknown(
+                        Throwable("운동 계획을 불러올 수 없습니다"),
+                        "운동 계획을 불러올 수 없습니다",
+                    ),
+                    onRetry = {
+                        viewModel.clearError()
+                        viewModel.loadPlan()
+                    },
+                )
             }
             is HomeUiState.Success -> {
                 LazyColumn(contentPadding = padding) {
@@ -155,6 +162,7 @@ fun HomeScreen(
                 }
             }
         }
+        }  // PullToRefreshBox
     }
 }
 

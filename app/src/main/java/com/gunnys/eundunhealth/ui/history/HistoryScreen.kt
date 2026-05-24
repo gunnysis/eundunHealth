@@ -26,6 +26,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.ui.components.EmptyContent
+import com.gunnys.eundunhealth.ui.components.ErrorContent
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +50,9 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val error by viewModel.error.collectAsState()
     val listState = rememberLazyListState()
+    val pullState = rememberPullToRefreshState()
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -70,22 +76,43 @@ fun HistoryScreen(
             )
         }
     ) { padding ->
-        if (uiState.plans.isEmpty() && !uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                Text("아직 운동 기록이 없습니다", style = MaterialTheme.typography.bodyLarge)
-            }
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().padding(padding)
-            ) {
-                items(uiState.plans, key = { it.id }) { plan ->
-                    HistoryWeekCard(plan)
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading && uiState.plans.isEmpty(),
+            onRefresh = {
+                viewModel.clearError()
+                // 페이지를 0으로 되돌리려면 새로운 fixture가 필요하지만 우선 다음 페이지 로드로 폴백
+                viewModel.loadNextPage()
+            },
+            state = pullState,
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
+            when {
+                error != null && uiState.plans.isEmpty() -> {
+                    ErrorContent(
+                        error = error!!,
+                        onRetry = {
+                            viewModel.clearError()
+                            viewModel.loadNextPage()
+                        },
+                    )
                 }
-                if (uiState.isLoading) {
-                    item {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
-                            CircularProgressIndicator()
+                uiState.plans.isEmpty() && !uiState.isLoading -> {
+                    EmptyContent(message = "아직 운동 기록이 없습니다")
+                }
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(uiState.plans, key = { it.id }) { plan ->
+                            HistoryWeekCard(plan)
+                        }
+                        if (uiState.isLoading) {
+                            item {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            }
                         }
                     }
                 }

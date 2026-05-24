@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gunnys.eundunhealth.ui.components.EmptyContent
+import com.gunnys.eundunhealth.ui.components.ErrorContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +40,7 @@ fun BadgeScreen(
     viewModel: BadgeViewModel = hiltViewModel()
 ) {
     val badges by viewModel.badges.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     Scaffold(
         topBar = {
@@ -51,9 +54,29 @@ fun BadgeScreen(
             )
         }
     ) { padding ->
-        LazyColumn(modifier = Modifier.padding(padding).padding(horizontal = 16.dp)) {
-            items(badges, key = { it.key }) { badge ->
-                BadgeItem(badge)
+        when {
+            error != null && badges.isEmpty() -> {
+                ErrorContent(
+                    error = error!!,
+                    modifier = Modifier.padding(padding),
+                    onRetry = {
+                        viewModel.clearError()
+                        viewModel.loadBadges()
+                    },
+                )
+            }
+            badges.isEmpty() -> {
+                EmptyContent(
+                    message = "아직 배지가 없습니다",
+                    modifier = Modifier.padding(padding),
+                )
+            }
+            else -> {
+                LazyColumn(modifier = Modifier.padding(padding).padding(horizontal = 16.dp)) {
+                    items(badges, key = { it.key }) { badge ->
+                        BadgeItem(badge)
+                    }
+                }
             }
         }
     }
