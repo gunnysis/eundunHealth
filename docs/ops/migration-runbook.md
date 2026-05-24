@@ -268,12 +268,21 @@ az containerapp ingress traffic set --name eundunhealth-api --resource-group app
 
 ---
 
-## 6. 정리 (Post-Migration, 1주 안정 운영 후)
+## 6. 정리 (Post-Migration)
 
-1. ~~`backend-ktor/` 디렉토리 삭제~~ — **완료**: `D:\backup\dev\project\eundunHealth\`로 이관 보관 (코드 롤백 필요 시 그곳에서 가져옴)
-2. ACR에서 `ktor-final` 외 Ktor 이미지 정리: `az acr repository delete --name eundunhealthacr --image eundunhealth-api:<old-tag>`
-3. Container App secrets에서 사용하지 않는 Ktor 전용 시크릿 제거 (`azure-db-password`, `supabase-jwt-secret` 등)
-4. `CLAUDE.md` Backend 섹션을 FastAPI 기준으로 업데이트
+마이그레이션 cutover(2026-05-24) 직후 진행된 정리 내역:
+
+1. ✅ **`backend-ktor/` 디렉토리** — `D:\backup\dev\project\eundunHealth\`로 이관 (코드 롤백 필요 시 그곳에서 가져옴)
+2. ✅ **ACR Ktor 이미지** — `20260521232116` + `latest`(Ktor manifest) 제거. 현재 ACR에 FastAPI 태그(`20260524-191501`, `fastapi-latest`)만 잔존
+3. ✅ **사용 안 되는 Ktor 시크릿 제거** — `db-password`, `jwt-secret` Container App secrets에서 삭제. `database-url`(asyncpg URL에 비번 내장)과 `supabase-service-role-key`만 남음
+4. ✅ **`CLAUDE.md` Backend 섹션** — FastAPI(Python 3.12) 기준으로 재작성됨 (Task 19 커밋)
+5. ✅ **ACR 자동 정리 후크** — Basic SKU는 retention 정책 미지원이라 `redeploy.sh`에 "타임스탬프 태그 최근 5개 + 운영 중 태그 보존, 나머지 untag" 후크 추가됨
+
+### 후속 권장 사항 (분기별 점검)
+
+- `az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api`로 untagged manifest 누적 확인. 필요 시 `az acr manifest delete`로 정리.
+- Azure PostgreSQL 백업 정책(PITR retention) 확인 및 비용 모니터링.
+- Sentry 백엔드 DSN을 별도 프로젝트로 생성하여 `SENTRY_DSN` secretref로 전환(현재 비활성 상태).
 
 ---
 
@@ -282,3 +291,4 @@ az containerapp ingress traffic set --name eundunhealth-api --resource-group app
 | 날짜 | 작성자 | 변경 |
 |------|--------|------|
 | 2026-05-24 | gunny | 초안 작성 (Task 20) |
+| 2026-05-24 | gunny | cutover 실행 완료 및 §6 사후 정리 반영 |
