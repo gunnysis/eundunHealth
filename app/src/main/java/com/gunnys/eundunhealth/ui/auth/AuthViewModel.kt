@@ -24,6 +24,12 @@ sealed class AuthState {
     data object Unauthenticated : AuthState()
 }
 
+sealed class ResetState {
+    @Immutable data object Idle : ResetState()
+    @Immutable data object Loading : ResetState()
+    @Immutable data object Success : ResetState()
+}
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepo: AuthRepository,
@@ -97,5 +103,24 @@ class AuthViewModel @Inject constructor(
     fun logout() = viewModelScope.launch {
         authRepo.signOut()
         _authState.value = AuthState.Unauthenticated
+    }
+
+    private val _resetState = MutableStateFlow<ResetState>(ResetState.Idle)
+    val resetState: StateFlow<ResetState> = _resetState.asStateFlow()
+
+    fun clearResetState() { _resetState.value = ResetState.Idle }
+
+    fun resetPassword(email: String) = viewModelScope.launch {
+        _resetState.value = ResetState.Loading
+        authRepo.resetPassword(email)
+            .onSuccess { _resetState.value = ResetState.Success }
+            .onFailure {
+                _resetState.value = ResetState.Idle
+                val appErr = it.message
+                    ?.let { msg -> AppError.Auth(msg) }
+                    ?: it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
+            }
     }
 }

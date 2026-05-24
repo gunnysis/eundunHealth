@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.gunnys.eundunhealth.ui.auth.AuthState
 import com.gunnys.eundunhealth.ui.auth.AuthViewModel
+import com.gunnys.eundunhealth.ui.auth.ForgotPasswordScreen
 import com.gunnys.eundunhealth.ui.auth.LoginScreen
 import com.gunnys.eundunhealth.ui.splash.SplashScreen
 import com.gunnys.eundunhealth.ui.auth.SignupScreen
@@ -55,12 +56,19 @@ fun AppNavigation(
         composable(Screen.Login.route) {
             LoginScreen(
                 onNavigateToSignup = { navController.navigate(Screen.Signup.route) },
+                onNavigateToForgotPassword = { navController.navigate(Screen.ForgotPassword.route) },
                 authViewModel = authViewModel
             )
         }
         composable(Screen.Signup.route) {
             SignupScreen(
                 onNavigateToLogin = { navController.popBackStack() },
+                authViewModel = authViewModel
+            )
+        }
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                onNavigateBack = { navController.popBackStack() },
                 authViewModel = authViewModel
             )
         }

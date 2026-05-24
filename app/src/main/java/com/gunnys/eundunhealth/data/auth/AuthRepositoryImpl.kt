@@ -61,6 +61,13 @@ class AuthRepositoryImpl @Inject constructor(
         tokenHolder.set(null)
     }
 
+    override suspend fun resetPassword(email: String): Result<Unit> = try {
+        supabaseClient.auth.resetPasswordForEmail(email)
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(Exception(mapAuthError(e.message ?: "", isLogin = false)))
+    }
+
     override suspend fun getCurrentUserId(): String? =
         supabaseClient.auth.currentUserOrNull()?.id
 

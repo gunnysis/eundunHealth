@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun LoginScreen(
     onNavigateToSignup: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
     authViewModel: AuthViewModel
 ) {
     var email by rememberSaveable { mutableStateOf("") }
@@ -120,6 +121,10 @@ fun LoginScreen(
                     )
                 }
                 Text("로그인")
+            }
+
+            TextButton(onClick = onNavigateToForgotPassword) {
+                Text("비밀번호를 잊으셨나요?")
             }
 
             TextButton(onClick = onNavigateToSignup) {
