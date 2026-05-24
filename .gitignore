@@ -4,6 +4,11 @@
 .key
 app/release
 
+# Python
+__pycache__/
+*.pyc
+backend-fastapi/.venv/
+
 # default
 *.iml
 *.class
