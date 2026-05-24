@@ -48,23 +48,47 @@
 
 `app/main.py`의 lifespan은 `settings.sentry_dsn`이 빈 문자열이면 `sentry_sdk.init`를 건너뛴다. 따라서 SENTRY_DSN="" 상태에서도 백엔드는 정상 동작하며, exception_handler가 `sentry_sdk.is_initialized()`로 체크해 캡처 호출도 안전하게 스킵된다.
 
-## 2. ACR 이미지 보존 기간 (자동 정리)
+## 2. ACR 이미지 보존 기간 (Basic SKU 한계 + 우회)
 
 오래된 이미지가 누적되면 ACR Basic 7,000원/월의 스토리지 한도(10GB)를 초과할 수 있다.
 
-```bash
-# 30일 지난 untagged manifest 자동 삭제
-az acr config retention update \
-  --registry eundunhealthacr \
-  --type UntaggedManifests \
-  --days 30 \
-  --status enabled
+⚠️ **`az acr config retention update`는 Basic SKU에서 미지원** — 시도 시 다음 에러:
 
-# 현재 정책 확인
-az acr config retention show --registry eundunhealthacr
+```
+Policies are only supported for managed registries in Premium SKU.
 ```
 
-> `ktor-final` 태그가 붙은 이미지는 untagged가 아니므로 영향 받지 않음 (롤백용 보존).
+Premium SKU 업그레이드(~17,000원/월 이상)는 비용 부담이 있어, 이 프로젝트는 다음 두 방식으로 우회:
+
+### 2.1 redeploy.sh 자동 정리 후크 (도입 완료)
+
+`C:/programming/docker/eundunhealth-api/redeploy.sh`가 매 배포 후크에서 다음을 수행:
+
+- 대상: `YYYYMMDD-HHMMSS` 패턴 timestamp 태그만
+- 보존: 최근 5개 + 운영 중인 태그
+- 정리 방식: `az acr repository untag` (manifest 자체는 다른 별칭 태그가 가리키지 않을 때만 자연 정리됨)
+- 헬스체크 실패 시엔 정리 안 함 (롤백 안전망)
+
+별도 명령 실행 불필요 — `bash redeploy.sh` 호출 시 자동 동작.
+
+### 2.2 수동 점검 (분기별)
+
+```bash
+# 누적된 태그 확인
+az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api --orderby time_desc -o tsv
+
+# 특정 태그 삭제 (예시) — 같은 manifest digest를 공유하는 다른 태그도 함께 사라지니 신중히
+az acr repository delete --name eundunhealthacr --image eundunhealth-api:<old-tag> --yes
+
+# manifest 단위 삭제는 더 안전 (특정 digest만 정리)
+az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api
+az acr manifest delete --name eundunhealthacr --image eundunhealth-api@sha256:<digest> --yes
+```
+
+> Premium SKU로 업그레이드한다면 다음 명령으로 자동화 가능:
+> ```bash
+> az acr config retention update --registry eundunhealthacr --type UntaggedManifests --days 30 --status enabled
+> ```
 
 ## 3. Azure 비용 알림 (월 예산 70,000원)
 
