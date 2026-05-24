@@ -61,8 +61,10 @@ android {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
         targetSdk = 37
-        versionCode = 12
-        versionName = "0.0.4"
+        // v0.1 + v0.2 + v0.3 spec 모두 구현 완료된 첫 internal testing 빌드.
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 14, 15, ...
+        versionCode = 13
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
