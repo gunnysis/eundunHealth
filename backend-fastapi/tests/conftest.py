@@ -68,6 +68,49 @@ def sample_plan() -> dict:
     return {"weekStart": "2026-05-25", "dayPlans": '[{"day":1,"exercises":[]}]'}
 
 
+# === Auth helpers ===
+
+def set_test_user(user_id: str) -> None:
+    """런타임에 get_current_user_id override를 교체한다.
+
+    user isolation 테스트처럼 한 테스트 안에서 사용자 컨텍스트를 바꿔야 할 때 사용.
+    `client` fixture가 이미 활성화된 상태여야 한다.
+    """
+    async def _override() -> str:
+        return user_id
+
+    app.dependency_overrides[get_current_user_id] = _override
+
+
+@pytest_asyncio.fixture
+async def client_no_auth(db_engine):
+    """`client`와 동일하지만 get_current_user_id를 override하지 않는다.
+
+    HTTPBearer가 Authorization 헤더 부재 시 403을 반환하는 경로를 검증할 때 사용.
+    """
+    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def override_get_db():
+        async with session_factory() as session:
+            yield session
+            await session.commit()
+
+    def override_get_settings() -> Settings:
+        return Settings(
+            database_url="sqlite+aiosqlite:///:memory:",
+            supabase_url="https://test.supabase.co",
+            supabase_service_role_key="test-service-role-key",
+        )
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_settings] = override_get_settings
+    # NOTE: get_current_user_id는 intentionally override하지 않음
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+
 # === Supabase Admin API mock ===
 
 @pytest.fixture
