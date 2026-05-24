@@ -35,8 +35,8 @@
 | Resource Group | `apps` |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
-| 활성 revision | `eundunhealth-api--0000005` (100% traffic, ScaledToZero) |
-| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:latest` (81.7MB) |
+| 활성 revision | `eundunhealth-api--0000007` (100% traffic, ScaledToZero) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:38ca830` (PR #17 SHA, latest auto-deploy) |
 | Min / Max replicas | 0 / 1 (KEDA scale-to-zero) |
 
 ### env vars
@@ -44,18 +44,21 @@
 | Name | 형태 | 값/참조 |
 |------|------|--------|
 | `DATABASE_URL` | secretref | `database-url` (asyncpg URL) |
-| `SUPABASE_URL` | value | `https://ttzzbfoksncqazvcsfiu.supabase.co` |
+| `SUPABASE_URL` | secretref | `supabase-url` |
 | `SUPABASE_SERVICE_ROLE_KEY` | secretref | `supabase-service-role-key` |
 | `SENTRY_DSN` | secretref | `sentry-dsn-backend` |
 | `ENVIRONMENT` | value | `production` |
 | `CORS_ORIGINS` | value | `["*"]` |
 
-### Secrets (총 4)
+### Secrets (총 5 — backend.yml deploy step의 secretref 4개 + ACR pull 1개)
 
 - `database-url` — `postgresql+asyncpg://gunny:****@healthapp.postgres.database.azure.com:5432/postgres?ssl=require`
+- `supabase-url` — `https://ttzzbfoksncqazvcsfiu.supabase.co` (INC-18 후 추가)
 - `supabase-service-role-key` — Supabase Admin API 키 (한국 리전 발급)
 - `sentry-dsn-backend` — Sentry `eundunhealth-backend` 프로젝트 DSN
 - `eundunhealthacrazurecrio-eundunhealthacr` — ACR pull (Azure 자동 관리)
+
+> backend.yml deploy job 직전 "Verify required Container App secrets exist" step이 위 4개(ACR pull 제외)를 사전 점검. 누락 시 fast-fail로 회귀 차단 (INC-18 재발 방지).
 
 ---
 
@@ -151,9 +154,17 @@ ProGuard mapping: release 빌드 시 sentry-gradle plugin이 자동 업로드 (`
 
 ## 8. CI / 자동화
 
-- **`.github/workflows/backend.yml`** — `backend-fastapi/**` 변경 시 ruff + mypy + pytest + Codecov + pip-audit + bandit + gitleaks + Trivy + Azure 배포
+GitHub Actions:
+- **`.github/workflows/backend.yml`** — `backend/**` 또는 `backend.yml` 변경 시: ruff + mypy + pytest + Codecov → docker compose runtime smoke (INC-03 차단) → pip-audit + bandit + gitleaks → (main push) Trivy + ACR push + **secret precheck (INC-18 차단)** → Container App 배포 → /health
+  - `workflow_dispatch` 지원 — 수동 실행 가능 (`gh workflow run backend.yml --ref main`)
+  - GitHub repo secret `AZURE_CREDENTIALS` 필요 (service principal JSON, scope `RG apps` + `AcrPush` on ACR)
 - **`.github/workflows/android.yml`** — `app/**` 변경 시 spotlessCheck + detektDebug + testDebugUnitTest + assembleDebug + PR이면 APK artifact 업로드
 - **`.github/dependabot.yml`** — pip + github-actions + gradle 주간 PR (KST 월 06:00, 보안 패치는 단일 PR로 그룹화)
+
+로컬 자동화:
+- **`scripts/preflight-release.sh`** — Spotless + Detekt + Tests + `releaseArtifacts`(AAB+APK 동시) 일괄 (INC-04 차단)
+- **`scripts/alembic-autogen.sh`** — postgres:16-alpine 컨테이너에 autogen 실행 (INC-07 차단)
+- **`scripts/register-azure-credentials.ps1`** — SP 생성/패치 + AcrPush role + GitHub secret 등록 (INC-17 운영자 1회/만료 갱신용)
 - **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + detektDebug
 
 ---
@@ -171,7 +182,9 @@ ProGuard mapping: release 빌드 시 sentry-gradle plugin이 자동 업로드 (`
 
 ---
 
-## 10. 운영 점검 명령 (월 1회)
+## 10. 운영 점검 명령
+
+### 월간
 
 ```bash
 # /health
@@ -180,13 +193,40 @@ curl -sf https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontain
 # revision 상태
 az containerapp revision list --name eundunhealth-api --resource-group apps -o table
 
-# ACR 태그
+# ACR 태그 (timestamp 태그가 redeploy.sh 후크로 최근 5개만 유지되는지)
 az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api --orderby time_desc -o tsv
+
+# Container App secret 목록 (5개 + ACR pull 1개 = 6개여야 함. INC-18 재발 감지)
+az containerapp secret list --name eundunhealth-api --resource-group apps --query "[].name" -o tsv
 
 # 비용 actual vs budget
 az consumption usage list --start-date $(date -d '-30 days' +%Y-%m-%d) --end-date $(date +%Y-%m-%d) -o table
 
 # Sentry: 대시보드에서 5xx 에러율 < 1% 확인
+```
+
+### 분기별
+
+```bash
+# Service principal credential 만료 점검 (AZURE_CREDENTIALS, INC-17)
+# clientId는 az ad sp list --display-name eundunhealth-github-deploy로 찾을 수 있음
+az ad sp credential list --id <clientId> --query "[].endDate" -o tsv
+# 6개월 이내 만료라면: pwsh -File scripts\register-azure-credentials.ps1 -Verify
+
+# 옛 untagged manifest 누적 확인 (Basic SKU에선 직접 삭제 불가)
+az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api \
+  --query "[?tags==null].digest" -o tsv | wc -l
+
+# Azure PostgreSQL slow query / 활성 connection
+# Azure Portal → healthapp → Monitoring → Insights
+```
+
+### Secret rotation 후 즉시 검증
+
+```bash
+# paths 필터(backend/**) 우회. workflow_dispatch trigger로 deploy 강제 실행.
+gh workflow run backend.yml --ref main
+# 또는 GitHub Actions UI → "Backend CI/CD" → Run workflow
 ```
 
 ---
@@ -196,3 +236,4 @@ az consumption usage list --start-date $(date -d '-30 days' +%Y-%m-%d) --end-dat
 | 날짜 | 변경 |
 |------|------|
 | 2026-05-25 | 초안 작성. v0.1.0 출시 직전 상태 |
+| 2026-05-25 (자동 배포) | INC-17·18 해결 + GitHub Actions 자동 배포 end-to-end 정상 동작. revision `0000007` 활성. secret `supabase-url` 추가(총 5개). backend.yml에 secret precheck step + workflow_dispatch trigger 추가. `scripts/register-azure-credentials.ps1` 신규. PR #15·#16·#17 머지 |

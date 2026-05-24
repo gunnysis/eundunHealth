@@ -28,10 +28,19 @@
 - [ ] 또는 `bash scripts/alembic-autogen.sh "<message>"`로 PostgreSQL 컨테이너 기반 autogen 수행 — SQLite false positive 없음 (INC-07)
 - [ ] alembic 파일 diff 수동 검토 완료
 
+## Backend secret / env 변경 (해당 시)
+<!-- backend.yml의 --set-env-vars 또는 Container App secret을 추가/변경할 때 -->
+- [ ] 해당 없음
+- [ ] 또는 다음을 모두 확인했음 (INC-18 재발 방지, `monitoring-and-cost.md §6.6`):
+  1. `.github/workflows/backend.yml`의 `--set-env-vars`에 새 `<ENV>=secretref:<name>` 추가됨
+  2. 운영자가 `az containerapp secret set --secrets "<name>=<value>"`로 secret 등록 완료 (PR 머지 *전*)
+  3. `backend.yml`의 **"Verify required Container App secrets exist"** step `REQUIRED` 문자열에 `<name>` 추가됨
+  4. `docs/ops/operations-snapshot.md` §2 Secrets 목록 갱신
+
 ## Destructive 명령 (해당 시)
 <!-- 운영 리소스에 영향 주는 명령을 실행했거나 PR이 실행할 가능성이 있으면 체크 -->
 - [ ] 해당 없음
-- [ ] 또는 다음 5문항 모두 통과 (`monitoring-and-cost.md §6.6`):
+- [ ] 또는 다음 5문항 모두 통과 (`monitoring-and-cost.md §6.8`):
   1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG 등)임을 인지함
   2. `--yes` / `--no-confirm` 플래그가 있다면 dry-run 또는 사전 점검을 마침
   3. 연쇄 영향(manifest 공유, secretref 연결, firewall 의존성) 검증함

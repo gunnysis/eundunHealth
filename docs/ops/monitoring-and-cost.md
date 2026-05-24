@@ -213,7 +213,39 @@ v1.0 정식 출시 후에는 **Supabase 프로젝트 교체를 절대 자유롭�
 - Sentry project slug (sentry-gradle plugin의 `projectName`)가 바뀌면 `local.properties:SENTRY_PROJECT_ANDROID=<new-slug>`로 override.
 - 새 APK/AAB를 빌드 → 단말 재설치해야 새 DSN 적용. 옛 빌드는 죽은 DSN으로 이벤트 발송 → 무시됨.
 
-### 6.6 destructive 명령 실행 전 5-second sanity check
+### 6.6 backend.yml `secretref` 신규/변경 시 Container App secret 동기화 (참고: INC-18)
+
+`.github/workflows/backend.yml`의 `Deploy to Container App` step은 `--set-env-vars`에서 `<ENV>=secretref:<secret-name>` 형태로 Container App에 미리 등록된 secret을 참조한다. **secretref만 추가하고 secret을 등록하지 않으면 deploy step이 `ContainerAppSecretRefNotFound`로 실패한다.**
+
+backend.yml에 새 `secretref` 라인을 추가하는 PR은 반드시 한 단위로 다음 세 단계를 함께 처리한다:
+
+1. **backend.yml**에 `--set-env-vars`에 새 `<ENV>=secretref:<secret-name>` 추가
+2. **운영자가 Container App에 secret 등록** (PR 머지 *전*에):
+   ```bash
+   az containerapp secret set --name eundunhealth-api --resource-group apps \
+     --secrets "<secret-name>=<value>"
+   ```
+3. **`docs/ops/operations-snapshot.md` §2 Secrets 목록 갱신**
+
+PR 머지 후 첫 push에서 deploy job의 **"Verify required Container App secrets exist"** step(INC-18 재발 방지로 추가됨)이 누락된 secret을 fast-fail로 잡아낸다. 단, 이 step은 PR 단계에는 실행되지 않으니(deploy job 자체가 main push에서만 실행) PR 단계의 양쪽 동시화 책임은 reviewer가 진다.
+
+> **새 필수 secret을 추가했다면** `backend.yml`의 "Verify required Container App secrets exist" step의 `REQUIRED` 문자열에도 그 secret 이름을 추가해야 한다. 누락 시 사전 점검을 우회.
+
+### 6.7 GitHub repo secret 만료 (참고: INC-17)
+
+`AZURE_CREDENTIALS`(service principal JSON)는 기본 2년 만료. 만료 6개월 전이 되면 다음 명령으로 점검:
+
+```bash
+# clientId 확인 (필요 시 az ad sp list로 찾기)
+az ad sp credential list --id <clientId> --query "[].endDate" -o tsv
+
+# 갱신: 스크립트 한 줄로 SP secret + GitHub secret 동시 재발급
+pwsh -File scripts\register-azure-credentials.ps1 -Verify
+```
+
+스크립트가 SP를 patch 모드로 동작하므로 GitHub Actions 측은 secret만 새 JSON으로 덮어쓰면 바로 동작. 이전 SP secret은 자동 invalidate.
+
+### 6.8 destructive 명령 실행 전 5-second sanity check
 
 명령 입력 직전에:
 
