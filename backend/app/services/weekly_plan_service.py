@@ -23,6 +23,19 @@ class WeeklyPlanService:
             created_at=str(plan.created_at) if plan.created_at else None,
         )
 
+    async def get_previous_plan(self, user_id: str, week_start: str) -> WeeklyPlanResponse | None:
+        """기준 주 직전(week_start 미만 중 가장 가까운) plan. 없으면 None — Android 측에서
+        '이전 주 plan 없음' = 첫 사용자 케이스로 처리하므로 404가 아닌 nullable 응답을 쓴다."""
+        date = datetime.date.fromisoformat(week_start)
+        plan = await self.repo.get_previous(user_id, date)
+        if not plan:
+            return None
+        return WeeklyPlanResponse(
+            week_start=str(plan.week_start),
+            day_plans=plan.day_plans,
+            created_at=str(plan.created_at) if plan.created_at else None,
+        )
+
     async def upsert_plan(self, user_id: str, req: WeeklyPlanRequest) -> None:
         date = datetime.date.fromisoformat(req.week_start)
         await self.repo.upsert(user_id, date, req.day_plans)
