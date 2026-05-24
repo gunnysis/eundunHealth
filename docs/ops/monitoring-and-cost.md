@@ -142,3 +142,82 @@ az consumption budget create \
 - [ ] Container App revision 수 정리: `az containerapp revision list --name eundunhealth-api -o table` → 활성 외 inactive revision 정리
 - [ ] PostgreSQL slow query 확인: Azure Portal → Insights
 - [ ] 월간 비용 actual vs budget 비교
+
+## 6. Destructive 명령 안전 패턴
+
+운영 중 한 번의 잘못된 명령이 운영 이미지·secret·DB를 망가뜨릴 수 있다. 모든 사례별 안전 패턴을 모아둔다. **참조 인시던트는 `docs/ops/incident-log.md`.**
+
+### 6.1 ACR — manifest 삭제 vs 태그 제거 (참고: INC-01)
+
+| 의도 | 위험한 명령 | 안전한 대안 |
+|------|------------|-------------|
+| 특정 태그만 떼고 manifest는 보존 | `az acr repository delete --image <repo>:<tag> --yes` | `az acr repository untag --name <reg> --image <repo>:<tag>` |
+| 특정 manifest digest 삭제 (다른 태그가 그걸 가리키지 않을 때만) | (위와 같이 manifest 모두 삭제 위험) | 사전 점검: `az acr manifest list-metadata -r <reg> -n <repo> --query "[?digest=='sha256:...'].tags"` → 비어있을 때만 삭제 |
+| 옛 timestamp 태그 정리 | 수동 일괄 삭제 | `bash redeploy.sh`가 자동 untag (최근 5개 + 운영 중 태그 보존) |
+
+> **요지**: `az acr repository delete --image <tag>`는 **태그가 가리키는 manifest 자체를 삭제**한다. 같은 manifest를 가리키는 모든 태그가 함께 사라진다. 옛 이미지를 untag만 하려면 반드시 `az acr repository untag`.
+
+### 6.2 Container App secret 교체 (참고: INC-15)
+
+```bash
+# 1) secret 등록 (값을 shell history에 안 남기려면 환경변수 경유)
+NEW_VALUE=$(cat /dev/stdin)   # 또는 password manager에서 가져와 NEW_VALUE 변수에 담기
+az containerapp secret set --name eundunhealth-api --resource-group apps \
+  --secrets "<secret-name>=${NEW_VALUE}"
+
+# 2) env var를 secretref로 연결 (잊으면 빈 문자열로 작동)
+az containerapp update --name eundunhealth-api --resource-group apps \
+  --set-env-vars "<ENV_NAME>=secretref:<secret-name>"
+
+# 3) 새 revision이 적용됐는지 확인
+az containerapp show --name eundunhealth-api --resource-group apps \
+  --query "{revision: properties.latestRevisionName, env: properties.template.containers[0].env[?name=='<ENV_NAME>']}"
+
+# 4) /health 헬스체크
+curl -sf https://<FQDN>/health
+```
+
+### 6.3 프로덕션 DB 마이그레이션 / 데이터 정리 (참고: INC-06, INC-14)
+
+```bash
+# 1) firewall 임시 허용
+MY_IP=$(curl -sf https://api.ipify.org)
+az postgres flexible-server firewall-rule create \
+  --resource-group apps --name healthapp \
+  --rule-name temp-$(date +%s) --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
+
+# 2) 작업 (alembic / SQL)
+cd backend
+export DATABASE_URL="postgresql+asyncpg://gunny:****@healthapp.postgres.database.azure.com:5432/postgres?ssl=require"
+.venv/Scripts/alembic upgrade head
+
+# 3) 반드시 회수 (성공/실패 무관)
+az postgres flexible-server firewall-rule delete \
+  --resource-group apps --name healthapp \
+  --rule-name temp-XXX --yes
+```
+
+> **요지**: `az containerapp exec --command "..."`로 비대화형 명령 결과를 받기는 불안정(INC-06). 로컬 firewall 임시 허용 패턴이 정석.
+
+### 6.4 Supabase 프로젝트 교체 시 (참고: INC-14)
+
+v1.0 정식 출시 후에는 **Supabase 프로젝트 교체를 절대 자유롭게 하지 말 것.** user_id namespace가 갈아엎혀 옛 사용자가 "user not found"가 된다.
+
+- 출시 전(현 단계): 5개 사용자 테이블 `TRUNCATE`로 정리 가능 (이미 수행).
+- 출시 후 불가피한 경우: 옛 user_id → 새 user_id 매핑 테이블 + 백필 스크립트 + 사용자 공지가 필수.
+
+### 6.5 Sentry 프로젝트 교체 시 (참고: INC-09, INC-10)
+
+- DSN을 `local.properties`에서 읽는 키 이름이 바뀌면 `app/build.gradle.kts`의 fallback 체인으로 흡수 (이미 적용: `eundunhealth-app_SENTRY_DSN` → `SENTRY_DSN`).
+- Sentry project slug (sentry-gradle plugin의 `projectName`)가 바뀌면 `local.properties:SENTRY_PROJECT_ANDROID=<new-slug>`로 override.
+- 새 APK/AAB를 빌드 → 단말 재설치해야 새 DSN 적용. 옛 빌드는 죽은 DSN으로 이벤트 발송 → 무시됨.
+
+### 6.6 destructive 명령 실행 전 5-second sanity check
+
+명령 입력 직전에:
+
+1. **대상이 운영 리소스인가?** (RG `apps`, registry `eundunhealthacr` 등 — 맞다면 한 번 더 의심)
+2. **`--yes` 또는 `--no-confirm` 플래그가 있는가?** 있다면 무엇이 삭제되는지 미리 dry-run.
+3. **연쇄 영향이 있는가?** (manifest 공유, secretref 연결, firewall rule 의존성)
+4. **롤백 경로가 있는가?** (이미지 캐시·git 백업·DB PITR)
+5. **에러 시 대비책이 있는가?** Sentry/Health Check로 즉시 인지 가능?

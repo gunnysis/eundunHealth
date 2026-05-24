@@ -185,3 +185,11 @@ sentry {
     uploadNativeSymbols.set(false)
     includeNativeSources.set(false)
 }
+
+// release 산출물 일괄 빌드 — AAB(Play Store) + APK(사이드로드) versionCode/Name 동기 보장.
+// 참고 인시던트: docs/ops/incident-log.md INC-2026-05-24-04.
+tasks.register("releaseArtifacts") {
+    group = "build"
+    description = "Builds release AAB (bundleRelease) and APK (assembleRelease) together."
+    dependsOn("assembleRelease", "bundleRelease")
+}
