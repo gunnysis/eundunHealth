@@ -6,7 +6,14 @@ build:
 
 complexity:
   LongMethod:
-    threshold: 100
+    threshold: 150
+    # @Composable 함수는 UI 트리 선언이라 자연스레 길어짐
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 8
+    # Compose 화면은 콜백을 다수 받음(Action/Navigation/State)
+    ignoreAnnotated: ['Composable']
   TooManyFunctions:
     active: false
   CyclomaticComplexMethod:

@@ -37,6 +37,7 @@ class GoalRepositoryImpl @Inject constructor(
         )
     }
 
+    @Suppress("unused") // detekt가 extension function의 호출처를 인식 못함 (false positive)
     private fun ProfileHistoryEntryDto.toDomain(): ProfileHistoryPoint = ProfileHistoryPoint(
         heightCm = heightCm,
         weightKg = weightKg,

@@ -23,6 +23,15 @@ class CheckAndAwardBadgesUseCase @Inject constructor(
                 badgeRepo.awardBadge(key).onSuccess { awarded += it }
             }
         }
+
+        // v0.3 §N — FIRST_WORKOUT: 처음으로 어떤 운동일이라도 완료하면 즉시 부여
+        if (plan.days.any { !it.isRestDay && it.isCompleted }) {
+            val firstKey = BadgeKeys.FIRST_WORKOUT
+            val hasFirst = badgeRepo.hasBadge(firstKey).getOrDefault(false)
+            if (!hasFirst) {
+                badgeRepo.awardBadge(firstKey).onSuccess { awarded += it }
+            }
+        }
         awarded
     }
 }

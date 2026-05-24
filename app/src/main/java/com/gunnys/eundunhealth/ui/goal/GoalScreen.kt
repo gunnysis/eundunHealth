@@ -116,7 +116,9 @@ fun GoalScreen(
                     ProgressChartCard("체중 추이", uiState.history) { it.weightKg.toDouble() }
                     val bfHistory = uiState.history.filter { it.bodyFatPct != null }
                     if (bfHistory.isNotEmpty()) {
-                        ProgressChartCard("체지방률 추이", bfHistory) { it.bodyFatPct!!.toDouble() }
+                        ProgressChartCard("체지방률 추이", bfHistory) {
+                            (it.bodyFatPct ?: 0f).toDouble()
+                        }
                     }
                 } else {
                     Text(
