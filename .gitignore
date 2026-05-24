@@ -50,3 +50,6 @@ backend/.env
 backend/.pytest_cache/
 backend/.mypy_cache/
 backend/.ruff_cache/
+backend/test_*.db
+backend/*.sqlite
+backend/alembic/versions/__pycache__/
