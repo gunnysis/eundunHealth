@@ -1,16 +1,29 @@
-from contextlib import contextmanager
-from unittest.mock import AsyncMock, patch
+import os
 
-import httpx
-import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+# app.main 모듈이 import 시점에 get_settings()를 호출(CORS 미들웨어 등록)하므로
+# pydantic-settings의 필수 필드를 환경변수로 미리 채워둔다. dependency_overrides는
+# 라우터 레벨 의존성만 갈아끼우므로 import-time 호출은 영향받지 않는다.
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
+os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
 
-from app.config import Settings, get_settings
-from app.database import Base, get_db
-from app.dependencies import get_current_user_id
-from app.main import app
+from contextlib import contextmanager  # noqa: E402
+from unittest.mock import AsyncMock, patch  # noqa: E402
+
+import httpx  # noqa: E402
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
+from app.config import Settings, get_settings  # noqa: E402
+from app.database import Base, get_db  # noqa: E402
+from app.dependencies import get_current_user_id  # noqa: E402
+from app.main import app  # noqa: E402
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 

@@ -31,14 +31,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         )
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-    # CORS — lifespan 내부에서 settings 참조 (모듈 레벨 get_settings() 호출 방지)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
     yield
 
     # 종료 시 엔진 정리
@@ -46,6 +38,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="eundunHealth API", lifespan=lifespan)
+
+# CORS — starlette 0.49+에서 lifespan 내부 add_middleware가 금지되어 모듈 레벨에서 등록.
+# get_settings()는 @lru_cache이므로 환경변수만 1회 읽으며, 테스트는 dependency_override로
+# 라우터 레벨에서 settings를 갈아끼우므로 CORS 구성이 테스트에 미치는 영향은 없다.
+_cors_settings = get_settings()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_settings.cors_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # 글로벌 에러 핸들러
