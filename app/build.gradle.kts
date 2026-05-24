@@ -1,9 +1,10 @@
 import java.util.Properties
 
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.exists()) load(file.inputStream())
-}
+val localProperties =
+    Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) load(file.inputStream())
+    }
 
 plugins {
     alias(libs.plugins.android.application)
@@ -13,6 +14,35 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.sentry)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.spotless)
+}
+
+detekt {
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+    parallel = true
+    autoCorrect = false
+    // baseline은 점진적 정리용 — 첫 실행 시 ./gradlew :app:detektBaselineDebug로 생성한다.
+    baseline = file("$rootDir/config/detekt/baseline.xml")
+}
+
+spotless {
+    kotlin {
+        target("src/**/*.kt")
+        targetExclude("**/build/**/*.kt")
+        ktlint(libs.versions.ktlint.get()).editorConfigOverride(
+            mapOf(
+                "ktlint_standard_no-wildcard-imports" to "disabled",
+                "ktlint_standard_function-naming" to "disabled", // Compose @Composable PascalCase
+                "ktlint_standard_property-naming" to "disabled", // const allcaps + topLevel val
+            ),
+        )
+    }
+    kotlinGradle {
+        target("*.kts")
+        ktlint(libs.versions.ktlint.get())
+    }
 }
 
 android {
@@ -38,13 +68,14 @@ android {
 
         buildConfigField("String", "SUPABASE_URL", "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
-        buildConfigField("String", "EXERCISEDB_API_KEY", "\"${localProperties.getProperty("EXERCISEDB_API_KEY", "")}\"")
+        // EXERCISEDB_API_KEY 제거 — OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 불필요
         buildConfigField("String", "BACKEND_BASE_URL", "\"${localProperties.getProperty("BACKEND_BASE_URL", "http://10.0.2.2:8080/")}\"")
         buildConfigField("String", "SENTRY_DSN", "\"${localProperties.getProperty("SENTRY_DSN", "")}\"")
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -110,8 +141,8 @@ dependencies {
     // Navigation
     implementation(libs.navigation.compose)
 
-    // Serialization
-    implementation(libs.kotlinx.serialization.json)
+    // Charts (Vico)
+    implementation(libs.vico.compose.m3)
 
     // Sentry
     implementation(libs.sentry.android)
@@ -129,8 +160,9 @@ dependencies {
 }
 
 sentry {
-    val token = System.getenv("SENTRY_AUTH_TOKEN")
-        ?: localProperties.getProperty("SENTRY_AUTH_TOKEN", "")
+    val token =
+        System.getenv("SENTRY_AUTH_TOKEN")
+            ?: localProperties.getProperty("SENTRY_AUTH_TOKEN", "")
     val hasToken = token.isNotBlank()
     org.set("gunnys")
     projectName.set("eundunhealth")

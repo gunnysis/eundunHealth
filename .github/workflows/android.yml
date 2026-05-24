@@ -1,0 +1,68 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - 'config/detekt/**'
+      - '.github/workflows/android.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - 'config/detekt/**'
+      - '.github/workflows/android.yml'
+
+jobs:
+  check:
+    name: Lint, Detekt, Test, Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create stub local.properties
+        # BuildConfig 필드(SUPABASE_URL 등)는 빌드 시 빈 문자열로 처리되어도 무방.
+        # 서명용 RELEASE_* 도 debug 빌드와 unit test, lint에는 필요 없음.
+        run: |
+          cat > local.properties <<'EOF'
+          SUPABASE_URL=https://placeholder.supabase.co
+          SUPABASE_ANON_KEY=placeholder
+          BACKEND_BASE_URL=http://10.0.2.2:8080/
+          SENTRY_DSN=
+          EOF
+
+      - name: Spotless check
+        run: ./gradlew :app:spotlessCheck
+
+      - name: Detekt
+        run: ./gradlew :app:detektDebug
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Upload debug APK artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7

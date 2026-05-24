@@ -16,10 +16,10 @@ import javax.inject.Singleton
 object DatabaseModule {
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): EundunDatabase =
-        Room.databaseBuilder(context, EundunDatabase::class.java, "eundun_db")
-            .fallbackToDestructiveMigration()
-            .build()
+    fun provideDatabase(@ApplicationContext context: Context): EundunDatabase = Room.databaseBuilder(context, EundunDatabase::class.java, "eundun_db")
+        // v1 → v2: WeeklyPlanDao에 userId 필터가 추가됨. 캐시 테이블이므로 데이터 손실 허용.
+        .fallbackToDestructiveMigration(dropAllTables = true)
+        .build()
 
     @Provides
     fun provideWeeklyPlanDao(db: EundunDatabase): WeeklyPlanDao = db.weeklyPlanDao()

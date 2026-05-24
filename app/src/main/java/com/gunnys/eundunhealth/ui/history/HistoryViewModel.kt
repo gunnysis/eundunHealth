@@ -3,7 +3,10 @@ package com.gunnys.eundunhealth.ui.history
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.model.reportToSentry
+import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,16 +21,22 @@ data class HistoryUiState(
     val isLoading: Boolean = false,
     val hasMore: Boolean = true,
     val page: Int = 0,
-    val error: String? = null
 )
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val workoutRepo: WorkoutRepository
+    private val workoutRepo: WorkoutRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
+
+    private val _error = MutableStateFlow<AppError?>(null)
+    val error: StateFlow<AppError?> = _error.asStateFlow()
+
+    fun clearError() {
+        _error.value = null
+    }
 
     private val pageSize = 10
 
@@ -47,11 +56,14 @@ class HistoryViewModel @Inject constructor(
                         plans = current.plans + plans,
                         isLoading = false,
                         page = current.page + 1,
-                        hasMore = current.plans.size + plans.size < totalCount
+                        hasMore = current.plans.size + plans.size < totalCount,
                     )
                 }
                 .onFailure {
-                    _uiState.value = current.copy(isLoading = false, error = it.message)
+                    _uiState.value = current.copy(isLoading = false)
+                    val appErr = it.toAppError()
+                    appErr.reportToSentry()
+                    _error.value = appErr
                 }
         }
     }

@@ -39,17 +39,18 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SignupScreen(
     onNavigateToLogin: () -> Unit,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
     val authState by authViewModel.authState.collectAsState()
+    val error by authViewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(authState) {
-        if (authState is AuthState.Error) {
-            snackbarHostState.showSnackbar((authState as AuthState.Error).message)
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it.userMessage)
             authViewModel.clearError()
         }
     }
@@ -63,7 +64,7 @@ fun SignupScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text("회원가입", style = MaterialTheme.typography.headlineLarge)
             Spacer(modifier = Modifier.height(32.dp))
@@ -74,7 +75,7 @@ fun SignupScreen(
                 label = { Text("이메일") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true
+                singleLine = true,
             )
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -84,7 +85,7 @@ fun SignupScreen(
                 label = { Text("비밀번호") },
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
             )
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -100,22 +101,23 @@ fun SignupScreen(
                     if (confirmPassword.isNotEmpty() && password != confirmPassword) {
                         Text("비밀번호가 일치하지 않습니다")
                     }
-                }
+                },
             )
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = { authViewModel.signup(email.trim(), password) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is AuthState.Loading
-                    && email.isNotBlank() && password.isNotBlank()
-                    && password == confirmPassword
+                enabled = authState !is AuthState.Loading &&
+                    email.isNotBlank() &&
+                    password.isNotBlank() &&
+                    password == confirmPassword,
             ) {
                 AnimatedVisibility(visible = authState is AuthState.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp).padding(end = 8.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
                 Text("가입하기")

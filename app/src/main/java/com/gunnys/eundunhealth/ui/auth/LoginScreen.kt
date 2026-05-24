@@ -42,16 +42,18 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun LoginScreen(
     onNavigateToSignup: () -> Unit,
-    authViewModel: AuthViewModel
+    onNavigateToForgotPassword: () -> Unit,
+    authViewModel: AuthViewModel,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     val authState by authViewModel.authState.collectAsState()
+    val error by authViewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(authState) {
-        if (authState is AuthState.Error) {
-            snackbarHostState.showSnackbar((authState as AuthState.Error).message)
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it.userMessage)
             authViewModel.clearError()
         }
     }
@@ -65,24 +67,24 @@ fun LoginScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(
                 Icons.Default.FitnessCenter,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "은둔헬스",
                 style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
             Text(
                 "혼자서도 효과적인 운동",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(48.dp))
 
@@ -92,7 +94,7 @@ fun LoginScreen(
                 label = { Text("이메일") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true
+                singleLine = true,
             )
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -102,23 +104,27 @@ fun LoginScreen(
                 label = { Text("비밀번호") },
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
             )
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = { authViewModel.login(email.trim(), password) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is AuthState.Loading && email.isNotBlank() && password.isNotBlank()
+                enabled = authState !is AuthState.Loading && email.isNotBlank() && password.isNotBlank(),
             ) {
                 AnimatedVisibility(visible = authState is AuthState.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp).padding(end = 8.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
                 Text("로그인")
+            }
+
+            TextButton(onClick = onNavigateToForgotPassword) {
+                Text("비밀번호를 잊으셨나요?")
             }
 
             TextButton(onClick = onNavigateToSignup) {

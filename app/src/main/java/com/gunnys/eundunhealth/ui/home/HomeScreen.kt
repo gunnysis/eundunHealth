@@ -2,11 +2,9 @@ package com.gunnys.eundunhealth.ui.home
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,15 +12,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.BrightnessAuto
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Card
@@ -36,6 +36,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,8 +45,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
+import com.gunnys.eundunhealth.domain.model.DayPlan
+import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
 import java.time.format.TextStyle
 import java.util.Locale
@@ -55,13 +58,17 @@ fun HomeScreen(
     onExerciseClick: (String) -> Unit,
     onBadgesClick: () -> Unit,
     onHistoryClick: () -> Unit = {},
+    onStatisticsClick: () -> Unit = {},
+    onGoalClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onLogout: () -> Unit,
     onRequestHealthPermissions: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val pullState = rememberPullToRefreshState()
 
     Scaffold(
         topBar = {
@@ -78,7 +85,7 @@ fun HomeScreen(
                                 ThemeMode.DARK -> Icons.Default.DarkMode
                                 ThemeMode.LIGHT -> Icons.Default.LightMode
                             },
-                            "테마"
+                            "테마",
                         )
                     }
                     IconButton(onClick = { viewModel.loadPlan() }) {
@@ -87,69 +94,86 @@ fun HomeScreen(
                     IconButton(onClick = onHistoryClick) {
                         Icon(Icons.Default.History, "기록")
                     }
+                    IconButton(onClick = onStatisticsClick) {
+                        Icon(Icons.Default.QueryStats, "통계")
+                    }
+                    IconButton(onClick = onGoalClick) {
+                        Icon(Icons.Default.Flag, "목표")
+                    }
                     IconButton(onClick = onBadgesClick) {
                         Icon(Icons.Default.EmojiEvents, "배지")
                     }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, "로그아웃")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
-        when (val state = uiState) {
-            is HomeUiState.Loading -> {
-                SkeletonHomeContent(modifier = Modifier.padding(padding))
-            }
-            is HomeUiState.Error -> {
-                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(state.message, style = MaterialTheme.typography.bodyLarge)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        TextButton(onClick = { viewModel.loadPlan() }) {
-                            Text("다시 시도")
-                        }
-                    }
+        PullToRefreshBox(
+            isRefreshing = uiState is HomeUiState.Loading,
+            onRefresh = { viewModel.loadPlan() },
+            state = pullState,
+            modifier = Modifier.padding(padding),
+        ) {
+            when (val state = uiState) {
+                is HomeUiState.Loading -> {
+                    SkeletonHomeContent()
                 }
-            }
-            is HomeUiState.Success -> {
-                LazyColumn(contentPadding = padding) {
-                    item {
-                        WeeklyProgressCard(
-                            completedCount = state.completedCount,
-                            totalDays = state.totalWorkoutDays,
-                            completionRate = state.completionRate
-                        )
-                    }
-                    if (!state.hasHealthPermission) {
+                is HomeUiState.Empty -> {
+                    ErrorContent(
+                        error = error ?: com.gunnys.eundunhealth.domain.model.AppError.Unknown(
+                            Throwable("운동 계획을 불러올 수 없습니다"),
+                            "운동 계획을 불러올 수 없습니다",
+                        ),
+                        onRetry = {
+                            viewModel.clearError()
+                            viewModel.loadPlan()
+                        },
+                    )
+                }
+                is HomeUiState.Success -> {
+                    LazyColumn(contentPadding = padding) {
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                            WeeklyProgressCard(
+                                completedCount = state.completedCount,
+                                totalDays = state.totalWorkoutDays,
+                                completionRate = state.completionRate,
+                            )
+                        }
+                        if (!state.hasHealthPermission) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                                 ) {
-                                    Icon(Icons.Default.FitnessCenter, "Health Connect")
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Health Connect로 운동 달성을 자동 추적", modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.bodySmall)
-                                    TextButton(onClick = onRequestHealthPermissions) { Text("연동") }
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(Icons.Default.FitnessCenter, "Health Connect")
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Health Connect로 운동 달성을 자동 추적",
+                                            modifier = Modifier.weight(1f),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                        TextButton(onClick = onRequestHealthPermissions) { Text("연동") }
+                                    }
                                 }
                             }
                         }
-                    }
-                    items(state.plan.days, key = { it.date.toString() }) { day ->
-                        DayPlanCard(
-                            day = day,
-                            onExerciseClick = onExerciseClick,
-                            onToggleComplete = { viewModel.toggleDayCompletion(day.date) }
-                        )
+                        items(state.plan.days, key = { it.date.toString() }) { day ->
+                            DayPlanCard(
+                                day = day,
+                                onExerciseClick = onExerciseClick,
+                                onToggleComplete = { viewModel.toggleDayCompletion(day.date) },
+                            )
+                        }
                     }
                 }
             }
-        }
+        } // PullToRefreshBox
     }
 }
 
@@ -157,7 +181,7 @@ fun HomeScreen(
 fun WeeklyProgressCard(completedCount: Int, totalDays: Int, completionRate: Float) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("이번 주 진행률", style = MaterialTheme.typography.titleMedium)
@@ -166,12 +190,12 @@ fun WeeklyProgressCard(completedCount: Int, totalDays: Int, completionRate: Floa
                 progress = { completionRate },
                 modifier = Modifier.fillMaxWidth().height(8.dp),
                 color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "${completedCount}/${totalDays} 완료 (${(completionRate * 100).toInt()}%)",
-                style = MaterialTheme.typography.bodySmall
+                "$completedCount/$totalDays 완료 (${(completionRate * 100).toInt()}%)",
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
@@ -183,15 +207,18 @@ fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit, onToggleComplet
     val dayName = day.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)
     val dateStr = "${day.date.monthValue}/${day.date.dayOfMonth}"
     val containerColor by animateColorAsState(
-        if (day.isCompleted) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.surface,
-        label = "cardColor"
+        if (day.isCompleted) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        label = "cardColor",
     )
 
     Card(
         onClick = { if (!day.isRestDay) onToggleComplete() },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
+        colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -205,18 +232,23 @@ fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit, onToggleComplet
                 }
             }
             if (day.isRestDay) {
-                Text("휴식일", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "휴식일",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
                 day.exercises.forEach { exercise ->
                     TextButton(
                         onClick = { onExerciseClick(exercise.id) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                            Text("${exercise.name}  ${exercise.sets}x${exercise.reps}",
-                                style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "${exercise.name}  ${exercise.sets}x${exercise.reps}",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                         }
                     }
                 }

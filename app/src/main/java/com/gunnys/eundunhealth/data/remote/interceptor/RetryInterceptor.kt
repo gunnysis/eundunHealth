@@ -6,7 +6,7 @@ import java.io.IOException
 
 class RetryInterceptor(
     private val maxRetries: Int = 3,
-    private val initialDelayMs: Long = 500L
+    private val initialDelayMs: Long = 500L,
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {

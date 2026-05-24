@@ -4,6 +4,17 @@
 .key
 app/release
 
+# Claude Code 로컬 설정
+.claude/
+
+# Gradle 자동 생성 (JVM 버전 캐시)
+gradle/gradle-daemon-jvm.properties
+
+# Python
+__pycache__/
+*.pyc
+backend/.venv/
+
 # default
 *.iml
 *.class
@@ -12,7 +23,6 @@ app/release
 .mtj.tmp/
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
-!backend/gradle/wrapper/gradle-wrapper.jar
 *.war
 *.nar
 *.ear
@@ -33,8 +43,13 @@ replay_pid*
 .cxx
 local.properties
 
-# Backend
-/backend/build
-/backend/.gradle
-/backend/.env
-
+# Backend (FastAPI)
+backend/.coverage
+backend/htmlcov/
+backend/.env
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/test_*.db
+backend/*.sqlite
+backend/alembic/versions/__pycache__/

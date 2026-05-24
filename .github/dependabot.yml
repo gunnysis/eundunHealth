@@ -1,0 +1,62 @@
+version: 2
+updates:
+  # Backend (Python / FastAPI) — production + dev
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Seoul
+    open-pull-requests-limit: 5
+    labels: [dependencies, backend]
+    commit-message:
+      prefix: "chore(backend)"
+    groups:
+      # 보안 패치는 단일 PR로 모아 빠르게 리뷰
+      security-updates:
+        applies-to: security-updates
+        patterns: ["*"]
+      # 일반 마이너/패치도 묶어서 PR 노이즈 감소
+      minor-and-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "ci"
+
+  # Android root (Gradle version catalog 포함)
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, android]
+    commit-message:
+      prefix: "chore(android)"
+    groups:
+      androidx:
+        patterns: ["androidx.*"]
+      compose:
+        patterns: ["androidx.compose*"]
+      kotlin:
+        patterns: ["org.jetbrains.kotlin*", "com.google.devtools.ksp*"]
+
+  # Backend Ktor (마이그레이션 완료 시점에 삭제 권장)
+  - package-ecosystem: gradle
+    directory: /backend
+    schedule:
+      interval: monthly  # FastAPI 전환 중이므로 빈도 낮춤
+    open-pull-requests-limit: 2
+    labels: [dependencies, backend-ktor]
+    commit-message:
+      prefix: "chore(backend-ktor)"

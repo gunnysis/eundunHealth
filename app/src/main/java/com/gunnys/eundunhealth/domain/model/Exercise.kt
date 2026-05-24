@@ -9,7 +9,7 @@ data class Exercise(
     val instructions: List<String>,
     val sets: Int,
     val reps: Int,
-    val type: ExerciseType
+    val type: ExerciseType,
 )
 
 enum class ExerciseType { STRENGTH, CARDIO }

@@ -9,33 +9,53 @@ import java.time.Instant
 import javax.inject.Inject
 
 class BadgeRepositoryImpl @Inject constructor(
-    private val api: EundunApi
+    private val api: EundunApi,
 ) : BadgeRepository {
 
     private var cachedBadges: List<BadgeDto>? = null
+    private var cacheTimestamp: Long = 0L
+
+    private suspend fun getOrFetchBadges(): List<BadgeDto> {
+        val now = System.currentTimeMillis()
+        val cached = cachedBadges
+        if (cached != null && now - cacheTimestamp < CACHE_TTL_MS) {
+            return cached
+        }
+        val fresh = api.getBadges()
+        cachedBadges = fresh
+        cacheTimestamp = now
+        return fresh
+    }
 
     override suspend fun getEarnedBadges(): Result<List<Badge>> = runCatching {
-        val dtos = api.getBadges()
-        cachedBadges = dtos
-        dtos.map { dto ->
-            val (name, desc) = BadgeCatalog.getInfo(dto.badgeKey)
-            Badge(dto.id, dto.userId, dto.badgeKey, name, desc,
-                dto.earnedAt?.let { try { Instant.parse(it) } catch (_: Exception) { null } })
-        }
+        getOrFetchBadges().map { dto -> dto.toDomain() }
     }
 
     override suspend fun awardBadge(badgeKey: String): Result<Badge> = runCatching {
         val dto = api.awardBadge(badgeKey)
-        cachedBadges = null  // invalidate cache
-        val (name, desc) = BadgeCatalog.getInfo(badgeKey)
-        Badge(dto.id, dto.userId, dto.badgeKey, name, desc,
-            dto.earnedAt?.let { try { Instant.parse(it) } catch (_: Exception) { null } })
+        // invalidate cache so hasBadge/getEarnedBadges가 즉시 최신화된다
+        cachedBadges = null
+        cacheTimestamp = 0L
+        dto.toDomain()
     }
 
-    override suspend fun hasBadge(badgeKey: String): Boolean {
-        val badges = cachedBadges ?: try {
-            api.getBadges().also { cachedBadges = it }
-        } catch (_: Exception) { return false }
-        return badges.any { it.badgeKey == badgeKey }
+    override suspend fun hasBadge(badgeKey: String): Result<Boolean> = runCatching {
+        getOrFetchBadges().any { it.badgeKey == badgeKey }
+    }
+
+    private fun BadgeDto.toDomain(): Badge {
+        val (name, desc) = BadgeCatalog.getInfo(badgeKey)
+        return Badge(
+            id = id,
+            userId = userId,
+            key = badgeKey,
+            name = name,
+            description = desc,
+            earnedAt = earnedAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
+        )
+    }
+
+    private companion object {
+        const val CACHE_TTL_MS = 60_000L // 1분
     }
 }

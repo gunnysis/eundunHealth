@@ -16,10 +16,13 @@ okhttp = "4.12.0"
 coil = "2.7.0"
 navigationCompose = "2.9.0"
 ksp = "2.3.2"
-kotlinxSerializationJson = "1.8.1"
 sentry = "8.16.0"
 sentryGradle = "5.8.0"
 dataStore = "1.1.4"
+vico = "2.1.0"
+detekt = "1.23.7"
+spotless = "7.0.4"
+ktlint = "1.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -56,11 +59,11 @@ coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 coil-gif = { module = "io.coil-kt:coil-gif", version.ref = "coil" }
 navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
-
 sentry-android = { module = "io.sentry:sentry-android", version.ref = "sentry" }
 sentry-okhttp = { module = "io.sentry:sentry-okhttp", version.ref = "sentry" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }
+
+vico-compose-m3 = { module = "com.patrykandpatrick.vico:compose-m3", version.ref = "vico" }
 
 junit = { group = "junit", name = "junit", version = "4.13.2" }
 mockk = { module = "io.mockk:mockk", version = "1.13.16" }
@@ -74,3 +77,5 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 sentry = { id = "io.sentry.android.gradle", version.ref = "sentryGradle" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

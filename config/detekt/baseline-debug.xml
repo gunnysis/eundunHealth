@@ -1,0 +1,42 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>LongMethod:HomeScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun HomeScreen( onExerciseClick: (String) -&gt; Unit, onBadgesClick: () -&gt; Unit, onHistoryClick: () -&gt; Unit = {}, onStatisticsClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {}, onLogout: () -&gt; Unit, onRequestHealthPermissions: () -&gt; Unit, viewModel: HomeViewModel = hiltViewModel(), )</ID>
+    <ID>LongMethod:ProfileScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen( onBack: () -&gt; Unit, onAccountDeleted: () -&gt; Unit = {}, viewModel: ProfileViewModel = hiltViewModel(), )</ID>
+    <ID>LongParameterList:HomeScreen.kt$( onExerciseClick: (String) -&gt; Unit, onBadgesClick: () -&gt; Unit, onHistoryClick: () -&gt; Unit = {}, onStatisticsClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {}, onLogout: () -&gt; Unit, onRequestHealthPermissions: () -&gt; Unit, viewModel: HomeViewModel = hiltViewModel(), )</ID>
+    <ID>LongParameterList:OnboardingScreen.kt$( label: String, value: Float, range: ClosedFloatingPointRange&lt;Float&gt;, unit: String, decimals: Int, onValueChange: (Float) -&gt; Unit, )</ID>
+    <ID>LongParameterList:ProfileScreen.kt$( initialHeight: Float, initialWeight: Float, initialBodyFat: Float, initialMuscleMass: Float, isSaving: Boolean, isDeleting: Boolean, onSave: (Float, Float, Float, Float) -&gt; Unit, onDeleteClick: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
+    <ID>LongParameterList:ProfileSummaryCard.kt$( height: Float, weight: Float, bodyFat: Float, muscleMass: Float, title: String = "입력 요약", modifier: Modifier = Modifier, )</ID>
+    <ID>MaxLineLength:DatabaseModule.kt$DatabaseModule$fun</ID>
+    <ID>MaxLineLength:ExerciseDbDataSource.kt$ExerciseDbDataSource$suspend fun getStrengthExercises(bodyPart: String, limit: Int = 5): List&lt;ExerciseDto&gt;</ID>
+    <ID>MaxLineLength:HealthRepositoryImpl.kt$HealthRepositoryImpl$override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result&lt;List&lt;LocalDate&gt;&gt;</ID>
+    <ID>MaxLineLength:WorkoutRepositoryImpl.kt$WorkoutRepositoryImpl$return@runCatching WeeklyPlan(cached.id, cached.userId, LocalDate.parse(cached.weekStart), parseDayPlans(cached.dayPlansJson))</ID>
+    <ID>RedundantSuspendModifier:HealthConnectDataSource.kt$HealthConnectDataSource$suspend</ID>
+    <ID>TooGenericExceptionCaught:AuthRepositoryImpl.kt$AuthRepositoryImpl$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:UserRepositoryImpl.kt$UserRepositoryImpl$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:WorkoutRepositoryImpl.kt$WorkoutRepositoryImpl$e: Exception</ID>
+    <ID>UnnecessaryAbstractClass:RepositoryModule.kt$RepositoryModule$RepositoryModule</ID>
+    <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$Result.success(userId)</ID>
+    <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)</ID>
+    <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$val userId = supabaseClient.auth.currentUserOrNull()?.id ?: throw IllegalStateException("로그인 후 사용자 정보를 가져올 수 없습니다")</ID>
+    <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$val userId = supabaseClient.auth.currentUserOrNull()?.id ?: throw IllegalStateException("회원가입 후 사용자 정보를 가져올 수 없습니다")</ID>
+    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$_uiState.value = successWithStats(updatedPlan, current.hasHealthPermission)</ID>
+    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val day = current.plan.days.find { it.date == date } ?: return@launch</ID>
+    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val newCompleted = !day.isCompleted</ID>
+    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val updatedDays = current.plan.days.map { if (it.date == date) it.copy(isCompleted = newCompleted) else it }</ID>
+    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val updatedPlan = current.plan.copy(days = updatedDays)</ID>
+    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$workoutRepo.updateDayCompletion(current.plan.id, date, newCompleted) .onFailure { // Revert on failure _uiState.value = current val appErr = it.toAppError() appErr.reportToSentry() _error.value = appErr }</ID>
+    <ID>UnsafeCallOnNullableType:BadgeScreen.kt$error!!</ID>
+    <ID>UnsafeCallOnNullableType:HistoryScreen.kt$error!!</ID>
+    <ID>UnsafeCallOnNullableType:WorkoutDetailScreen.kt$exercise!!</ID>
+    <ID>UnusedParameter:WorkoutDetailScreen.kt$exerciseId: String</ID>
+    <ID>UnusedPrivateProperty:MainActivity.kt$MainActivity$private val permissionLauncher = registerForActivityResult( androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(), ) { /* Health Connect uses its own permission contract */ }</ID>
+    <ID>UnusedPrivateProperty:SyncHealthDataUseCase.kt$SyncHealthDataUseCase$private val workoutRepo: WorkoutRepository</ID>
+    <ID>UseCheckOrError:AuthRepositoryImpl.kt$AuthRepositoryImpl$throw IllegalStateException("로그인 후 사용자 정보를 가져올 수 없습니다")</ID>
+    <ID>UseCheckOrError:AuthRepositoryImpl.kt$AuthRepositoryImpl$throw IllegalStateException("회원가입 후 사용자 정보를 가져올 수 없습니다")</ID>
+    <ID>UseOrEmpty:AppNavigation.kt$backStackEntry.arguments?.getString("exerciseId") ?: ""</ID>
+    <ID>UseOrEmpty:AuthRepositoryImpl.kt$AuthRepositoryImpl$e.message ?: ""</ID>
+    <ID>UseOrEmpty:BadgeCatalog.kt$BadgeCatalog$template?.description ?: ""</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -6,12 +6,14 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 class HealthRepositoryImpl @Inject constructor(
-    private val healthConnect: HealthConnectDataSource
+    private val healthConnect: HealthConnectDataSource,
 ) : HealthRepository {
 
-    override suspend fun hasPermissions(): Boolean =
-        try { healthConnect.hasPermissions() } catch (_: Exception) { false }
+    override suspend fun hasPermissions(): Boolean = try {
+        healthConnect.hasPermissions()
+    } catch (_: Exception) {
+        false
+    }
 
-    override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> =
-        runCatching { healthConnect.getExerciseDatesThisWeek(weekStart) }
+    override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> = runCatching { healthConnect.getExerciseDatesThisWeek(weekStart) }
 }

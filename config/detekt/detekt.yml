@@ -1,0 +1,43 @@
+# detekt 프로젝트 override — buildUponDefaultConfig=true이므로 기본 규칙에 덮어쓰기만 작성.
+
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+complexity:
+  LongMethod:
+    threshold: 150
+    # @Composable 함수는 UI 트리 선언이라 자연스레 길어짐
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 8
+    # Compose 화면은 콜백을 다수 받음(Action/Navigation/State)
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    active: false
+  CyclomaticComplexMethod:
+    threshold: 20
+
+naming:
+  FunctionNaming:
+    # @Composable 함수는 PascalCase (Compose 컨벤션)
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][_A-Z0-9]*'
+
+style:
+  MagicNumber:
+    active: false
+  ReturnCount:
+    active: false
+  ForbiddenComment:
+    # TODO/FIXME 주석 검출 비활성 — 추적용으로 의도적으로 사용
+    active: false
+  WildcardImport:
+    excludes: ['**/*Test.kt', '**/*Spec.kt']
+  MaxLineLength:
+    maxLineLength: 140
+    excludeCommentStatements: true
+
+# formatting 룰셋은 spotless(ktlint)에 위임 — detekt-formatting 의존성 미사용.
