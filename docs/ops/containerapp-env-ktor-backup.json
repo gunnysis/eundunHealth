@@ -1,0 +1,26 @@
+[
+  {
+    "name": "AZURE_DB_URL",
+    "value": "jdbc:postgresql://healthapp.postgres.database.azure.com:5432/postgres?ssl=true&sslmode=require"
+  },
+  {
+    "name": "AZURE_DB_USER",
+    "value": "gunny"
+  },
+  {
+    "name": "AZURE_DB_PASSWORD",
+    "secretRef": "db-password"
+  },
+  {
+    "name": "SUPABASE_JWT_SECRET",
+    "secretRef": "jwt-secret"
+  },
+  {
+    "name": "SUPABASE_URL",
+    "value": "https://hcowzkqapzlvrvmawfcd.supabase.co"
+  },
+  {
+    "name": "ENV",
+    "value": "production"
+  }
+]
