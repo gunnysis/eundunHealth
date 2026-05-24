@@ -9,6 +9,7 @@ import com.gunnys.eundunhealth.data.remote.api.dto.WeeklyPlanDto
 import com.gunnys.eundunhealth.data.remote.api.dto.WeeklyPlanHistoryDto
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -43,4 +44,7 @@ interface EundunApi {
 
     @POST("badges/{key}")
     suspend fun awardBadge(@Path("key") key: String): BadgeDto
+
+    @DELETE("account")
+    suspend fun deleteAccount(): Response<Unit>
 }

@@ -13,12 +13,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -30,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -44,13 +48,22 @@ import com.gunnys.eundunhealth.ui.onboarding.ProfileSlider
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
+    onAccountDeleted: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val saveState by viewModel.saveState.collectAsState()
+    val deleteState by viewModel.deleteState.collectAsState()
     val error by viewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(deleteState) {
+        if (deleteState is DeleteState.Success) {
+            onAccountDeleted()
+        }
+    }
 
     LaunchedEffect(saveState) {
         when (saveState) {
@@ -116,10 +129,40 @@ fun ProfileScreen(
                     initialBodyFat = state.profile.bodyFatPercent,
                     initialMuscleMass = state.profile.muscleMassKg,
                     isSaving = isSaving,
+                    isDeleting = deleteState is DeleteState.Loading,
                     onSave = viewModel::saveProfile,
+                    onDeleteClick = { showDeleteDialog = true },
                     modifier = Modifier.padding(padding)
                 )
             }
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("계정 삭제") },
+                text = {
+                    Text(
+                        "계정을 삭제하면 모든 운동 기록·배지·프로필이 영구적으로 사라지며, " +
+                            "이 작업은 되돌릴 수 없습니다. 그래도 삭제하시겠습니까?"
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteDialog = false
+                            viewModel.deleteAccount()
+                        },
+                    ) {
+                        Text("삭제", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("취소")
+                    }
+                },
+            )
         }
     }
 }
@@ -131,7 +174,9 @@ private fun ProfileEditContent(
     initialBodyFat: Float,
     initialMuscleMass: Float,
     isSaving: Boolean,
+    isDeleting: Boolean,
     onSave: (Float, Float, Float, Float) -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var height by rememberSaveable { mutableFloatStateOf(initialHeight) }
@@ -173,7 +218,7 @@ private fun ProfileEditContent(
         Button(
             onClick = { onSave(height, weight, bodyFat, muscleMass) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving
+            enabled = !isSaving && !isDeleting
         ) {
             if (isSaving) {
                 CircularProgressIndicator(
@@ -183,6 +228,26 @@ private fun ProfileEditContent(
                 )
             }
             Text("저장하기")
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        OutlinedButton(
+            onClick = onDeleteClick,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isSaving && !isDeleting,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error,
+            ),
+        ) {
+            if (isDeleting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(end = 8.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            Text("계정 삭제")
         }
     }
 }

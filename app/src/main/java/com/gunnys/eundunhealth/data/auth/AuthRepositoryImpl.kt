@@ -1,15 +1,17 @@
 package com.gunnys.eundunhealth.data.auth
 
+import com.gunnys.eundunhealth.data.remote.api.EundunApi
+import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
-import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val supabaseClient: SupabaseClient,
-    private val tokenHolder: AtomicReference<String?>
+    private val tokenHolder: AtomicReference<String?>,
+    private val api: EundunApi,
 ) : AuthRepository {
 
     override suspend fun signIn(email: String, password: String): Result<String> = try {
@@ -66,6 +68,17 @@ class AuthRepositoryImpl @Inject constructor(
         Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(Exception(mapAuthError(e.message ?: "", isLogin = false)))
+    }
+
+    override suspend fun deleteAccount(): Result<Unit> = runCatching {
+        // Backend가 Supabase Auth 사용자 + 앱 DB 데이터를 모두 삭제한다 (FastAPI account_service)
+        val resp = api.deleteAccount()
+        if (!resp.isSuccessful) {
+            throw retrofit2.HttpException(resp)
+        }
+        // 로컬 세션 정리 — 토큰은 이미 서버측에서 무효화됨
+        runCatching { supabaseClient.auth.signOut() }
+        tokenHolder.set(null)
     }
 
     override suspend fun getCurrentUserId(): String? =

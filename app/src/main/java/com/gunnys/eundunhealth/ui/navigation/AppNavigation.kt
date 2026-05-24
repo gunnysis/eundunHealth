@@ -103,7 +103,13 @@ fun AppNavigation(
             )
         }
         composable(Screen.Profile.route) {
-            ProfileScreen(onBack = { navController.popBackStack() })
+            ProfileScreen(
+                onBack = { navController.popBackStack() },
+                onAccountDeleted = {
+                    // AuthViewModel을 Unauthenticated로 전환 → 상단 LaunchedEffect가 Login으로 이동
+                    authViewModel.logout()
+                },
+            )
         }
         composable(Screen.Badges.route) {
             BadgeScreen(onBack = { navController.popBackStack() })

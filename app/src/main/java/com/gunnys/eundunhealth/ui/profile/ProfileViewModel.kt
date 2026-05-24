@@ -26,6 +26,12 @@ sealed class SaveState {
     data object Success : SaveState()
 }
 
+sealed class DeleteState {
+    data object Idle : DeleteState()
+    data object Loading : DeleteState()
+    data object Success : DeleteState()  // 화면 측에서 Login으로 navigate
+}
+
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepo: UserRepository,
@@ -91,5 +97,20 @@ class ProfileViewModel @Inject constructor(
 
     fun clearSaveState() {
         _saveState.value = SaveState.Idle
+    }
+
+    private val _deleteState = MutableStateFlow<DeleteState>(DeleteState.Idle)
+    val deleteState: StateFlow<DeleteState> = _deleteState.asStateFlow()
+
+    fun deleteAccount() = viewModelScope.launch {
+        _deleteState.value = DeleteState.Loading
+        authRepo.deleteAccount()
+            .onSuccess { _deleteState.value = DeleteState.Success }
+            .onFailure {
+                _deleteState.value = DeleteState.Idle
+                val appErr = it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
+            }
     }
 }
