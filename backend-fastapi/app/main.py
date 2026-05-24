@@ -1,4 +1,5 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import sentry_sdk
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
 
     # DB 엔진 + 세션팩토리 1회 생성 → app.state에 저장
@@ -49,7 +50,7 @@ app = FastAPI(title="eundunHealth API", lifespan=lifespan)
 
 # 글로벌 에러 핸들러
 @app.exception_handler(AppException)
-async def app_exception_handler(request: Request, exc: AppException):
+async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
         content={"code": exc.code, "message": exc.message},
@@ -57,7 +58,7 @@ async def app_exception_handler(request: Request, exc: AppException):
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled exception")
     if sentry_sdk.is_initialized():
         sentry_sdk.capture_exception(exc)

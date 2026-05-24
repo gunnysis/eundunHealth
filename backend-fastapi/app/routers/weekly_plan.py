@@ -16,7 +16,7 @@ async def get_plan(
     week_start: str = Query(default_factory=lambda: str(datetime.date.today())),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-):
+) -> WeeklyPlanResponse:
     return await WeeklyPlanService(db).get_plan(user_id, week_start)
 
 
@@ -25,7 +25,7 @@ async def create_plan(
     req: WeeklyPlanRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, str]:
     await WeeklyPlanService(db).upsert_plan(user_id, req)
     return {"status": "ok"}
 
@@ -35,7 +35,7 @@ async def complete(
     req: CompletionRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, str]:
     await WeeklyPlanService(db).update_completion(user_id, req)
     return {"status": "ok"}
 
@@ -46,5 +46,5 @@ async def history(
     size: int = Query(10, ge=1, le=50),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[WeeklyPlanResponse]:
     return await WeeklyPlanService(db).get_history(user_id, page, size)

@@ -35,6 +35,6 @@ async def get_current_user_id(
             algorithms=["ES256"],
             audience="authenticated",
         )
-        return payload["sub"]
+        return str(payload["sub"])
     except (InvalidTokenError, Exception):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증 실패")

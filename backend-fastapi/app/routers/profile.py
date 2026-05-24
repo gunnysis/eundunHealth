@@ -13,7 +13,7 @@ router = APIRouter(tags=["profile"])
 async def get_profile(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-):
+) -> UserProfileResponse:
     return await ProfileService(db).get_profile(user_id)
 
 
@@ -22,6 +22,6 @@ async def upsert_profile(
     req: UserProfileRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, str]:
     await ProfileService(db).upsert_profile(user_id, req)
     return {"status": "ok"}

@@ -43,3 +43,5 @@ local.properties
 /backend/.gradle
 /backend/.env
 
+backend-fastapi/.coverage
+backend-fastapi/htmlcov/

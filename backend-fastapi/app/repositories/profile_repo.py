@@ -14,7 +14,7 @@ class ProfileRepository:
         )
         return result.scalar_one_or_none()
 
-    async def upsert(self, user_id: str, data: dict) -> UserProfile:
+    async def upsert(self, user_id: str, data: dict[str, object]) -> UserProfile:
         profile = await self.get_by_user_id(user_id)
         if profile:
             for key, value in data.items():

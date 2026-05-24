@@ -3,7 +3,6 @@ import pytest
 
 from tests.conftest import set_test_user
 
-
 # === PATCH /weekly-plan/complete (가장 큰 커버리지 갭) ===
 
 @pytest.mark.asyncio

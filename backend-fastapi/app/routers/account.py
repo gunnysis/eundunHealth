@@ -14,6 +14,6 @@ async def delete_account(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
-):
+) -> dict[str, str]:
     await AccountService(db, settings).delete_account(user_id)
     return {"status": "ok"}
