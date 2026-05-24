@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
@@ -58,6 +59,7 @@ fun HomeScreen(
     onBadgesClick: () -> Unit,
     onHistoryClick: () -> Unit = {},
     onStatisticsClick: () -> Unit = {},
+    onGoalClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onLogout: () -> Unit,
     onRequestHealthPermissions: () -> Unit,
@@ -94,6 +96,9 @@ fun HomeScreen(
                     }
                     IconButton(onClick = onStatisticsClick) {
                         Icon(Icons.Default.QueryStats, "통계")
+                    }
+                    IconButton(onClick = onGoalClick) {
+                        Icon(Icons.Default.Flag, "목표")
                     }
                     IconButton(onClick = onBadgesClick) {
                         Icon(Icons.Default.EmojiEvents, "배지")

@@ -16,6 +16,7 @@ import com.gunnys.eundunhealth.ui.auth.ForgotPasswordScreen
 import com.gunnys.eundunhealth.ui.auth.LoginScreen
 import com.gunnys.eundunhealth.ui.auth.SignupScreen
 import com.gunnys.eundunhealth.ui.badge.BadgeScreen
+import com.gunnys.eundunhealth.ui.goal.GoalScreen
 import com.gunnys.eundunhealth.ui.history.HistoryScreen
 import com.gunnys.eundunhealth.ui.home.HomeScreen
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
@@ -90,6 +91,7 @@ fun AppNavigation(
                 onBadgesClick = { navController.navigate(Screen.Badges.route) },
                 onHistoryClick = { navController.navigate(Screen.History.route) },
                 onStatisticsClick = { navController.navigate(Screen.Statistics.route) },
+                onGoalClick = { navController.navigate(Screen.Goal.route) },
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onLogout = { authViewModel.logout() },
                 onRequestHealthPermissions = onRequestHealthPermissions,
@@ -121,6 +123,9 @@ fun AppNavigation(
         }
         composable(Screen.Statistics.route) {
             StatisticsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Goal.route) {
+            GoalScreen(onBack = { navController.popBackStack() })
         }
     }
 }

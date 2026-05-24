@@ -2,6 +2,9 @@ package com.gunnys.eundunhealth.data.remote.api
 
 import com.gunnys.eundunhealth.data.remote.api.dto.BadgeDto
 import com.gunnys.eundunhealth.data.remote.api.dto.CreateWeeklyPlanRequest
+import com.gunnys.eundunhealth.data.remote.api.dto.GoalDto
+import com.gunnys.eundunhealth.data.remote.api.dto.GoalRequest
+import com.gunnys.eundunhealth.data.remote.api.dto.ProfileHistoryEntryDto
 import com.gunnys.eundunhealth.data.remote.api.dto.StatisticsDto
 import com.gunnys.eundunhealth.data.remote.api.dto.UpdateDayCompletionRequest
 import com.gunnys.eundunhealth.data.remote.api.dto.UserProfileDto
@@ -46,6 +49,15 @@ interface EundunApi {
 
     @GET("weekly-plan/statistics")
     suspend fun getStatistics(@Query("weeks") weeks: Int = 12): StatisticsDto
+
+    @GET("profile/history")
+    suspend fun getProfileHistory(@Query("limit") limit: Int = 50): List<ProfileHistoryEntryDto>
+
+    @GET("goals")
+    suspend fun getGoals(): List<GoalDto>
+
+    @PUT("goals")
+    suspend fun upsertGoal(@Body req: GoalRequest): GoalDto
 
     @GET("badges")
     suspend fun getBadges(): List<BadgeDto>

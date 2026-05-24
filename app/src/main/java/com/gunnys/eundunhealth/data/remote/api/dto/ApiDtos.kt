@@ -58,3 +58,22 @@ data class StatisticsDto(
     val currentStreak: Int,
     val longestStreak: Int,
 )
+
+data class GoalDto(
+    val goalType: String, // "weight" | "body_fat"
+    val targetValue: Float,
+    val createdAt: String,
+)
+
+data class GoalRequest(
+    val goalType: String,
+    val targetValue: Float,
+)
+
+data class ProfileHistoryEntryDto(
+    val heightCm: Float,
+    val weightKg: Float,
+    val bodyFatPct: Float?,
+    val muscleMassKg: Float?,
+    val recordedAt: String,
+)
