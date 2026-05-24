@@ -168,10 +168,12 @@ sentry {
         System.getenv("SENTRY_AUTH_TOKEN")
             ?: localProperties.getProperty("SENTRY_AUTH_TOKEN", "")
     val hasToken = token.isNotBlank()
-    // Sentry 프로젝트 slug — local.properties로 override 가능 (재생성 시 이름 변경 대응)
+    // Sentry 프로젝트 slug — 실제 Sentry 대시보드의 slug와 일치해야 ProGuard mapping 업로드 성공.
+    // 현재 Android 프로젝트 slug: "eundunhealth" (백엔드는 "eundunhealth-backend" — 별개 프로젝트)
+    // local.properties의 DSN 키 prefix(eundunhealth-app_*)와는 다른 값임에 주의.
     val sentryProject =
         localProperties.getProperty("SENTRY_PROJECT_ANDROID")
-            ?: "eundunhealth-app"
+            ?: "eundunhealth"
     org.set("gunnys")
     projectName.set(sentryProject)
     authToken.set(token)

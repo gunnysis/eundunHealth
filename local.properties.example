@@ -20,14 +20,17 @@ BACKEND_BASE_URL=http://10.0.2.2:8080/
 
 # Sentry — 프로젝트별로 DSN 분리 (Android 앱 / 백엔드)
 # Android: BuildConfig.SENTRY_DSN으로 매핑되어 EundunHealthApplication.kt에서 init.
+#          실제 Sentry 프로젝트 slug: "eundunhealth"
 # Backend: Container App secret(sentry-dsn-backend)으로 등록 — 이 파일은 참고용이며
-#          앱 빌드에는 영향 없음.
+#          앱 빌드에는 영향 없음. 실제 Sentry 프로젝트 slug: "eundunhealth-backend"
+# NOTE: 변수명의 prefix(eundunhealth-app_, eundunhealth-backend_)는 단순 식별용 prefix이며
+#       실제 Sentry slug과 다름.
 eundunhealth-app_SENTRY_DSN=https://<android-key>@sentry.io/<project>
 eundunhealth-backend_SENTRY_DSN=https://<backend-key>@sentry.io/<project>
 
-# (옵션) Sentry Gradle plugin 프로젝트 slug. 기본값 "eundunhealth-app".
-# 실제 Sentry 프로젝트 slug이 다르면 여기에 명시 (ProGuard mapping 업로드용).
-# SENTRY_PROJECT_ANDROID=eundunhealth-app
+# (옵션) Sentry Gradle plugin 프로젝트 slug. 기본값 "eundunhealth".
+# 향후 slug이 바뀌면 이 값으로 override (ProGuard mapping 업로드용).
+# SENTRY_PROJECT_ANDROID=eundunhealth
 
 # Sentry Gradle plugin auth token (release 빌드의 ProGuard mapping 업로드용)
 # 또는 환경변수 SENTRY_AUTH_TOKEN을 export 해도 됨
