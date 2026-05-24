@@ -1,9 +1,31 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
-**버전:** v1.0
-**작성일:** 2026-05-23
+**문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
+**현재 상태(2026-05-25, v0.1.0):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
-**관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md)
+**관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
+
+---
+
+## 구현 후 변경 사항 (v0.1.0)
+
+본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.**
+
+| 영역 | TRD v1.0 | v0.1.0 현재 |
+|------|----------|------------|
+| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.136.3 (Python 3.12)** + uvicorn |
+| ORM | Exposed 0.61.0 | **SQLAlchemy 2.0 async + asyncpg** |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (41 PASS) |
+| DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
+| 운동 API | RapidAPI ExerciseDB | **OSS** `oss.exercisedb.dev` (인증 불필요) |
+| Supabase 리전 | (US) | **Korea (project `ttzzbfoksncqazvcsfiu`)** |
+| Sentry 프로젝트 | 단일 `eundunhealth` | **두 프로젝트 분리** — Android `eundunhealth`, Backend `eundunhealth-backend` |
+| Android 정적 분석 | 미적용 | **Detekt 1.23.7 + Spotless 7.0.4 + ktlint 1.5.0** |
+| 차트 라이브러리 | 미사용 | **Vico 2.1.0** (통계 + 목표 진행 차트) |
+| versionCode / versionName | (미정) | **13 / 0.1.0** |
+| Alembic head | (미정) | `24d0fe2eb397` (v0.3 history + goals 포함) |
+
+신규 도메인 / 화면(v0.2·v0.3): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, 비밀번호 재설정 — 자세한 내용은 [CHANGELOG.md v0.1.0 entry](./CHANGELOG.md).
 
 ---
 

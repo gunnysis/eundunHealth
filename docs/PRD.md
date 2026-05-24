@@ -1,8 +1,9 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**버전:** v1.0
-**작성일:** 2026-05-23
+**문서 버전:** v1.1 (2026-05-25 — v0.1.0 구현 상태 반영)
+**제품 버전:** v0.1.0 (versionCode 13) — v0.1·v0.2·v0.3 spec 전체 구현 완료. Play Store **Internal Testing** 진입 대상
 **패키지:** `com.gunnys.eundunhealth`
+**구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
 ---
 
@@ -240,19 +241,27 @@
          └──▶ Sentry (에러 모니터링)
 ```
 
-### Backend API
+### Backend API (v0.1.0 — FastAPI Python 3.12)
 
-| Method | Path | 설명 |
-|--------|------|------|
-| `GET` | `/health` | 헬스 체크 |
-| `GET` | `/profile` | 프로필 조회 |
-| `PUT` | `/profile` | 프로필 생성/수정 |
-| `GET` | `/weekly-plan?weekStart=` | 주간 계획 조회 |
-| `POST` | `/weekly-plan` | 주간 계획 생성 |
-| `PATCH` | `/weekly-plan/complete` | 운동 완료 토글 |
-| `GET` | `/weekly-plan/history?page=&size=` | 히스토리 조회 |
-| `GET` | `/badges` | 배지 목록 조회 |
-| `POST` | `/badges/{key}` | 배지 수여 |
+| Method | Path | 설명 | 도입 |
+|--------|------|------|-----|
+| `GET` | `/health` | 헬스 체크 | v0.1 |
+| `GET` | `/profile` | 프로필 조회 | v0.1 |
+| `PUT` | `/profile` | 프로필 생성/수정 (restDay 포함, 매 호출마다 history 자동 기록) | v0.1 / v0.3 |
+| `GET` | `/profile/history?limit=50` | 프로필 변경 이력 (체형 진행 차트용) | v0.3 |
+| `GET` | `/weekly-plan?week_start=` | 주간 계획 조회 | v0.1 |
+| `POST` | `/weekly-plan` | 주간 계획 생성 | v0.1 |
+| `PATCH` | `/weekly-plan/complete` | 운동 완료 토글 | v0.1 |
+| `GET` | `/weekly-plan/history?page=&size=` | 히스토리 조회 (페이지네이션) | v0.1 |
+| `GET` | `/weekly-plan/previous?week_start=` | 직전 주 plan (excludeIds 알고리즘 입력) | v0.2 |
+| `GET` | `/weekly-plan/statistics?weeks=12` | 주간 완료율 + 현재/최장 스트릭 | v0.2 |
+| `GET` | `/badges` | 배지 목록 조회 (9종) | v0.1 / v0.3 |
+| `POST` | `/badges/{key}` | 배지 수여 | v0.1 |
+| `GET` | `/goals` | 목표 목록 (체중·체지방) | v0.3 |
+| `PUT` | `/goals` | 목표 upsert | v0.3 |
+| `DELETE` | `/account` | 회원 탈퇴 (Supabase Auth + 앱 DB 일괄 삭제) | v0.1 |
+
+모든 보호 엔드포인트는 Supabase JWT(ES256 / JWKS) 검증. 응답은 camelCase JSON.
 
 ---
 
@@ -284,12 +293,24 @@ Splash
 
 ---
 
-## 7. 향후 확장 계획
+## 7. 구현 상태 & 향후 확장
+
+### v0.1.0에서 구현 완료 (2026-05-25)
+
+| 영역 | 도입 버전 |
+|------|----------|
+| PUSH/PULL/LEGS 운동 추천 + 이전 주 운동 후순위 | v0.2 |
+| 통계 대시보드 (12주 완료율 + 스트릭, Vico 차트) | v0.2 |
+| 휴식일 커스터마이징 (월~일 SegmentedButton) | v0.3 |
+| 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
+| 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
+
+### 향후 확장 후보
 
 | 기능 | 설명 |
 |------|------|
 | 소셜 기능 | 친구 추가, 운동 현황 공유 |
 | 맞춤 추천 고도화 | 운동 이력 기반 AI 추천 |
 | 영양/식단 관리 | 칼로리 추적, 식단 추천 |
-| 운동 루틴 커스터마이징 | 사용자가 직접 운동 계획 편집 |
-| 추가 배지 | 다양한 도전 과제 및 보상 |
+| 사용자 정의 루틴 | 자동 생성된 plan을 사용자가 직접 편집 |
+| 추가 배지 / 시즌 챌린지 | 시즌별 한정 배지, 친구 간 챌린지 |
