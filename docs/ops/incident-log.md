@@ -62,6 +62,7 @@
 
 **재발 방지**:
 - `app/build.gradle.kts`에 alias task **`releaseArtifacts`** 추가 — `assembleRelease + bundleRelease`를 한 번에. release 빌드 시 항상 둘 다 동기 갱신.
+- ✅ **본 세션 추가 (2026-05-25)**: `scripts/preflight-release.sh` 도입 — Spotless + Detekt + Tests + `releaseArtifacts` 일괄. 출시 직전 단일 명령 검증. `CLAUDE.md` 룰 2에 명시.
 
 ---
 
@@ -103,7 +104,7 @@
 
 **재발 방지**:
 - 단기: 코멘트로 명시 + 새 마이그레이션 생성 후 반드시 수동 검토. `alembic check`은 SQLite에선 false positive 다발.
-- 중기 권장: 로컬 PostgreSQL 컨테이너로 마이그레이션 자동 생성(`docker compose up -d db`로 띄운 PG에 `DATABASE_URL` 가리킨 다음 autogenerate). 다음 마이그레이션부터 적용.
+- ✅ **본 세션 적용 (2026-05-25)**: `scripts/alembic-autogen.sh` 도입 — `docker compose up -d db`로 postgres:16-alpine 띄우고 그 위에서 `alembic upgrade head` + `revision --autogenerate` 수행. SQLite를 거치지 않으므로 dialect mismatch 자체가 발생 안 함. `CLAUDE.md` 룰 3에 강제 명시.
 
 ---
 
@@ -228,8 +229,33 @@
 
 ---
 
+## 본 세션 정착 자동화 (2026-05-25, 후속)
+
+각 인시던트의 "재발 방지"가 실제로 강제되는지 여부 매트릭스. 모든 ✅는 본 회고 PR에서 도입.
+
+| INC | 재발 방지 메커니즘 | 강제 시점 |
+|-----|--------------------|-----------|
+| 01 ACR 삭제 | redeploy.sh untag-only + CLAUDE.md 룰 1 + monitoring §6.1 | 운영자 명령 + Claude 가이드 |
+| 02 redeploy.sh dev overwrite | backup→restore 패턴 (이미 적용) | 매 redeploy 실행 |
+| 03 starlette lifespan | ✅ backend.yml `runtime-smoke` job — docker compose smoke | 모든 backend PR |
+| 04 versionCode 어긋남 | ✅ `:app:releaseArtifacts` task + `scripts/preflight-release.sh` + CLAUDE.md 룰 2 | 릴리스 빌드 직전 |
+| 05 PAT 평문 노출 | (사용자 처리) credential helper / SSH key | 운영자 후속 |
+| 06 containerapp exec | monitoring §6.3 firewall 임시 허용 패턴 | DB 작업 표준 |
+| 07 Alembic SQLite UUID | ✅ `scripts/alembic-autogen.sh` + CLAUDE.md 룰 3 | 모든 autogen |
+| 08 ACR Basic SKU 한계 | 수용 (분기별 점검) | manual |
+| 09 Sentry DSN 키 이름 | build.gradle.kts fallback chain (이미 적용) | 빌드 시 |
+| 10 Sentry slug 추정 | properties override (이미 적용) | 빌드 시 |
+| 11 SQLite 1초 정밀도 | 테스트에서 set 비교 (이미 적용) | 매 test |
+| 12 Detekt 신규 위반 | detekt.yml ignoreAnnotated + Android CI | 모든 android PR |
+| 13 Pydantic alias warning | Annotated 마이그레이션 + filterwarnings | 매 backend test |
+| 14 Supabase orphan | CLAUDE.md 룰 5 + monitoring §6.4 | 정책 |
+| 15 Container App secret | monitoring §6.2 4단계 패턴 + PR template | secret 변경 시 |
+| 16 Sentry CLI warning | 수용 (무해) | — |
+| 공통 | ✅ `.github/PULL_REQUEST_TEMPLATE.md` destructive-ops 체크리스트 | 모든 PR |
+
 ## 변경 이력
 
 | 날짜 | 변경 |
 |------|------|
 | 2026-05-25 | 초안 작성 — 16건 incident 정리 |
+| 2026-05-25 (후속) | 권장 항목 자동화 정착 — alembic-autogen.sh, preflight-release.sh, PR template, CLAUDE.md 룰 5종 |

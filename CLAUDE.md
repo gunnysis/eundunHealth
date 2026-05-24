@@ -163,6 +163,45 @@ DELETE /account
 - **Sentry**: Android `eundunhealth`, Backend `eundunhealth-backend` (각 별도 project)
 - CI: GitHub Actions (`backend.yml` + `android.yml`) + Dependabot
 
+## 운영 안전 규칙 (Claude 작업 시 필독)
+
+지난 인시던트들의 root cause는 모두 `docs/ops/incident-log.md`에 기록됨. 다음 5개 룰은 그 결과로 만들어진 강제 가이드 — 어기면 운영 사고로 직결.
+
+### 룰 1 — ACR 정리는 `untag`만 사용 (INC-01)
+`az acr repository delete --image <repo>:<tag>`는 그 tag가 가리키는 **manifest 자체를 삭제**해서 같은 digest를 공유하는 `latest`·`fastapi-latest` 등이 함께 사라진다. 옛 timestamp 태그 정리는 반드시:
+```bash
+az acr repository untag --name eundunhealthacr --image eundunhealth-api:<tag>
+```
+또는 `bash C:/programming/docker/eundunhealth-api/redeploy.sh`의 자동 후크에 맡길 것. `monitoring-and-cost.md §6.1` 매트릭스 참조.
+
+### 룰 2 — 릴리스 산출물은 `releaseArtifacts` 하나로만 (INC-04)
+AAB와 APK를 따로 빌드하면 사이에 versionCode가 바뀌어 어긋날 수 있다. **반드시**:
+```bash
+./gradlew :app:releaseArtifacts        # AAB + APK 동시
+# 또는 (모든 게이트 + 빌드를 한 번에)
+bash scripts/preflight-release.sh
+```
+
+### 룰 3 — Alembic autogenerate은 PostgreSQL 컨테이너 사용 (INC-07)
+`pytest`가 띄우는 SQLite로 autogenerate를 돌리면 UUID↔NUMERIC 거짓 양성이 마이그레이션 파일에 박혀 프로덕션에서 cast 에러 발생. **항상**:
+```bash
+bash scripts/alembic-autogen.sh "add user_settings table"
+```
+이 스크립트가 `docker compose up -d db`로 PG 16을 띄우고 그 위에 autogen을 수행. 끝나면 컨테이너 자동 정리(`-k`로 유지 가능).
+
+### 룰 4 — `lifespan` 안에서 `app.add_middleware()` 호출 금지 (INC-03)
+starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeError: Cannot add middleware after application started`. CORS 등은 **모듈 레벨**에서 등록. `backend.yml`의 `runtime-smoke` job이 docker compose로 이 회귀를 PR 단계에서 차단.
+
+### 룰 5 — Supabase 프로젝트는 v1.0 출시 후 절대 교체 금지 (INC-14)
+프로젝트가 갈리면 user_id namespace가 바뀌어 기존 사용자가 모두 orphan이 된다. 출시 전(현 상태)에만 5개 사용자 테이블 TRUNCATE로 안전 교체 가능. 출시 후 불가피하면 매핑 테이블 + 백필 + 사용자 공지 절차 필수.
+
+### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.6`)
+1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?
+2. `--yes`/`--no-confirm` 플래그가 무엇을 묵시적으로 동의하는가?
+3. 연쇄 영향(manifest 공유, secretref, firewall rule)은?
+4. 롤백 경로(이미지 캐시, git 백업, DB PITR)는?
+5. 실패 시 Sentry/Health Check로 즉시 인지 가능한가?
+
 ## Documentation
 
 - `@docs/CHANGELOG.md` — 버전 이력 (v0.1.0 통합)
@@ -171,7 +210,14 @@ DELETE /account
 - `@docs/SPEC.md` — 기능 명세
 - `@docs/privacy-policy.md` — 개인정보 처리방침 (Play Store URL 호스팅 대상)
 - `@docs/ops/operations-snapshot.md` — **현재 운영 상태 단일 출처**
+- `@docs/ops/incident-log.md` — 16건 인시던트 + root cause + 재발 방지 패턴
 - `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
-- `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget 운영 가이드
+- `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
 - `@docs/ops/containerapp-env-ktor-backup.json` — cutover 직전 env 스냅샷 (historical)
+
+### 자동화 스크립트 (`scripts/`)
+- `scripts/preflight-release.sh` — Spotless + Detekt + Tests + releaseArtifacts 일괄 (INC-04 방지)
+- `scripts/alembic-autogen.sh` — postgres:16-alpine 컨테이너 기반 autogenerate (INC-07 방지)
+- `scripts/warm-gradle.sh` — Gradle 데몬 사전 구동
+- `scripts/claude-context.sh` / `claude-precompact.sh` — SessionStart/PreCompact 훅
