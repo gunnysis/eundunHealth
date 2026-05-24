@@ -4,6 +4,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP"]
+# N818: 예외 클래스 이름은 "Error" 접미사를 권장하지만,
+# 설계서가 AppException/NotFoundException 등으로 명명하므로 유지
+ignore = ["N818"]
 
 [tool.mypy]
 python_version = "3.12"
