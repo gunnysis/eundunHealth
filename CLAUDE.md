@@ -4,24 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python)** backend. Users input body metrics, receive auto-generated weekly workout plans from ExerciseDB, track completion via Health Connect, and earn badges. All UI text is Korean.
+eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
-> 레거시 Ktor 백엔드 소스는 `D:\backup\dev\project\eundunHealth\`로 이동·보관됨. ACR의 `ktor-final` 이미지 태그도 함께 보존되어 있어 인프라 롤백은 여전히 가능 (`docs/ops/migration-runbook.md` §5 참조).
+**Current state**: versionName `0.1.0` (versionCode `13`). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. Ready for Play Store **Internal Testing** track. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+
+> Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
 ## Build & Run Commands
 
 ### Android App (root project)
 ```bash
-./gradlew clean assembleDebug          # Debug build
-./gradlew clean assembleRelease        # Release build (R8 enabled with ProGuard rules)
+./gradlew :app:assembleDebug           # Debug build
+./gradlew :app:assembleRelease         # Release APK (R8 + signing)
+./gradlew :app:bundleRelease           # Release AAB (Play Store)
 ./gradlew :app:testDebugUnitTest       # Run all unit tests
-./gradlew :app:testDebugUnitTest --tests "com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCaseTest"  # Single test class
+./gradlew :app:testDebugUnitTest --tests "com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCaseTest"
 
-# 코드 품질 (Phase 4 v0.2 도입)
+# 코드 품질
 ./gradlew :app:spotlessApply           # 자동 포맷 (ktlint)
 ./gradlew :app:spotlessCheck           # 포맷 검증 (CI에서 사용)
-./gradlew :app:detektDebug             # 정적 분석
-./gradlew :app:detektBaselineDebug     # 기존 위반을 baseline-debug.xml에 박제 (신규만 차단)
+./gradlew :app:detektDebug             # 정적 분석 (baseline-debug.xml로 기존 위반 박제)
+./gradlew :app:detektBaselineDebug     # baseline 재생성
 
 # git pre-commit hook 활성화 (clone 직후 1회)
 git config core.hooksPath .githooks
@@ -30,29 +33,25 @@ git config core.hooksPath .githooks
 ### Backend (FastAPI, in `backend/`)
 ```bash
 cd backend
-# 가상환경 + 의존성 설치 (1회)
 python -m venv .venv
 .venv/Scripts/pip install -r requirements-dev.txt
 
 # 로컬 실행 (Docker Compose 권장)
 docker compose up -d                  # PostgreSQL + uvicorn 동시 기동
 docker compose logs -f api
+docker compose down -v                # 정리
 
-# 또는 호스트 직접 실행 (DB는 별도 기동 필요)
+# 호스트 직접 실행 (DB는 별도 기동 필요)
 .venv/Scripts/uvicorn app.main:app --reload --port 8080
 
-# 테스트
+# 테스트 + 정적 검사
 .venv/Scripts/pytest tests/ -v --cov=app
-
-# 정적 검사
 .venv/Scripts/ruff check app/ tests/
 .venv/Scripts/mypy app/
-
-# 보안 스캔
 .venv/Scripts/bandit -r app -ll
 .venv/Scripts/pip-audit -r requirements.txt --strict --ignore-vuln PYSEC-2026-161
 
-# Alembic 마이그레이션
+# Alembic 마이그레이션 (현재 head: 24d0fe2eb397)
 .venv/Scripts/alembic upgrade head
 .venv/Scripts/alembic revision --autogenerate -m "..."
 ```
@@ -62,96 +61,163 @@ docker compose logs -f api
 # Redeploy script at C:/programming/docker/eundunhealth-api/
 bash C:/programming/docker/eundunhealth-api/redeploy.sh [tag]
 ```
-FastAPI uvicorn 이미지를 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `apps`) 업데이트.
-환경변수/마이그레이션 절차는 `docs/ops/migration-runbook.md` 참조.
+FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `apps`, Korea Central) 업데이트 → /health 헬스체크 → timestamp 태그 자동 정리(최근 5개만 보존). 환경변수 변경은 별도 `az containerapp update --set-env-vars` 또는 `secret set`. 자세한 절차는 `docs/ops/migration-runbook.md`.
 
 Docker development location: `C:\programming\docker\eundunhealth-api`
 
 ### Device Testing (Android)
 ```bash
-# Install directly via adb (bypasses Android Studio 16KB alignment warning)
 adb install -r app/build/outputs/apk/debug/app-debug.apk
+# 또는 release APK
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 ## Architecture
 
 ### Multi-Project Structure
 - **Root project** includes only `:app` (Android). Backend는 별도 디렉토리 `backend/`에 FastAPI(Python) 프로젝트로 분리.
-- Dependency versions centralized in `gradle/libs.versions.toml` (Android only).
-- Build secrets (Supabase URL/key, ExerciseDB key, backend URL, Sentry DSN) loaded from `local.properties` into BuildConfig fields.
-- Release signing credentials should also be in `local.properties` or environment variables — never hardcode in `build.gradle.kts`.
+- Dependency versions centralized in `gradle/libs.versions.toml` (Android).
+- Build secrets (Supabase URL/key, Backend URL, Sentry DSN) loaded from `local.properties` into BuildConfig fields. ExerciseDB는 OSS API라 키 불필요.
+- Release signing credentials도 `local.properties`에 (`RELEASE_STORE_PASSWORD`, `RELEASE_KEY_PASSWORD`, `RELEASE_KEY_ALIAS=eundunhealth_sign_key`). `build.gradle.kts`에 하드코드 금지.
 
 ### Android App (`app/`)
 Package: `com.gunnys.eundunhealth`
 
 **Clean Architecture layers:**
-- **UI** (`ui/`): Compose screens + ViewModels. Navigation via sealed `Screen` class in `navigation/`. Screens: splash, auth (login/signup/forgot-password), onboarding, home, profile, workout detail, history, badges.
-- **Domain** (`domain/`): Models, repository interfaces, use cases. `domain/model/AppError.kt`에 통일 에러 sealed class + `Throwable.toAppError()` + `AppError.reportToSentry()`.
-- **Data** (`data/`): Repository implementations, Retrofit API (`remote/api/EundunApi.kt`), Room database (`local/`), Health Connect datasource, Supabase auth (`auth/AuthRepositoryImpl.kt`), DataStore preferences.
-- **DI** (`di/`): Hilt modules — `NetworkModule`, `SupabaseModule`, `DatabaseModule`, `RepositoryModule`, `CoilModule`.
+- **UI** (`ui/`): Compose 화면 + ViewModels. Navigation은 `navigation/` 의 sealed `Screen`. 화면: splash, auth(login/signup/forgot-password), onboarding, home, profile, workout detail, history, badges, **statistics**(v0.2), **goal**(v0.3).
+- **Domain** (`domain/`): 모델, 리포 인터페이스, use case. `domain/model/AppError.kt`에 통일 에러 sealed class + `Throwable.toAppError()` + `AppError.reportToSentry()`.
+- **Data** (`data/`): Repository 구현, Retrofit API(`remote/api/EundunApi.kt`), Room(`local/`), Health Connect, Supabase auth(`auth/AuthRepositoryImpl.kt`), DataStore.
+- **DI** (`di/`): Hilt 모듈 — `NetworkModule`, `SupabaseModule`, `DatabaseModule`, `RepositoryModule`(GoalRepository 포함), `CoilModule`.
 
 **Key patterns:**
-- ViewModels get userId via `AuthRepository.getCurrentUserId()` — never inject `SupabaseClient` directly into ViewModels.
-- 모든 ViewModel은 `_error: MutableStateFlow<AppError?>` + `clearError()` 통일 패턴. `runCatching { ... }.onFailure { e -> e.toAppError().also { it.reportToSentry(); _error.value = it } }`.
-- Token management via `AtomicReference` in `NetworkModule`, refreshed by `TokenAuthenticator` on 401.
-- `RetryInterceptor` does exponential backoff (3 retries, 500ms/1s/2s).
-- Auth errors mapped to Korean user-friendly messages in `AuthRepositoryImpl.mapAuthError()`.
-- Shared UI components in `ui/components/` (`ProfileSummaryCard`, `ProfileSlider`, `SkeletonUi`, `ErrorContent`, `EmptyContent`).
-- `SentryInitProvider` disabled in AndroidManifest (`tools:node="remove"`) — Sentry initialized manually in `EundunHealthApplication` with DSN blank check.
+- ViewModel은 `AuthRepository.getCurrentUserId()`로 userId를 받는다 — `SupabaseClient` 직접 주입 금지.
+- 모든 ViewModel: `_error: MutableStateFlow<AppError?>` + `clearError()` 통일. `runCatching { ... }.onFailure { e -> val a = e.toAppError(); a.reportToSentry(); _error.value = a }`.
+- Token: `NetworkModule`의 `AtomicReference`, `TokenAuthenticator`가 401 시 5초 timeout으로 갱신 + 실패 시 무효화.
+- `RetryInterceptor` 지수 백오프 (3회 / 500ms·1s·2s).
+- Auth 에러는 `AuthRepositoryImpl.mapAuthError()`로 한국어 사용자 메시지.
+- 공통 UI: `ui/components/` (`ProfileSummaryCard`, `ProfileSlider`, `SkeletonUi`, `ErrorContent`, `EmptyContent`).
+- `SentryInitProvider`는 AndroidManifest `tools:node="remove"`로 비활성 — `EundunHealthApplication`에서 DSN blank 검사 후 수동 init.
+- **WeeklyPlanDao.getPlan(userId, weekStart)**: userId 필터링 필수 (v0.1 CRITICAL fix). EundunDatabase version=2 + fallbackToDestructiveMigration.
 
 ### Backend (`backend/` — FastAPI / Python 3.12)
 Package: `app`
 
-- `app/main.py` — FastAPI app + lifespan(DB 엔진/Sentry/CORS) + 글로벌 exception handler.
-- `app/config.py` — pydantic-settings, `get_settings()` 의존성 함수.
-- `app/database.py` — `Base = DeclarativeBase`, `get_db()` UoW 패턴 (Request 통해 app.state.session_factory).
-- `app/dependencies.py` — JWKS 기반 JWT 검증 (`PyJWKClient` 24h TTL 캐시, ES256).
+- `app/main.py` — FastAPI 앱 + lifespan(DB 엔진/Sentry) + 모듈 레벨 CORS(`add_middleware`는 lifespan 내부 금지) + 글로벌 exception handler.
+- `app/config.py` — pydantic-settings, `get_settings()` `@lru_cache`.
+- `app/database.py` — `Base = DeclarativeBase`, `get_db()` UoW 패턴 (Request → `app.state.session_factory`).
+- `app/dependencies.py` — JWKS 기반 JWT 검증 (`PyJWKClient` 24h TTL 캐시, ES256, `authenticated` audience).
 - `app/exceptions.py` — `AppException`/`NotFoundException`/`ConflictException`/`BadRequestException`.
-- `app/models/` — SQLAlchemy 2.0 `Mapped[T] = mapped_column(...)` 스타일.
-- `app/schemas/` — Pydantic `CamelSchema` 베이스 (alias_generator=to_camel, populate_by_name=True).
-- `app/repositories/` — DB 접근 추상화.
-- `app/services/` — 비즈니스 로직 (`account_service`가 Supabase Admin API로 Auth 사용자 삭제).
-- `app/routers/` — 얇은 라우터, Service에 위임.
-- `alembic/` — async 엔진 연동, 프로덕션은 `stamp head`로 초기화 (기존 테이블 보존).
+- `app/models/` — SQLAlchemy 2.0 `Mapped[T] = mapped_column(...)` (Postgres UUID).
+- `app/schemas/` — Pydantic `CamelSchema` (alias_generator=to_camel, populate_by_name=True). v0.3에 `goal.py`, `statistics.py` 추가.
+- `app/repositories/` — DB 접근 추상화. `profile_history_repo`, `goal_repo` (v0.3).
+- `app/services/` — 비즈니스 로직. `account_service`가 Supabase Admin API로 Auth 사용자 삭제. `statistics_service` (v0.2), `goal_service` (v0.3).
+- `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py` 신규.
+- `alembic/` — async 엔진 연동. **head: `24d0fe2eb397` (v0.3 history + goals)**.
 
-**API Endpoints (all except /health require JWT):**
+**API Endpoints (12개 — `/health` 제외 모두 JWT 필요):**
 ```
 GET    /health
 GET    /profile
-PUT    /profile
+PUT    /profile                              # restDay 포함
+GET    /profile/history?limit=50             # v0.3
 GET    /weekly-plan?week_start=
 POST   /weekly-plan
 PATCH  /weekly-plan/complete
 GET    /weekly-plan/history?page=&size=
+GET    /weekly-plan/previous?week_start=     # v0.2 — 알고리즘 입력
+GET    /weekly-plan/statistics?weeks=12      # v0.2 — 완료율 + 스트릭
 GET    /badges
-POST   /badges/{key}
+POST   /badges/{key}                         # 9종 (마일스톤 4 + 목표 달성 2 추가)
+GET    /goals                                # v0.3
+PUT    /goals                                # v0.3
 DELETE /account
 ```
 
 ## Key Technical Details
 
 ### Android App
-- **Kotlin 2.2.10**, KSP 2.3.2 (KSP 버전은 Kotlin과 호환 필요 — 불일치 시 빌드 실패 주의)
+- **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
 - **Gradle 9.4.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
-- **App version**: versionName `0.0.4`, versionCode `12`
-- **Sentry 8.16.0** — requires 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false` in build.gradle.kts
-- Supabase JWT algorithm is **ES256** (ECDSA), not HMAC256 — backend uses JWKS public key verification
+- **App version**: versionName **`0.1.0`**, versionCode **`13`** (다음 빌드부터 14, 15, ...)
+- **Sentry Android 8.16.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
+- **Vico 2.1.0** (compose-m3) — 통계 + 목표 진행 차트
+- **Detekt 1.23.7 + Spotless 7.0.4 + ktlint 1.5.0**
+- Supabase JWT algorithm: **ES256 (ECDSA)** — backend uses JWKS public key verification
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
-- Korean timezone (KST) is the user-facing standard for dates
+- 시간대: 한국(KST)
+- pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug 자동 실행
 
 ### Backend (FastAPI)
 - **Python 3.12**, FastAPI 0.136.3, SQLAlchemy 2.0 async + asyncpg, Alembic 1.14
 - **starlette 0.49.1** (CVE 패치 위해 명시 pin), PyJWT 2.12 (JWKS), httpx (Supabase Admin API)
-- **Sentry SDK 2.19** (FastAPI integration)
-- mypy strict 통과, ruff/bandit clean, pytest 20/20 PASS, coverage 82%
+- **Sentry SDK 2.19** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
+- mypy strict 통과, ruff/bandit clean, pytest 41/41 PASS, coverage 82%
+- Alembic head `24d0fe2eb397`
+
+### Infrastructure
+- **Container App** `eundunhealth-api` (RG `apps`, Korea Central, Min replicas 0 → ScaledToZero)
+- **ACR** `eundunhealthacr` (Basic SKU — retention 정책 미지원, redeploy.sh가 timestamp 태그 최근 5개만 보존)
+- **Azure PostgreSQL** Flexible Server `healthapp` (B1ms, 32GB, Korea Central). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
+- **Supabase** Korea 리전, project `ttzzbfoksncqazvcsfiu`
+- **Sentry**: Android `eundunhealth`, Backend `eundunhealth-backend` (각 별도 project)
+- CI: GitHub Actions (`backend.yml` + `android.yml`) + Dependabot
+
+## 운영 안전 규칙 (Claude 작업 시 필독)
+
+지난 인시던트들의 root cause는 모두 `docs/ops/incident-log.md`에 기록됨. 다음 5개 룰은 그 결과로 만들어진 강제 가이드 — 어기면 운영 사고로 직결.
+
+### 룰 1 — ACR 정리는 `untag`만 사용 (INC-01)
+`az acr repository delete --image <repo>:<tag>`는 그 tag가 가리키는 **manifest 자체를 삭제**해서 같은 digest를 공유하는 `latest`·`fastapi-latest` 등이 함께 사라진다. 옛 timestamp 태그 정리는 반드시:
+```bash
+az acr repository untag --name eundunhealthacr --image eundunhealth-api:<tag>
+```
+또는 `bash C:/programming/docker/eundunhealth-api/redeploy.sh`의 자동 후크에 맡길 것. `monitoring-and-cost.md §6.1` 매트릭스 참조.
+
+### 룰 2 — 릴리스 산출물은 `releaseArtifacts` 하나로만 (INC-04)
+AAB와 APK를 따로 빌드하면 사이에 versionCode가 바뀌어 어긋날 수 있다. **반드시**:
+```bash
+./gradlew :app:releaseArtifacts        # AAB + APK 동시
+# 또는 (모든 게이트 + 빌드를 한 번에)
+bash scripts/preflight-release.sh
+```
+
+### 룰 3 — Alembic autogenerate은 PostgreSQL 컨테이너 사용 (INC-07)
+`pytest`가 띄우는 SQLite로 autogenerate를 돌리면 UUID↔NUMERIC 거짓 양성이 마이그레이션 파일에 박혀 프로덕션에서 cast 에러 발생. **항상**:
+```bash
+bash scripts/alembic-autogen.sh "add user_settings table"
+```
+이 스크립트가 `docker compose up -d db`로 PG 16을 띄우고 그 위에 autogen을 수행. 끝나면 컨테이너 자동 정리(`-k`로 유지 가능).
+
+### 룰 4 — `lifespan` 안에서 `app.add_middleware()` 호출 금지 (INC-03)
+starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeError: Cannot add middleware after application started`. CORS 등은 **모듈 레벨**에서 등록. `backend.yml`의 `runtime-smoke` job이 docker compose로 이 회귀를 PR 단계에서 차단.
+
+### 룰 5 — Supabase 프로젝트는 v1.0 출시 후 절대 교체 금지 (INC-14)
+프로젝트가 갈리면 user_id namespace가 바뀌어 기존 사용자가 모두 orphan이 된다. 출시 전(현 상태)에만 5개 사용자 테이블 TRUNCATE로 안전 교체 가능. 출시 후 불가피하면 매핑 테이블 + 백필 + 사용자 공지 절차 필수.
+
+### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.6`)
+1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?
+2. `--yes`/`--no-confirm` 플래그가 무엇을 묵시적으로 동의하는가?
+3. 연쇄 영향(manifest 공유, secretref, firewall rule)은?
+4. 롤백 경로(이미지 캐시, git 백업, DB PITR)는?
+5. 실패 시 Sentry/Health Check로 즉시 인지 가능한가?
 
 ## Documentation
 
-- `@docs/SPEC.md` — Full feature specification
-- `@docs/CHANGELOG.md` — Version history and work log
-- `@docs/PRD.md` — Product Requirements Document
-- `@docs/TRD.md` — Technical Requirements Document
-- `@docs/constitution.md` — Constitution
-- `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차
-- `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget 운영 가이드
+- `@docs/CHANGELOG.md` — 버전 이력 (v0.1.0 통합)
+- `@docs/PRD.md` — Product Requirements
+- `@docs/TRD.md` — Technical Requirements
+- `@docs/SPEC.md` — 기능 명세
+- `@docs/privacy-policy.md` — 개인정보 처리방침 (Play Store URL 호스팅 대상)
+- `@docs/ops/operations-snapshot.md` — **현재 운영 상태 단일 출처**
+- `@docs/ops/incident-log.md` — 16건 인시던트 + root cause + 재발 방지 패턴
+- `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
+- `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
+- `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
+- `@docs/ops/containerapp-env-ktor-backup.json` — cutover 직전 env 스냅샷 (historical)
+
+### 자동화 스크립트 (`scripts/`)
+- `scripts/preflight-release.sh` — Spotless + Detekt + Tests + releaseArtifacts 일괄 (INC-04 방지)
+- `scripts/alembic-autogen.sh` — postgres:16-alpine 컨테이너 기반 autogenerate (INC-07 방지)
+- `scripts/warm-gradle.sh` — Gradle 데몬 사전 구동
+- `scripts/claude-context.sh` / `claude-precompact.sh` — SessionStart/PreCompact 훅

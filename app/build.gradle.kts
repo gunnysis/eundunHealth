@@ -61,8 +61,10 @@ android {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
         targetSdk = 37
-        versionCode = 12
-        versionName = "0.0.4"
+        // v0.1 + v0.2 + v0.3 spec 모두 구현 완료된 첫 internal testing 빌드.
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 14, 15, ...
+        versionCode = 13
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -70,7 +72,11 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
         // EXERCISEDB_API_KEY 제거 — OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 불필요
         buildConfigField("String", "BACKEND_BASE_URL", "\"${localProperties.getProperty("BACKEND_BASE_URL", "http://10.0.2.2:8080/")}\"")
-        buildConfigField("String", "SENTRY_DSN", "\"${localProperties.getProperty("SENTRY_DSN", "")}\"")
+        // Android 클라이언트 DSN. 새 키(eundunhealth-app_SENTRY_DSN) 우선, 옛 키(SENTRY_DSN) 폴백.
+        val androidSentryDsn =
+            localProperties.getProperty("eundunhealth-app_SENTRY_DSN")
+                ?: localProperties.getProperty("SENTRY_DSN", "")
+        buildConfigField("String", "SENTRY_DSN", "\"$androidSentryDsn\"")
     }
 
     buildTypes {
@@ -164,12 +170,26 @@ sentry {
         System.getenv("SENTRY_AUTH_TOKEN")
             ?: localProperties.getProperty("SENTRY_AUTH_TOKEN", "")
     val hasToken = token.isNotBlank()
+    // Sentry 프로젝트 slug — 실제 Sentry 대시보드의 slug와 일치해야 ProGuard mapping 업로드 성공.
+    // 현재 Android 프로젝트 slug: "eundunhealth" (백엔드는 "eundunhealth-backend" — 별개 프로젝트)
+    // local.properties의 DSN 키 prefix(eundunhealth-app_*)와는 다른 값임에 주의.
+    val sentryProject =
+        localProperties.getProperty("SENTRY_PROJECT_ANDROID")
+            ?: "eundunhealth"
     org.set("gunnys")
-    projectName.set("eundunhealth")
+    projectName.set(sentryProject)
     authToken.set(token)
     includeProguardMapping.set(hasToken)
     autoUploadProguardMapping.set(hasToken)
     autoUploadSourceContext.set(false)
     uploadNativeSymbols.set(false)
     includeNativeSources.set(false)
+}
+
+// release 산출물 일괄 빌드 — AAB(Play Store) + APK(사이드로드) versionCode/Name 동기 보장.
+// 참고 인시던트: docs/ops/incident-log.md INC-2026-05-24-04.
+tasks.register("releaseArtifacts") {
+    group = "build"
+    description = "Builds release AAB (bundleRelease) and APK (assembleRelease) together."
+    dependsOn("assembleRelease", "bundleRelease")
 }

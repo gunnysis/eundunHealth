@@ -1,5 +1,8 @@
 # eundunHealth 기능 명세서
 
+> **문서 버전:** v1.0 (초기 설계) — 본문은 그대로 보존.
+> **현재 제품 상태(2026-05-25):** v0.1.0 (versionCode 13). v0.2(통계·운동 알고리즘)·v0.3(휴식일·목표·배지 확장) spec 모두 구현 완료. 자세한 차이는 [CHANGELOG.md](./CHANGELOG.md) / [TRD.md "구현 후 변경 사항"](./TRD.md) 참조.
+
 ## 프로젝트 개요
 
 **은둔헬스(eundunHealth)** 는 사용자의 신체 정보를 기반으로 맞춤 주간 운동 계획을 자동 생성하고, 운동 달성을 추적하는 Android 앱입니다.
@@ -7,6 +10,9 @@
 - **패키지**: `com.gunnys.eundunhealth`
 - **최소 SDK**: 26 (Android 8.0)
 - **대상 SDK**: 37 (Android 17)
+- **백엔드**: FastAPI(Python 3.12) — 본 문서 v1.0 작성 당시 Ktor였으나 v0.1.0에서 전환됨.
+- **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 인증 불필요).
+- **인증**: Supabase Auth(한국 리전, JWKS ES256).
 
 ---
 

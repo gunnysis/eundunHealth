@@ -59,6 +59,50 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  # ----------------------------------------------------------------
+  # Runtime smoke — pytest의 ASGITransport는 lifespan을 우회하므로
+  # uvicorn 기동 시점의 회귀(예: starlette 0.49+ lifespan add_middleware 금지)는
+  # 단위 테스트로 잡지 못한다. docker compose로 실제 기동 + /health 응답을
+  # PR 단계에서 검증해 런타임 회귀를 사전 차단한다.
+  # 참고 인시던트: docs/ops/incident-log.md INC-2026-05-24-03.
+  # ----------------------------------------------------------------
+  runtime-smoke:
+    name: Docker compose smoke (uvicorn lifespan)
+    runs-on: ubuntu-latest
+    needs: test
+    defaults:
+      run:
+        working-directory: ${{ env.BACKEND_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compose up (db + api)
+        env:
+          # docker-compose.yml은 SUPABASE_URL/KEY를 placeholder 기본값으로 fallback.
+          # /health는 인증 없이 200 응답해야 하므로 실제 값 불필요.
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+        run: docker compose up -d --build
+
+      - name: Wait for /health 200 (max 60s)
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            STATUS=$(curl -s -m 5 -o /dev/null -w "%{http_code}" http://localhost:8080/health || echo "000")
+            echo "attempt $i: $STATUS"
+            [ "$STATUS" = "200" ] && exit 0
+            sleep 5
+          done
+          echo "::error::/health did not return 200 within 60s"
+          exit 1
+
+      - name: Dump api logs on failure
+        if: failure()
+        run: docker compose logs api
+
+      - name: Compose down
+        if: always()
+        run: docker compose down -v
+
   security:
     name: Security scans
     runs-on: ubuntu-latest
@@ -95,7 +139,7 @@ jobs:
   deploy:
     name: Build, Scan & Deploy
     runs-on: ubuntu-latest
-    needs: [test, security]
+    needs: [test, runtime-smoke, security]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     defaults:
       run:
