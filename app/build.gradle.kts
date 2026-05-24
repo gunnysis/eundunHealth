@@ -70,7 +70,11 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
         // EXERCISEDB_API_KEY 제거 — OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 불필요
         buildConfigField("String", "BACKEND_BASE_URL", "\"${localProperties.getProperty("BACKEND_BASE_URL", "http://10.0.2.2:8080/")}\"")
-        buildConfigField("String", "SENTRY_DSN", "\"${localProperties.getProperty("SENTRY_DSN", "")}\"")
+        // Android 클라이언트 DSN. 새 키(eundunhealth-app_SENTRY_DSN) 우선, 옛 키(SENTRY_DSN) 폴백.
+        val androidSentryDsn =
+            localProperties.getProperty("eundunhealth-app_SENTRY_DSN")
+                ?: localProperties.getProperty("SENTRY_DSN", "")
+        buildConfigField("String", "SENTRY_DSN", "\"$androidSentryDsn\"")
     }
 
     buildTypes {
@@ -164,8 +168,12 @@ sentry {
         System.getenv("SENTRY_AUTH_TOKEN")
             ?: localProperties.getProperty("SENTRY_AUTH_TOKEN", "")
     val hasToken = token.isNotBlank()
+    // Sentry 프로젝트 slug — local.properties로 override 가능 (재생성 시 이름 변경 대응)
+    val sentryProject =
+        localProperties.getProperty("SENTRY_PROJECT_ANDROID")
+            ?: "eundunhealth-app"
     org.set("gunnys")
-    projectName.set("eundunhealth")
+    projectName.set(sentryProject)
     authToken.set(token)
     includeProguardMapping.set(hasToken)
     autoUploadProguardMapping.set(hasToken)
