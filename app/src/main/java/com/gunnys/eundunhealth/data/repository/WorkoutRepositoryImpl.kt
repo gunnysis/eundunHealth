@@ -15,8 +15,8 @@ import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.domain.model.ExerciseType
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
-import io.sentry.Sentry
 import java.time.DayOfWeek
 import java.time.LocalDate
 import javax.inject.Inject
@@ -26,7 +26,8 @@ class WorkoutRepositoryImpl @Inject constructor(
     private val api: EundunApi,
     private val exerciseDb: ExerciseDbDataSource,
     private val weeklyPlanDao: WeeklyPlanDao,
-    private val gson: Gson
+    private val gson: Gson,
+    private val authRepo: AuthRepository,
 ) : WorkoutRepository {
 
     override suspend fun getCurrentWeekPlan(): Result<WeeklyPlan?> = runCatching {
@@ -37,11 +38,16 @@ class WorkoutRepositoryImpl @Inject constructor(
                 return@runCatching WeeklyPlan(dto.id, dto.userId, LocalDate.parse(dto.weekStart), parseDayPlans(dto.dayPlans))
             }
         } catch (e: Exception) {
-            Sentry.captureException(e)
-            val cached = weeklyPlanDao.getPlan(weekStart.toString())
-            if (cached != null) {
-                return@runCatching WeeklyPlan(cached.id, cached.userId, LocalDate.parse(cached.weekStart), parseDayPlans(cached.dayPlansJson))
+            // 네트워크 실패 → 캐시 폴백. Sentry는 ViewModel.reportToSentry()가 처리
+            val userId = authRepo.getCurrentUserId()
+            if (userId != null) {
+                val cached = weeklyPlanDao.getPlan(userId, weekStart.toString())
+                if (cached != null) {
+                    return@runCatching WeeklyPlan(cached.id, cached.userId, LocalDate.parse(cached.weekStart), parseDayPlans(cached.dayPlansJson))
+                }
             }
+            // 캐시도 없으면 원래 예외를 그대로 전파
+            throw e
         }
         null
     }
@@ -53,20 +59,17 @@ class WorkoutRepositoryImpl @Inject constructor(
         val strengthBodyParts = listOf("chest", "back", "upper legs", "shoulders", "upper arms")
         val strengthExercises = mutableListOf<Exercise>()
         for (bp in strengthBodyParts) {
-            try {
+            // 부위별 실패는 무시 — 다른 부위로 운동 계획을 채울 수 있도록 폴백.
+            // 호출자(ViewModel)에서 결과의 비어있음 여부로 일괄 판단한다.
+            runCatching {
                 val exercises = exerciseDb.getStrengthExercises(bp, limit = 2)
                 strengthExercises.addAll(exercises.map { it.toDomain(sets, reps, ExerciseType.STRENGTH) })
-            } catch (e: Exception) {
-                Sentry.captureException(e)
             }
         }
 
-        val cardioExercises = try {
+        val cardioExercises = runCatching {
             exerciseDb.getCardioExercises(limit = 3).map { it.toDomain(1, 30, ExerciseType.CARDIO) }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            emptyList()
-        }
+        }.getOrDefault(emptyList())
 
         val seed = Random(weekStart.toEpochDay())
         val days = (0L..6L).map { dayOffset ->
@@ -113,13 +116,12 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     private fun parseDayPlans(json: String): List<DayPlan> {
-        return try {
+        // 파싱 실패는 빈 리스트로 폴백 — 도메인 모델은 비어있어도 안전하게 표시 가능.
+        // Unknown 예외로 Sentry 전송이 필요하면 호출 ViewModel에서 reportToSentry() 사용.
+        return runCatching {
             val type = object : TypeToken<List<DayPlanJson>>() {}.type
             val dayJsons: List<DayPlanJson> = gson.fromJson(json, type)
             dayJsons.map { it.toDayPlan() }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            emptyList()
-        }
+        }.getOrDefault(emptyList())
     }
 }

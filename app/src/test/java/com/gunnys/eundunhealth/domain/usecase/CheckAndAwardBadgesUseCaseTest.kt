@@ -47,7 +47,8 @@ class CheckAndAwardBadgesUseCaseTest {
             return Result.success(Badge("id", "user1", badgeKey, badgeKey, "", Instant.now()))
         }
 
-        override suspend fun hasBadge(badgeKey: String): Boolean = badgeKey in earnedKeys
+        override suspend fun hasBadge(badgeKey: String): Result<Boolean> =
+            Result.success(badgeKey in earnedKeys)
     }
 
     @Test

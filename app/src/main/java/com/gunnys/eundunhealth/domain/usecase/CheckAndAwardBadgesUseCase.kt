@@ -16,7 +16,10 @@ class CheckAndAwardBadgesUseCase @Inject constructor(
 
         if (totalWorkoutDays > 0 && completedCount >= totalWorkoutDays) {
             val key = BadgeKeys.WEEK_1_COMPLETE
-            if (!badgeRepo.hasBadge(key)) {
+            // 네트워크 실패는 false로 폴백 — 다음 사이클에서 재시도. 잘못 award되는 것보다
+            // 잠시 award가 늦어지는 게 안전.
+            val alreadyHas = badgeRepo.hasBadge(key).getOrDefault(false)
+            if (!alreadyHas) {
                 badgeRepo.awardBadge(key).onSuccess { awarded += it }
             }
         }
