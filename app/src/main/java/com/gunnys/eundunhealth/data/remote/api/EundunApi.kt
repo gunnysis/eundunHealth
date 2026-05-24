@@ -27,6 +27,10 @@ interface EundunApi {
     @GET("weekly-plan")
     suspend fun getWeeklyPlan(@Query("weekStart") weekStart: String): WeeklyPlanDto?
 
+    /** 기준 주 직전 plan. 없으면 body가 null. */
+    @GET("weekly-plan/previous")
+    suspend fun getPreviousWeeklyPlan(@Query("week_start") weekStart: String): WeeklyPlanDto?
+
     @POST("weekly-plan")
     suspend fun createWeeklyPlan(@Body req: CreateWeeklyPlanRequest): WeeklyPlanDto
 

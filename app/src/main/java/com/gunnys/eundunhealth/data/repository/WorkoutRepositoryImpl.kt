@@ -56,34 +56,65 @@ class WorkoutRepositoryImpl @Inject constructor(
         val weekStart = LocalDate.now().with(DayOfWeek.MONDAY)
         val (sets, reps) = exerciseDb.getSetsAndReps(profile.fitnessLevel)
 
-        val strengthBodyParts = listOf("chest", "back", "upper legs", "shoulders", "upper arms")
-        val strengthExercises = mutableListOf<Exercise>()
-        for (bp in strengthBodyParts) {
-            // 부위별 실패는 무시 — 다른 부위로 운동 계획을 채울 수 있도록 폴백.
-            // 호출자(ViewModel)에서 결과의 비어있음 여부로 일괄 판단한다.
-            runCatching {
-                val exercises = exerciseDb.getStrengthExercises(bp, limit = 2)
-                strengthExercises.addAll(exercises.map { it.toDomain(sets, reps, ExerciseType.STRENGTH) })
-            }
-        }
+        // 1) 이전 주 plan에서 운동 ID를 추출 (실패해도 빈 집합으로 폴백)
+        val excludeIds: Set<String> = runCatching {
+            val prev = api.getPreviousWeeklyPlan(weekStart.toString())
+            prev?.dayPlans?.let { parseDayPlans(it) }
+                ?.flatMap { it.exercises }
+                ?.map { it.id }
+                ?.toSet()
+                .orEmpty()
+        }.getOrDefault(emptySet())
 
-        val cardioExercises = runCatching {
-            exerciseDb.getCardioExercises(limit = 3).map { it.toDomain(1, 30, ExerciseType.CARDIO) }
+        // 2) 부위·카디오 운동 풀을 한 번씩만 fetch (이전 주 ID는 후순위 정렬)
+        suspend fun pool(bodyPart: String, type: ExerciseType): List<Exercise> = runCatching {
+            val raw = exerciseDb.getStrengthExercises(bodyPart, limit = 6)
+            val fresh = raw.filter { it.id !in excludeIds }
+            val seen = raw.filter { it.id in excludeIds }
+            (fresh + seen).map { it.toDomain(sets, reps, type) }
         }.getOrDefault(emptyList())
 
+        val push = pool("chest", ExerciseType.STRENGTH) + pool("shoulders", ExerciseType.STRENGTH)
+        val pull = pool("back", ExerciseType.STRENGTH) + pool("upper arms", ExerciseType.STRENGTH)
+        val legs = pool("upper legs", ExerciseType.STRENGTH) + pool("lower legs", ExerciseType.STRENGTH)
+
+        val cardioPool: List<Exercise> = runCatching {
+            val raw = exerciseDb.getCardioExercises(limit = 10)
+            val fresh = raw.filter { it.id !in excludeIds }
+            val seen = raw.filter { it.id in excludeIds }
+            (fresh + seen).map { it.toDomain(1, 30, ExerciseType.CARDIO) }
+        }.getOrDefault(emptyList())
+
+        // 3) 요일별 배치 — 결정론적 셔플(weekStart seed)로 같은 주는 같은 결과
         val seed = Random(weekStart.toEpochDay())
-        val days = (0L..6L).map { dayOffset ->
-            val date = weekStart.plusDays(dayOffset)
+        val pushShuffled = push.shuffled(seed)
+        val pullShuffled = pull.shuffled(seed)
+        val legsShuffled = legs.shuffled(seed)
+        val cardioShuffled = cardioPool.shuffled(seed)
+        // 화/목/토 카디오 자리에 사용. 자리별로 겹치지 않게 슬라이스.
+        val tueCardio = cardioShuffled.take(2)
+        val thuCardio = cardioShuffled.drop(2).take(2)
+        val satCardio = cardioShuffled.drop(4).take(1)
+
+        val days = (0L..6L).map { offset ->
+            val date = weekStart.plusDays(offset)
             when (date.dayOfWeek) {
-                DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY ->
-                    DayPlan(date, strengthExercises.shuffled(seed).take(4), isRestDay = false, isCompleted = false)
-                DayOfWeek.TUESDAY, DayOfWeek.THURSDAY ->
-                    DayPlan(date, cardioExercises.shuffled(seed).take(2), isRestDay = false, isCompleted = false)
-                DayOfWeek.SATURDAY -> {
-                    val mixed = strengthExercises.shuffled(seed).take(2) + cardioExercises.shuffled(seed).take(1)
-                    DayPlan(date, mixed, isRestDay = false, isCompleted = false)
+                DayOfWeek.MONDAY ->     // PUSH 4종
+                    DayPlan(date, pushShuffled.take(4), isRestDay = false, isCompleted = false)
+                DayOfWeek.TUESDAY ->    // 유산소 2종
+                    DayPlan(date, tueCardio, isRestDay = false, isCompleted = false)
+                DayOfWeek.WEDNESDAY ->  // PULL 4종
+                    DayPlan(date, pullShuffled.take(4), isRestDay = false, isCompleted = false)
+                DayOfWeek.THURSDAY ->   // 유산소 2종
+                    DayPlan(date, thuCardio, isRestDay = false, isCompleted = false)
+                DayOfWeek.FRIDAY ->     // LEGS 4종
+                    DayPlan(date, legsShuffled.take(4), isRestDay = false, isCompleted = false)
+                DayOfWeek.SATURDAY -> { // 혼합 3종 (PUSH/PULL/LEGS에서 strength 2 + cardio 1)
+                    val mixedStrength = (pushShuffled + pullShuffled + legsShuffled).shuffled(seed).take(2)
+                    DayPlan(date, mixedStrength + satCardio, isRestDay = false, isCompleted = false)
                 }
-                else -> DayPlan(date, emptyList(), isRestDay = true, isCompleted = false)
+                DayOfWeek.SUNDAY ->     // 휴식 (v0.3에서 profile.restDay로 동적 변경 예정)
+                    DayPlan(date, emptyList(), isRestDay = true, isCompleted = false)
             }
         }
 
