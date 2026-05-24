@@ -7,7 +7,7 @@ import javax.inject.Inject
 
 class GetOrCreateWeeklyPlanUseCase @Inject constructor(
     private val workoutRepo: WorkoutRepository,
-    private val userRepo: UserRepository
+    private val userRepo: UserRepository,
 ) {
     suspend operator fun invoke(): Result<WeeklyPlan> = runCatching {
         val existing = workoutRepo.getCurrentWeekPlan().getOrNull()

@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 class TokenAuthenticator(
     private val supabaseClient: SupabaseClient,
-    private val tokenHolder: AtomicReference<String?>
+    private val tokenHolder: AtomicReference<String?>,
 ) : Authenticator {
 
     override fun authenticate(route: Route?, response: Response): Request? {

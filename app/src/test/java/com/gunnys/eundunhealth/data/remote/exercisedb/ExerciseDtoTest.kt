@@ -80,8 +80,8 @@ class ExerciseDtoTest {
         val domain = dto.toDomain(sets = 3, reps = 10, type = ExerciseType.STRENGTH)
 
         assertEquals("0CXGHya", domain.id)
-        assertEquals("chest", domain.bodyPart)       // bodyParts[0]
-        assertEquals("cable", domain.equipment)       // equipments[0]
+        assertEquals("chest", domain.bodyPart) // bodyParts[0]
+        assertEquals("cable", domain.equipment) // equipments[0]
         assertEquals(3, domain.sets)
         assertEquals(10, domain.reps)
         assertEquals(ExerciseType.STRENGTH, domain.type)

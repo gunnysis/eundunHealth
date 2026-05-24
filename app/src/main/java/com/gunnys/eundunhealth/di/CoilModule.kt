@@ -17,17 +17,16 @@ import javax.inject.Singleton
 object CoilModule {
     @Provides
     @Singleton
-    fun provideImageLoader(@ApplicationContext context: Context): ImageLoader =
-        ImageLoader.Builder(context)
-            .components {
-                if (Build.VERSION.SDK_INT >= 28) {
-                    add(ImageDecoderDecoder.Factory())
-                } else {
-                    add(GifDecoder.Factory())
-                }
+    fun provideImageLoader(@ApplicationContext context: Context): ImageLoader = ImageLoader.Builder(context)
+        .components {
+            if (Build.VERSION.SDK_INT >= 28) {
+                add(ImageDecoderDecoder.Factory())
+            } else {
+                add(GifDecoder.Factory())
             }
-            .crossfade(true)
-            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
-            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
-            .build()
+        }
+        .crossfade(true)
+        .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+        .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+        .build()
 }

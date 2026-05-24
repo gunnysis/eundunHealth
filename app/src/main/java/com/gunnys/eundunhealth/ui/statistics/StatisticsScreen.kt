@@ -52,7 +52,7 @@ private val WEEK_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d
 @Composable
 fun StatisticsScreen(
     onBack: () -> Unit,
-    viewModel: StatisticsViewModel = hiltViewModel()
+    viewModel: StatisticsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -65,9 +65,9 @@ fun StatisticsScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         when (val state = uiState) {
             is StatisticsUiState.Loading -> {
@@ -120,7 +120,7 @@ private fun StatisticsContent(stats: Statistics, modifier: Modifier = Modifier) 
         // 완료율 추이 차트
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("주간 완료율 추이", style = MaterialTheme.typography.titleMedium)
@@ -149,8 +149,11 @@ private fun StreakCard(label: String, value: Int, modifier: Modifier = Modifier)
         ) {
             Text(label, style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(4.dp))
-            Text("${value}주", style = MaterialTheme.typography.headlineLarge,
-                 color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(
+                "${value}주",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
         }
     }
 }
@@ -184,7 +187,7 @@ private fun CompletionRateChart(stats: Statistics, modifier: Modifier = Modifier
             bottomAxis = HorizontalAxis.rememberBottom(
                 valueFormatter = { _, value, _ ->
                     labels.getOrNull(value.toInt()) ?: ""
-                }
+                },
             ),
         ),
         modelProducer = producer,

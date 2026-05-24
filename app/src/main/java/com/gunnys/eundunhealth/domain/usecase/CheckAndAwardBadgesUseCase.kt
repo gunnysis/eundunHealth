@@ -7,7 +7,7 @@ import com.gunnys.eundunhealth.domain.repository.BadgeRepository
 import javax.inject.Inject
 
 class CheckAndAwardBadgesUseCase @Inject constructor(
-    private val badgeRepo: BadgeRepository
+    private val badgeRepo: BadgeRepository,
 ) {
     suspend operator fun invoke(plan: WeeklyPlan): Result<List<Badge>> = runCatching {
         val completedCount = plan.days.count { it.isCompleted }

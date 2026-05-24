@@ -22,9 +22,13 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
     @Binds abstract fun bindUserRepo(impl: UserRepositoryImpl): UserRepository
+
     @Binds abstract fun bindWorkoutRepo(impl: WorkoutRepositoryImpl): WorkoutRepository
+
     @Binds abstract fun bindHealthRepo(impl: HealthRepositoryImpl): HealthRepository
+
     @Binds abstract fun bindBadgeRepo(impl: BadgeRepositoryImpl): BadgeRepository
+
     @Binds abstract fun bindAuthRepo(impl: AuthRepositoryImpl): AuthRepository
 
     companion object {

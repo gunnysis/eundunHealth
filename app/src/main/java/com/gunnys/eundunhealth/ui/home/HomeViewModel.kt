@@ -27,17 +27,19 @@ import javax.inject.Inject
 sealed class HomeUiState {
     @Immutable
     data object Loading : HomeUiState()
+
     @Immutable
     data class Success(
         val plan: WeeklyPlan,
         val hasHealthPermission: Boolean = false,
         val completedCount: Int = 0,
-        val totalWorkoutDays: Int = 0
+        val totalWorkoutDays: Int = 0,
     ) : HomeUiState() {
         val completionRate: Float get() = if (totalWorkoutDays > 0) completedCount.toFloat() / totalWorkoutDays else 0f
     }
+
     @Immutable
-    data object Empty : HomeUiState()  // 로드 실패 → 화면은 _error로 메시지 표시
+    data object Empty : HomeUiState() // 로드 실패 → 화면은 _error로 메시지 표시
 }
 
 @HiltViewModel
@@ -47,7 +49,7 @@ class HomeViewModel @Inject constructor(
     private val checkBadges: CheckAndAwardBadgesUseCase,
     private val healthRepo: HealthRepository,
     private val workoutRepo: WorkoutRepository,
-    private val themePreferences: ThemePreferences
+    private val themePreferences: ThemePreferences,
 ) : ViewModel() {
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeMode
@@ -68,7 +70,9 @@ class HomeViewModel @Inject constructor(
     private val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
-    fun clearError() { _error.value = null }
+    fun clearError() {
+        _error.value = null
+    }
 
     init {
         loadPlan()
@@ -78,7 +82,7 @@ class HomeViewModel @Inject constructor(
         plan = plan,
         hasHealthPermission = hasPerm,
         completedCount = plan.days.count { !it.isRestDay && it.isCompleted },
-        totalWorkoutDays = plan.days.count { !it.isRestDay }
+        totalWorkoutDays = plan.days.count { !it.isRestDay },
     )
 
     fun loadPlan() = viewModelScope.launch {

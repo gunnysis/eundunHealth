@@ -49,7 +49,7 @@ import com.gunnys.eundunhealth.ui.onboarding.ProfileSlider
 fun ProfileScreen(
     onBack: () -> Unit,
     onAccountDeleted: () -> Unit = {},
-    viewModel: ProfileViewModel = hiltViewModel()
+    viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
@@ -91,10 +91,10 @@ fun ProfileScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로")
                     }
-                }
+                },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         when (val state = uiState) {
             is ProfileUiState.Loading -> {
@@ -132,7 +132,7 @@ fun ProfileScreen(
                     isDeleting = deleteState is DeleteState.Loading,
                     onSave = viewModel::saveProfile,
                     onDeleteClick = { showDeleteDialog = true },
-                    modifier = Modifier.padding(padding)
+                    modifier = Modifier.padding(padding),
                 )
             }
         }
@@ -144,7 +144,7 @@ fun ProfileScreen(
                 text = {
                     Text(
                         "계정을 삭제하면 모든 운동 기록·배지·프로필이 영구적으로 사라지며, " +
-                            "이 작업은 되돌릴 수 없습니다. 그래도 삭제하시겠습니까?"
+                            "이 작업은 되돌릴 수 없습니다. 그래도 삭제하시겠습니까?",
                     )
                 },
                 confirmButton = {
@@ -177,7 +177,7 @@ private fun ProfileEditContent(
     isDeleting: Boolean,
     onSave: (Float, Float, Float, Float) -> Unit,
     onDeleteClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var height by rememberSaveable { mutableFloatStateOf(initialHeight) }
     var weight by rememberSaveable { mutableFloatStateOf(initialWeight) }
@@ -190,12 +190,12 @@ private fun ProfileEditContent(
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
-            .animateContentSize()
+            .animateContentSize(),
     ) {
         Text(
             "운동 계획에 반영할 신체 정보를 수정해주세요",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -211,20 +211,20 @@ private fun ProfileEditContent(
             weight = weight,
             bodyFat = bodyFat,
             muscleMass = muscleMass,
-            title = "변경 요약"
+            title = "변경 요약",
         )
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
             onClick = { onSave(height, weight, bodyFat, muscleMass) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving && !isDeleting
+            enabled = !isSaving && !isDeleting,
         ) {
             if (isSaving) {
                 CircularProgressIndicator(
                     modifier = Modifier.padding(end = 8.dp),
                     strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
             }
             Text("저장하기")

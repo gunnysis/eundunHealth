@@ -18,22 +18,26 @@ import javax.inject.Inject
 sealed class AuthState {
     @Immutable
     data object Loading : AuthState()
+
     @Immutable
     data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : AuthState()
+
     @Immutable
     data object Unauthenticated : AuthState()
 }
 
 sealed class ResetState {
     @Immutable data object Idle : ResetState()
+
     @Immutable data object Loading : ResetState()
+
     @Immutable data object Success : ResetState()
 }
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepo: AuthRepository,
-    private val userRepo: UserRepository
+    private val userRepo: UserRepository,
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -42,7 +46,9 @@ class AuthViewModel @Inject constructor(
     private val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
-    fun clearError() { _error.value = null }
+    fun clearError() {
+        _error.value = null
+    }
 
     init {
         checkSession()
@@ -108,7 +114,9 @@ class AuthViewModel @Inject constructor(
     private val _resetState = MutableStateFlow<ResetState>(ResetState.Idle)
     val resetState: StateFlow<ResetState> = _resetState.asStateFlow()
 
-    fun clearResetState() { _resetState.value = ResetState.Idle }
+    fun clearResetState() {
+        _resetState.value = ResetState.Idle
+    }
 
     fun resetPassword(email: String) = viewModelScope.launch {
         _resetState.value = ResetState.Loading

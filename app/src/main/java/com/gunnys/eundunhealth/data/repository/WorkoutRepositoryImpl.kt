@@ -101,21 +101,21 @@ class WorkoutRepositoryImpl @Inject constructor(
         val days = (0L..6L).map { offset ->
             val date = weekStart.plusDays(offset)
             when (date.dayOfWeek) {
-                DayOfWeek.MONDAY ->     // PUSH 4종
+                DayOfWeek.MONDAY -> // PUSH 4종
                     DayPlan(date, pushShuffled.take(4), isRestDay = false, isCompleted = false)
-                DayOfWeek.TUESDAY ->    // 유산소 2종
+                DayOfWeek.TUESDAY -> // 유산소 2종
                     DayPlan(date, tueCardio, isRestDay = false, isCompleted = false)
-                DayOfWeek.WEDNESDAY ->  // PULL 4종
+                DayOfWeek.WEDNESDAY -> // PULL 4종
                     DayPlan(date, pullShuffled.take(4), isRestDay = false, isCompleted = false)
-                DayOfWeek.THURSDAY ->   // 유산소 2종
+                DayOfWeek.THURSDAY -> // 유산소 2종
                     DayPlan(date, thuCardio, isRestDay = false, isCompleted = false)
-                DayOfWeek.FRIDAY ->     // LEGS 4종
+                DayOfWeek.FRIDAY -> // LEGS 4종
                     DayPlan(date, legsShuffled.take(4), isRestDay = false, isCompleted = false)
                 DayOfWeek.SATURDAY -> { // 혼합 3종 (PUSH/PULL/LEGS에서 strength 2 + cardio 1)
                     val mixedStrength = (pushShuffled + pullShuffled + legsShuffled).shuffled(seed).take(2)
                     DayPlan(date, mixedStrength + satCardio, isRestDay = false, isCompleted = false)
                 }
-                DayOfWeek.SUNDAY ->     // 휴식 (v0.3에서 profile.restDay로 동적 변경 예정)
+                DayOfWeek.SUNDAY -> // 휴식 (v0.3에서 profile.restDay로 동적 변경 예정)
                     DayPlan(date, emptyList(), isRestDay = true, isCompleted = false)
             }
         }
@@ -126,7 +126,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         val savedPlan = plan.copy(id = response.id)
 
         weeklyPlanDao.insertPlan(
-            WeeklyPlanEntity(savedPlan.id, savedPlan.userId, weekStart.toString(), dayPlansJson)
+            WeeklyPlanEntity(savedPlan.id, savedPlan.userId, weekStart.toString(), dayPlansJson),
         )
         savedPlan
     }

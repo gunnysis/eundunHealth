@@ -9,10 +9,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.HttpException
-import retrofit2.Response as RetrofitResponse
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import retrofit2.Response as RetrofitResponse
 
 class AppErrorTest {
 

@@ -56,7 +56,7 @@ private val DarkColorScheme = darkColorScheme(
 fun EundunHealthTheme(
     themeMode: com.gunnys.eundunhealth.data.preferences.ThemeMode = com.gunnys.eundunhealth.data.preferences.ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val darkTheme = when (themeMode) {
         com.gunnys.eundunhealth.data.preferences.ThemeMode.DARK -> true
@@ -75,6 +75,6 @@ fun EundunHealthTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content
+        content = content,
     )
 }

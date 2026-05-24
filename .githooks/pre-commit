@@ -1,0 +1,33 @@
+#!/bin/bash
+# eundunHealth Android pre-commit hook
+#
+# 활성화: git config core.hooksPath .githooks
+# (한 번 실행하면 이 디렉토리의 훅이 적용됩니다.)
+#
+# 동작:
+# 1) 스테이지에 .kt/.kts 파일이 있을 때만 실행 — 백엔드 전용 커밋엔 영향 없음
+# 2) spotlessApply로 자동 포맷 → 변경된 파일을 다시 stage
+# 3) detektDebug로 정적 분석 — baseline에 없는 신규 위반이면 차단
+set -euo pipefail
+
+CHANGED_KOTLIN=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '\.(kt|kts)$' || true)
+
+if [ -z "$CHANGED_KOTLIN" ]; then
+    exit 0
+fi
+
+echo "[pre-commit] Kotlin changes detected → spotlessApply + detektDebug"
+
+cd "$(git rev-parse --show-toplevel)"
+
+# 1) 자동 포맷
+./gradlew :app:spotlessApply -q
+
+# 2) 포맷 결과를 다시 스테이지 (변경된 파일만)
+echo "$CHANGED_KOTLIN" | while read -r file; do
+    [ -f "$file" ] && git add "$file"
+done
+
+# 3) 정적 분석
+./gradlew :app:detektDebug -q

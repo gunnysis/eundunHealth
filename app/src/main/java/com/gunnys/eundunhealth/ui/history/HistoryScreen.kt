@@ -50,7 +50,7 @@ private val WEEK_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern
 @Composable
 fun HistoryScreen(
     onBack: () -> Unit,
-    viewModel: HistoryViewModel = hiltViewModel()
+    viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -75,9 +75,9 @@ fun HistoryScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = uiState.isLoading && uiState.plans.isEmpty(),
@@ -132,17 +132,17 @@ fun HistoryWeekCard(plan: WeeklyPlan) {
     val rate = if (workoutDays > 0) completedDays.toFloat() / workoutDays else 0f
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 "${plan.weekStart.format(WEEK_DATE_FORMATTER)} - ${weekEnd.format(WEEK_DATE_FORMATTER)}",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
             )
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
                 progress = { rate },
-                modifier = Modifier.fillMaxWidth().height(6.dp)
+                modifier = Modifier.fillMaxWidth().height(6.dp),
             )
             Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -151,16 +151,19 @@ fun HistoryWeekCard(plan: WeeklyPlan) {
                         Icon(
                             if (day.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.Circle,
                             contentDescription = null,
-                            tint = if (day.isCompleted) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.padding(end = 4.dp)
+                            tint = if (day.isCompleted) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.outline
+                            },
+                            modifier = Modifier.padding(end = 4.dp),
                         )
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "${completedDays}/${workoutDays}",
-                    style = MaterialTheme.typography.bodySmall
+                    "$completedDays/$workoutDays",
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }

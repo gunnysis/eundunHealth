@@ -21,12 +21,12 @@ data class BadgeDisplayItem(
     val name: String,
     val description: String,
     val earned: Boolean,
-    val earnedAt: String? = null
+    val earnedAt: String? = null,
 )
 
 @HiltViewModel
 class BadgeViewModel @Inject constructor(
-    private val badgeRepo: BadgeRepository
+    private val badgeRepo: BadgeRepository,
 ) : ViewModel() {
 
     private val _badges = MutableStateFlow<List<BadgeDisplayItem>>(emptyList())
@@ -35,7 +35,9 @@ class BadgeViewModel @Inject constructor(
     private val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
-    fun clearError() { _error.value = null }
+    fun clearError() {
+        _error.value = null
+    }
 
     init {
         loadBadges()
@@ -55,7 +57,7 @@ class BadgeViewModel @Inject constructor(
                         earnedAt = earnedBadge?.earnedAt?.let {
                             java.time.LocalDateTime.ofInstant(it, java.time.ZoneId.systemDefault())
                                 .format(java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d"))
-                        }
+                        },
                     )
                 }
             }

@@ -81,11 +81,9 @@ class AuthRepositoryImpl @Inject constructor(
         tokenHolder.set(null)
     }
 
-    override suspend fun getCurrentUserId(): String? =
-        supabaseClient.auth.currentUserOrNull()?.id
+    override suspend fun getCurrentUserId(): String? = supabaseClient.auth.currentUserOrNull()?.id
 
-    override fun isLoggedIn(): Boolean =
-        supabaseClient.auth.currentSessionOrNull() != null
+    override fun isLoggedIn(): Boolean = supabaseClient.auth.currentSessionOrNull() != null
 
     override fun restoreSession(): String? {
         val session = supabaseClient.auth.currentSessionOrNull()

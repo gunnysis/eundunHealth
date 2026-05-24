@@ -9,7 +9,7 @@ import java.time.Instant
 import javax.inject.Inject
 
 class BadgeRepositoryImpl @Inject constructor(
-    private val api: EundunApi
+    private val api: EundunApi,
 ) : BadgeRepository {
 
     private var cachedBadges: List<BadgeDto>? = null
@@ -56,6 +56,6 @@ class BadgeRepositoryImpl @Inject constructor(
     }
 
     private companion object {
-        const val CACHE_TTL_MS = 60_000L  // 1분
+        const val CACHE_TTL_MS = 60_000L // 1분
     }
 }

@@ -18,7 +18,7 @@ import javax.inject.Inject
 sealed class ProfileUiState {
     data object Loading : ProfileUiState()
     data class Loaded(val profile: UserProfile) : ProfileUiState()
-    data object Empty : ProfileUiState()  // 프로필 미존재 (정상 케이스 — 에러 아님)
+    data object Empty : ProfileUiState() // 프로필 미존재 (정상 케이스 — 에러 아님)
 }
 
 sealed class SaveState {
@@ -29,13 +29,13 @@ sealed class SaveState {
 sealed class DeleteState {
     data object Idle : DeleteState()
     data object Loading : DeleteState()
-    data object Success : DeleteState()  // 화면 측에서 Login으로 navigate
+    data object Success : DeleteState() // 화면 측에서 Login으로 navigate
 }
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepo: UserRepository,
-    private val authRepo: AuthRepository
+    private val authRepo: AuthRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
@@ -50,7 +50,9 @@ class ProfileViewModel @Inject constructor(
     private val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
-    fun clearError() { _error.value = null }
+    fun clearError() {
+        _error.value = null
+    }
 
     init {
         loadProfile()
@@ -71,29 +73,28 @@ class ProfileViewModel @Inject constructor(
             }
     }
 
-    fun saveProfile(heightCm: Float, weightKg: Float, bodyFatPct: Float, muscleMassKg: Float) =
-        viewModelScope.launch {
-            _isSaving.value = true
-            _saveState.value = SaveState.Idle
-            val userId = authRepo.getCurrentUserId()
-            if (userId == null) {
-                _error.value = AppError.Auth("로그인이 필요합니다")
-                _isSaving.value = false
-                return@launch
-            }
-            runCatching {
-                userRepo.saveProfile(
-                    UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg)
-                ).getOrThrow()
-            }
-                .onSuccess { _saveState.value = SaveState.Success }
-                .onFailure {
-                    val appErr = it.toAppError()
-                    appErr.reportToSentry()
-                    _error.value = appErr
-                }
+    fun saveProfile(heightCm: Float, weightKg: Float, bodyFatPct: Float, muscleMassKg: Float) = viewModelScope.launch {
+        _isSaving.value = true
+        _saveState.value = SaveState.Idle
+        val userId = authRepo.getCurrentUserId()
+        if (userId == null) {
+            _error.value = AppError.Auth("로그인이 필요합니다")
             _isSaving.value = false
+            return@launch
         }
+        runCatching {
+            userRepo.saveProfile(
+                UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg),
+            ).getOrThrow()
+        }
+            .onSuccess { _saveState.value = SaveState.Success }
+            .onFailure {
+                val appErr = it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
+            }
+        _isSaving.value = false
+    }
 
     fun clearSaveState() {
         _saveState.value = SaveState.Idle

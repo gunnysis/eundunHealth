@@ -7,7 +7,7 @@ import javax.inject.Inject
 
 class SyncHealthDataUseCase @Inject constructor(
     private val healthRepo: HealthRepository,
-    private val workoutRepo: WorkoutRepository
+    private val workoutRepo: WorkoutRepository,
 ) {
     suspend operator fun invoke(plan: WeeklyPlan): Result<WeeklyPlan> = runCatching {
         if (!healthRepo.hasPermissions()) return@runCatching plan
@@ -19,7 +19,9 @@ class SyncHealthDataUseCase @Inject constructor(
         val updatedDays = plan.days.map { day ->
             if (!day.isRestDay && day.date in completedDates) {
                 day.copy(isCompleted = true)
-            } else day
+            } else {
+                day
+            }
         }
         plan.copy(days = updatedDays)
     }

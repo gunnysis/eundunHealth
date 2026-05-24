@@ -36,7 +36,7 @@ import coil.request.ImageRequest
 fun WorkoutDetailScreen(
     exerciseId: String,
     onBack: () -> Unit,
-    viewModel: WorkoutDetailViewModel = hiltViewModel()
+    viewModel: WorkoutDetailViewModel = hiltViewModel(),
 ) {
     val exercise by viewModel.exercise.collectAsState()
 
@@ -48,9 +48,9 @@ fun WorkoutDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         if (exercise == null) {
             Text("운동 정보를 불러오는 중...", modifier = Modifier.padding(padding).padding(16.dp))
@@ -61,12 +61,12 @@ fun WorkoutDetailScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(16.dp),
             ) {
                 SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(ex.gifUrl)
-                        .size(512)  // 네트워크 원본을 그대로 디코딩하지 않도록 최대 512px로 다운스케일
+                        .size(512) // 네트워크 원본을 그대로 디코딩하지 않도록 최대 512px로 다운스케일
                         .crossfade(true)
                         .build(),
                     contentDescription = ex.name,
@@ -81,20 +81,20 @@ fun WorkoutDetailScreen(
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text("이미지를 불러올 수 없습니다", style = MaterialTheme.typography.bodySmall)
                         }
-                    }
+                    },
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(ex.name, style = MaterialTheme.typography.headlineSmall)
                 Text(
                     "${ex.bodyPart} | ${ex.equipment}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     "${ex.sets}세트 x ${ex.reps}회",
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text("운동 방법", style = MaterialTheme.typography.titleMedium)
@@ -103,7 +103,7 @@ fun WorkoutDetailScreen(
                     Text(
                         "${i + 1}. $step",
                         modifier = Modifier.padding(vertical = 4.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }

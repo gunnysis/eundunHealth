@@ -21,24 +21,24 @@ class CheckAndAwardBadgesUseCaseTest {
                 date = weekStart.plusDays(i.toLong()),
                 exercises = emptyList(),
                 isRestDay = false,
-                isCompleted = i < completedDays
+                isCompleted = i < completedDays,
             )
         } + DayPlan(
             date = weekStart.plusDays(6),
             exercises = emptyList(),
             isRestDay = true,
-            isCompleted = false
+            isCompleted = false,
         )
         return WeeklyPlan("plan1", "user1", weekStart, days)
     }
 
     class FakeBadgeRepo(
-        private val earnedKeys: MutableSet<String> = mutableSetOf()
+        private val earnedKeys: MutableSet<String> = mutableSetOf(),
     ) : BadgeRepository {
         val awardedKeys = mutableListOf<String>()
 
         override suspend fun getEarnedBadges(): Result<List<Badge>> = Result.success(
-            earnedKeys.map { Badge("id", "user1", it, it, "", Instant.now()) }
+            earnedKeys.map { Badge("id", "user1", it, it, "", Instant.now()) },
         )
 
         override suspend fun awardBadge(badgeKey: String): Result<Badge> {
@@ -47,8 +47,7 @@ class CheckAndAwardBadgesUseCaseTest {
             return Result.success(Badge("id", "user1", badgeKey, badgeKey, "", Instant.now()))
         }
 
-        override suspend fun hasBadge(badgeKey: String): Result<Boolean> =
-            Result.success(badgeKey in earnedKeys)
+        override suspend fun hasBadge(badgeKey: String): Result<Boolean> = Result.success(badgeKey in earnedKeys)
     }
 
     @Test

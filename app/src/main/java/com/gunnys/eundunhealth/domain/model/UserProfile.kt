@@ -5,7 +5,7 @@ data class UserProfile(
     val heightCm: Float,
     val weightKg: Float,
     val bodyFatPercent: Float,
-    val muscleMassKg: Float
+    val muscleMassKg: Float,
 ) {
     val bmi: Float get() = weightKg / ((heightCm / 100f) * (heightCm / 100f))
     val fitnessLevel: FitnessLevel get() = when {

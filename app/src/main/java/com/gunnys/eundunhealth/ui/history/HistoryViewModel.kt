@@ -25,7 +25,7 @@ data class HistoryUiState(
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val workoutRepo: WorkoutRepository
+    private val workoutRepo: WorkoutRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HistoryUiState())
@@ -34,7 +34,9 @@ class HistoryViewModel @Inject constructor(
     private val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
-    fun clearError() { _error.value = null }
+    fun clearError() {
+        _error.value = null
+    }
 
     private val pageSize = 10
 
@@ -54,7 +56,7 @@ class HistoryViewModel @Inject constructor(
                         plans = current.plans + plans,
                         isLoading = false,
                         page = current.page + 1,
-                        hasMore = current.plans.size + plans.size < totalCount
+                        hasMore = current.plans.size + plans.size < totalCount,
                     )
                 }
                 .onFailure {

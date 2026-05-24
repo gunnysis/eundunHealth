@@ -18,7 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class WorkoutDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val workoutRepo: WorkoutRepository
+    private val workoutRepo: WorkoutRepository,
 ) : ViewModel() {
 
     private val exerciseId: String = savedStateHandle["exerciseId"] ?: ""
@@ -29,7 +29,9 @@ class WorkoutDetailViewModel @Inject constructor(
     private val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
-    fun clearError() { _error.value = null }
+    fun clearError() {
+        _error.value = null
+    }
 
     init {
         loadExercise()

@@ -41,7 +41,7 @@ interface EundunApi {
     @GET("weekly-plan/history")
     suspend fun getWeeklyPlanHistory(
         @Query("page") page: Int,
-        @Query("size") size: Int
+        @Query("size") size: Int,
     ): WeeklyPlanHistoryDto
 
     @GET("weekly-plan/statistics")

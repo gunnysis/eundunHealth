@@ -9,5 +9,5 @@ data class WeeklyPlanEntity(
     val userId: String,
     val weekStart: String,
     val dayPlansJson: String,
-    val cachedAt: Long = System.currentTimeMillis()
+    val cachedAt: Long = System.currentTimeMillis(),
 )

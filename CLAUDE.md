@@ -16,6 +16,15 @@ eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastA
 ./gradlew clean assembleRelease        # Release build (R8 enabled with ProGuard rules)
 ./gradlew :app:testDebugUnitTest       # Run all unit tests
 ./gradlew :app:testDebugUnitTest --tests "com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCaseTest"  # Single test class
+
+# 코드 품질 (Phase 4 v0.2 도입)
+./gradlew :app:spotlessApply           # 자동 포맷 (ktlint)
+./gradlew :app:spotlessCheck           # 포맷 검증 (CI에서 사용)
+./gradlew :app:detektDebug             # 정적 분석
+./gradlew :app:detektBaselineDebug     # 기존 위반을 baseline-debug.xml에 박제 (신규만 차단)
+
+# git pre-commit hook 활성화 (clone 직후 1회)
+git config core.hooksPath .githooks
 ```
 
 ### Backend (FastAPI, in `backend/`)

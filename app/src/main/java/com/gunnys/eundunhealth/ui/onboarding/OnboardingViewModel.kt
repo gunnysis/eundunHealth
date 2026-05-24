@@ -18,7 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val userRepo: UserRepository,
-    private val authRepo: AuthRepository
+    private val authRepo: AuthRepository,
 ) : ViewModel() {
 
     private val _saved = MutableStateFlow(false)
@@ -30,29 +30,30 @@ class OnboardingViewModel @Inject constructor(
     private val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
-    fun clearError() { _error.value = null }
+    fun clearError() {
+        _error.value = null
+    }
 
-    fun saveProfile(heightCm: Float, weightKg: Float, bodyFatPct: Float, muscleMassKg: Float) =
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            val userId = authRepo.getCurrentUserId()
-            if (userId == null) {
-                _error.value = AppError.Auth("로그인이 필요합니다")
-                _isLoading.value = false
-                return@launch
-            }
-            runCatching {
-                userRepo.saveProfile(
-                    UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg)
-                ).getOrThrow()
-            }
-                .onSuccess { _saved.value = true }
-                .onFailure {
-                    val appErr = it.toAppError()
-                    appErr.reportToSentry()
-                    _error.value = appErr
-                }
+    fun saveProfile(heightCm: Float, weightKg: Float, bodyFatPct: Float, muscleMassKg: Float) = viewModelScope.launch {
+        _isLoading.value = true
+        _error.value = null
+        val userId = authRepo.getCurrentUserId()
+        if (userId == null) {
+            _error.value = AppError.Auth("로그인이 필요합니다")
             _isLoading.value = false
+            return@launch
         }
+        runCatching {
+            userRepo.saveProfile(
+                UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg),
+            ).getOrThrow()
+        }
+            .onSuccess { _saved.value = true }
+            .onFailure {
+                val appErr = it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
+            }
+        _isLoading.value = false
+    }
 }

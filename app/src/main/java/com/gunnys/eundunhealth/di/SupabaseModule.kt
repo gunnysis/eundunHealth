@@ -17,7 +17,7 @@ object SupabaseModule {
     @Singleton
     fun provideSupabaseClient(): SupabaseClient = createSupabaseClient(
         supabaseUrl = BuildConfig.SUPABASE_URL,
-        supabaseKey = BuildConfig.SUPABASE_ANON_KEY
+        supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
     ) {
         install(Auth) {
             alwaysAutoRefresh = true

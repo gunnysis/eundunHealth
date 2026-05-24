@@ -12,31 +12,32 @@ import java.net.UnknownHostException
  */
 sealed class AppError(open val userMessage: String) {
     data class Network(
-        override val userMessage: String = "네트워크 연결을 확인해주세요"
+        override val userMessage: String = "네트워크 연결을 확인해주세요",
     ) : AppError(userMessage)
 
     data class Server(
         val code: Int,
-        override val userMessage: String = "서버 오류가 발생했습니다"
+        override val userMessage: String = "서버 오류가 발생했습니다",
     ) : AppError(userMessage)
 
     data class Auth(
-        override val userMessage: String = "인증에 실패했습니다"
+        override val userMessage: String = "인증에 실패했습니다",
     ) : AppError(userMessage)
 
     data class NotFound(
-        override val userMessage: String = "데이터를 찾을 수 없습니다"
+        override val userMessage: String = "데이터를 찾을 수 없습니다",
     ) : AppError(userMessage)
 
     data class Unknown(
         val throwable: Throwable,
-        override val userMessage: String = "알 수 없는 오류가 발생했습니다"
+        override val userMessage: String = "알 수 없는 오류가 발생했습니다",
     ) : AppError(userMessage)
 }
 
 fun Throwable.toAppError(): AppError = when (this) {
     is UnknownHostException,
-    is SocketTimeoutException -> AppError.Network()
+    is SocketTimeoutException,
+    -> AppError.Network()
     is HttpException -> when (code()) {
         401, 403 -> AppError.Auth()
         404 -> AppError.NotFound()

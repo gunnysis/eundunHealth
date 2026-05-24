@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
@@ -22,15 +21,15 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var themePreferences: ThemePreferences
 
     private val healthPermissions = setOf(
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class)
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
     )
 
     private val permissionLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
     ) { /* Health Connect uses its own permission contract */ }
 
     private val healthPermissionLauncher = registerForActivityResult(
-        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
     ) { /* permissions granted or denied */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +41,7 @@ class MainActivity : ComponentActivity() {
                 AppNavigation(
                     onRequestHealthPermissions = {
                         healthPermissionLauncher.launch(healthPermissions)
-                    }
+                    },
                 )
             }
         }

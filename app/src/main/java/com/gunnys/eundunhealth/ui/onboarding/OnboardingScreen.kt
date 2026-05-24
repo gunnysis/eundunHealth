@@ -45,7 +45,7 @@ import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 @Composable
 fun OnboardingScreen(
     onComplete: () -> Unit,
-    viewModel: OnboardingViewModel = hiltViewModel()
+    viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     var height by rememberSaveable { mutableFloatStateOf(170f) }
     var weight by rememberSaveable { mutableFloatStateOf(65f) }
@@ -68,7 +68,7 @@ fun OnboardingScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -77,13 +77,13 @@ fun OnboardingScreen(
                 .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp)
-                .animateContentSize()
+                .animateContentSize(),
         ) {
             Text("신체 정보 입력", style = MaterialTheme.typography.headlineMedium)
             Text(
                 "맞춤 운동 계획을 위해 기본 정보를 입력해주세요",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -98,27 +98,27 @@ fun OnboardingScreen(
                 height = height,
                 weight = weight,
                 bodyFat = bodyFat,
-                muscleMass = muscleMass
+                muscleMass = muscleMass,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 "입력한 정보를 기반으로 맞춤 주간 운동 계획이 생성됩니다",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                modifier = Modifier.padding(horizontal = 4.dp),
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
                 onClick = { viewModel.saveProfile(height, weight, bodyFat, muscleMass) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
+                enabled = !isLoading,
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.padding(end = 8.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
                 Text("운동 계획 받기")
@@ -134,7 +134,7 @@ fun ProfileSlider(
     range: ClosedFloatingPointRange<Float>,
     unit: String,
     decimals: Int,
-    onValueChange: (Float) -> Unit
+    onValueChange: (Float) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     // 패턴 문자열 재계산 + format 호출을 입력 의존성 변경 시에만 수행하도록 캐싱
@@ -149,7 +149,7 @@ fun ProfileSlider(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, style = MaterialTheme.typography.titleMedium)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -163,18 +163,21 @@ fun ProfileSlider(
                     },
                     modifier = Modifier.width(90.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = if (isError) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.primary
+                        color = if (isError) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
                     ),
                     isError = isError,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Decimal,
-                        imeAction = ImeAction.Done
+                        imeAction = ImeAction.Done,
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { focusManager.clearFocus() }
-                    )
+                        onDone = { focusManager.clearFocus() },
+                    ),
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(unit, style = MaterialTheme.typography.bodyMedium)
@@ -185,14 +188,14 @@ fun ProfileSlider(
                 "${range.start.toInt()}~${range.endInclusive.toInt()}$unit 범위로 입력해주세요",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp),
             )
         }
         Slider(
             value = value,
             onValueChange = onValueChange,
             valueRange = range,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

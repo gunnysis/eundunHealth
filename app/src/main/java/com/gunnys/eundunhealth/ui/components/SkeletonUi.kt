@@ -29,13 +29,13 @@ fun ShimmerBox(modifier: Modifier = Modifier, height: Dp = 16.dp) {
         initialValue = 0.3f,
         targetValue = 0.7f,
         animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
-        label = "shimmerAlpha"
+        label = "shimmerAlpha",
     )
     Box(
         modifier = modifier
             .height(height)
             .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = alpha))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)),
     )
 }
 

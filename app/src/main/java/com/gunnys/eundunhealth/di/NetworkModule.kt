@@ -5,13 +5,13 @@ import com.gunnys.eundunhealth.data.remote.api.EundunApi
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbApi
 import com.gunnys.eundunhealth.data.remote.interceptor.RetryInterceptor
 import com.gunnys.eundunhealth.data.remote.interceptor.TokenAuthenticator
-import io.sentry.okhttp.SentryOkHttpInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.sentry.okhttp.SentryOkHttpInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -42,46 +42,48 @@ object NetworkModule {
     @Named("backend")
     fun provideBackendOkHttpClient(
         tokenHolder: AtomicReference<String?>,
-        supabaseClient: SupabaseClient
-    ): OkHttpClient =
-        OkHttpClient.Builder()
-            .addInterceptor(RetryInterceptor())
-            .addInterceptor { chain ->
-                val token = tokenHolder.get()
-                val request = if (token != null) {
-                    chain.request().newBuilder()
-                        .addHeader("Authorization", "Bearer $token")
-                        .build()
-                } else {
-                    chain.request()
-                }
-                chain.proceed(request)
+        supabaseClient: SupabaseClient,
+    ): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(RetryInterceptor())
+        .addInterceptor { chain ->
+            val token = tokenHolder.get()
+            val request = if (token != null) {
+                chain.request().newBuilder()
+                    .addHeader("Authorization", "Bearer $token")
+                    .build()
+            } else {
+                chain.request()
             }
-            .authenticator(TokenAuthenticator(supabaseClient, tokenHolder))
-            .addInterceptor(SentryOkHttpInterceptor())
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
-                        else HttpLoggingInterceptor.Level.NONE
-            })
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .build()
+            chain.proceed(request)
+        }
+        .authenticator(TokenAuthenticator(supabaseClient, tokenHolder))
+        .addInterceptor(SentryOkHttpInterceptor())
+        .addInterceptor(
+            HttpLoggingInterceptor().apply {
+                level = if (BuildConfig.DEBUG) {
+                    HttpLoggingInterceptor.Level.BODY
+                } else {
+                    HttpLoggingInterceptor.Level.NONE
+                }
+            },
+        )
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
 
     @Provides
     @Singleton
-    fun provideEundunApi(@Named("backend") client: OkHttpClient): EundunApi =
-        Retrofit.Builder()
-            .baseUrl(BuildConfig.BACKEND_BASE_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(EundunApi::class.java)
+    fun provideEundunApi(@Named("backend") client: OkHttpClient): EundunApi = Retrofit.Builder()
+        .baseUrl(BuildConfig.BACKEND_BASE_URL)
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(EundunApi::class.java)
 
     @Provides
     @Singleton
     @Named("exercisedb")
-    fun provideExerciseDbOkHttpClient(): OkHttpClient =
-        // OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 헤더 불필요한 공개 API.
+    fun provideExerciseDbOkHttpClient(): OkHttpClient = // OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 헤더 불필요한 공개 API.
         OkHttpClient.Builder()
             .addInterceptor(RetryInterceptor())
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -90,11 +92,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideExerciseDbApi(@Named("exercisedb") client: OkHttpClient): ExerciseDbApi =
-        Retrofit.Builder()
-            .baseUrl("https://oss.exercisedb.dev/api/v1/")
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(ExerciseDbApi::class.java)
+    fun provideExerciseDbApi(@Named("exercisedb") client: OkHttpClient): ExerciseDbApi = Retrofit.Builder()
+        .baseUrl("https://oss.exercisedb.dev/api/v1/")
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(ExerciseDbApi::class.java)
 }
