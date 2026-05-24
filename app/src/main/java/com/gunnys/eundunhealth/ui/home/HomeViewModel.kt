@@ -1,16 +1,19 @@
 package com.gunnys.eundunhealth.ui.home
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
 import com.gunnys.eundunhealth.data.preferences.ThemePreferences
+import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.model.reportToSentry
+import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.GetOrCreateWeeklyPlanUseCase
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
-import androidx.compose.runtime.Immutable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,7 +37,7 @@ sealed class HomeUiState {
         val completionRate: Float get() = if (totalWorkoutDays > 0) completedCount.toFloat() / totalWorkoutDays else 0f
     }
     @Immutable
-    data class Error(val message: String) : HomeUiState()
+    data object Empty : HomeUiState()  // 로드 실패 → 화면은 _error로 메시지 표시
 }
 
 @HiltViewModel
@@ -61,6 +64,11 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private val _error = MutableStateFlow<AppError?>(null)
+    val error: StateFlow<AppError?> = _error.asStateFlow()
+
+    fun clearError() { _error.value = null }
 
     init {
         loadPlan()
@@ -91,7 +99,10 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = successWithStats(synced, hasPerm)
             }
             .onFailure {
-                _uiState.value = HomeUiState.Error(it.message ?: "운동 계획을 불러올 수 없습니다")
+                val appErr = it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
+                _uiState.value = HomeUiState.Empty
             }
     }
 
@@ -114,6 +125,9 @@ class HomeViewModel @Inject constructor(
             .onFailure {
                 // Revert on failure
                 _uiState.value = current
+                val appErr = it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
             }
     }
 }

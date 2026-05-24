@@ -2,7 +2,10 @@ package com.gunnys.eundunhealth.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.UserProfile
+import com.gunnys.eundunhealth.domain.model.reportToSentry
+import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,13 +18,12 @@ import javax.inject.Inject
 sealed class ProfileUiState {
     data object Loading : ProfileUiState()
     data class Loaded(val profile: UserProfile) : ProfileUiState()
-    data class Error(val message: String) : ProfileUiState()
+    data object Empty : ProfileUiState()  // 프로필 미존재 (정상 케이스 — 에러 아님)
 }
 
 sealed class SaveState {
     data object Idle : SaveState()
     data object Success : SaveState()
-    data class Error(val message: String) : SaveState()
 }
 
 @HiltViewModel
@@ -39,22 +41,27 @@ class ProfileViewModel @Inject constructor(
     private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
     val saveState: StateFlow<SaveState> = _saveState.asStateFlow()
 
+    private val _error = MutableStateFlow<AppError?>(null)
+    val error: StateFlow<AppError?> = _error.asStateFlow()
+
+    fun clearError() { _error.value = null }
+
     init {
         loadProfile()
     }
 
-    private fun loadProfile() = viewModelScope.launch {
+    fun loadProfile() = viewModelScope.launch {
         _uiState.value = ProfileUiState.Loading
         userRepo.getProfile()
             .onSuccess { profile ->
-                if (profile != null) {
-                    _uiState.value = ProfileUiState.Loaded(profile)
-                } else {
-                    _uiState.value = ProfileUiState.Error("프로필 정보를 찾을 수 없습니다")
-                }
+                _uiState.value = profile?.let { ProfileUiState.Loaded(it) } ?: ProfileUiState.Empty
             }
             .onFailure {
-                _uiState.value = ProfileUiState.Error("프로필을 불러올 수 없습니다")
+                val appErr = it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
+                // 로드 실패 시 Empty로 폴백 — 화면은 ErrorContent 사용
+                _uiState.value = ProfileUiState.Empty
             }
     }
 
@@ -62,18 +69,24 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _isSaving.value = true
             _saveState.value = SaveState.Idle
-            try {
-                val userId = authRepo.getCurrentUserId()
-                    ?: throw IllegalStateException("로그인이 필요합니다")
+            val userId = authRepo.getCurrentUserId()
+            if (userId == null) {
+                _error.value = AppError.Auth("로그인이 필요합니다")
+                _isSaving.value = false
+                return@launch
+            }
+            runCatching {
                 userRepo.saveProfile(
                     UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg)
                 ).getOrThrow()
-                _saveState.value = SaveState.Success
-            } catch (e: Exception) {
-                _saveState.value = SaveState.Error(e.message ?: "저장에 실패했습니다")
-            } finally {
-                _isSaving.value = false
             }
+                .onSuccess { _saveState.value = SaveState.Success }
+                .onFailure {
+                    val appErr = it.toAppError()
+                    appErr.reportToSentry()
+                    _error.value = appErr
+                }
+            _isSaving.value = false
         }
 
     fun clearSaveState() {

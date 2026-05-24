@@ -101,12 +101,17 @@ fun HomeScreen(
             is HomeUiState.Loading -> {
                 SkeletonHomeContent(modifier = Modifier.padding(padding))
             }
-            is HomeUiState.Error -> {
+            is HomeUiState.Empty -> {
                 Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(state.message, style = MaterialTheme.typography.bodyLarge)
+                        val errMsg = viewModel.error.collectAsState().value?.userMessage
+                            ?: "운동 계획을 불러올 수 없습니다"
+                        Text(errMsg, style = MaterialTheme.typography.bodyLarge)
                         Spacer(modifier = Modifier.height(16.dp))
-                        TextButton(onClick = { viewModel.loadPlan() }) {
+                        TextButton(onClick = {
+                            viewModel.clearError()
+                            viewModel.loadPlan()
+                        }) {
                             Text("다시 시도")
                         }
                     }

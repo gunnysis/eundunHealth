@@ -49,20 +49,24 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val saveState by viewModel.saveState.collectAsState()
+    val error by viewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(saveState) {
-        when (val state = saveState) {
+        when (saveState) {
             is SaveState.Success -> {
                 snackbarHostState.showSnackbar("신체 정보가 저장되었습니다")
                 viewModel.clearSaveState()
                 onBack()
             }
-            is SaveState.Error -> {
-                snackbarHostState.showSnackbar(state.message)
-                viewModel.clearSaveState()
-            }
             is SaveState.Idle -> {}
+        }
+    }
+
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it.userMessage)
+            viewModel.clearError()
         }
     }
 
@@ -85,11 +89,12 @@ fun ProfileScreen(
                     CircularProgressIndicator()
                 }
             }
-            is ProfileUiState.Error -> {
+            is ProfileUiState.Empty -> {
                 Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(state.message, style = MaterialTheme.typography.bodyLarge)
+                        Text("프로필 정보를 불러올 수 없습니다", style = MaterialTheme.typography.bodyLarge)
                         Spacer(modifier = Modifier.height(16.dp))
+                        TextButton(onClick = { viewModel.loadProfile() }) { Text("다시 시도") }
                         TextButton(onClick = onBack) { Text("돌아가기") }
                     }
                 }

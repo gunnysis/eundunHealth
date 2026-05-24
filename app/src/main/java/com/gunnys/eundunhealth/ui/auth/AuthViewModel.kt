@@ -1,10 +1,13 @@
 package com.gunnys.eundunhealth.ui.auth
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.reportToSentry
+import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
-import androidx.compose.runtime.Immutable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,8 +22,6 @@ sealed class AuthState {
     data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : AuthState()
     @Immutable
     data object Unauthenticated : AuthState()
-    @Immutable
-    data class Error(val message: String) : AuthState()
 }
 
 @HiltViewModel
@@ -32,22 +33,30 @@ class AuthViewModel @Inject constructor(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
+    private val _error = MutableStateFlow<AppError?>(null)
+    val error: StateFlow<AppError?> = _error.asStateFlow()
+
+    fun clearError() { _error.value = null }
+
     init {
         checkSession()
     }
 
     private fun checkSession() = viewModelScope.launch {
-        try {
+        runCatching {
             val userId = authRepo.restoreSession()
             if (userId != null) {
                 val hasProfile = userRepo.getProfile().getOrNull() != null
-                _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
+                AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
             } else {
+                AuthState.Unauthenticated
+            }
+        }
+            .onSuccess { _authState.value = it }
+            .onFailure {
+                // 세션 복원 실패는 단순히 비로그인 상태로 처리 — Sentry/에러 표시 없음
                 _authState.value = AuthState.Unauthenticated
             }
-        } catch (e: Exception) {
-            _authState.value = AuthState.Unauthenticated
-        }
     }
 
     fun login(email: String, password: String) = viewModelScope.launch {
@@ -58,7 +67,14 @@ class AuthViewModel @Inject constructor(
                 _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
             }
             .onFailure {
-                _authState.value = AuthState.Error(it.message ?: "로그인에 실패했습니다")
+                _authState.value = AuthState.Unauthenticated
+                // signIn은 AuthRepositoryImpl에서 한국어 메시지로 매핑된 예외를 던지므로
+                // userMessage를 보존하기 위해 message가 있으면 그대로 Auth 에러로 사용
+                val appErr = it.message
+                    ?.let { msg -> AppError.Auth(msg) }
+                    ?: it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
             }
     }
 
@@ -69,18 +85,17 @@ class AuthViewModel @Inject constructor(
                 _authState.value = AuthState.Authenticated(userId, needsOnboarding = true)
             }
             .onFailure {
-                _authState.value = AuthState.Error(it.message ?: "회원가입에 실패했습니다")
+                _authState.value = AuthState.Unauthenticated
+                val appErr = it.message
+                    ?.let { msg -> AppError.Auth(msg) }
+                    ?: it.toAppError()
+                appErr.reportToSentry()
+                _error.value = appErr
             }
     }
 
     fun logout() = viewModelScope.launch {
         authRepo.signOut()
         _authState.value = AuthState.Unauthenticated
-    }
-
-    fun clearError() {
-        if (_authState.value is AuthState.Error) {
-            _authState.value = AuthState.Unauthenticated
-        }
     }
 }

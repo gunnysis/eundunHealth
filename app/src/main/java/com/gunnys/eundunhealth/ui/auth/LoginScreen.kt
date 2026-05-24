@@ -47,11 +47,12 @@ fun LoginScreen(
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     val authState by authViewModel.authState.collectAsState()
+    val error by authViewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(authState) {
-        if (authState is AuthState.Error) {
-            snackbarHostState.showSnackbar((authState as AuthState.Error).message)
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it.userMessage)
             authViewModel.clearError()
         }
     }

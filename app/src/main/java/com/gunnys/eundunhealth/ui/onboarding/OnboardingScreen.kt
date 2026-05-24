@@ -61,7 +61,10 @@ fun OnboardingScreen(
     }
 
     LaunchedEffect(error) {
-        error?.let { snackbarHostState.showSnackbar(it) }
+        error?.let {
+            snackbarHostState.showSnackbar(it.userMessage)
+            viewModel.clearError()
+        }
     }
 
     Scaffold(
