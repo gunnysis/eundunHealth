@@ -44,13 +44,23 @@ versionCode `13`, versionName `0.1.0`. v0.1·v0.2·v0.3 spec 전체와 인프라
 
 ### 인프라 / CI/CD
 
-- **Backend GitHub Actions** — ruff + mypy(strict) + pytest + Codecov + pip-audit + bandit + gitleaks + Trivy 이미지 스캔 + Azure 배포.
-- **Android GitHub Actions** — spotlessCheck + detektDebug + testDebugUnitTest + assembleDebug.
+- **Backend GitHub Actions** — ruff + mypy(strict) + pytest + Codecov → Docker compose runtime smoke (INC-03 차단) → pip-audit + bandit + gitleaks → main push 시 Trivy + ACR push + **secret precheck (INC-18 차단)** → Container App 배포 → /health.
+  - `workflow_dispatch` trigger 지원 — paths 필터 우회로 secret rotation/긴급 재배포 가능.
+  - 자동 배포 end-to-end 검증: revision `eundunhealth-api--0000007` 활성, /health 200 OK.
+- **Android GitHub Actions** — spotlessCheck + detektDebug + testDebugUnitTest + assembleDebug. (`gradlew` + `scripts/*.sh` git exec bit 부여로 Linux runner에서도 실행 가능)
 - **Dependabot** — pip + github-actions + gradle 주간 PR.
-- **운영 시크릿** — `database-url`(asyncpg URL), `supabase-service-role-key`, `sentry-dsn-backend`. 옛 `db-password`, `jwt-secret`은 미사용으로 제거.
+- **운영 시크릿** (총 5) — `database-url`(asyncpg URL), `supabase-url`, `supabase-service-role-key`, `sentry-dsn-backend`, ACR pull credential. 옛 `db-password`, `jwt-secret`은 미사용으로 제거.
+- **GitHub Actions secret** — `AZURE_CREDENTIALS` (service principal + AcrPush role). 만료 갱신 절차: `scripts/register-azure-credentials.ps1 -Verify`.
 - **Sentry 분리** — Android `eundunhealth` + Backend `eundunhealth-backend` 두 프로젝트. tracesSampleRate DEBUG=1.0 / PROD=0.2.
 - **ACR 정리 후크** — Basic SKU retention 미지원 → `redeploy.sh`가 timestamp 태그 최근 5개만 보존하도록 자동 untag.
-- **release 빌드** — `assembleRelease`(R8+서명) + `bundleRelease`(AAB 7.7MB) + ProGuard mapping Sentry 자동 업로드. keystore alias 수정(`eundunhealth_sign_key`).
+- **release 빌드** — `assembleRelease`(R8+서명) + `bundleRelease`(AAB 7.7MB) + ProGuard mapping Sentry 자동 업로드. keystore alias 수정(`eundunhealth_sign_key`). `scripts/preflight-release.sh`로 일괄 검증.
+
+### 인시던트 + 재발 방지 (INC-01~18)
+
+- 운영 사고·회귀 18건을 `docs/ops/incident-log.md`에 정리. 각 인시던트마다 **증상 → 근본 원인 → 복구 → 재발 방지** 4단으로 기록.
+- 자동화 정착: `scripts/preflight-release.sh` (INC-04), `scripts/alembic-autogen.sh` (INC-07), `scripts/register-azure-credentials.ps1` (INC-17), `backend.yml` "Verify required Container App secrets exist" step (INC-18), `runtime-smoke` job (INC-03).
+- 강제 룰: `CLAUDE.md`에 룰 1~6 영구 명시 (ACR untag-only, releaseArtifacts, alembic-autogen, lifespan middleware 금지, Supabase 교체 금지, secretref 동기화).
+- 공통 안전망: `.github/PULL_REQUEST_TEMPLATE.md` destructive-ops 5문항 + AAB/APK 동기 + 마이그레이션 PG 검증 + secret 동기화 체크리스트.
 
 ### 버그 수정 (CRITICAL/HIGH/MEDIUM)
 

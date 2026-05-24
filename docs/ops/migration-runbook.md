@@ -1,9 +1,11 @@
 # Migration Runbook: Ktor → FastAPI
 
-> 작성일: 2026-05-24
+> 작성일: 2026-05-24 (cutover 완료) / 갱신: 2026-05-25 (자동 배포 정착)
 > 대상 환경: Azure Container Apps (`eundunhealth-api`, RG `apps`), Azure PostgreSQL (`healthapp`)
-> 기반: `docs/plans/expected/2026-05-24-implementation-spec.md` §O
-> 전제: FastAPI 백엔드 코드 (`backend/`, Task 19 리네이밍 완료)가 완성되어 테스트 PASS 상태.
+> 기반: 옛 `docs/plans/expected/2026-05-24-implementation-spec.md` §O (현재는 삭제됨)
+> 상태: **cutover 완료**. 본 문서는 historical record 겸 향후 동급 마이그레이션 시 reference.
+
+> **현행 배포 절차는 `operations-snapshot.md §2`와 `CLAUDE.md "Deployment"` 섹션 참조.** 본 문서의 4.1·4.2(수동 cutover)는 2026-05-24 단일 실행분으로 종결. 이후의 모든 backend 변경은 GitHub Actions 자동 배포(`backend.yml`)로 진행.
 
 ---
 
@@ -282,7 +284,17 @@ az containerapp ingress traffic set --name eundunhealth-api --resource-group app
 
 - `az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api`로 untagged manifest 누적 확인. 필요 시 `az acr manifest delete`로 정리.
 - Azure PostgreSQL 백업 정책(PITR retention) 확인 및 비용 모니터링.
-- Sentry 백엔드 DSN을 별도 프로젝트로 생성하여 `SENTRY_DSN` secretref로 전환(현재 비활성 상태).
+- Sentry 백엔드 DSN: ✅ 2026-05-25에 별도 프로젝트 `eundunhealth-backend`로 분리됨. Container App secret `sentry-dsn-backend`로 활성. (INC-09 후속)
+- GitHub Actions `AZURE_CREDENTIALS` SP credential은 2년 만료. 6개월 전 알림은 `monitoring-and-cost.md §5`+`§6.7` 참조.
+
+### 마이그레이션 사후 발견 사항 (2026-05-25, 자동 배포 첫 동작 시)
+
+PR #15 머지로 GitHub Actions `Build, Scan & Deploy` job이 처음 실제 동작했을 때 두 가지 잠재 결함이 표면화. 둘 다 본 마이그레이션 cutover 당시 `redeploy.sh`(수동 흐름)만 사용해서 노출되지 않은 것:
+
+- **INC-17 `AZURE_CREDENTIALS` 부재** — GitHub repo secret 미등록. `scripts/register-azure-credentials.ps1`로 SP 생성/패치 + AcrPush role + secret 등록 후 해결. SP 만료 갱신도 동일 스크립트.
+- **INC-18 `supabase-url` Container App secret 누락** — `backend.yml`의 `--set-env-vars`가 `secretref:supabase-url`을 참조하나 실제 등록 안 됨. 운영자가 `az containerapp secret set`으로 추가 후 해결. 재발 방지로 `backend.yml`에 "Verify required Container App secrets exist" step + `workflow_dispatch` trigger 추가.
+
+상세 + 복구 절차는 `incident-log.md` INC-2026-05-25-17, -18 참조.
 
 ---
 
@@ -292,3 +304,4 @@ az containerapp ingress traffic set --name eundunhealth-api --resource-group app
 |------|--------|------|
 | 2026-05-24 | gunny | 초안 작성 (Task 20) |
 | 2026-05-24 | gunny | cutover 실행 완료 및 §6 사후 정리 반영 |
+| 2026-05-25 | gunny | 자동 배포(`backend.yml`) 첫 정상 동작 + INC-17·18 후속 발견 사항 §6에 추가. 본 문서는 historical reference로 전환 |

@@ -56,12 +56,24 @@ docker compose down -v                # 정리
 .venv/Scripts/alembic revision --autogenerate -m "..."
 ```
 
-### Deployment (Docker → Azure Container Apps)
+### Deployment
+
+**자동 (권장)** — main 브랜치 push로 GitHub Actions가 빌드 → Trivy → ACR push → secret precheck → Container App 업데이트 → /health 검증을 일관 수행. paths 필터는 `backend/**` 또는 `.github/workflows/backend.yml`.
 ```bash
-# Redeploy script at C:/programming/docker/eundunhealth-api/
+# 수동 트리거 (긴급 재배포 / secret rotation 검증)
+gh workflow run backend.yml --ref main
+```
+
+**수동 (로컬)** — CI를 우회해야 할 때만:
+```bash
 bash C:/programming/docker/eundunhealth-api/redeploy.sh [tag]
 ```
 FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `apps`, Korea Central) 업데이트 → /health 헬스체크 → timestamp 태그 자동 정리(최근 5개만 보존). 환경변수 변경은 별도 `az containerapp update --set-env-vars` 또는 `secret set`. 자세한 절차는 `docs/ops/migration-runbook.md`.
+
+**Secret 등록 / SP 만료 갱신** — `AZURE_CREDENTIALS` 등록 또는 service principal credential 만료 시:
+```powershell
+pwsh -File scripts\register-azure-credentials.ps1 -Verify
+```
 
 Docker development location: `C:\programming\docker\eundunhealth-api`
 
@@ -195,7 +207,15 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 ### 룰 5 — Supabase 프로젝트는 v1.0 출시 후 절대 교체 금지 (INC-14)
 프로젝트가 갈리면 user_id namespace가 바뀌어 기존 사용자가 모두 orphan이 된다. 출시 전(현 상태)에만 5개 사용자 테이블 TRUNCATE로 안전 교체 가능. 출시 후 불가피하면 매핑 테이블 + 백필 + 사용자 공지 절차 필수.
 
-### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.6`)
+### 룰 6 — backend.yml `secretref` 추가는 항상 세 가지 동시 변경 (INC-18)
+`.github/workflows/backend.yml`의 `--set-env-vars`에 새 `<ENV>=secretref:<name>`을 넣으면 같은 PR에서 반드시:
+1. `az containerapp secret set --secrets "<name>=<value>"` 실행 (운영자가 PR 머지 전)
+2. `backend.yml`의 "Verify required Container App secrets exist" step `REQUIRED` 문자열에 `<name>` 추가
+3. `docs/ops/operations-snapshot.md` §2 Secrets 목록 갱신
+
+세 가지 중 하나라도 빠지면 main 머지 후 첫 deploy job에서 `ContainerAppSecretRefNotFound`로 실패한다. PR template Backend 섹션 체크리스트 + `monitoring-and-cost.md §6.6` 참조.
+
+### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.8`)
 1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?
 2. `--yes`/`--no-confirm` 플래그가 무엇을 묵시적으로 동의하는가?
 3. 연쇄 영향(manifest 공유, secretref, firewall rule)은?
@@ -219,5 +239,6 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 ### 자동화 스크립트 (`scripts/`)
 - `scripts/preflight-release.sh` — Spotless + Detekt + Tests + releaseArtifacts 일괄 (INC-04 방지)
 - `scripts/alembic-autogen.sh` — postgres:16-alpine 컨테이너 기반 autogenerate (INC-07 방지)
+- `scripts/register-azure-credentials.ps1` — SP 생성/패치 + AcrPush + GitHub secret 등록 (INC-17, 운영자 1회/만료 갱신)
 - `scripts/warm-gradle.sh` — Gradle 데몬 사전 구동
 - `scripts/claude-context.sh` / `claude-precompact.sh` — SessionStart/PreCompact 훅
