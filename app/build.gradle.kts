@@ -110,9 +110,6 @@ dependencies {
     // Navigation
     implementation(libs.navigation.compose)
 
-    // Serialization
-    implementation(libs.kotlinx.serialization.json)
-
     // Sentry
     implementation(libs.sentry.android)
     implementation(libs.sentry.okhttp)
