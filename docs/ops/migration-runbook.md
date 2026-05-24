@@ -270,7 +270,7 @@ az containerapp ingress traffic set --name eundunhealth-api --resource-group app
 
 ## 6. 정리 (Post-Migration, 1주 안정 운영 후)
 
-1. `backend-ktor/` 디렉토리 삭제 (설계서 §P.1)
+1. ~~`backend-ktor/` 디렉토리 삭제~~ — **완료**: `D:\backup\dev\project\eundunHealth\`로 이관 보관 (코드 롤백 필요 시 그곳에서 가져옴)
 2. ACR에서 `ktor-final` 외 Ktor 이미지 정리: `az acr repository delete --name eundunhealthacr --image eundunhealth-api:<old-tag>`
 3. Container App secrets에서 사용하지 않는 Ktor 전용 시크릿 제거 (`azure-db-password`, `supabase-jwt-secret` 등)
 4. `CLAUDE.md` Backend 섹션을 FastAPI 기준으로 업데이트

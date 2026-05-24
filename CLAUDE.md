@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python)** backend. Users input body metrics, receive auto-generated weekly workout plans from ExerciseDB, track completion via Health Connect, and earn badges. All UI text is Korean.
 
-> The legacy Ktor backend is preserved in `backend-ktor/` until FastAPI runs stable for ≥1 week, then it will be removed.
+> 레거시 Ktor 백엔드 소스는 `D:\backup\dev\project\eundunHealth\`로 이동·보관됨. ACR의 `ktor-final` 이미지 태그도 함께 보존되어 있어 인프라 롤백은 여전히 가능 (`docs/ops/migration-runbook.md` §5 참조).
 
 ## Build & Run Commands
 
