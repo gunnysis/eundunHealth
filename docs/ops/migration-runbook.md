@@ -3,7 +3,7 @@
 > 작성일: 2026-05-24
 > 대상 환경: Azure Container Apps (`eundunhealth-api`, RG `apps`), Azure PostgreSQL (`healthapp`)
 > 기반: `docs/plans/expected/2026-05-24-implementation-spec.md` §O
-> 전제: FastAPI 백엔드 코드 (`backend-fastapi/`)가 완성되어 12건 테스트 PASS 상태.
+> 전제: FastAPI 백엔드 코드 (`backend/`, Task 19 리네이밍 완료)가 완성되어 테스트 PASS 상태.
 
 ---
 
@@ -107,7 +107,7 @@ az containerapp show --name eundunhealth-api --resource-group apps \
 
 ```bash
 # 로컬에서 프로덕션 DB에 stamp 실행 (1회만)
-cd backend-fastapi
+cd backend
 export DATABASE_URL="postgresql+asyncpg://gunny:<password>@healthapp.postgres.database.azure.com:5432/postgres?ssl=require"
 .venv/Scripts/alembic stamp head
 ```

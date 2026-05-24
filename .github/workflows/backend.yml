@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend-fastapi/**'
+      - 'backend/**'
       - '.github/workflows/backend.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'backend-fastapi/**'
+      - 'backend/**'
       - '.github/workflows/backend.yml'
 
 env:
@@ -17,7 +17,7 @@ env:
   CONTAINER_APP_NAME: eundunhealth-api
   RESOURCE_GROUP: apps
   IMAGE_NAME: eundunhealth-api
-  BACKEND_DIR: backend-fastapi
+  BACKEND_DIR: backend
 
 jobs:
   test:
