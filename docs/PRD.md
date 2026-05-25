@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
 **문서 버전:** v1.1 (2026-05-25 — v0.1.0 구현 상태 반영)
-**제품 버전:** v0.1.0 (versionCode 13) — v0.1·v0.2·v0.3 spec 전체 구현 완료. Play Store **Internal Testing** 진입 대상
+**제품 버전:** v0.1.0 (versionCode 14 — 13은 안정화 전 첫 시도, 14가 정식 출시 빌드) — v0.1·v0.2·v0.3 spec 전체 구현 완료 + Phase 1~6A 안정화. Play Store **Internal Testing** 진입 대상
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

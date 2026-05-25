@@ -1,7 +1,7 @@
 # eundunHealth 기능 명세서
 
 > **문서 버전:** v1.0 (초기 설계) — 본문은 그대로 보존.
-> **현재 제품 상태(2026-05-25):** v0.1.0 (versionCode 13). v0.2(통계·운동 알고리즘)·v0.3(휴식일·목표·배지 확장) spec 모두 구현 완료. 자세한 차이는 [CHANGELOG.md](./CHANGELOG.md) / [TRD.md "구현 후 변경 사항"](./TRD.md) 참조.
+> **현재 제품 상태(2026-05-25):** v0.1.0 (versionCode 14 — 13은 안정화 전 첫 시도, 14가 정식 출시 빌드). v0.2(통계·운동 알고리즘)·v0.3(휴식일·목표·배지 확장) spec 모두 구현 완료 + Phase 1~6A 출시 직전 안정화(silent 버그 6건 정리 + OpenAPI generator 도입). 자세한 차이는 [CHANGELOG.md](./CHANGELOG.md) / [TRD.md "구현 후 변경 사항"](./TRD.md) 참조.
 
 ## 프로젝트 개요
 
