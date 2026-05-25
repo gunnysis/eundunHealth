@@ -139,7 +139,10 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit> = runCatching {
-        api.updateDayCompletion(UpdateDayCompletionRequest(date.toString(), completed))
+        // backend CompletionRequest는 weekStart 기준 7일 범위 내 date를 받는다.
+        // KST 기준 월요일을 weekStart로 산출 — Android UX(LocalDate.with(MONDAY))와 동일 규칙.
+        val weekStart = date.with(DayOfWeek.MONDAY)
+        api.updateDayCompletion(UpdateDayCompletionRequest(weekStart.toString(), date.toString(), completed))
     }
 
     override suspend fun getHistory(page: Int, size: Int): Result<Pair<List<WeeklyPlan>, Int>> = runCatching {

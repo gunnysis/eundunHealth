@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.weekly_plan import WeeklyPlan
@@ -56,6 +56,15 @@ class WeeklyPlanRepository:
             .limit(size)
         )
         return list(result.scalars().all())
+
+    async def count_by_user(self, user_id: str) -> int:
+        """history envelope의 total_count 필드용 — Android 페이지 인디케이터 입력."""
+        result = await self.db.execute(
+            select(func.count())
+            .select_from(WeeklyPlan)
+            .where(WeeklyPlan.user_id == user_id)
+        )
+        return int(result.scalar_one())
 
     async def delete_all_by_user(self, user_id: str) -> None:
         await self.db.execute(delete(WeeklyPlan).where(WeeklyPlan.user_id == user_id))

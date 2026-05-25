@@ -30,6 +30,7 @@ data class CreateWeeklyPlanRequest(
 )
 
 data class UpdateDayCompletionRequest(
+    val weekStart: String,
     val date: String,
     val completed: Boolean,
 )

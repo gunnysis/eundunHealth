@@ -20,18 +20,15 @@
         "type": "object"
       },
       "CompletionRequest": {
+        "description": "day-level 완료 토글 — Android HomeScreen UX와 일치.\n\n하루를 통째로 완료 처리 (해당 date의 모든 exercises 일괄 완료 + day의 isCompleted 갱신).\n이전 exercise-level (day_index, exercise_index) 구조는 Android UX와 불일치해서 422 fail이었다.",
         "properties": {
           "completed": {
             "title": "Completed",
             "type": "boolean"
           },
-          "dayIndex": {
-            "title": "Dayindex",
-            "type": "integer"
-          },
-          "exerciseIndex": {
-            "title": "Exerciseindex",
-            "type": "integer"
+          "date": {
+            "title": "Date",
+            "type": "string"
           },
           "weekStart": {
             "title": "Weekstart",
@@ -40,8 +37,7 @@
         },
         "required": [
           "weekStart",
-          "dayIndex",
-          "exerciseIndex",
+          "date",
           "completed"
         ],
         "title": "CompletionRequest",
@@ -270,12 +266,17 @@
             "title": "Restday",
             "type": "integer"
           },
+          "userId": {
+            "title": "Userid",
+            "type": "string"
+          },
           "weightKg": {
             "title": "Weightkg",
             "type": "number"
           }
         },
         "required": [
+          "userId",
           "heightCm",
           "weightKg",
           "bodyFatPct",
@@ -324,6 +325,38 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WeeklyPlanHistoryResponse": {
+        "description": "페이지네이션 메타를 포함한 history envelope.\n\nAndroid의 HistoryViewModel이 total_count를 받아 페이지 인디케이터에 사용한다.\n이전엔 `list[WeeklyPlanResponse]`만 반환해서 Android Gson deserialization이 실패했다.",
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyPlanResponse"
+            },
+            "title": "Plans",
+            "type": "array"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "totalCount": {
+            "title": "Totalcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plans",
+          "totalCount",
+          "page",
+          "size"
+        ],
+        "title": "WeeklyPlanHistoryResponse",
+        "type": "object"
+      },
       "WeeklyPlanRequest": {
         "properties": {
           "dayPlans": {
@@ -359,12 +392,22 @@
             "title": "Dayplans",
             "type": "string"
           },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "userId": {
+            "title": "Userid",
+            "type": "string"
+          },
           "weekStart": {
             "title": "Weekstart",
             "type": "string"
           }
         },
         "required": [
+          "id",
+          "userId",
           "weekStart",
           "dayPlans"
         ],
@@ -921,11 +964,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/WeeklyPlanResponse"
-                  },
-                  "title": "Response Getweeklyplanhistory",
-                  "type": "array"
+                  "$ref": "#/components/schemas/WeeklyPlanHistoryResponse"
                 }
               }
             },

@@ -14,6 +14,7 @@ class UserProfileRequest(CamelSchema):
 
 
 class UserProfileResponse(CamelSchema):
+    user_id: str
     height_cm: float
     weight_kg: float
     body_fat_pct: float | None
