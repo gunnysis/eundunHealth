@@ -75,37 +75,17 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("이번 주 운동 계획") },
                 actions = {
-                    IconButton(onClick = onProfileClick) {
-                        Icon(Icons.Default.Person, "프로필")
-                    }
-                    IconButton(onClick = { viewModel.cycleTheme() }) {
-                        Icon(
-                            when (themeMode) {
-                                ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
-                                ThemeMode.DARK -> Icons.Default.DarkMode
-                                ThemeMode.LIGHT -> Icons.Default.LightMode
-                            },
-                            "테마",
-                        )
-                    }
-                    IconButton(onClick = { viewModel.loadPlan() }) {
-                        Icon(Icons.Default.Refresh, "새로고침")
-                    }
-                    IconButton(onClick = onHistoryClick) {
-                        Icon(Icons.Default.History, "기록")
-                    }
-                    IconButton(onClick = onStatisticsClick) {
-                        Icon(Icons.Default.QueryStats, "통계")
-                    }
-                    IconButton(onClick = onGoalClick) {
-                        Icon(Icons.Default.Flag, "목표")
-                    }
-                    IconButton(onClick = onBadgesClick) {
-                        Icon(Icons.Default.EmojiEvents, "배지")
-                    }
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, "로그아웃")
-                    }
+                    HomeTopBarActions(
+                        themeMode = themeMode,
+                        onProfileClick = onProfileClick,
+                        onCycleTheme = { viewModel.cycleTheme() },
+                        onRefresh = { viewModel.loadPlan() },
+                        onHistoryClick = onHistoryClick,
+                        onStatisticsClick = onStatisticsClick,
+                        onGoalClick = onGoalClick,
+                        onBadgesClick = onBadgesClick,
+                        onLogout = onLogout,
+                    )
                 },
             )
         },
@@ -142,26 +122,7 @@ fun HomeScreen(
                             )
                         }
                         if (!state.hasHealthPermission) {
-                            item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Icon(Icons.Default.FitnessCenter, "Health Connect")
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            "Health Connect로 운동 달성을 자동 추적",
-                                            modifier = Modifier.weight(1f),
-                                            style = MaterialTheme.typography.bodySmall,
-                                        )
-                                        TextButton(onClick = onRequestHealthPermissions) { Text("연동") }
-                                    }
-                                }
-                            }
+                            item { HealthConnectPromptCard(onRequest = onRequestHealthPermissions) }
                         }
                         items(state.plan.days, key = { it.date.toString() }) { day ->
                             DayPlanCard(
@@ -174,6 +135,59 @@ fun HomeScreen(
                 }
             }
         } // PullToRefreshBox
+    }
+}
+
+@Composable
+private fun HomeTopBarActions(
+    themeMode: ThemeMode,
+    onProfileClick: () -> Unit,
+    onCycleTheme: () -> Unit,
+    onRefresh: () -> Unit,
+    onHistoryClick: () -> Unit,
+    onStatisticsClick: () -> Unit,
+    onGoalClick: () -> Unit,
+    onBadgesClick: () -> Unit,
+    onLogout: () -> Unit,
+) {
+    IconButton(onClick = onProfileClick) { Icon(Icons.Default.Person, "프로필") }
+    IconButton(onClick = onCycleTheme) {
+        Icon(
+            when (themeMode) {
+                ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                ThemeMode.DARK -> Icons.Default.DarkMode
+                ThemeMode.LIGHT -> Icons.Default.LightMode
+            },
+            "테마",
+        )
+    }
+    IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "새로고침") }
+    IconButton(onClick = onHistoryClick) { Icon(Icons.Default.History, "기록") }
+    IconButton(onClick = onStatisticsClick) { Icon(Icons.Default.QueryStats, "통계") }
+    IconButton(onClick = onGoalClick) { Icon(Icons.Default.Flag, "목표") }
+    IconButton(onClick = onBadgesClick) { Icon(Icons.Default.EmojiEvents, "배지") }
+    IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.ExitToApp, "로그아웃") }
+}
+
+@Composable
+private fun HealthConnectPromptCard(onRequest: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.FitnessCenter, "Health Connect")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Health Connect로 운동 달성을 자동 추적",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            TextButton(onClick = onRequest) { Text("연동") }
+        }
     }
 }
 

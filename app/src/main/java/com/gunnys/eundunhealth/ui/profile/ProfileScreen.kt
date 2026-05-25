@@ -45,8 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gunnys.eundunhealth.ui.components.ProfileSlider
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
-import com.gunnys.eundunhealth.ui.onboarding.ProfileSlider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,29 +206,16 @@ private fun ProfileEditContent(
         )
         Spacer(modifier = Modifier.height(24.dp))
 
-        ProfileSlider("키", height, 140f..210f, "cm", 0) { height = it }
-        ProfileSlider("몸무게", weight, 40f..150f, "kg", 1) { weight = it }
-        ProfileSlider("근육량", muscleMass, 10f..60f, "kg", 1) { muscleMass = it }
-        ProfileSlider("체지방률", bodyFat, 5f..50f, "%", 1) { bodyFat = it }
+        BodyMetricsSliders(
+            height = height, onHeightChange = { height = it },
+            weight = weight, onWeightChange = { weight = it },
+            muscleMass = muscleMass, onMuscleMassChange = { muscleMass = it },
+            bodyFat = bodyFat, onBodyFatChange = { bodyFat = it },
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text(
-            "휴식일",
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        val dayLabels = listOf("월", "화", "수", "목", "금", "토", "일")
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            dayLabels.forEachIndexed { idx, label ->
-                val dayNumber = idx + 1
-                SegmentedButton(
-                    selected = restDay == dayNumber,
-                    onClick = { restDay = dayNumber },
-                    shape = SegmentedButtonDefaults.itemShape(index = idx, count = dayLabels.size),
-                ) { Text(label) }
-            }
-        }
+        RestDaySelector(restDay = restDay, onRestDayChange = { restDay = it })
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -241,39 +228,84 @@ private fun ProfileEditContent(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        Button(
-            onClick = { onSave(height, weight, bodyFat, muscleMass, restDay) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving && !isDeleting,
-        ) {
-            if (isSaving) {
-                CircularProgressIndicator(
-                    modifier = Modifier.padding(end = 8.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
-            Text("저장하기")
-        }
+        ProfileActionButtons(
+            isSaving = isSaving,
+            isDeleting = isDeleting,
+            onSave = { onSave(height, weight, bodyFat, muscleMass, restDay) },
+            onDeleteClick = onDeleteClick,
+        )
+    }
+}
 
-        Spacer(modifier = Modifier.height(32.dp))
+@Composable
+private fun BodyMetricsSliders(
+    height: Float, onHeightChange: (Float) -> Unit,
+    weight: Float, onWeightChange: (Float) -> Unit,
+    muscleMass: Float, onMuscleMassChange: (Float) -> Unit,
+    bodyFat: Float, onBodyFatChange: (Float) -> Unit,
+) {
+    ProfileSlider("키", height, 140f..210f, "cm", 0, onHeightChange)
+    ProfileSlider("몸무게", weight, 40f..150f, "kg", 1, onWeightChange)
+    ProfileSlider("근육량", muscleMass, 10f..60f, "kg", 1, onMuscleMassChange)
+    ProfileSlider("체지방률", bodyFat, 5f..50f, "%", 1, onBodyFatChange)
+}
 
-        OutlinedButton(
-            onClick = onDeleteClick,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving && !isDeleting,
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.error,
-            ),
-        ) {
-            if (isDeleting) {
-                CircularProgressIndicator(
-                    modifier = Modifier.padding(end = 8.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            Text("계정 삭제")
+@Composable
+private fun RestDaySelector(restDay: Int, onRestDayChange: (Int) -> Unit) {
+    Text("휴식일", style = MaterialTheme.typography.titleMedium)
+    Spacer(modifier = Modifier.height(8.dp))
+    val dayLabels = listOf("월", "화", "수", "목", "금", "토", "일")
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        dayLabels.forEachIndexed { idx, label ->
+            val dayNumber = idx + 1
+            SegmentedButton(
+                selected = restDay == dayNumber,
+                onClick = { onRestDayChange(dayNumber) },
+                shape = SegmentedButtonDefaults.itemShape(index = idx, count = dayLabels.size),
+            ) { Text(label) }
         }
+    }
+}
+
+@Composable
+private fun ProfileActionButtons(
+    isSaving: Boolean,
+    isDeleting: Boolean,
+    onSave: () -> Unit,
+    onDeleteClick: () -> Unit,
+) {
+    Button(
+        onClick = onSave,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isSaving && !isDeleting,
+    ) {
+        if (isSaving) {
+            CircularProgressIndicator(
+                modifier = Modifier.padding(end = 8.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
+        Text("저장하기")
+    }
+
+    Spacer(modifier = Modifier.height(32.dp))
+
+    OutlinedButton(
+        onClick = onDeleteClick,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isSaving && !isDeleting,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.error,
+        ),
+    ) {
+        if (isDeleting) {
+            CircularProgressIndicator(
+                modifier = Modifier.padding(end = 8.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        Text("계정 삭제")
     }
 }
