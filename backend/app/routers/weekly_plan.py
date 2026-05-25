@@ -13,16 +13,16 @@ from app.services.weekly_plan_service import WeeklyPlanService
 router = APIRouter(tags=["weekly-plan"])
 
 
-@router.get("/weekly-plan", response_model=WeeklyPlanResponse)
+@router.get("/weekly-plan", response_model=WeeklyPlanResponse, operation_id="getWeeklyPlan")
 async def get_plan(
-    week_start: str = Query(default_factory=lambda: str(datetime.date.today())),
+    week_start: str = Query(default_factory=lambda: str(datetime.date.today()), alias="weekStart"),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> WeeklyPlanResponse:
     return await WeeklyPlanService(db).get_plan(user_id, week_start)
 
 
-@router.post("/weekly-plan")
+@router.post("/weekly-plan", operation_id="createWeeklyPlan")
 async def create_plan(
     req: WeeklyPlanRequest,
     user_id: str = Depends(get_current_user_id),
@@ -32,7 +32,7 @@ async def create_plan(
     return {"status": "ok"}
 
 
-@router.patch("/weekly-plan/complete")
+@router.patch("/weekly-plan/complete", operation_id="updateDayCompletion")
 async def complete(
     req: CompletionRequest,
     user_id: str = Depends(get_current_user_id),
@@ -42,7 +42,7 @@ async def complete(
     return {"status": "ok"}
 
 
-@router.get("/weekly-plan/history", response_model=list[WeeklyPlanResponse])
+@router.get("/weekly-plan/history", response_model=list[WeeklyPlanResponse], operation_id="getWeeklyPlanHistory")
 async def history(
     page: int = Query(0, ge=0),
     size: int = Query(10, ge=1, le=50),
@@ -52,9 +52,9 @@ async def history(
     return await WeeklyPlanService(db).get_history(user_id, page, size)
 
 
-@router.get("/weekly-plan/previous", response_model=WeeklyPlanResponse | None)
+@router.get("/weekly-plan/previous", response_model=WeeklyPlanResponse | None, operation_id="getPreviousWeeklyPlan")
 async def previous(
-    week_start: str = Query(default_factory=lambda: str(datetime.date.today())),
+    week_start: str = Query(default_factory=lambda: str(datetime.date.today()), alias="weekStart"),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> WeeklyPlanResponse | None:
@@ -62,7 +62,7 @@ async def previous(
     return await WeeklyPlanService(db).get_previous_plan(user_id, week_start)
 
 
-@router.get("/weekly-plan/statistics", response_model=StatisticsResponse)
+@router.get("/weekly-plan/statistics", response_model=StatisticsResponse, operation_id="getStatistics")
 async def statistics(
     weeks: int = Query(12, ge=1, le=52),
     user_id: str = Depends(get_current_user_id),

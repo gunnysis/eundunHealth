@@ -20,7 +20,7 @@ async def test_complete_exercise_toggles_flag(client, sample_plan):
     )
     assert resp.status_code == 200
 
-    resp = await client.get("/weekly-plan", params={"week_start": "2026-05-25"})
+    resp = await client.get("/weekly-plan", params={"weekStart": "2026-05-25"})
     assert '"completed": true' in resp.json()["dayPlans"]
 
 

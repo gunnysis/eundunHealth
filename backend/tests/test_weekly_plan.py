@@ -6,14 +6,14 @@ async def test_create_and_get_plan(client, sample_plan):
     resp = await client.post("/weekly-plan", json=sample_plan)
     assert resp.status_code == 200
 
-    resp = await client.get("/weekly-plan", params={"week_start": sample_plan["weekStart"]})
+    resp = await client.get("/weekly-plan", params={"weekStart": sample_plan["weekStart"]})
     assert resp.status_code == 200
     assert resp.json()["weekStart"] == sample_plan["weekStart"]
 
 
 @pytest.mark.asyncio
 async def test_get_plan_not_found(client):
-    resp = await client.get("/weekly-plan", params={"week_start": "2099-01-01"})
+    resp = await client.get("/weekly-plan", params={"weekStart": "2099-01-01"})
     assert resp.status_code == 404
 
 

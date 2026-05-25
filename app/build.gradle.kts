@@ -16,6 +16,7 @@ plugins {
     alias(libs.plugins.sentry)
     alias(libs.plugins.detekt)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.openapi.generator)
 }
 
 detekt {
@@ -25,6 +26,11 @@ detekt {
     autoCorrect = false
     // baseline은 점진적 정리용 — 첫 실행 시 ./gradlew :app:detektBaselineDebug로 생성한다.
     baseline = file("$rootDir/config/detekt/baseline.xml")
+}
+
+// OpenAPI generator가 만든 코드는 우리 스타일 규칙 대상이 아님 — 모든 detekt task에서 제외.
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    exclude("**/generated/openapi/**")
 }
 
 spotless {
@@ -138,6 +144,9 @@ dependencies {
     // Retrofit (Backend API + ExerciseDB)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
+    // OpenAPI generator의 infrastructure 코드(ApiClient.kt)가 ScalarsConverterFactory를 참조 —
+    // Phase 5에서 Repository 전환 시 우리는 NetworkModule만 사용하므로 직접 호출하진 않지만, 컴파일 통과를 위해 추가.
+    implementation(libs.retrofit.scalars)
     implementation(libs.okhttp.logging)
 
     // Coil (images + GIF)
@@ -192,4 +201,47 @@ tasks.register("releaseArtifacts") {
     group = "build"
     description = "Builds release AAB (bundleRelease) and APK (assembleRelease) together."
     dependsOn("assembleRelease", "bundleRelease")
+}
+
+// =====================================================================================
+// OpenAPI generator — backend/openapi.json → Retrofit interface + DTOs
+// =====================================================================================
+// 출력은 build/generated/openapi (gitignored, CI에서 재생성). 컴파일 전 자동 실행.
+// spec 갱신 절차: bash scripts/sync-openapi.sh → backend/openapi.json 커밋.
+// 현재는 side-by-side 단계 — 기존 EundunApi.kt와 공존, Repository는 아직 generated 미사용.
+val openApiGeneratedDir = layout.buildDirectory.dir("generated/openapi")
+
+openApiGenerate {
+    generatorName.set("kotlin")
+    library.set("jvm-retrofit2")
+    // Windows 절대 경로의 `C:` 가 URI scheme으로 오인되지 않도록 toURI() 사용.
+    inputSpec.set(rootProject.file("backend/openapi.json").toURI().toString())
+    outputDir.set(openApiGeneratedDir.get().asFile.absolutePath)
+    apiPackage.set("com.gunnys.eundunhealth.api.generated.api")
+    modelPackage.set("com.gunnys.eundunhealth.api.generated.model")
+    // kotlin 제너레이터는 invokerPackage를 무시 — packageName으로 infrastructure/auth 경로를 지정.
+    packageName.set("com.gunnys.eundunhealth.api.generated")
+    generateApiTests.set(false)
+    generateModelTests.set(false)
+    generateApiDocumentation.set(false)
+    generateModelDocumentation.set(false)
+    skipOverwrite.set(false)
+    configOptions.set(
+        mapOf(
+            "serializationLibrary" to "gson",
+            "useCoroutines" to "true",
+            "dateLibrary" to "string",
+            "omitGradleWrapper" to "true",
+        ),
+    )
+}
+
+// AGP 9.x의 `android.sourceset.disallowProvider=true`(기본) 때문에 Provider를 srcDir에 넣을 수 없음.
+// → config 시점에 즉시 resolve된 File을 전달. preBuild dependsOn openApiGenerate가 빌드 의존성 보장.
+android.sourceSets.named("main") {
+    java.srcDir(openApiGeneratedDir.get().asFile.resolve("src/main/kotlin"))
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(tasks.named("openApiGenerate"))
 }
