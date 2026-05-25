@@ -293,6 +293,81 @@ ERROR: (ContainerAppSecretRefNotFound) SecretRef 'supabase-url' defined for cont
 
 ---
 
+## INC-2026-05-25-19 — `updateDayCompletion` 422 silent fail (운동 완료 토글 미저장)
+
+**증상**: HomeScreen day 완료 토글 후 reload하면 완료 표시가 사라짐. Optimistic UI는 즉시 갱신되지만 서버엔 저장 안 됨. 사용자가 매일 같은 운동을 다시 토글하게 됨.
+
+**근본 원인**: Android `UpdateDayCompletionRequest(date, completed)` body vs Backend Pydantic `CompletionRequest(week_start, day_index, exercise_index, completed)` 스키마 mismatch → 422 Unprocessable Entity → Retrofit `HttpException` → Repository `runCatching`이 흡수 → ViewModel `onFailure`는 처리하는데 사용자는 optimistic UI만 보고 갱신됐다고 오인. Android 도메인은 **day-level 토글**, Backend는 **exercise-level 토글** 가정 → 양 측이 다른 도메인을 모델링하던 drift.
+
+**복구**: Backend `CompletionRequest`를 day-level `(weekStart, date, completed)`로 재설계. `update_completion` 로직이 해당 date의 day-level `isCompleted`와 모든 exercises `completed`를 동시 갱신 (Statistics service가 `exercises[*].completed`를 보기 때문에 양 경로 일관성 확보). Android Repository에서 weekStart 산출 후 함께 전송. (PR #20, Phase 5A)
+
+**재발 방지**:
+- OpenAPI generator(PR #19)로 Android Retrofit client가 backend spec 단일 출처에 컴파일 의존.
+- `backend.yml`의 "Verify OpenAPI spec is in sync" CI step이 라우터/스키마 변경 시 spec 미동기화를 PR 단계에서 fast-fail.
+- Phase 5B+5C(PR #21)로 Repository가 generated client 직접 사용 — schema 불일치는 컴파일 단계에서 차단.
+
+---
+
+## INC-2026-05-25-20 — `getWeeklyPlanHistory` Gson envelope/list 불일치 (HistoryScreen 깨짐)
+
+**증상**: HistoryScreen이 빈 화면 또는 deserialization 에러로 표시. 페이지 인디케이터 미동작 (totalCount 항상 0). 무한 스크롤 폴백.
+
+**근본 원인**: Android `WeeklyPlanHistoryDto(plans, totalCount, page, size)` envelope 객체 expecting. Backend `GET /weekly-plan/history`가 `list[WeeklyPlanResponse]` 배열 반환. Gson은 JSON 배열을 envelope 객체로 디코드 못함 → exception 또는 모든 필드 null.
+
+**복구**: Backend에 `WeeklyPlanHistoryResponse(plans, total_count, page, size)` envelope schema 신규. `WeeklyPlanRepository.count_by_user()` 추가로 totalCount 효율 계산. router 반환 타입 변경. (PR #20, Phase 5A)
+
+**재발 방지**: INC-19와 동일 — OpenAPI generator + spec drift detection CI로 같은 종류 회귀 컴파일 단계 차단.
+
+---
+
+## INC-2026-05-25-21 — `UserProfileResponse.userId` 누락으로 Android에서 빈 string fallback
+
+**증상**: ProfileScreen 표시는 정상이지만, `UserProfileDto.userId`가 항상 빈 string. WorkoutRepositoryImpl 등 다른 컴포넌트에서 `profile.userId`를 빈 값으로 사용 (현재는 ViewModel이 `authRepo.getCurrentUserId()`로 대체해서 즉시 영향 없지만 잠재 회귀 위험).
+
+**근본 원인**: Backend Pydantic `UserProfileResponse` schema에 `user_id: str` 필드 누락 → JSON 응답에 `userId` 키 없음 → Gson이 Kotlin non-nullable `String` 필드에 null 대입 (Kotlin null safety 우회: Gson reflection 직접 메모리 setter 사용). 실제 값은 JVM 기본 빈 string.
+
+**복구**: `UserProfileResponse`에 `user_id: str` 추가. `profile_service.get_profile`이 `model_validate(profile)`로 ORM에서 자동 매핑 (`CamelSchema`의 `from_attributes=True`). (PR #20, Phase 5A)
+
+**재발 방지**: INC-19와 동일.
+
+---
+
+## INC-2026-05-25-22 — `WeeklyPlanResponse.id`/`userId` 누락으로 Room cache id="" 저장
+
+**증상**: WorkoutRepositoryImpl이 `WeeklyPlan(dto.id, dto.userId, ...)` 도메인 객체 생성. id가 빈 string. Room cache `WeeklyPlanEntity(savedPlan.id, savedPlan.userId, ...)`도 빈 id로 저장 → 다른 단말 동기화 시 cache key 충돌 가능.
+
+**근본 원인**: Backend `WeeklyPlanResponse` schema에 `id`, `user_id` 필드 누락. INC-21과 동일 mechanism.
+
+**복구**: schema에 두 필드 추가. `_to_response` helper로 service 매핑 통일. UUID → str 변환. (PR #20, Phase 5A)
+
+**재발 방지**: INC-19와 동일 + Phase 5B+5C(#21)로 Repository가 generated DTO 사용 → schema 불일치 시 컴파일 실패.
+
+---
+
+## INC-2026-05-25-23 — `POST /weekly-plan` dict 응답 → Room cache id="" 저장
+
+**증상**: createWeeklyPlan 후 WorkoutRepositoryImpl이 응답에서 `response.id`로 cache key 추출. 빈 string으로 cache 저장. INC-22의 변형 — 이번엔 mutating endpoint의 응답이 schema 자체를 다르게 반환.
+
+**근본 원인**: Backend `POST /weekly-plan` router가 `dict[str, str]` 반환 (`{"status":"ok"}`). Android는 `WeeklyPlanDto` 객체 기대 → 모든 필드 빈 string. INC-22의 schema 누락 fix(#20)는 response 모델이 `WeeklyPlanResponse`로 가정한 GET 경로에만 효과. POST 경로의 dict 반환은 별도 drift.
+
+**복구**: Backend `POST /weekly-plan`을 `response_model=WeeklyPlanResponse`로 변경. `upsert_plan` service가 생성/갱신된 plan을 그대로 반환 + repository `upsert`가 `flush()`로 id/created_at server_default 채움. (PR #21, Phase 5B+5C)
+
+**재발 방지**: Phase 5B+5C(#21) Repository cutover로 generated client 사용. mutating endpoint도 명시 schema 반환 강제. CLAUDE.md에 "API endpoint 추가/변경 체크리스트" 갱신.
+
+---
+
+## INC-2026-05-25-24 — `POST /badges/{key}` dict 응답 → BadgeCatalog 빈 라벨
+
+**증상**: CheckAndAwardBadgesUseCase가 운동 완료 후 awarded badge를 collect (`awarded += it`). 화면에 표시되는 badge name/description이 빈 string. 사용자는 "배지 획득" 알림에서 빈 라벨 봄.
+
+**근본 원인**: Backend `POST /badges/{key}` router가 `dict[str, str]` 반환. Android는 `BadgeDto(id, userId, badgeKey, earnedAt)` 객체 기대 → badgeKey가 빈 string → `BadgeCatalog.getInfo("")` lookup 실패 → 빈 name/description 반환. INC-23과 같은 mutating endpoint dict drift.
+
+**복구**: Backend `POST /badges/{key}`을 `response_model=BadgeResponse`로 변경. `award_badge` service가 award된 Badge ORM 반환 + repository `award`가 `flush+refresh`로 earned_at server_default 채움. Android domain `Badge`에서 사용 안 하던 `id`, `userId` 필드 제거 (dead field 정리). (PR #21, Phase 5B+5C)
+
+**재발 방지**: INC-23과 동일.
+
+---
+
 ## 본 세션 정착 자동화 (2026-05-25, 후속)
 
 각 인시던트의 "재발 방지"가 실제로 강제되는지 여부 매트릭스. 모든 ✅는 본 회고 PR에서 도입.
@@ -326,3 +401,4 @@ ERROR: (ContainerAppSecretRefNotFound) SecretRef 'supabase-url' defined for cont
 | 2026-05-25 | 초안 작성 — 16건 incident 정리 |
 | 2026-05-25 (후속) | 권장 항목 자동화 정착 — alembic-autogen.sh, preflight-release.sh, PR template, CLAUDE.md 룰 5종 |
 | 2026-05-25 (배포 검증) | INC-17·18 해결 + 자동 배포 첫 end-to-end 성공 (revision 0000006). register-azure-credentials.ps1 / secret precheck / workflow_dispatch 정착 |
+| 2026-05-25 (출시 직전 안정화) | INC-19~24 추가 — Phase 5A/5B+5C에서 발견된 silent 버그 6건. OpenAPI generator + drift detection CI(PR #19~#21)로 같은 종류 회귀를 컴파일 단계에서 차단 |
