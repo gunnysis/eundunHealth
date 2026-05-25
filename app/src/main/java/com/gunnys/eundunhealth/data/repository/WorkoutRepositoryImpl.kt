@@ -189,11 +189,9 @@ class WorkoutRepositoryImpl @Inject constructor(
         days = parseDayPlans(dayPlans),
     )
 
-    private fun parseDayPlans(json: String): List<DayPlan> {
-        return runCatching {
-            val type = object : TypeToken<List<DayPlanJson>>() {}.type
-            val dayJsons: List<DayPlanJson> = gson.fromJson(json, type)
-            dayJsons.map { it.toDayPlan() }
-        }.getOrDefault(emptyList())
-    }
+    private fun parseDayPlans(json: String): List<DayPlan> = runCatching {
+        val type = object : TypeToken<List<DayPlanJson>>() {}.type
+        val dayJsons: List<DayPlanJson> = gson.fromJson(json, type)
+        dayJsons.map { it.toDayPlan() }
+    }.getOrDefault(emptyList())
 }

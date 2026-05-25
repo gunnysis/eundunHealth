@@ -87,28 +87,23 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideProfileApi(@Named("backend") retrofit: Retrofit): ProfileApi =
-        retrofit.create(ProfileApi::class.java)
+    fun provideProfileApi(@Named("backend") retrofit: Retrofit): ProfileApi = retrofit.create(ProfileApi::class.java)
 
     @Provides
     @Singleton
-    fun provideWeeklyPlanApi(@Named("backend") retrofit: Retrofit): WeeklyPlanApi =
-        retrofit.create(WeeklyPlanApi::class.java)
+    fun provideWeeklyPlanApi(@Named("backend") retrofit: Retrofit): WeeklyPlanApi = retrofit.create(WeeklyPlanApi::class.java)
 
     @Provides
     @Singleton
-    fun provideBadgesApi(@Named("backend") retrofit: Retrofit): BadgesApi =
-        retrofit.create(BadgesApi::class.java)
+    fun provideBadgesApi(@Named("backend") retrofit: Retrofit): BadgesApi = retrofit.create(BadgesApi::class.java)
 
     @Provides
     @Singleton
-    fun provideGoalsApi(@Named("backend") retrofit: Retrofit): GoalsApi =
-        retrofit.create(GoalsApi::class.java)
+    fun provideGoalsApi(@Named("backend") retrofit: Retrofit): GoalsApi = retrofit.create(GoalsApi::class.java)
 
     @Provides
     @Singleton
-    fun provideAccountApi(@Named("backend") retrofit: Retrofit): AccountApi =
-        retrofit.create(AccountApi::class.java)
+    fun provideAccountApi(@Named("backend") retrofit: Retrofit): AccountApi = retrofit.create(AccountApi::class.java)
 
     @Provides
     @Singleton
