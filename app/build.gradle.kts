@@ -28,10 +28,11 @@ detekt {
     baseline = file("$rootDir/config/detekt/baseline.xml")
 }
 
-// OpenAPI generator가 만든 코드는 우리 스타일 규칙 대상이 아님 — 모든 detekt task에서 제외.
-tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-    exclude("**/generated/openapi/**")
-}
+// AGP-integrated detekt task(detektDebug 등)는 android.sourceSets.main을 source로 가져가는데,
+// 거기에 `build/generated/openapi`를 srcDir로 추가한 영향으로 generated 코드까지 분석함.
+// source filter / exclude predicate / extension source.setFrom 모두 AGP variant task에 적용 안 됨.
+// 실용적 fallback: generated 코드의 issue를 baseline에 박제 (detekt 1.23.x 표준 패턴).
+// baseline은 `./gradlew :app:detektBaselineDebug`로 갱신.
 
 spotless {
     kotlin {
@@ -67,9 +68,10 @@ android {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
         targetSdk = 37
-        // v0.1 + v0.2 + v0.3 spec 모두 구현 완료된 첫 internal testing 빌드.
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 14, 15, ...
-        versionCode = 13
+        // v0.1.0 출시 빌드. 13은 첫 internal testing 시도(업로드 완료, 대체됨).
+        // 14는 출시 직전 안정화(Phase 1~6A + Dependabot 정리) 후 재빌드.
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 15, 16, ...
+        versionCode = 14
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

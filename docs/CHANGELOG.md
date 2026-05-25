@@ -6,7 +6,7 @@
 
 ## v0.1.0 (2026-05-25) — 첫 의미있는 milestone
 
-versionCode `13`, versionName `0.1.0`. v0.1·v0.2·v0.3 spec 전체와 인프라 마이그레이션을 한 릴리스로 묶음. Internal Testing 트랙 배포 대상.
+versionCode `14`, versionName `0.1.0`. v0.1·v0.2·v0.3 spec 전체 + 인프라 마이그레이션 + 출시 직전 안정화(Phase 1~6A + Dependabot 정리)를 한 릴리스로 묶음. Internal Testing 트랙 배포. 13은 안정화 전 첫 시도(업로드 완료, 14로 대체).
 
 ### Backend 전환 (Ktor → FastAPI)
 

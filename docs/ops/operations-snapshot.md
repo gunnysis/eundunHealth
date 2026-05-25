@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25
-> 작성 기준: v0.1.0 (versionCode 13) — Play Store Internal Testing 직전
+> 작성일: 2026-05-25 / 최근 갱신: 출시 빌드(versionCode 14) 시점
+> 작성 기준: v0.1.0 (versionCode 14) — Play Store Internal Testing 출시 빌드
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,18 +11,19 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.0` / `13`** |
+| versionName / versionCode | **`0.1.0` / `14`** (13은 안정화 전 첫 시도, 14가 정식 출시) |
 | Min SDK / Target SDK | 26 / 37 |
-| Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.4.1 |
+| Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
 | 차트 | Vico 2.1.0 (compose-m3) |
-| 정적 분석 | Detekt 1.23.7 (baseline-debug.xml) + Spotless 7.0.4 + ktlint 1.5.0 |
-| Sentry SDK | Android 8.16.0 |
+| 정적 분석 | Detekt 1.23.7 (baseline.xml — 64 issue 박제, generated 포함) + Spotless 8.5.1 + ktlint 1.5.0 |
+| API client | openapi-generator 7.10.0 (jvm-retrofit2 + gson + coroutines) — preBuild 자동 |
+| Sentry SDK | Android 8.42.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
 산출물 경로:
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (7.7MB)
-- APK: `app/build/outputs/apk/release/app-release.apk`
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (8.3MB)
+- APK: `app/build/outputs/apk/release/app-release.apk` (6.1MB)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 자동 업로드)
 
 ---
