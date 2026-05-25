@@ -81,7 +81,7 @@ jobs:
           echo "openapi.json in sync."
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: ${{ env.BACKEND_DIR }}/coverage.xml
           flags: backend
