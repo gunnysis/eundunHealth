@@ -2,7 +2,7 @@
 
 > 작성일: 2026-05-24
 > 대상: `com.gunnys.eundunhealth` (Application ID)
-> 첫 빌드: versionCode=13, versionName="0.1.0"
+> 출시 빌드: versionCode=14, versionName="0.1.0" (13은 안정화 전 첫 시도, 14가 정식 출시 빌드)
 
 이 문서는 첫 Play Store 등록·업로드 절차를 정리합니다. 자동화 가능한 부분(빌드, mapping 업로드)은 이미 끝났고, Console UI 작업과 의사결정만 남았습니다.
 

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
-**Current state**: versionName `0.1.0` (versionCode `13`). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. Ready for Play Store **Internal Testing** track. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+**Current state**: versionName `0.1.0` (versionCode `14` — 13은 첫 시도, 14는 출시 직전 안정화 후 재빌드). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. Ready for Play Store **Internal Testing** track. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
 > Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
@@ -156,7 +156,7 @@ DELETE /account
 - **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
 - **Gradle 9.4.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
-- **App version**: versionName **`0.1.0`**, versionCode **`13`** (다음 빌드부터 14, 15, ...)
+- **App version**: versionName **`0.1.0`**, versionCode **`14`** (13은 첫 internal testing 시도, 14는 출시 직전 안정화 후 재빌드. 다음 빌드부터 15, 16, ...)
 - **Sentry Android 8.16.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 2.1.0** (compose-m3) — 통계 + 목표 진행 차트
 - **Detekt 1.23.7 + Spotless 7.0.4 + ktlint 1.5.0**
