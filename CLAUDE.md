@@ -239,6 +239,7 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 - `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
 - `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
+- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목 (kotlin 2.3, starlette 1.1, healthConnect 1.2.0-alpha04) + 재개 조건 + 검증 절차
 - `@docs/ops/containerapp-env-ktor-backup.json` — cutover 직전 env 스냅샷 (historical)
 
 ### 자동화 스크립트 (`scripts/`)
