@@ -44,9 +44,11 @@ class WeeklyPlanService:
             return None
         return _to_response(plan)
 
-    async def upsert_plan(self, user_id: str, req: WeeklyPlanRequest) -> None:
+    async def upsert_plan(self, user_id: str, req: WeeklyPlanRequest) -> WeeklyPlanResponse:
+        """생성/갱신된 plan을 그대로 반환한다 — Android WorkoutRepository는 response.id로 Room cache에 저장."""
         date = datetime.date.fromisoformat(req.week_start)
-        await self.repo.upsert(user_id, date, req.day_plans)
+        plan = await self.repo.upsert(user_id, date, req.day_plans)
+        return _to_response(plan)
 
     async def update_completion(self, user_id: str, req: CompletionRequest) -> None:
         """day-level 완료 토글.

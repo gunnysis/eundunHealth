@@ -1,7 +1,11 @@
 package com.gunnys.eundunhealth.di
 
 import com.gunnys.eundunhealth.BuildConfig
-import com.gunnys.eundunhealth.data.remote.api.EundunApi
+import com.gunnys.eundunhealth.api.generated.api.AccountApi
+import com.gunnys.eundunhealth.api.generated.api.BadgesApi
+import com.gunnys.eundunhealth.api.generated.api.GoalsApi
+import com.gunnys.eundunhealth.api.generated.api.ProfileApi
+import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanApi
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbApi
 import com.gunnys.eundunhealth.data.remote.interceptor.RetryInterceptor
 import com.gunnys.eundunhealth.data.remote.interceptor.TokenAuthenticator
@@ -71,14 +75,40 @@ object NetworkModule {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
+    // Backend Retrofit은 generated API 5개가 공유한다. baseUrl/converter는 한 곳에서 관리.
     @Provides
     @Singleton
-    fun provideEundunApi(@Named("backend") client: OkHttpClient): EundunApi = Retrofit.Builder()
+    @Named("backend")
+    fun provideBackendRetrofit(@Named("backend") client: OkHttpClient): Retrofit = Retrofit.Builder()
         .baseUrl(BuildConfig.BACKEND_BASE_URL)
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
-        .create(EundunApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideProfileApi(@Named("backend") retrofit: Retrofit): ProfileApi =
+        retrofit.create(ProfileApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideWeeklyPlanApi(@Named("backend") retrofit: Retrofit): WeeklyPlanApi =
+        retrofit.create(WeeklyPlanApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideBadgesApi(@Named("backend") retrofit: Retrofit): BadgesApi =
+        retrofit.create(BadgesApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideGoalsApi(@Named("backend") retrofit: Retrofit): GoalsApi =
+        retrofit.create(GoalsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAccountApi(@Named("backend") retrofit: Retrofit): AccountApi =
+        retrofit.create(AccountApi::class.java)
 
     @Provides
     @Singleton
