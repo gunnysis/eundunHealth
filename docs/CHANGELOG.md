@@ -90,6 +90,63 @@ versionCode `13`, versionName `0.1.0`. v0.1·v0.2·v0.3 spec 전체와 인프라
 - Backend: pytest **41/41 PASS** (12 v0.1 + 8 edge case + 8 v0.2 + 13 v0.3), mypy strict clean, ruff/bandit clean, pip-audit (1 ignored: `PYSEC-2026-161` starlette 1.0 미지원).
 - Android: spotlessCheck clean, detektDebug clean, unit test 일체 PASS, assembleRelease + bundleRelease BUILD SUCCESSFUL.
 
+### 출시 직전 안정화 (PR #19–#26, Dependabot 정리)
+
+5월 25일 v0.1.0 첫 milestone 이후 출시 직전까지 진행된 안정화. 운영 silent 버그 6건 정리 + 의존성 정비 + Compose 가독성 개선.
+
+#### Phase 1–4: OpenAPI 자동 생성 + drift detection 인프라 (#19)
+- backend FastAPI 스펙(`backend/openapi.json`)을 Android Retrofit 클라이언트의 단일 출처로 만들기 위한 side-by-side 인프라.
+- `openapi-generator 7.10.0` Gradle 플러그인 도입 — `:app:openApiGenerate`가 `preBuild`에서 자동 실행, 출력은 `app/build/generated/openapi/com/gunnys/eundunhealth/api/generated/`.
+- `scripts/sync-openapi.sh` 신규 — 라우터/스키마 변경 시 spec 재생성.
+- `backend.yml`의 "Verify OpenAPI spec is in sync" CI step — spec drift PR 단계에서 fast-fail.
+- backend 라우터 15개 endpoint에 `operation_id` 명시 + `weekStart` Query alias로 통일. 숨은 drift 동시 수정: `getWeeklyPlan`이 보낸 `weekStart` 쿼리를 backend가 무시하고 default(today)로 fallback하던 버그.
+
+#### Phase 5A: schema drift 4건 + critical 버그 동시 수정 (#20)
+출시 차단 사유 2건 + 부수 drift 2건 발굴:
+- 🔴 `updateDayCompletion` body mismatch — 매번 422 silent fail (운동 완료 토글이 서버에 저장 안 됨). day-level (`weekStart, date, completed`) 도메인으로 통일. statistics 일관성을 위해 day의 `isCompleted`와 해당 day의 모든 `exercises[*].completed`를 동시 갱신.
+- 🔴 `getWeeklyPlanHistory` envelope/list 불일치 — Gson deserialization 실패로 HistoryScreen 깨짐. `WeeklyPlanHistoryResponse(plans, totalCount, page, size)` envelope 신규.
+- 🟡 `UserProfileResponse`/`WeeklyPlanResponse`에 `userId`/`id` 누락 — Android에서 빈 string fallback. 필드 추가.
+
+#### Phase 5B+5C: Repository를 generated client로 + EundunApi 제거 (#21)
+- 4 Repository(Badge, Goal, User, Workout) + `AuthRepository.deleteAccount` → generated `BadgesApi`/`GoalsApi`/`ProfileApi`/`WeeklyPlanApi`/`AccountApi` 사용.
+- 추가 silent drift 2건 동시 fix:
+  - `POST /weekly-plan` 응답을 dict → `WeeklyPlanResponse` (Android Room cache의 `id=""` 저장 문제 해결).
+  - `POST /badges/{key}` 응답을 dict → `BadgeResponse` (BadgeCatalog 룩업 실패로 빈 라벨 문제 해결).
+- `EundunApi.kt`(70줄)+`ApiDtos.kt`(80줄) 제거, side-by-side 종료. 단일 진실 출처는 `backend/openapi.json`.
+- 공통 helper `data/remote/util/ResponseExt.kt`의 `bodyOrThrow()` 도입.
+
+#### Phase 6A: Compose 가독성 정리 (#22)
+- `ui/components/ProfileSlider.kt` 신규 — Onboarding/Profile 양쪽 공유.
+- `ProfileScreen` 분해: `BodyMetricsSliders` / `RestDaySelector` / `ProfileActionButtons`.
+- `HomeScreen` 분해: `HomeTopBarActions` / `HealthConnectPromptCard`.
+- ViewModel 패턴 통일은 분석 결과 over-refactoring으로 판단해 스킵 (각 ViewModel은 이미 단일 책임으로 모델링됨).
+
+#### Dependabot 일괄 정리 (#2–#6, #12·#14, #23–#26)
+의존성 위생 정리. 일부 dependabot PR이 main 변경 사이 반복 stale로 빠지는 race condition을 직접 결합 PR로 해결하는 패턴 정착.
+
+**GitHub Actions** — `setup-python` 5→6, `upload-artifact` 4→7, `gradle/actions` 4→6
+
+**Android Gradle**
+- `gradle-wrapper` 9.4.1→9.5.1
+- `sentry` 8.16.0→8.42.0
+- `spotless` 7.0.4→8.5.1 (+ 새 룰에 맞춰 3 Kotlin file 자동 reformat)
+- `coreKtx` 1.16.0→1.18.0, `lifecycleRuntimeKtx` 2.9.0→2.10.0
+- `hiltNavigationCompose` 1.2.0→1.3.0, `navigationCompose` 2.9.0→2.9.8
+- `dataStore` 1.1.4→1.2.1
+
+**Python (backend)**
+- `pytest` 8.3.0→9.0.3, `pytest-asyncio` 0.24.0→1.3.0, `pytest-cov` 6.0.0→7.1.0
+- `uvicorn` 0.34.0→0.48.0, `sqlalchemy` 2.0.36→2.0.50, `alembic` 1.14.0→1.18.4
+- `sentry-sdk` 2.19.0→2.60.0, `pydantic-settings` 2.7.0→2.14.1
+- `PyJWT` 2.12.0→2.13.0, `asyncpg` 0.30.0→0.31.0
+- `ruff` 0.8.0→0.15.14, `bandit` 1.8.0→1.9.4, `pip-audit` 2.7.3→2.10.0
+- `httpx` 0.28.0→0.28.1, `aiosqlite` 0.20.0→0.22.1
+
+**보류 (v0.1.0 출시 후 재검토)**
+- `kotlin` 2.2.10→2.3.21 — Compose Compiler·Hilt·KSP 호환성 매트릭스 검증 필요.
+- `starlette` 0.49.1→1.1.0 — INC-2026-05-24-03(lifespan 회귀) 위험 + fastapi 0.136.3이 starlette 1.x 지원하는지 확인 필요.
+- `healthConnect` 1.1.0-rc01→1.2.0-alpha04 — rc → alpha 다운그레이드. 1.2 stable 릴리스 대기.
+
 ---
 
 ## v0.0.3-2 (2026-05-22)
