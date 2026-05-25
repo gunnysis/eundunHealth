@@ -45,6 +45,8 @@ class WeeklyPlanRepository:
         else:
             plan = WeeklyPlan(user_id=user_id, week_start=week_start, day_plans=day_plans)
             self.db.add(plan)
+        # id/created_at을 응답에 노출하려면 flush 필요 — service에서 _to_response로 변환
+        await self.db.flush()
         return plan
 
     async def get_history(self, user_id: str, page: int, size: int) -> list[WeeklyPlan]:

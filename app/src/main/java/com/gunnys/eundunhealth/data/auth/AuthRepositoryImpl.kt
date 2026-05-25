@@ -1,6 +1,6 @@
 package com.gunnys.eundunhealth.data.auth
 
-import com.gunnys.eundunhealth.data.remote.api.EundunApi
+import com.gunnys.eundunhealth.api.generated.api.AccountApi
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -11,7 +11,7 @@ import javax.inject.Inject
 class AuthRepositoryImpl @Inject constructor(
     private val supabaseClient: SupabaseClient,
     private val tokenHolder: AtomicReference<String?>,
-    private val api: EundunApi,
+    private val accountApi: AccountApi,
 ) : AuthRepository {
 
     override suspend fun signIn(email: String, password: String): Result<String> = try {
@@ -72,7 +72,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun deleteAccount(): Result<Unit> = runCatching {
         // Backend가 Supabase Auth 사용자 + 앱 DB 데이터를 모두 삭제한다 (FastAPI account_service)
-        val resp = api.deleteAccount()
+        val resp = accountApi.deleteAccount()
         if (!resp.isSuccessful) {
             throw retrofit2.HttpException(resp)
         }

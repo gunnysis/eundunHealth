@@ -38,13 +38,13 @@ class CheckAndAwardBadgesUseCaseTest {
         val awardedKeys = mutableListOf<String>()
 
         override suspend fun getEarnedBadges(): Result<List<Badge>> = Result.success(
-            earnedKeys.map { Badge("id", "user1", it, it, "", Instant.now()) },
+            earnedKeys.map { Badge(key = it, name = it, description = "", earnedAt = Instant.now()) },
         )
 
         override suspend fun awardBadge(badgeKey: String): Result<Badge> {
             earnedKeys.add(badgeKey)
             awardedKeys.add(badgeKey)
-            return Result.success(Badge("id", "user1", badgeKey, badgeKey, "", Instant.now()))
+            return Result.success(Badge(key = badgeKey, name = badgeKey, description = "", earnedAt = Instant.now()))
         }
 
         override suspend fun hasBadge(badgeKey: String): Result<Boolean> = Result.success(badgeKey in earnedKeys)

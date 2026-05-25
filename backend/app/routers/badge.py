@@ -17,11 +17,10 @@ async def get_badges(
     return await BadgeService(db).get_badges(user_id)
 
 
-@router.post("/badges/{key}", operation_id="awardBadge")
+@router.post("/badges/{key}", response_model=BadgeResponse, operation_id="awardBadge")
 async def award_badge(
     key: str,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, str]:
-    await BadgeService(db).award_badge(user_id, key)
-    return {"status": "ok"}
+) -> BadgeResponse:
+    return await BadgeService(db).award_badge(user_id, key)

@@ -27,14 +27,13 @@ async def get_plan(
     return await WeeklyPlanService(db).get_plan(user_id, week_start)
 
 
-@router.post("/weekly-plan", operation_id="createWeeklyPlan")
+@router.post("/weekly-plan", response_model=WeeklyPlanResponse, operation_id="createWeeklyPlan")
 async def create_plan(
     req: WeeklyPlanRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, str]:
-    await WeeklyPlanService(db).upsert_plan(user_id, req)
-    return {"status": "ok"}
+) -> WeeklyPlanResponse:
+    return await WeeklyPlanService(db).upsert_plan(user_id, req)
 
 
 @router.patch("/weekly-plan/complete", operation_id="updateDayCompletion")

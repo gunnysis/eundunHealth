@@ -3,8 +3,6 @@ package com.gunnys.eundunhealth.domain.model
 import java.time.Instant
 
 data class Badge(
-    val id: String,
-    val userId: String,
     val key: String,
     val name: String,
     val description: String,

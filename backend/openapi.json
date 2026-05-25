@@ -526,11 +526,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Awardbadge",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BadgeResponse"
                 }
               }
             },
@@ -849,11 +845,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Createweeklyplan",
-                  "type": "object"
+                  "$ref": "#/components/schemas/WeeklyPlanResponse"
                 }
               }
             },

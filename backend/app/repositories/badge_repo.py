@@ -32,6 +32,9 @@ class BadgeRepository:
     async def award(self, user_id: str, badge_key: str) -> Badge:
         badge = Badge(user_id=user_id, badge_key=badge_key)
         self.db.add(badge)
+        # earned_at은 server_default라 flush 후에야 채워짐 — Android awardBadge 응답에 노출하려면 필요
+        await self.db.flush()
+        await self.db.refresh(badge)
         return badge
 
     async def exists(self, user_id: str, badge_key: str) -> bool:
