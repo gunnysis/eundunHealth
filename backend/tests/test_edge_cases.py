@@ -16,7 +16,7 @@ async def test_complete_exercise_toggles_flag(client, sample_plan):
 
     resp = await client.patch(
         "/weekly-plan/complete",
-        json={"weekStart": "2026-05-25", "dayIndex": 0, "exerciseIndex": 0, "completed": True},
+        json={"weekStart": "2026-05-25", "date": "2026-05-25", "completed": True},
     )
     assert resp.status_code == 200
 
@@ -28,7 +28,7 @@ async def test_complete_exercise_toggles_flag(client, sample_plan):
 async def test_complete_when_plan_missing_returns_404(client):
     resp = await client.patch(
         "/weekly-plan/complete",
-        json={"weekStart": "2099-01-01", "dayIndex": 0, "exerciseIndex": 0, "completed": True},
+        json={"weekStart": "2099-01-01", "date": "2099-01-01", "completed": True},
     )
     assert resp.status_code == 404
 

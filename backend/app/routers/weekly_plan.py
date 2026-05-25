@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user_id
 from app.schemas.statistics import StatisticsResponse
-from app.schemas.weekly_plan import CompletionRequest, WeeklyPlanRequest, WeeklyPlanResponse
+from app.schemas.weekly_plan import (
+    CompletionRequest,
+    WeeklyPlanHistoryResponse,
+    WeeklyPlanRequest,
+    WeeklyPlanResponse,
+)
 from app.services.statistics_service import StatisticsService
 from app.services.weekly_plan_service import WeeklyPlanService
 
@@ -42,13 +47,13 @@ async def complete(
     return {"status": "ok"}
 
 
-@router.get("/weekly-plan/history", response_model=list[WeeklyPlanResponse], operation_id="getWeeklyPlanHistory")
+@router.get("/weekly-plan/history", response_model=WeeklyPlanHistoryResponse, operation_id="getWeeklyPlanHistory")
 async def history(
     page: int = Query(0, ge=0),
     size: int = Query(10, ge=1, le=50),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> list[WeeklyPlanResponse]:
+) -> WeeklyPlanHistoryResponse:
     return await WeeklyPlanService(db).get_history(user_id, page, size)
 
 

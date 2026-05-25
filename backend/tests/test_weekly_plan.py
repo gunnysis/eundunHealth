@@ -21,7 +21,8 @@ async def test_get_plan_not_found(client):
 async def test_history_empty(client):
     resp = await client.get("/weekly-plan/history")
     assert resp.status_code == 200
-    assert resp.json() == []
+    # envelope 응답 — Android HistoryViewModel이 totalCount를 페이지 인디케이터로 사용한다
+    assert resp.json() == {"plans": [], "totalCount": 0, "page": 0, "size": 10}
 
 
 @pytest.mark.asyncio
@@ -34,4 +35,8 @@ async def test_history_with_data(client, sample_plan):
 
     resp = await client.get("/weekly-plan/history")
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    body = resp.json()
+    assert len(body["plans"]) == 2
+    assert body["totalCount"] == 2
+    assert body["page"] == 0
+    assert body["size"] == 10
