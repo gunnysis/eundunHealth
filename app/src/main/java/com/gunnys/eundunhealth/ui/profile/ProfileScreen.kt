@@ -207,10 +207,14 @@ private fun ProfileEditContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         BodyMetricsSliders(
-            height = height, onHeightChange = { height = it },
-            weight = weight, onWeightChange = { weight = it },
-            muscleMass = muscleMass, onMuscleMassChange = { muscleMass = it },
-            bodyFat = bodyFat, onBodyFatChange = { bodyFat = it },
+            height = height,
+            onHeightChange = { height = it },
+            weight = weight,
+            onWeightChange = { weight = it },
+            muscleMass = muscleMass,
+            onMuscleMassChange = { muscleMass = it },
+            bodyFat = bodyFat,
+            onBodyFatChange = { bodyFat = it },
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -239,10 +243,14 @@ private fun ProfileEditContent(
 
 @Composable
 private fun BodyMetricsSliders(
-    height: Float, onHeightChange: (Float) -> Unit,
-    weight: Float, onWeightChange: (Float) -> Unit,
-    muscleMass: Float, onMuscleMassChange: (Float) -> Unit,
-    bodyFat: Float, onBodyFatChange: (Float) -> Unit,
+    height: Float,
+    onHeightChange: (Float) -> Unit,
+    weight: Float,
+    onWeightChange: (Float) -> Unit,
+    muscleMass: Float,
+    onMuscleMassChange: (Float) -> Unit,
+    bodyFat: Float,
+    onBodyFatChange: (Float) -> Unit,
 ) {
     ProfileSlider("키", height, 140f..210f, "cm", 0, onHeightChange)
     ProfileSlider("몸무게", weight, 40f..150f, "kg", 1, onWeightChange)
