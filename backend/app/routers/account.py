@@ -9,7 +9,7 @@ from app.services.account_service import AccountService
 router = APIRouter(tags=["account"])
 
 
-@router.delete("/account")
+@router.delete("/account", operation_id="deleteAccount")
 async def delete_account(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),

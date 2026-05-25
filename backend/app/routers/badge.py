@@ -9,7 +9,7 @@ from app.services.badge_service import BadgeService
 router = APIRouter(tags=["badges"])
 
 
-@router.get("/badges", response_model=list[BadgeResponse])
+@router.get("/badges", response_model=list[BadgeResponse], operation_id="getBadges")
 async def get_badges(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -17,7 +17,7 @@ async def get_badges(
     return await BadgeService(db).get_badges(user_id)
 
 
-@router.post("/badges/{key}")
+@router.post("/badges/{key}", operation_id="awardBadge")
 async def award_badge(
     key: str,
     user_id: str = Depends(get_current_user_id),

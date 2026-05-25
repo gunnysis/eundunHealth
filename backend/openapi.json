@@ -1,0 +1,1063 @@
+{
+  "components": {
+    "schemas": {
+      "BadgeResponse": {
+        "properties": {
+          "badgeKey": {
+            "title": "Badgekey",
+            "type": "string"
+          },
+          "earnedAt": {
+            "title": "Earnedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "badgeKey",
+          "earnedAt"
+        ],
+        "title": "BadgeResponse",
+        "type": "object"
+      },
+      "CompletionRequest": {
+        "properties": {
+          "completed": {
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "dayIndex": {
+            "title": "Dayindex",
+            "type": "integer"
+          },
+          "exerciseIndex": {
+            "title": "Exerciseindex",
+            "type": "integer"
+          },
+          "weekStart": {
+            "title": "Weekstart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weekStart",
+          "dayIndex",
+          "exerciseIndex",
+          "completed"
+        ],
+        "title": "CompletionRequest",
+        "type": "object"
+      },
+      "GoalRequest": {
+        "description": "PUT /goals — goal_type별 1개. 동일 type 재등록 시 target_value 갱신.",
+        "properties": {
+          "goalType": {
+            "enum": [
+              "weight",
+              "body_fat"
+            ],
+            "title": "Goaltype",
+            "type": "string"
+          },
+          "targetValue": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 500.0,
+            "title": "Targetvalue",
+            "type": "number"
+          }
+        },
+        "required": [
+          "goalType",
+          "targetValue"
+        ],
+        "title": "GoalRequest",
+        "type": "object"
+      },
+      "GoalResponse": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "goalType": {
+            "title": "Goaltype",
+            "type": "string"
+          },
+          "targetValue": {
+            "title": "Targetvalue",
+            "type": "number"
+          }
+        },
+        "required": [
+          "goalType",
+          "targetValue",
+          "createdAt"
+        ],
+        "title": "GoalResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ProfileHistoryEntry": {
+        "properties": {
+          "bodyFatPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodyfatpct"
+          },
+          "heightCm": {
+            "title": "Heightcm",
+            "type": "number"
+          },
+          "muscleMassKg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Musclemasskg"
+          },
+          "recordedAt": {
+            "title": "Recordedat",
+            "type": "string"
+          },
+          "weightKg": {
+            "title": "Weightkg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "heightCm",
+          "weightKg",
+          "bodyFatPct",
+          "muscleMassKg",
+          "recordedAt"
+        ],
+        "title": "ProfileHistoryEntry",
+        "type": "object"
+      },
+      "StatisticsResponse": {
+        "description": "최근 N주(기본 12주) 완료율 + 현재/최장 스트릭.\n\n- weekly_rates: 주 단위 완료율, week_start 오름차순(차트용)\n- current_streak: 가장 최근 주부터 연속으로 100% 완료한 주 수\n- longest_streak: 전체 기간에서 100% 완료한 최장 연속 주 수",
+        "properties": {
+          "currentStreak": {
+            "title": "Currentstreak",
+            "type": "integer"
+          },
+          "longestStreak": {
+            "title": "Longeststreak",
+            "type": "integer"
+          },
+          "weeklyRates": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyRateDto"
+            },
+            "title": "Weeklyrates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "weeklyRates",
+          "currentStreak",
+          "longestStreak"
+        ],
+        "title": "StatisticsResponse",
+        "type": "object"
+      },
+      "UserProfileRequest": {
+        "properties": {
+          "bodyFatPct": {
+            "anyOf": [
+              {
+                "maximum": 70.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodyfatpct"
+          },
+          "heightCm": {
+            "maximum": 300.0,
+            "minimum": 50.0,
+            "title": "Heightcm",
+            "type": "number"
+          },
+          "muscleMassKg": {
+            "anyOf": [
+              {
+                "maximum": 200.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Musclemasskg"
+          },
+          "restDay": {
+            "default": 7,
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Restday",
+            "type": "integer"
+          },
+          "weightKg": {
+            "maximum": 500.0,
+            "minimum": 10.0,
+            "title": "Weightkg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "heightCm",
+          "weightKg"
+        ],
+        "title": "UserProfileRequest",
+        "type": "object"
+      },
+      "UserProfileResponse": {
+        "properties": {
+          "bodyFatPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodyfatpct"
+          },
+          "heightCm": {
+            "title": "Heightcm",
+            "type": "number"
+          },
+          "muscleMassKg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Musclemasskg"
+          },
+          "restDay": {
+            "default": 7,
+            "title": "Restday",
+            "type": "integer"
+          },
+          "weightKg": {
+            "title": "Weightkg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "heightCm",
+          "weightKg",
+          "bodyFatPct",
+          "muscleMassKg"
+        ],
+        "title": "UserProfileResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WeeklyPlanRequest": {
+        "properties": {
+          "dayPlans": {
+            "title": "Dayplans",
+            "type": "string"
+          },
+          "weekStart": {
+            "title": "Weekstart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weekStart",
+          "dayPlans"
+        ],
+        "title": "WeeklyPlanRequest",
+        "type": "object"
+      },
+      "WeeklyPlanResponse": {
+        "properties": {
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "dayPlans": {
+            "title": "Dayplans",
+            "type": "string"
+          },
+          "weekStart": {
+            "title": "Weekstart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weekStart",
+          "dayPlans"
+        ],
+        "title": "WeeklyPlanResponse",
+        "type": "object"
+      },
+      "WeeklyRateDto": {
+        "description": "한 주의 운동 완료율 (0.0 ~ 1.0).",
+        "properties": {
+          "completionRate": {
+            "title": "Completionrate",
+            "type": "number"
+          },
+          "weekStart": {
+            "title": "Weekstart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weekStart",
+          "completionRate"
+        ],
+        "title": "WeeklyRateDto",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "eundunHealth API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/account": {
+      "delete": {
+        "operationId": "deleteAccount",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Deleteaccount",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Account",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/badges": {
+      "get": {
+        "operationId": "getBadges",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BadgeResponse"
+                  },
+                  "title": "Response Getbadges",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Badges",
+        "tags": [
+          "badges"
+        ]
+      }
+    },
+    "/badges/{key}": {
+      "post": {
+        "operationId": "awardBadge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Awardbadge",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Award Badge",
+        "tags": [
+          "badges"
+        ]
+      }
+    },
+    "/goals": {
+      "get": {
+        "operationId": "getGoals",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GoalResponse"
+                  },
+                  "title": "Response Getgoals",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Goals",
+        "tags": [
+          "goals"
+        ]
+      },
+      "put": {
+        "operationId": "upsertGoal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upsert Goal",
+        "tags": [
+          "goals"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Healthcheck",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/profile": {
+      "get": {
+        "operationId": "getProfile",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Profile",
+        "tags": [
+          "profile"
+        ]
+      },
+      "put": {
+        "operationId": "updateProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Updateprofile",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upsert Profile",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/profile/history": {
+      "get": {
+        "description": "프로필 변경 이력 — 시간 오름차순 (차트 친화).",
+        "operationId": "getProfileHistory",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileHistoryEntry"
+                  },
+                  "title": "Response Getprofilehistory",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Profile History",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/weekly-plan": {
+      "get": {
+        "operationId": "getWeeklyPlan",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weekStart",
+            "required": false,
+            "schema": {
+              "title": "Weekstart",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Plan",
+        "tags": [
+          "weekly-plan"
+        ]
+      },
+      "post": {
+        "operationId": "createWeeklyPlan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Createweeklyplan",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Plan",
+        "tags": [
+          "weekly-plan"
+        ]
+      }
+    },
+    "/weekly-plan/complete": {
+      "patch": {
+        "operationId": "updateDayCompletion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Updatedaycompletion",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Complete",
+        "tags": [
+          "weekly-plan"
+        ]
+      }
+    },
+    "/weekly-plan/history": {
+      "get": {
+        "operationId": "getWeeklyPlanHistory",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WeeklyPlanResponse"
+                  },
+                  "title": "Response Getweeklyplanhistory",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "History",
+        "tags": [
+          "weekly-plan"
+        ]
+      }
+    },
+    "/weekly-plan/previous": {
+      "get": {
+        "description": "기준 주 직전의 plan. 없으면 null — Android가 첫 사용자/공백 주를 구분하도록.",
+        "operationId": "getPreviousWeeklyPlan",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weekStart",
+            "required": false,
+            "schema": {
+              "title": "Weekstart",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/WeeklyPlanResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Getpreviousweeklyplan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Previous",
+        "tags": [
+          "weekly-plan"
+        ]
+      }
+    },
+    "/weekly-plan/statistics": {
+      "get": {
+        "operationId": "getStatistics",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 52,
+              "minimum": 1,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatisticsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Statistics",
+        "tags": [
+          "weekly-plan"
+        ]
+      }
+    }
+  }
+}

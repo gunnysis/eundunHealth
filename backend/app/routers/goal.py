@@ -9,7 +9,7 @@ from app.services.goal_service import GoalService
 router = APIRouter(tags=["goals"])
 
 
-@router.get("/goals", response_model=list[GoalResponse])
+@router.get("/goals", response_model=list[GoalResponse], operation_id="getGoals")
 async def list_goals(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -17,7 +17,7 @@ async def list_goals(
     return await GoalService(db).list_goals(user_id)
 
 
-@router.put("/goals", response_model=GoalResponse)
+@router.put("/goals", response_model=GoalResponse, operation_id="upsertGoal")
 async def upsert_goal(
     req: GoalRequest,
     user_id: str = Depends(get_current_user_id),

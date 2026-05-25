@@ -54,6 +54,11 @@ docker compose down -v                # 정리
 # Alembic 마이그레이션 (현재 head: 24d0fe2eb397)
 .venv/Scripts/alembic upgrade head
 .venv/Scripts/alembic revision --autogenerate -m "..."
+
+# OpenAPI 스펙 동기화 — 라우터/스키마 변경 시 필수
+# backend/openapi.json이 Android openapi-generator(:app:openApiGenerate)의 입력이자
+# backend.yml의 drift detection step 기준이 된다.
+bash ../scripts/sync-openapi.sh
 ```
 
 ### Deployment
@@ -239,6 +244,13 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 ### 자동화 스크립트 (`scripts/`)
 - `scripts/preflight-release.sh` — Spotless + Detekt + Tests + releaseArtifacts 일괄 (INC-04 방지)
 - `scripts/alembic-autogen.sh` — postgres:16-alpine 컨테이너 기반 autogenerate (INC-07 방지)
+- `scripts/sync-openapi.sh` — FastAPI 스펙을 `backend/openapi.json`으로 추출. 라우터/스키마 변경 시 필수 실행 + 같은 PR에 커밋. backend.yml의 drift detection step이 미커밋을 fast-fail로 차단.
 - `scripts/register-azure-credentials.ps1` — SP 생성/패치 + AcrPush + GitHub secret 등록 (INC-17, 운영자 1회/만료 갱신)
 - `scripts/warm-gradle.sh` — Gradle 데몬 사전 구동
 - `scripts/claude-context.sh` / `claude-precompact.sh` — SessionStart/PreCompact 훅
+
+### OpenAPI Generator (Android)
+- 입력: `backend/openapi.json` (git checked-in, `sync-openapi.sh`로 갱신)
+- 출력: `app/build/generated/openapi/src/main/kotlin/com/gunnys/eundunhealth/api/generated/` (gitignored, `:app:openApiGenerate`로 자동 생성, `preBuild` 의존성으로 컴파일 전 항상 최신)
+- 현재는 **side-by-side** — 기존 `EundunApi.kt`와 공존, Repository는 아직 generated 미사용. Phase 5 후속 PR에서 점진 전환.
+- 라우터에 추가/변경 시 체크리스트: ① 라우터에 `operation_id="..."` 명시(Android 함수명과 일치) ② Query param은 `alias="..."`로 camelCase 노출 ③ `bash scripts/sync-openapi.sh` ④ 같은 PR에 `backend/openapi.json` 포함

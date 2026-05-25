@@ -53,6 +53,33 @@ jobs:
       - name: Run tests with coverage
         run: pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
 
+      # backend/openapi.json은 Android openapi-generator의 입력 + drift 방지의 단일 출처.
+      # 라우터/스키마를 변경했다면 `bash scripts/sync-openapi.sh`로 재생성 후 같은 PR에 커밋해야 한다.
+      # 이 step은 spec과 코드 사이의 drift를 PR 단계에서 fast-fail로 잡는다.
+      - name: Verify OpenAPI spec is in sync (drift detection)
+        env:
+          DATABASE_URL: postgresql+asyncpg://dummy:dummy@localhost/dummy
+          SUPABASE_URL: https://dummy.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: dummy
+        run: |
+          cp openapi.json /tmp/openapi.committed.json
+          python -c "
+          import json
+          from pathlib import Path
+          from app.main import app
+          Path('openapi.json').write_text(
+              json.dumps(app.openapi(), indent=2, ensure_ascii=False, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          "
+          if ! diff -q /tmp/openapi.committed.json openapi.json > /dev/null; then
+            echo "::error::backend/openapi.json is out of sync with router/schema state."
+            echo "Fix locally: bash scripts/sync-openapi.sh && git add backend/openapi.json && git commit"
+            diff /tmp/openapi.committed.json openapi.json | head -60
+            exit 1
+          fi
+          echo "openapi.json in sync."
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:

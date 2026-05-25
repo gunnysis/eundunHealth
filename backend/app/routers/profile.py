@@ -10,7 +10,7 @@ from app.services.profile_service import ProfileService
 router = APIRouter(tags=["profile"])
 
 
-@router.get("/profile", response_model=UserProfileResponse)
+@router.get("/profile", response_model=UserProfileResponse, operation_id="getProfile")
 async def get_profile(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -18,7 +18,7 @@ async def get_profile(
     return await ProfileService(db).get_profile(user_id)
 
 
-@router.put("/profile")
+@router.put("/profile", operation_id="updateProfile")
 async def upsert_profile(
     req: UserProfileRequest,
     user_id: str = Depends(get_current_user_id),
@@ -28,7 +28,7 @@ async def upsert_profile(
     return {"status": "ok"}
 
 
-@router.get("/profile/history", response_model=list[ProfileHistoryEntry])
+@router.get("/profile/history", response_model=list[ProfileHistoryEntry], operation_id="getProfileHistory")
 async def get_profile_history(
     limit: int = Query(50, ge=1, le=200),
     user_id: str = Depends(get_current_user_id),

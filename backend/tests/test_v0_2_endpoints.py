@@ -33,7 +33,7 @@ def _plan_payload(week_start: str, completed_workout_days: int = 0, workout_days
 
 @pytest.mark.asyncio
 async def test_previous_returns_null_when_no_prior_plan(client):
-    resp = await client.get("/weekly-plan/previous", params={"week_start": "2026-05-25"})
+    resp = await client.get("/weekly-plan/previous", params={"weekStart": "2026-05-25"})
     assert resp.status_code == 200
     assert resp.json() is None
 
@@ -44,7 +44,7 @@ async def test_previous_returns_closest_earlier_plan(client):
     await client.post("/weekly-plan", json=_plan_payload("2026-05-04"))
     await client.post("/weekly-plan", json=_plan_payload("2026-05-18"))
 
-    resp = await client.get("/weekly-plan/previous", params={"week_start": "2026-05-25"})
+    resp = await client.get("/weekly-plan/previous", params={"weekStart": "2026-05-25"})
     assert resp.status_code == 200
     assert resp.json()["weekStart"] == "2026-05-18"
 
@@ -53,7 +53,7 @@ async def test_previous_returns_closest_earlier_plan(client):
 async def test_previous_excludes_same_week(client):
     await client.post("/weekly-plan", json=_plan_payload("2026-05-25"))
 
-    resp = await client.get("/weekly-plan/previous", params={"week_start": "2026-05-25"})
+    resp = await client.get("/weekly-plan/previous", params={"weekStart": "2026-05-25"})
     assert resp.status_code == 200
     assert resp.json() is None
 
