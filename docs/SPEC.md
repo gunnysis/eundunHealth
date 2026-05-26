@@ -143,6 +143,13 @@
 - 메일 인증을 마친 사용자는 Login 화면으로 이동해 수동으로 로그인한다. 이때 이메일 입력란은 직전 회원가입에서 입력한 이메일로 자동 채워져 재입력 부담을 줄인다.
 - 미인증 상태에서 로그인을 시도하면 `EmailNotConfirmed` 에러를 한국어 메시지로 표시하고, 동일한 화면에 inline "메일 재전송" 액션을 노출해 즉시 확인 메일을 다시 받을 수 있게 한다.
 
+##### App Links 자동 로그인 (v0.1.3+)
+
+- Supabase Confirm Email 메일 링크가 Android App Links 로 verify 된 도메인을 사용하므로, 같은 디바이스에서 클릭 시 앱이 자동으로 열리고 PKCE code 교환을 거쳐 자동 로그인까지 완료된다 (Onboarding/Home 직진).
+- App Links 검증은 백엔드(FastAPI) 가 `https://<APP_LINKS_HOST>/.well-known/assetlinks.json` 으로 제공한다. assetlinks.json 에는 debug + release 빌드의 SHA256 fingerprint 가 둘 다 포함된다.
+- 앱 미설치 디바이스에서는 `https://<APP_LINKS_HOST>/auth/confirm` 가 안내 + Google Play 링크 정적 HTML 을 반환한다.
+- deep link 처리 실패(만료/재사용/네트워크) 시 사용자는 Login 화면으로 이동하며 한국어 스낵바로 에러 메시지를 안내받는다. 이미 로그인된 사용자가 옛 링크를 클릭하면 현재 세션을 유지하고 deep link 를 무시한다.
+
 #### Supabase 사용 범위
 - 본 앱은 Supabase의 **Authentication 서비스만** 사용한다. 사용자 데이터(프로필, 주간 계획, 배지 등)는 모두 자체 FastAPI 백엔드 + Azure PostgreSQL에 저장한다.
 - Supabase Database / Storage / Realtime / Edge Functions 등 다른 제품군은 본 명세 범위 밖(out-of-scope)이며, 도입이 필요한 경우 별도 RFC 후 SPEC/TRD를 갱신한다.

@@ -71,9 +71,10 @@ android {
         // v0.1.0 출시 빌드는 versionCode 14였음 (13은 첫 internal testing 시도, 14는 출시 직전 안정화 후 재빌드).
         // 15: v0.1.1 — 가입 이메일 확인 흐름(AwaitingEmailConfirmation + 60초 재전송) + 인증 상태 모델 리팩터.
         // 16: v0.1.2 — supabase-kt 3.6.0 SupabaseEncodingException 처리 (가입 무반응 hotfix).
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 17, 18, ...
-        versionCode = 16
-        versionName = "0.1.2"
+        // 17: v0.1.3 — Android App Links 도입 (메일 클릭 1회로 자동 로그인).
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 18, 19, ...
+        versionCode = 17
+        versionName = "0.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -86,6 +87,18 @@ android {
             localProperties.getProperty("eundunhealth-app_SENTRY_DSN")
                 ?: localProperties.getProperty("SENTRY_DSN", "")
         buildConfigField("String", "SENTRY_DSN", "\"$androidSentryDsn\"")
+        // App Links 호스트 — Task 1 에서 az containerapp show 로 조회한 FQDN.
+        // 기본값을 실제 운영 FQDN으로 둬서 local.properties 미설정 환경(CI 등)도 동일 도메인 사용.
+        // 다른 환경 가리키려면 local.properties 에 APP_LINKS_HOST=... 로 override.
+        // manifestPlaceholders 와 buildConfigField 를 동일 source 로 묶어
+        // AndroidManifest(${appLinksHost}) 와 BuildConfig.APP_LINKS_HOST 의 drift 방지.
+        val appLinksHost =
+            localProperties.getProperty(
+                "APP_LINKS_HOST",
+                "eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io",
+            )
+        manifestPlaceholders["appLinksHost"] = appLinksHost
+        buildConfigField("String", "APP_LINKS_HOST", "\"$appLinksHost\"")
     }
 
     buildTypes {

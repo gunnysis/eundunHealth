@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
 import javax.inject.Singleton
 
@@ -23,6 +24,9 @@ object SupabaseModule {
             alwaysAutoRefresh = true
             autoLoadFromStorage = true
             autoSaveToStorage = true
+            flowType = FlowType.PKCE
+            scheme = "https"
+            host = BuildConfig.APP_LINKS_HOST
         }
     }
 }

@@ -69,4 +69,26 @@ class AuthErrorMappingTest {
         assertTrue(ex is AppErrorException)
         assertTrue((ex as AppErrorException).appError is AppError.Auth)
     }
+
+    @Test
+    fun `otp_expired는 인증 링크 만료 메시지로 매핑`() {
+        val err = mapAuthError("otp_expired", email = "a@b.com", isLogin = false)
+        assertTrue(err is AppError.Auth)
+        assertTrue(err.userMessage.contains("인증 링크"))
+        assertTrue(err.userMessage.contains("만료"))
+    }
+
+    @Test
+    fun `flow_state_expired도 동일하게 매핑`() {
+        val err = mapAuthError("flow_state_expired", email = "a@b.com", isLogin = false)
+        assertTrue(err is AppError.Auth)
+        assertTrue(err.userMessage.contains("만료"))
+    }
+
+    @Test
+    fun `bad_code_verifier는 인증 정보 불일치 메시지로 매핑`() {
+        val err = mapAuthError("bad_code_verifier", email = "a@b.com", isLogin = false)
+        assertTrue(err is AppError.Auth)
+        assertTrue(err.userMessage.contains("인증 정보"))
+    }
 }
