@@ -10,6 +10,7 @@ import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.SignupResult
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -175,6 +176,35 @@ class AuthViewModel @Inject constructor(
                     ?: it.toAppError()
                 appErr.reportToSentry()
                 _error.value = appErr
+            }
+    }
+
+    private val _resendCooldownSec = MutableStateFlow(0)
+    val resendCooldownSec: StateFlow<Int> = _resendCooldownSec.asStateFlow()
+
+    // 마지막으로 보낸 resend의 에러를 한 번만 노출하기 위한 transient state
+    private val _resendError = MutableStateFlow<AppError?>(null)
+    val resendError: StateFlow<AppError?> = _resendError.asStateFlow()
+
+    fun clearResendError() {
+        _resendError.value = null
+    }
+
+    fun resendConfirmation(email: String) = viewModelScope.launch {
+        if (_resendCooldownSec.value > 0) return@launch
+        authRepo.resendConfirmation(email)
+            .onSuccess {
+                _resendCooldownSec.value = 60
+                // 카운트다운
+                while (_resendCooldownSec.value > 0) {
+                    delay(1_000)
+                    _resendCooldownSec.value = (_resendCooldownSec.value - 1).coerceAtLeast(0)
+                }
+            }
+            .onFailure { e ->
+                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+                    ?: e.toAppError().also { it.reportToSentry() }
+                _resendError.value = appErr
             }
     }
 }

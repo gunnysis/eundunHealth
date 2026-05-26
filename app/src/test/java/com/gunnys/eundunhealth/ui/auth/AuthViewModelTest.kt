@@ -8,8 +8,10 @@ import com.gunnys.eundunhealth.domain.repository.UserRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -189,19 +191,59 @@ class AuthViewModelTest {
         assertTrue((state as AuthOpState.Failed).error is AppError.EmailNotConfirmed)
     }
 
+    // ---- resendConfirmation behavior tests ----
+
+    @Test
+    fun `resendConfirmation 성공 시 60초 쿨다운 시작 후 0으로 감소`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+            resendConfirmationResult = Result.success(Unit),
+        )
+        val userRepo = FakeUserRepository()
+
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.resendConfirmation("a@b.com")
+        advanceTimeBy(1) // 첫 tick
+        runCurrent()
+        assertEquals(60, vm.resendCooldownSec.value)
+
+        advanceTimeBy(60_000)
+        assertEquals(0, vm.resendCooldownSec.value)
+    }
+
+    @Test
+    fun `resendConfirmation 실패 시 쿨다운 시작하지 않음`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+            resendConfirmationResult = Result.failure(
+                com.gunnys.eundunhealth.data.auth.AppErrorException(AppError.Network()),
+            ),
+        )
+        val userRepo = FakeUserRepository()
+
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.resendConfirmation("a@b.com")
+        advanceUntilIdle()
+
+        assertEquals(0, vm.resendCooldownSec.value)
+    }
+
     // ---- Test doubles ----
 
     private class FakeAuthRepository(
         private val signUpResult: Result<SignupResult>,
         private val signInResult: Result<String> = Result.failure(IllegalStateException("not stubbed")),
         private val restoreSessionUserId: String? = null,
+        private val resendConfirmationResult: Result<Unit> = Result.failure(IllegalStateException("not stubbed")),
     ) : AuthRepository {
         override suspend fun signIn(email: String, password: String): Result<String> = signInResult
 
         override suspend fun signUp(email: String, password: String): Result<SignupResult> =
             signUpResult
 
-        override suspend fun resendConfirmation(email: String): Result<Unit> = Result.success(Unit)
+        override suspend fun resendConfirmation(email: String): Result<Unit> = resendConfirmationResult
 
         override suspend fun signOut(): Result<Unit> = Result.success(Unit)
 
