@@ -46,7 +46,6 @@ fun ForgotPasswordScreen(
     var email by rememberSaveable { mutableStateOf("") }
     val authOpState by authViewModel.authOpState.collectAsState()
     val passwordResetSent by authViewModel.passwordResetSent.collectAsState()
-    val error by authViewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val isLoading = authOpState is AuthOpState.Loading
@@ -63,13 +62,6 @@ fun ForgotPasswordScreen(
     LaunchedEffect(opError) {
         opError?.let {
             snackbarHostState.showSnackbar(it.userMessage)
-        }
-    }
-
-    LaunchedEffect(error) {
-        error?.let {
-            snackbarHostState.showSnackbar(it.userMessage)
-            authViewModel.clearError()
         }
     }
 

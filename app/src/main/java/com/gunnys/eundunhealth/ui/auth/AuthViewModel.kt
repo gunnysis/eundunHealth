@@ -44,25 +44,11 @@ sealed class SignupState {
     @Immutable data class Failed(val error: AppError) : SignupState()
 }
 
-sealed class AuthState {
-    @Immutable
-    data object Loading : AuthState()
-
-    @Immutable
-    data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : AuthState()
-
-    @Immutable
-    data object Unauthenticated : AuthState()
-}
-
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepo: AuthRepository,
     private val userRepo: UserRepository,
 ) : ViewModel() {
-
-    private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
-    val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     private val _sessionState = MutableStateFlow<SessionState>(SessionState.Unknown)
     val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
@@ -72,13 +58,6 @@ class AuthViewModel @Inject constructor(
 
     private val _authOpState = MutableStateFlow<AuthOpState>(AuthOpState.Idle)
     val authOpState: StateFlow<AuthOpState> = _authOpState.asStateFlow()
-
-    private val _error = MutableStateFlow<AppError?>(null)
-    val error: StateFlow<AppError?> = _error.asStateFlow()
-
-    fun clearError() {
-        _error.value = null
-    }
 
     private val _pendingEmail = MutableStateFlow<String?>(null)
     val pendingEmail: StateFlow<String?> = _pendingEmail.asStateFlow()
@@ -104,21 +83,16 @@ class AuthViewModel @Inject constructor(
             val userId = authRepo.restoreSession()
             if (userId != null) {
                 val hasProfile = userRepo.getProfile().getOrNull() != null
-                Pair(
-                    AuthState.Authenticated(userId, needsOnboarding = !hasProfile),
-                    SessionState.Authenticated(userId, needsOnboarding = !hasProfile),
-                )
+                SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
             } else {
-                Pair(AuthState.Unauthenticated, SessionState.Unauthenticated)
+                SessionState.Unauthenticated
             }
         }
-            .onSuccess { (auth, session) ->
-                _authState.value = auth
+            .onSuccess { session ->
                 _sessionState.value = session
             }
             .onFailure {
                 // 세션 복원 실패는 단순히 비로그인 상태로 처리 — Sentry/에러 표시 없음
-                _authState.value = AuthState.Unauthenticated
                 _sessionState.value = SessionState.Unauthenticated
             }
     }
@@ -162,7 +136,7 @@ class AuthViewModel @Inject constructor(
 
     fun logout() = viewModelScope.launch {
         authRepo.signOut()
-        _authState.value = AuthState.Unauthenticated
+        _sessionState.value = SessionState.Unauthenticated
     }
 
     private val _passwordResetSent = MutableStateFlow(false)

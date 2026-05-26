@@ -44,30 +44,6 @@ class AuthViewModelTest {
     // ---- Sealed / data class identity tests (pure, no coroutines) ----
 
     @Test
-    fun `AuthState Loading is initial default`() {
-        val state: AuthState = AuthState.Loading
-        assertEquals(AuthState.Loading, state)
-    }
-
-    @Test
-    fun `AuthState Authenticated carries userId and onboarding flag`() {
-        val state = AuthState.Authenticated(userId = "user-123", needsOnboarding = true)
-        assertEquals("user-123", state.userId)
-        assertEquals(true, state.needsOnboarding)
-    }
-
-    @Test
-    fun `AuthState Authenticated defaults needsOnboarding to false`() {
-        val state = AuthState.Authenticated(userId = "user-456")
-        assertEquals(false, state.needsOnboarding)
-    }
-
-    @Test
-    fun `AuthState Unauthenticated is its own singleton`() {
-        assertEquals(AuthState.Unauthenticated, AuthState.Unauthenticated)
-    }
-
-    @Test
     fun `SessionState Authenticated carries userId and onboarding flag`() {
         val state = SessionState.Authenticated(userId = "u-1", needsOnboarding = true)
         assertEquals("u-1", state.userId)
@@ -277,8 +253,7 @@ class AuthViewModelTest {
     ) : AuthRepository {
         override suspend fun signIn(email: String, password: String): Result<String> = signInResult
 
-        override suspend fun signUp(email: String, password: String): Result<SignupResult> =
-            signUpResult
+        override suspend fun signUp(email: String, password: String): Result<SignupResult> = signUpResult
 
         override suspend fun resendConfirmation(email: String): Result<Unit> = resendConfirmationResult
 

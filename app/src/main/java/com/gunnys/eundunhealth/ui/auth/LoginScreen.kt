@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.gunnys.eundunhealth.domain.model.AppError
 
 @Composable
 fun LoginScreen(
@@ -47,15 +48,31 @@ fun LoginScreen(
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    val authState by authViewModel.authState.collectAsState()
-    val error by authViewModel.error.collectAsState()
+    val authOpState by authViewModel.authOpState.collectAsState()
+    val pendingEmail by authViewModel.pendingEmail.collectAsState()
+    val resendCooldownSec by authViewModel.resendCooldownSec.collectAsState()
+    val resendError by authViewModel.resendError.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val isLoading = authOpState is AuthOpState.Loading
+    val lastError = (authOpState as? AuthOpState.Failed)?.error
 
-    LaunchedEffect(error) {
-        error?.let {
-            snackbarHostState.showSnackbar(it.userMessage)
-            authViewModel.clearError()
+    LaunchedEffect(Unit) {
+        pendingEmail?.let {
+            email = it
+            authViewModel.clearPendingEmail()
         }
+    }
+
+    LaunchedEffect(lastError) {
+        val e = lastError ?: return@LaunchedEffect
+        if (e !is AppError.EmailNotConfirmed) {
+            snackbarHostState.showSnackbar(e.userMessage)
+        }
+    }
+    LaunchedEffect(resendError) {
+        val e = resendError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(e.userMessage)
+        authViewModel.clearResendError()
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
@@ -106,14 +123,37 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
+
+            val notConfirmedEmail = (lastError as? AppError.EmailNotConfirmed)?.email
+            if (notConfirmedEmail != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    lastError.userMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                TextButton(
+                    enabled = resendCooldownSec == 0,
+                    onClick = { authViewModel.resendConfirmation(notConfirmedEmail) },
+                ) {
+                    Text(
+                        if (resendCooldownSec == 0) {
+                            "인증 메일 다시 보내기"
+                        } else {
+                            "${resendCooldownSec}초 후 다시 보낼 수 있어요"
+                        },
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = { authViewModel.login(email.trim(), password) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is AuthState.Loading && email.isNotBlank() && password.isNotBlank(),
+                enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
             ) {
-                AnimatedVisibility(visible = authState is AuthState.Loading) {
+                AnimatedVisibility(visible = isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp).padding(end = 8.dp),
                         strokeWidth = 2.dp,
