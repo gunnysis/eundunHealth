@@ -227,6 +227,32 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 4. 롤백 경로(이미지 캐시, git 백업, DB PITR)는?
 5. 실패 시 Sentry/Health Check로 즉시 인지 가능한가?
 
+## PowerShell / Windows 11 환경 빠른 참조
+
+이 저장소의 개발 호스트는 Windows 11 Pro + PowerShell 7(`pwsh`). `~/.claude/settings.json`에 `CLAUDE_CODE_USE_POWERSHELL_TOOL=1`, `defaultShell=powershell`, `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`이 등록되어 있어 Claude는 **PowerShell tool**을 primary shell로 사용하고 input-box `!`도 PowerShell로 라우팅된다. Bash tool은 POSIX 스크립트(`scripts/*.sh`)용으로 보조.
+
+**README/runbook의 bash 1-liner를 PowerShell로 옮길 때 자주 어긋나는 곳:**
+| Bash | PowerShell 7 |
+|---|---|
+| `cmd1 && cmd2` | `cmd1 && cmd2` (pwsh 7+는 그대로 OK, 5.1 X) |
+| `cmd > /dev/null 2>&1` | `cmd *> $null` |
+| `cmd1 \| head -20` | `cmd1 \| Select-Object -First 20` |
+| `cat x.json \| jq .` | `Get-Content x.json -Raw \| ConvertFrom-Json` (또는 `jq`도 그대로 사용) |
+| `VAR=x cmd` | `$env:VAR='x'; cmd` (inline prefix 없음) |
+| `find . -name "*.kt"` | Glob tool (NOT `Get-ChildItem -Recurse`) |
+| `grep -r foo .` | Grep tool (NOT `Select-String -Recurse`) |
+| `rm -rf path` | `Remove-Item -Recurse -Force path` (ACR 정리는 **룰 1 — untag**) |
+
+**자주 깨지는 syntax 3개:**
+- here-string 닫는 `'@`는 **column 0 (들여쓰기 0)** 이어야 함. 안 그러면 parse error.
+- `-ErrorAction SilentlyContinue`는 출력만 죽이고 exit code는 1. 진짜 무시하려면 `try { Cmdlet ... -ErrorAction Stop } catch {}`.
+- `$PSVersionTable.PSVersion` 같은 변수 표현은 Bash tool로 보내면 `.PSVersion...`으로 잘려 파싱 에러 — 반드시 PowerShell tool 사용.
+
+**권한 동작 (`~/.claude/settings.json` 기준):**
+- `Get-*`, `Test-Path`, `Select-String`, `git status/log/diff`, `gh pr view/list`, `docker ps`, `az containerapp show/logs`, `./gradlew *`, `adb devices`는 prompt 없이 통과.
+- `Remove-Item`, `Set-Content`, `Stop-Process`, `git push`, `gh secret set`, `docker push`, `az containerapp delete/update`, `az acr repository untag/delete`는 ask로 막혀 매번 확인.
+- `Format-Volume`, `Clear-Disk`, `Stop-Computer`, `Restart-Computer`, `git push --force origin main/master`는 deny — 우회 불가.
+
 ## Documentation
 
 - `@docs/CHANGELOG.md` — 버전 이력 (v0.1.0 통합)

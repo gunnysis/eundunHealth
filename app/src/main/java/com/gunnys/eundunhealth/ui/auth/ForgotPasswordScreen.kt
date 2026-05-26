@@ -44,24 +44,24 @@ fun ForgotPasswordScreen(
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
     var email by rememberSaveable { mutableStateOf("") }
-    val resetState by authViewModel.resetState.collectAsState()
-    val error by authViewModel.error.collectAsState()
+    val authOpState by authViewModel.authOpState.collectAsState()
+    val passwordResetSent by authViewModel.passwordResetSent.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val isLoading = resetState is ResetState.Loading
+    val isLoading = authOpState is AuthOpState.Loading
+    val opError = (authOpState as? AuthOpState.Failed)?.error
 
-    LaunchedEffect(resetState) {
-        if (resetState is ResetState.Success) {
+    LaunchedEffect(passwordResetSent) {
+        if (passwordResetSent) {
             snackbarHostState.showSnackbar("비밀번호 재설정 링크를 이메일로 보냈습니다")
-            authViewModel.clearResetState()
+            authViewModel.consumePasswordResetSent()
             onNavigateBack()
         }
     }
 
-    LaunchedEffect(error) {
-        error?.let {
+    LaunchedEffect(opError) {
+        opError?.let {
             snackbarHostState.showSnackbar(it.userMessage)
-            authViewModel.clearError()
         }
     }
 

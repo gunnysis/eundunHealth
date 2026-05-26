@@ -7,31 +7,41 @@ import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.reportToSentry
 import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
+import com.gunnys.eundunhealth.domain.repository.SignupResult
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-sealed class AuthState {
-    @Immutable
-    data object Loading : AuthState()
+sealed class SessionState {
+    @Immutable data object Unknown : SessionState()
 
     @Immutable
-    data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : AuthState()
+    data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : SessionState()
 
-    @Immutable
-    data object Unauthenticated : AuthState()
+    @Immutable data object Unauthenticated : SessionState()
 }
 
-sealed class ResetState {
-    @Immutable data object Idle : ResetState()
+sealed class AuthOpState {
+    @Immutable data object Idle : AuthOpState()
 
-    @Immutable data object Loading : ResetState()
+    @Immutable data object Loading : AuthOpState()
 
-    @Immutable data object Success : ResetState()
+    @Immutable data class Failed(val error: AppError) : AuthOpState()
+}
+
+sealed class SignupState {
+    @Immutable data object Form : SignupState()
+
+    @Immutable data object Loading : SignupState()
+
+    @Immutable data class AwaitingEmailConfirmation(val email: String) : SignupState()
+
+    @Immutable data class Failed(val error: AppError) : SignupState()
 }
 
 @HiltViewModel
@@ -40,14 +50,28 @@ class AuthViewModel @Inject constructor(
     private val userRepo: UserRepository,
 ) : ViewModel() {
 
-    private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
-    val authState: StateFlow<AuthState> = _authState.asStateFlow()
+    private val _sessionState = MutableStateFlow<SessionState>(SessionState.Unknown)
+    val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
 
-    private val _error = MutableStateFlow<AppError?>(null)
-    val error: StateFlow<AppError?> = _error.asStateFlow()
+    private val _signupState = MutableStateFlow<SignupState>(SignupState.Form)
+    val signupState: StateFlow<SignupState> = _signupState.asStateFlow()
 
-    fun clearError() {
-        _error.value = null
+    private val _authOpState = MutableStateFlow<AuthOpState>(AuthOpState.Idle)
+    val authOpState: StateFlow<AuthOpState> = _authOpState.asStateFlow()
+
+    private val _pendingEmail = MutableStateFlow<String?>(null)
+    val pendingEmail: StateFlow<String?> = _pendingEmail.asStateFlow()
+
+    fun setPendingEmail(email: String) {
+        _pendingEmail.value = email
+    }
+
+    fun clearPendingEmail() {
+        _pendingEmail.value = null
+    }
+
+    fun resetSignupState() {
+        _signupState.value = SignupState.Form
     }
 
     init {
@@ -59,76 +83,119 @@ class AuthViewModel @Inject constructor(
             val userId = authRepo.restoreSession()
             if (userId != null) {
                 val hasProfile = userRepo.getProfile().getOrNull() != null
-                AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
+                SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
             } else {
-                AuthState.Unauthenticated
+                SessionState.Unauthenticated
             }
         }
-            .onSuccess { _authState.value = it }
+            .onSuccess { session ->
+                _sessionState.value = session
+            }
             .onFailure {
                 // 세션 복원 실패는 단순히 비로그인 상태로 처리 — Sentry/에러 표시 없음
-                _authState.value = AuthState.Unauthenticated
+                _sessionState.value = SessionState.Unauthenticated
             }
     }
 
     fun login(email: String, password: String) = viewModelScope.launch {
-        _authState.value = AuthState.Loading
+        _authOpState.value = AuthOpState.Loading
         authRepo.signIn(email, password)
             .onSuccess { userId ->
                 val hasProfile = userRepo.getProfile().getOrNull() != null
-                _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
+                _sessionState.value = SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
+                _authOpState.value = AuthOpState.Idle
             }
-            .onFailure {
-                _authState.value = AuthState.Unauthenticated
-                // signIn은 AuthRepositoryImpl에서 한국어 메시지로 매핑된 예외를 던지므로
-                // userMessage를 보존하기 위해 message가 있으면 그대로 Auth 에러로 사용
-                val appErr = it.message
-                    ?.let { msg -> AppError.Auth(msg) }
-                    ?: it.toAppError()
-                appErr.reportToSentry()
-                _error.value = appErr
+            .onFailure { e ->
+                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+                    ?: e.toAppError().also { it.reportToSentry() }
+                _authOpState.value = AuthOpState.Failed(appErr)
             }
     }
 
     fun signup(email: String, password: String) = viewModelScope.launch {
-        _authState.value = AuthState.Loading
+        _signupState.value = SignupState.Loading
         authRepo.signUp(email, password)
-            .onSuccess { userId ->
-                _authState.value = AuthState.Authenticated(userId, needsOnboarding = true)
+            .onSuccess { result ->
+                when (result) {
+                    is SignupResult.AutoSignedIn -> {
+                        _sessionState.value =
+                            SessionState.Authenticated(result.userId, needsOnboarding = true)
+                        _signupState.value = SignupState.Form
+                    }
+                    is SignupResult.AwaitingConfirmation -> {
+                        _signupState.value = SignupState.AwaitingEmailConfirmation(result.email)
+                    }
+                }
             }
-            .onFailure {
-                _authState.value = AuthState.Unauthenticated
-                val appErr = it.message
-                    ?.let { msg -> AppError.Auth(msg) }
-                    ?: it.toAppError()
-                appErr.reportToSentry()
-                _error.value = appErr
+            .onFailure { e ->
+                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+                    ?: e.toAppError().also { it.reportToSentry() }
+                _signupState.value = SignupState.Failed(appErr)
             }
     }
 
     fun logout() = viewModelScope.launch {
         authRepo.signOut()
-        _authState.value = AuthState.Unauthenticated
+        _sessionState.value = SessionState.Unauthenticated
     }
 
-    private val _resetState = MutableStateFlow<ResetState>(ResetState.Idle)
-    val resetState: StateFlow<ResetState> = _resetState.asStateFlow()
+    private val _passwordResetSent = MutableStateFlow(false)
+    val passwordResetSent: StateFlow<Boolean> = _passwordResetSent.asStateFlow()
 
-    fun clearResetState() {
-        _resetState.value = ResetState.Idle
+    fun consumePasswordResetSent() {
+        _passwordResetSent.value = false
     }
 
     fun resetPassword(email: String) = viewModelScope.launch {
-        _resetState.value = ResetState.Loading
+        _authOpState.value = AuthOpState.Loading
         authRepo.resetPassword(email)
-            .onSuccess { _resetState.value = ResetState.Success }
-            .onFailure {
-                _resetState.value = ResetState.Idle
-                val appErr = it.message
-                    ?.let { msg -> AppError.Auth(msg) }
-                    ?: it.toAppError()
-                appErr.reportToSentry()
-                _error.value = appErr
+            .onSuccess {
+                _passwordResetSent.value = true
+                _authOpState.value = AuthOpState.Idle
+            }
+            .onFailure { e ->
+                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+                    ?: e.toAppError().also { it.reportToSentry() }
+                _authOpState.value = AuthOpState.Failed(appErr)
+            }
+    }
+
+    private val _resendCooldownSec = MutableStateFlow(0)
+    val resendCooldownSec: StateFlow<Int> = _resendCooldownSec.asStateFlow()
+
+    // 마지막으로 보낸 resend의 에러를 한 번만 노출하기 위한 transient state
+    private val _resendError = MutableStateFlow<AppError?>(null)
+    val resendError: StateFlow<AppError?> = _resendError.asStateFlow()
+
+    fun clearResendError() {
+        _resendError.value = null
+    }
+
+    /**
+     * 인증 작업 에러를 소비. EmailNotConfirmed는 inline UI가 직접 다루므로 [LoginScreen]은
+     * 일반 에러 스낵바를 띄운 직후에만 호출한다.
+     */
+    fun consumeAuthOpError() {
+        if (_authOpState.value is AuthOpState.Failed) {
+            _authOpState.value = AuthOpState.Idle
+        }
+    }
+
+    fun resendConfirmation(email: String) = viewModelScope.launch {
+        if (_resendCooldownSec.value > 0) return@launch
+        authRepo.resendConfirmation(email)
+            .onSuccess {
+                _resendCooldownSec.value = 60
+                // 카운트다운
+                while (_resendCooldownSec.value > 0) {
+                    delay(1_000)
+                    _resendCooldownSec.value = (_resendCooldownSec.value - 1).coerceAtLeast(0)
+                }
+            }
+            .onFailure { e ->
+                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+                    ?: e.toAppError().also { it.reportToSentry() }
+                _resendError.value = appErr
             }
     }
 }

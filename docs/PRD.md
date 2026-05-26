@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v1.1 (2026-05-25 — v0.1.0 구현 상태 반영)
-**제품 버전:** v0.1.0 (versionCode 14 — 13은 안정화 전 첫 시도, 14가 정식 출시 빌드) — v0.1·v0.2·v0.3 spec 전체 구현 완료 + Phase 1~6A 안정화. Play Store **Internal Testing** 진입 대상
+**문서 버전:** v1.2 (2026-05-26 — v0.1.1 가입 이메일 확인 흐름 반영)
+**제품 버전:** v0.1.1 (versionCode 15 — v0.1.0(versionCode 14) 출시 후속. 가입 이메일 확인 흐름 + 인증 상태 모델 리팩터) — v0.1·v0.2·v0.3 spec 전체 구현 완료 + Phase 1~6A 안정화 + 가입 흐름 보강. Play Store **Internal Testing** 진입 대상
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -304,6 +304,14 @@ Splash
 | 휴식일 커스터마이징 (월~일 SegmentedButton) | v0.3 |
 | 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
 | 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
+
+### v0.1.1에서 추가 (2026-05-26)
+
+| 영역 | 비고 |
+|------|------|
+| 회원가입 이메일 확인 흐름 (AwaitingEmailConfirmation + 60초 재전송) | Supabase Auth `enable_confirmations` 켠 환경에서 사용자 잔류 보장 |
+| Login 미인증 사용자에게 인증 메일 재전송 inline 액션 | `EmailNotConfirmed` AppError 도입 |
+| 인증 상태 모델 리팩터: `SessionState` / `AuthOpState` / `SignupState` | 가입/로그인 실패 시 화면 튕김 + 스낵바 잘림 버그 해소 |
 
 ### 향후 확장 후보
 

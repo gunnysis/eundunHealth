@@ -10,10 +10,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.gunnys.eundunhealth.ui.auth.AuthState
 import com.gunnys.eundunhealth.ui.auth.AuthViewModel
 import com.gunnys.eundunhealth.ui.auth.ForgotPasswordScreen
 import com.gunnys.eundunhealth.ui.auth.LoginScreen
+import com.gunnys.eundunhealth.ui.auth.SessionState
 import com.gunnys.eundunhealth.ui.auth.SignupScreen
 import com.gunnys.eundunhealth.ui.badge.BadgeScreen
 import com.gunnys.eundunhealth.ui.goal.GoalScreen
@@ -31,23 +31,22 @@ fun AppNavigation(
     onRequestHealthPermissions: () -> Unit = {},
 ) {
     val navController = rememberNavController()
-    val authState by authViewModel.authState.collectAsState()
+    val sessionState by authViewModel.sessionState.collectAsState()
 
-    LaunchedEffect(authState) {
-        when (authState) {
-            is AuthState.Authenticated -> {
-                val needsOnboarding = (authState as AuthState.Authenticated).needsOnboarding
-                val dest = if (needsOnboarding) Screen.Onboarding.route else Screen.Home.route
+    LaunchedEffect(sessionState) {
+        when (val s = sessionState) {
+            is SessionState.Authenticated -> {
+                val dest = if (s.needsOnboarding) Screen.Onboarding.route else Screen.Home.route
                 navController.navigate(dest) {
                     popUpTo(0) { inclusive = true }
                 }
             }
-            is AuthState.Unauthenticated -> {
+            SessionState.Unauthenticated -> {
                 navController.navigate(Screen.Login.route) {
                     popUpTo(0) { inclusive = true }
                 }
             }
-            else -> {}
+            SessionState.Unknown -> { /* Splash 유지 */ }
         }
     }
 
