@@ -182,6 +182,17 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
+     * Deep link 처리 시작 시 호출. cold start 시 [checkSession] 의 Unauthenticated 결과가
+     * [onDeepLinkSuccess] 의 Authenticated 보다 먼저 fire 하여 사용자가 Login 화면을 잠깐
+     * 보는 race 를 회피한다. AppNavigation 의 Unknown 분기는 Splash 유지 → checkSession
+     * 결과를 덮어쓸 시간을 벌어준다.
+     */
+    fun beginDeepLinkProcessing() {
+        _sessionState.value = SessionState.Unknown
+        _authOpState.value = AuthOpState.Loading
+    }
+
+    /**
      * Deep link (메일 인증 링크) 가 MainActivity 의 supabaseClient.handleDeeplinks
      * 콜백을 통해 세션 import 성공을 보고할 때 호출. userId 를 받아 프로필 조회 후
      * sessionState 를 Authenticated 로 전환한다.
@@ -190,6 +201,7 @@ class AuthViewModel @Inject constructor(
         val hasProfile = userRepo.getProfile().getOrNull() != null
         _sessionState.value = SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
         _signupState.value = SignupState.Form
+        _pendingEmail.value = null
         _authOpState.value = AuthOpState.Idle
     }
 

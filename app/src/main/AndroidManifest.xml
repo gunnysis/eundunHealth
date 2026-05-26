@@ -38,7 +38,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="@string/app_links_host"
+                    android:host="${appLinksHost}"
                     android:pathPrefix="/auth/confirm" />
             </intent-filter>
         </activity>
