@@ -32,6 +32,11 @@ sealed class AppError(open val userMessage: String) {
         val throwable: Throwable,
         override val userMessage: String = "알 수 없는 오류가 발생했습니다",
     ) : AppError(userMessage)
+
+    data class EmailNotConfirmed(
+        val email: String,
+        override val userMessage: String = "이메일 인증이 완료되지 않았습니다",
+    ) : AppError(userMessage)
 }
 
 fun Throwable.toAppError(): AppError = when (this) {

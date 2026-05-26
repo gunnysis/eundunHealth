@@ -75,6 +75,13 @@ class AppErrorTest {
         assertEquals(cause, (err as AppError.Unknown).throwable)
     }
 
+    @Test
+    fun `EmailNotConfirmed carries email and Korean message`() {
+        val err = AppError.EmailNotConfirmed(email = "a@b.com")
+        assertEquals("a@b.com", err.email)
+        assertEquals("이메일 인증이 완료되지 않았습니다", err.userMessage)
+    }
+
     private fun httpException(code: Int): HttpException {
         val response = Response.Builder()
             .code(code)
