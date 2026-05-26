@@ -70,9 +70,10 @@ android {
         targetSdk = 37
         // v0.1.0 출시 빌드는 versionCode 14였음 (13은 첫 internal testing 시도, 14는 출시 직전 안정화 후 재빌드).
         // 15: v0.1.1 — 가입 이메일 확인 흐름(AwaitingEmailConfirmation + 60초 재전송) + 인증 상태 모델 리팩터.
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 16, 17, ...
-        versionCode = 15
-        versionName = "0.1.1"
+        // 16: v0.1.2 — supabase-kt 3.6.0 SupabaseEncodingException 처리 (가입 무반응 hotfix).
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 17, 18, ...
+        versionCode = 16
+        versionName = "0.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
