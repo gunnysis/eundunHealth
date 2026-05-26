@@ -447,6 +447,32 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/.well-known/assetlinks.json": {
+      "get": {
+        "operationId": "getAssetlinks",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Getassetlinks",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Assetlinks Json",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/account": {
       "delete": {
         "operationId": "deleteAccount",
@@ -474,6 +500,27 @@
         "summary": "Delete Account",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/auth/confirm": {
+      "get": {
+        "operationId": "getAuthConfirmFallback",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Confirm Fallback",
+        "tags": [
+          "auth"
         ]
       }
     },
