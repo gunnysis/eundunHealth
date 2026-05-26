@@ -394,6 +394,31 @@ ERROR: (ContainerAppSecretRefNotFound) SecretRef 'supabase-url' defined for cont
 | 18 supabase-url secret 누락 | ✅ `backend.yml` "Verify required Container App secrets" step + `workflow_dispatch` + monitoring §6.6 + CLAUDE.md 룰 6 + PR template Backend 섹션 | 모든 deploy + PR 단계 |
 | 공통 | ✅ `.github/PULL_REQUEST_TEMPLATE.md` destructive-ops 체크리스트 | 모든 PR |
 
+---
+
+## INC-2026-05-26-01 — Supabase 무료 등급 이메일 rate limit + Failed UX 가시성 부족
+
+**증상**: v0.1.4 (App Links explicit redirectUrl hotfix) 실기기 검증 중 가입 클릭 시 "무반응" 으로 인식됨. 실제로는 Supabase 가 `over_email_send_rate_limit` 응답 → 우리 `mapAuthError` 가 "요청이 너무 많습니다. 잠시 후 다시 시도해주세요" 스낵바 표시 → 2초 후 Form 복귀. 사용자가 짧은 스낵바를 못 본 것.
+
+**근본 원인 (이중)**:
+1. **Supabase 무료 등급의 이메일 발송 rate limit** — project-wide 기본 4건/시간. 하루 종일 디버깅하며 동일 프로젝트로 수십 차례 가입 시도 → 한도 누적 초과. UI 가 보이지 않는 백엔드 거부.
+2. **Failed 상태 UX 가시성 결함** — `SignupScreen` 의 LaunchedEffect 가 `SignupState.Failed` 시 SnackbarHost 로 메시지 표시 후 2초 delay 후 `resetSignupState()` 호출. 짧은 표시 시간 + 화면 하단 위치 + 자동 사라짐이 결합되어 사용자가 인식 못 함.
+
+**검증 (instrumented 빌드 로그)**:
+- ✅ v0.1.4 의 explicit redirectUrl 는 정확히 적용됨 — POST `/auth/v1/signup?redirect_to=https://eundunhealth-api.livelyriver-...azurecontainerapps.io/auth/confirm` URL 확인
+- ✅ `mapAuthError` 의 `rate_limit` 매칭 분기 정상 작동 — `over_email_send_rate_limit` 메시지 → `AppError.Auth("요청이 너무 많습니다...")` 매핑
+- 즉 backend 시스템 + 클라이언트 매핑 모두 정상. 사용자 인식만 fail.
+
+**복구**: 사용자 명시 지시에 따라 instrumented 빌드의 디버그 `Log.w("EunDun", ...)` 제거 + defer. rate limit window (~1시간 ~ 24시간) 해소 후 새 alias 이메일로 happy path 재검증 예정.
+
+**재발 방지**:
+- **출시 전 필수 인프라**: Supabase Pro 업그레이드($25/월) + custom SMTP (SendGrid 무료 등급으로 시작). 무료 등급 4건/시간 한도는 internal testing 단계에서도 디버깅 차단 — 사용자 출시 후엔 catastrophic.
+- **Failed UX 개선 follow-up**: `SignupState.Failed` 의 메시지 표시를 (a) 스낵바 duration 을 `SnackbarDuration.Long` 으로 변경, (b) 또는 form 위 inline alert/banner 로 승격하여 사용자가 반드시 인지하게 함. 별도 RFC.
+- **디버깅 사이클 시 instrumented 빌드 사용 protocol**: release APK 로 사이드로드 검증 시 `Log.w("EunDun", ...)` instrumentation 을 임시 commit 으로 추가 + revert. 본 인시던트의 진단은 instrumentation 추가 후 첫 가입 시도에서 즉시 root cause 식별 (URL + 정확한 error code) — 이전 "무반응" 추정으로만 디버깅 시 시간 낭비 했음.
+- **rate limit 회피 운영 가이드**: `memory/supabase-testing-tips.md` 에 이미 alias 이메일 + Pro 업그레이드 권장 명시. 적극 활용 + 디버깅 사이클 분산 (1시간 cooldown 사이에 묶음).
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
