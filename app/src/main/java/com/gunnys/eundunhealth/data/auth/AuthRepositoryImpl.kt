@@ -46,6 +46,10 @@ internal fun mapAuthError(rawMessage: String, email: String, isLogin: Boolean): 
             )
         msg.contains("weak_password") || msg.contains("least 6") ->
             AppError.Auth("비밀번호는 6자 이상이어야 합니다")
+        msg.contains("otp_expired") || msg.contains("flow_state_expired") ->
+            AppError.Auth("인증 링크가 만료되었습니다. 다시 가입해주세요")
+        msg.contains("bad_code_verifier") || msg.contains("flow_state_not_found") ->
+            AppError.Auth("인증 정보가 일치하지 않습니다. 다시 시도해주세요")
         msg.contains("rate_limit") || msg.contains("too many") ->
             AppError.Auth("요청이 너무 많습니다. 잠시 후 다시 시도해주세요")
         msg.contains("network") || msg.contains("timeout") || msg.contains("connect") ->
