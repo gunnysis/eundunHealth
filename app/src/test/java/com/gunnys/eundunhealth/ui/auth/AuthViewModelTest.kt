@@ -297,6 +297,90 @@ class AuthViewModelTest {
         assertTrue((state as AuthOpState.Failed).error is AppError.Network)
     }
 
+    // ---- onDeepLinkSuccess / onDeepLinkError behavior tests ----
+
+    @Test
+    fun `onDeepLinkSuccess 신규 사용자(프로필 없음) → Authenticated needsOnboarding=true`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+        )
+        val userRepo = FakeUserRepository() // profile = null by default
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+
+        vm.onDeepLinkSuccess("user-1")
+        advanceUntilIdle()
+
+        val session = vm.sessionState.value
+        assertTrue(session is SessionState.Authenticated)
+        assertEquals("user-1", (session as SessionState.Authenticated).userId)
+        assertEquals(true, session.needsOnboarding)
+        assertEquals(AuthOpState.Idle, vm.authOpState.value)
+    }
+
+    @Test
+    fun `onDeepLinkSuccess 기존 사용자(프로필 있음) → Authenticated needsOnboarding=false`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+        )
+        val userProfile = UserProfile(
+            userId = "user-1",
+            heightCm = 170f,
+            weightKg = 65f,
+            bodyFatPercent = 20f,
+            muscleMassKg = 30f,
+        )
+        val userRepo = FakeUserRepository(profile = userProfile)
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+
+        vm.onDeepLinkSuccess("user-1")
+        advanceUntilIdle()
+
+        val session = vm.sessionState.value
+        assertTrue(session is SessionState.Authenticated)
+        assertEquals(false, (session as SessionState.Authenticated).needsOnboarding)
+    }
+
+    @Test
+    fun `onDeepLinkError AppErrorException 시 authOpState=Failed + sessionState=Unauthenticated`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+        )
+        val userRepo = FakeUserRepository()
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+
+        val cause = com.gunnys.eundunhealth.data.auth.AppErrorException(
+            AppError.Auth("인증 링크가 만료되었습니다. 다시 가입해주세요"),
+        )
+        vm.onDeepLinkError(cause)
+        advanceUntilIdle()
+
+        val state = vm.authOpState.value
+        assertTrue(state is AuthOpState.Failed)
+        assertTrue((state as AuthOpState.Failed).error is AppError.Auth)
+        assertEquals(SessionState.Unauthenticated, vm.sessionState.value)
+    }
+
+    @Test
+    fun `onDeepLinkError 일반 예외는 toAppError 폴백 + reportToSentry`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+        )
+        val userRepo = FakeUserRepository()
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+
+        vm.onDeepLinkError(java.net.UnknownHostException("no dns"))
+        advanceUntilIdle()
+
+        val state = vm.authOpState.value
+        assertTrue(state is AuthOpState.Failed)
+        assertTrue((state as AuthOpState.Failed).error is AppError.Network)
+        assertEquals(SessionState.Unauthenticated, vm.sessionState.value)
+    }
+
     // ---- Test doubles ----
 
     private class FakeAuthRepository(

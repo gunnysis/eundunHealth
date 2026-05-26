@@ -181,6 +181,30 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Deep link (메일 인증 링크) 가 MainActivity 의 supabaseClient.handleDeeplinks
+     * 콜백을 통해 세션 import 성공을 보고할 때 호출. userId 를 받아 프로필 조회 후
+     * sessionState 를 Authenticated 로 전환한다.
+     */
+    fun onDeepLinkSuccess(userId: String) = viewModelScope.launch {
+        val hasProfile = userRepo.getProfile().getOrNull() != null
+        _sessionState.value = SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
+        _signupState.value = SignupState.Form
+        _authOpState.value = AuthOpState.Idle
+    }
+
+    /**
+     * Deep link 처리 중 supabase-kt 가 보고한 에러를 받아 한국어 메시지로 변환 후
+     * authOpState 에 보존. sessionState 는 Unauthenticated 로 명시 전환하여
+     * AppNavigation 이 Login 화면으로 이동하도록 한다.
+     */
+    fun onDeepLinkError(e: Throwable) {
+        val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+            ?: e.toAppError().also { it.reportToSentry() }
+        _authOpState.value = AuthOpState.Failed(appErr)
+        _sessionState.value = SessionState.Unauthenticated
+    }
+
     fun resendConfirmation(email: String) = viewModelScope.launch {
         if (_resendCooldownSec.value > 0) return@launch
         authRepo.resendConfirmation(email)
