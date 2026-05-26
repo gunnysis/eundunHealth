@@ -55,14 +55,6 @@ sealed class AuthState {
     data object Unauthenticated : AuthState()
 }
 
-sealed class ResetState {
-    @Immutable data object Idle : ResetState()
-
-    @Immutable data object Loading : ResetState()
-
-    @Immutable data object Success : ResetState()
-}
-
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepo: AuthRepository,
@@ -173,24 +165,24 @@ class AuthViewModel @Inject constructor(
         _authState.value = AuthState.Unauthenticated
     }
 
-    private val _resetState = MutableStateFlow<ResetState>(ResetState.Idle)
-    val resetState: StateFlow<ResetState> = _resetState.asStateFlow()
+    private val _passwordResetSent = MutableStateFlow(false)
+    val passwordResetSent: StateFlow<Boolean> = _passwordResetSent.asStateFlow()
 
-    fun clearResetState() {
-        _resetState.value = ResetState.Idle
+    fun consumePasswordResetSent() {
+        _passwordResetSent.value = false
     }
 
     fun resetPassword(email: String) = viewModelScope.launch {
-        _resetState.value = ResetState.Loading
+        _authOpState.value = AuthOpState.Loading
         authRepo.resetPassword(email)
-            .onSuccess { _resetState.value = ResetState.Success }
-            .onFailure {
-                _resetState.value = ResetState.Idle
-                val appErr = it.message
-                    ?.let { msg -> AppError.Auth(msg) }
-                    ?: it.toAppError()
-                appErr.reportToSentry()
-                _error.value = appErr
+            .onSuccess {
+                _passwordResetSent.value = true
+                _authOpState.value = AuthOpState.Idle
+            }
+            .onFailure { e ->
+                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+                    ?: e.toAppError().also { it.reportToSentry() }
+                _authOpState.value = AuthOpState.Failed(appErr)
             }
     }
 

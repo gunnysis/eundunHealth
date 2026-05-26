@@ -248,6 +248,24 @@ class AuthViewModelTest {
         assertEquals(null, vm.pendingEmail.value)
     }
 
+    // ---- resetPassword behavior tests ----
+
+    @Test
+    fun `resetPassword 성공 시 authOpState 가 Idle 로 복귀하고 별도 success 플래그 노출`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+            resetPasswordResult = Result.success(Unit),
+        )
+        val userRepo = FakeUserRepository()
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.resetPassword("a@b.com")
+        advanceUntilIdle()
+
+        assertEquals(true, vm.passwordResetSent.value)
+        assertEquals(AuthOpState.Idle, vm.authOpState.value)
+    }
+
     // ---- Test doubles ----
 
     private class FakeAuthRepository(
@@ -255,6 +273,7 @@ class AuthViewModelTest {
         private val signInResult: Result<String> = Result.failure(IllegalStateException("not stubbed")),
         private val restoreSessionUserId: String? = null,
         private val resendConfirmationResult: Result<Unit> = Result.failure(IllegalStateException("not stubbed")),
+        private val resetPasswordResult: Result<Unit> = Result.failure(IllegalStateException("not stubbed")),
     ) : AuthRepository {
         override suspend fun signIn(email: String, password: String): Result<String> = signInResult
 
@@ -265,7 +284,7 @@ class AuthViewModelTest {
 
         override suspend fun signOut(): Result<Unit> = Result.success(Unit)
 
-        override suspend fun resetPassword(email: String): Result<Unit> = Result.success(Unit)
+        override suspend fun resetPassword(email: String): Result<Unit> = resetPasswordResult
 
         override suspend fun deleteAccount(): Result<Unit> = Result.success(Unit)
 
