@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">은둔헬스</string>
+    <!-- App Links host. az containerapp show 로 조회한 Container App FQDN.
+         AndroidManifest 의 android:host 값과 동기되어야 함. -->
+    <string name="app_links_host" translatable="false">eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io</string>
 </resources>
