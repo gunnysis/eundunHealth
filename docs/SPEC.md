@@ -1,7 +1,9 @@
 # eundunHealth 기능 명세서
 
 > **문서 버전:** v1.0 (초기 설계) — 본문은 그대로 보존.
-> **현재 제품 상태(2026-05-25):** v0.1.0 (versionCode 14 — 13은 안정화 전 첫 시도, 14가 정식 출시 빌드). v0.2(통계·운동 알고리즘)·v0.3(휴식일·목표·배지 확장) spec 모두 구현 완료 + Phase 1~6A 출시 직전 안정화(silent 버그 6건 정리 + OpenAPI generator 도입). 자세한 차이는 [CHANGELOG.md](./CHANGELOG.md) / [TRD.md "구현 후 변경 사항"](./TRD.md) 참조.
+> **현재 제품 상태(2026-05-26):** v0.1.1 (versionCode 15 — v0.1.0(versionCode 14) 출시 후속, 가입 이메일 확인 흐름 + 인증 상태 모델 리팩터). v0.2(통계·운동 알고리즘)·v0.3(휴식일·목표·배지 확장) spec 모두 구현 완료 + Phase 1~6A 출시 직전 안정화 + 가입 흐름 보강. 자세한 차이는 [CHANGELOG.md](./CHANGELOG.md) / [TRD.md "구현 후 변경 사항"](./TRD.md) 참조.
+>
+> **Supabase 사용 범위 (v0.1.1 명시):** Authentication 한정. Database(테이블)/Storage/Realtime/Edge Functions는 사용하지 않음 — 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장. Supabase는 JWT 발급(ES256/JWKS) + 회원가입 이메일 확인 + 비밀번호 재설정 메일만 담당.
 
 ## 프로젝트 개요
 

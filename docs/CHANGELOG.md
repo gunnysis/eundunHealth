@@ -4,6 +4,33 @@
 
 ---
 
+## v0.1.1 — 2026-05-26 (versionCode 15)
+
+### Added
+- 회원가입 이메일 확인 흐름: 안내 카드 (AwaitingEmailConfirmation) + 60초 쿨다운 재전송 버튼
+- Login 미인증 사용자(EmailNotConfirmed)에게 inline "인증 메일 다시 보내기" 액션 노출
+- Login 이메일 자동 채움 (가입 후 "로그인하러 가기" 흐름에서 pendingEmail 전달)
+- SignupScreen 비밀번호 6자 미만 inline 검증
+
+### Changed
+- 인증 상태 모델을 `SessionState` (글로벌) / `AuthOpState` (인증 화면 작업) / `SignupState` (가입 흐름) 세 sealed로 분리
+- `ResetState`/`AuthState` 레거시 제거. `AppNavigation`은 `sessionState`만 구독
+- `AuthRepository.signUp` 반환 타입을 `Result<SignupResult>` (`AutoSignedIn`/`AwaitingConfirmation`)로 변경
+- `mapAuthError`를 top-level internal 함수로 분리, `email_not_confirmed` → `AppError.EmailNotConfirmed`
+
+### Fixed
+- 가입/로그인 실패 시 화면이 Login으로 튕기며 에러 스낵바가 잘리던 구조적 버그 — `AuthState.Unauthenticated` 전환을 명시적 logout/세션 만료에만 한정
+
+### Infrastructure
+- Supabase 사용 범위를 Authentication 한정으로 SPEC.md에 명시 (Database/Storage/Realtime/Edge Functions = out-of-scope)
+- 단위 테스트 케이스 추가: AppErrorTest +1, AuthErrorMappingTest +6 (신규), AuthViewModelTest +8
+
+### Refs
+- Design: `docs/plans/2026-05-26-signup-confirmation-flow-design.md`
+- Plan: `docs/plans/2026-05-26-signup-confirmation-flow-plan.md`
+
+---
+
 ## v0.1.0 (2026-05-25) — 첫 의미있는 milestone
 
 versionCode `14`, versionName `0.1.0`. v0.1·v0.2·v0.3 spec 전체 + 인프라 마이그레이션 + 출시 직전 안정화(Phase 1~6A + Dependabot 정리)를 한 릴리스로 묶음. Internal Testing 트랙 배포. 13은 안정화 전 첫 시도(업로드 완료, 14로 대체).
