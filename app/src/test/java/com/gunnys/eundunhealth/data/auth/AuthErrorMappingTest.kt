@@ -1,6 +1,8 @@
 package com.gunnys.eundunhealth.data.auth
 
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.repository.SignupResult
+import io.github.jan.supabase.exceptions.SupabaseEncodingException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -46,5 +48,25 @@ class AuthErrorMappingTest {
         val err = mapAuthError("strange backend error", email = "a@b.com", isLogin = false)
         assertTrue(err is AppError.Auth)
         assertTrue(err.userMessage.contains("회원가입에 실패"))
+    }
+
+    @Test
+    fun `signUp SupabaseEncodingException은 AwaitingConfirmation으로 처리됨`() {
+        val e = SupabaseEncodingException("Couldn't decode sign up email result")
+        val result = mapSignUpException(e, "a@b.com")
+        assertTrue(result.isSuccess)
+        val signupResult = result.getOrNull()
+        assertTrue(signupResult is SignupResult.AwaitingConfirmation)
+        assertEquals("a@b.com", (signupResult as SignupResult.AwaitingConfirmation).email)
+    }
+
+    @Test
+    fun `signUp 일반 예외는 AppErrorException + mapAuthError 경로`() {
+        val e = RuntimeException("invalid_credentials")
+        val result = mapSignUpException(e, "a@b.com")
+        assertTrue(result.isFailure)
+        val ex = result.exceptionOrNull()
+        assertTrue(ex is AppErrorException)
+        assertTrue((ex as AppErrorException).appError is AppError.Auth)
     }
 }

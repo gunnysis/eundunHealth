@@ -4,6 +4,17 @@
 
 ---
 
+## v0.1.2 — 2026-05-26 (versionCode 16) — Hotfix
+
+### Fixed
+- **가입 무반응 hotfix**: Supabase project Confirm Email 토글 ON 상태에서 사용자는 정상 생성되고 확인 메일도 발송되지만, supabase-kt 3.6.0 의 `Email.decodeResult` 가 GoTrue 응답 JSON 의 일부 필드(특히 `aud`/`id`) 누락으로 `MissingFieldException` → `SupabaseEncodingException` 을 throw 하여 클라이언트가 "회원가입에 실패하였습니다"로 표시하던 문제. `mapSignUpException` 헬퍼에서 `SupabaseEncodingException` 을 `AwaitingConfirmation` 으로 분류하도록 별도 처리.
+- 단위 테스트 +2 (`AuthErrorMappingTest`): SupabaseEncodingException → AwaitingConfirmation, 일반 예외 → AppErrorException
+
+### 운영 메모 (이번 릴리스 외 후속 액션)
+- Supabase Project → Authentication → URL Configuration → **Site URL을 localhost 외 값으로 변경** 필요. 확인 메일 링크가 localhost로 리다이렉트되어 외부 디바이스에서 "연결 거부" 발생. 임시로 `https://github.com/gunnysis/eundunHealth` 같은 정적 페이지로 지정하거나, 향후 deep link RFC 도입 시 `eundunhealth://confirm` 같은 custom scheme 사용.
+
+---
+
 ## v0.1.1 — 2026-05-26 (versionCode 15)
 
 ### Added

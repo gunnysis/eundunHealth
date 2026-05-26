@@ -56,6 +56,27 @@ internal fun mapAuthError(rawMessage: String, email: String, isLogin: Boolean): 
     }
 }
 
+/**
+ * `signUp` 응답 디코딩 단계에서 supabase-kt 가 던질 수 있는 [SupabaseEncodingException]을
+ * `AwaitingConfirmation` 으로 처리.
+ *
+ * **배경**: supabase-kt 3.6.0 의 `Email.decodeResult` 는 GoTrue 서버 응답을 `UserInfo` 로
+ * 디코딩하며 `aud`/`id` 같은 필수 필드 누락 시 `MissingFieldException` → wrapping →
+ * `SupabaseEncodingException` 으로 throw 한다. Confirm Email ON 인 Supabase 프로젝트에서
+ * 가입 시 서버는 사용자를 정상 생성하고 확인 메일도 발송하지만, 응답 JSON 구조가
+ * `UserInfo` 와 일부 불일치하여 클라이언트는 예외를 받는 케이스가 확인됨 (서버 성공,
+ * 클라이언트 실패).
+ *
+ * 따라서 이 예외는 "실제 실패"가 아니라 "정상 AwaitingConfirmation" 으로 분류한다.
+ * 그 외 예외는 기존 [mapAuthError] 경로로 흘려보낸다.
+ */
+internal fun mapSignUpException(e: Throwable, email: String): Result<SignupResult> {
+    if (e is io.github.jan.supabase.exceptions.SupabaseEncodingException) {
+        return Result.success(SignupResult.AwaitingConfirmation(email))
+    }
+    return Result.failure(AppErrorException(mapAuthError(e.message ?: "", email, isLogin = false)))
+}
+
 class AuthRepositoryImpl @Inject constructor(
     private val supabaseClient: SupabaseClient,
     private val tokenHolder: AtomicReference<String?>,
@@ -90,7 +111,7 @@ class AuthRepositoryImpl @Inject constructor(
             Result.success(SignupResult.AwaitingConfirmation(email))
         }
     } catch (e: Exception) {
-        Result.failure(AppErrorException(mapAuthError(e.message ?: "", email, isLogin = false)))
+        mapSignUpException(e, email)
     }
 
     override suspend fun resendConfirmation(email: String): Result<Unit> = try {
