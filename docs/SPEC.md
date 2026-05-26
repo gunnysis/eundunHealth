@@ -81,7 +81,9 @@
 
 ### 3. 회원가입 화면 (`SignupScreen`)
 - 이메일/비밀번호 입력
-- 회원가입 후 자동 로그인 → Onboarding 이동
+- 가입 요청 성공 시 Supabase가 확인 메일을 발송하며, 화면은 `AwaitingEmailConfirmation` 안내 상태로 전환됨
+- 안내 상태에서 60초 쿨다운으로 확인 메일을 재전송 가능 (남은 시간을 버튼에 노출)
+- 메일 인증 완료 후 사용자는 직접 Login 화면으로 이동해 로그인하며, 이메일 입력란은 이전 가입 입력값으로 자동 채워짐
 
 ### 4. 온보딩 화면 (`OnboardingScreen`)
 - 신체 정보 입력 (키, 몸무게, 체지방률, 근육량)
@@ -132,6 +134,16 @@
 - `AuthRepository.restoreSession()`: 자동 로그인 시 세션 복원 + tokenHolder 설정
 - OkHttp TokenAuthenticator로 401 응답 시 Supabase 토큰 자동 갱신 후 재시도
 - AuthViewModel은 AuthRepository 인터페이스만 의존 (SupabaseClient 직접 참조 없음)
+
+#### 회원가입 이메일 확인 흐름
+- 회원가입 요청이 성공하면 Supabase가 확인 메일을 발송하고, 사용자의 세션은 메일 인증을 마친 후에만 활성화된다. 가입 직후에는 인증 토큰을 발급하지 않으며, 앱은 자동 로그인 상태로 진입하지 않는다.
+- 가입 직후 SignupScreen은 `AwaitingEmailConfirmation` 상태로 전환되어 메일 발송 안내와 재전송 버튼을 노출한다. 재전송은 60초 쿨다운으로 제한하며, 쿨다운 동안 버튼은 비활성화되고 남은 시간을 함께 표시한다.
+- 메일 인증을 마친 사용자는 Login 화면으로 이동해 수동으로 로그인한다. 이때 이메일 입력란은 직전 회원가입에서 입력한 이메일로 자동 채워져 재입력 부담을 줄인다.
+- 미인증 상태에서 로그인을 시도하면 `EmailNotConfirmed` 에러를 한국어 메시지로 표시하고, 동일한 화면에 inline "메일 재전송" 액션을 노출해 즉시 확인 메일을 다시 받을 수 있게 한다.
+
+#### Supabase 사용 범위
+- 본 앱은 Supabase의 **Authentication 서비스만** 사용한다. 사용자 데이터(프로필, 주간 계획, 배지 등)는 모두 자체 FastAPI 백엔드 + Azure PostgreSQL에 저장한다.
+- Supabase Database / Storage / Realtime / Edge Functions 등 다른 제품군은 본 명세 범위 밖(out-of-scope)이며, 도입이 필요한 경우 별도 RFC 후 SPEC/TRD를 갱신한다.
 
 ### 주간 운동 계획 생성
 - ExerciseDB API에서 부위별 운동 조회 (chest, back, upper legs, shoulders, upper arms)
