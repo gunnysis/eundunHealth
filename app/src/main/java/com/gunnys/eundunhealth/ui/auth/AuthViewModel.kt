@@ -71,6 +71,15 @@ class AuthViewModel @Inject constructor(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
+    private val _sessionState = MutableStateFlow<SessionState>(SessionState.Unknown)
+    val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
+
+    private val _signupState = MutableStateFlow<SignupState>(SignupState.Form)
+    val signupState: StateFlow<SignupState> = _signupState.asStateFlow()
+
+    private val _authOpState = MutableStateFlow<AuthOpState>(AuthOpState.Idle)
+    val authOpState: StateFlow<AuthOpState> = _authOpState.asStateFlow()
+
     private val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
@@ -87,15 +96,22 @@ class AuthViewModel @Inject constructor(
             val userId = authRepo.restoreSession()
             if (userId != null) {
                 val hasProfile = userRepo.getProfile().getOrNull() != null
-                AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
+                Pair(
+                    AuthState.Authenticated(userId, needsOnboarding = !hasProfile),
+                    SessionState.Authenticated(userId, needsOnboarding = !hasProfile),
+                )
             } else {
-                AuthState.Unauthenticated
+                Pair(AuthState.Unauthenticated, SessionState.Unauthenticated)
             }
         }
-            .onSuccess { _authState.value = it }
+            .onSuccess { (auth, session) ->
+                _authState.value = auth
+                _sessionState.value = session
+            }
             .onFailure {
                 // 세션 복원 실패는 단순히 비로그인 상태로 처리 — Sentry/에러 표시 없음
                 _authState.value = AuthState.Unauthenticated
+                _sessionState.value = SessionState.Unauthenticated
             }
     }
 
@@ -119,24 +135,24 @@ class AuthViewModel @Inject constructor(
     }
 
     fun signup(email: String, password: String) = viewModelScope.launch {
-        _authState.value = AuthState.Loading
+        _signupState.value = SignupState.Loading
         authRepo.signUp(email, password)
             .onSuccess { result ->
-                // TODO(Task 6): replace with SignupState transitions
                 when (result) {
-                    is SignupResult.AutoSignedIn ->
-                        _authState.value = AuthState.Authenticated(result.userId, needsOnboarding = true)
-                    is SignupResult.AwaitingConfirmation ->
-                        _authState.value = AuthState.Unauthenticated
+                    is SignupResult.AutoSignedIn -> {
+                        _sessionState.value =
+                            SessionState.Authenticated(result.userId, needsOnboarding = true)
+                        _signupState.value = SignupState.Form
+                    }
+                    is SignupResult.AwaitingConfirmation -> {
+                        _signupState.value = SignupState.AwaitingEmailConfirmation(result.email)
+                    }
                 }
             }
-            .onFailure {
-                _authState.value = AuthState.Unauthenticated
-                val appErr = it.message
-                    ?.let { msg -> AppError.Auth(msg) }
-                    ?: it.toAppError()
-                appErr.reportToSentry()
-                _error.value = appErr
+            .onFailure { e ->
+                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+                    ?: e.toAppError().also { it.reportToSentry() }
+                _signupState.value = SignupState.Failed(appErr)
             }
     }
 
