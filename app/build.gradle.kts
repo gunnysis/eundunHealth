@@ -86,6 +86,17 @@ android {
             localProperties.getProperty("eundunhealth-app_SENTRY_DSN")
                 ?: localProperties.getProperty("SENTRY_DSN", "")
         buildConfigField("String", "SENTRY_DSN", "\"$androidSentryDsn\"")
+        // App Links 호스트 — Task 1 에서 az containerapp show 로 조회한 FQDN.
+        // 기본값을 실제 운영 FQDN으로 둬서 local.properties 미설정 환경(CI 등)도 동일 도메인 사용.
+        // 다른 환경 가리키려면 local.properties 에 APP_LINKS_HOST=... 로 override.
+        buildConfigField(
+            "String",
+            "APP_LINKS_HOST",
+            "\"${localProperties.getProperty(
+                "APP_LINKS_HOST",
+                "eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io",
+            )}\"",
+        )
     }
 
     buildTypes {
