@@ -4,6 +4,34 @@
 
 ---
 
+## v0.1.3 — 2026-05-26 (versionCode 17) — Android App Links 자동 로그인
+
+### Added
+- **App Links 자동 로그인**: Supabase Confirm Email 메일 링크를 같은 디바이스에서 클릭하면 앱이 자동으로 열려 PKCE code 교환을 거쳐 자동 로그인까지 완료 (Onboarding/Home 직진). 사용자 액션은 메일 링크 클릭 1회만.
+- 백엔드: FastAPI 에 정적 라우트 2개 추가 — `/.well-known/assetlinks.json` (App Links 검증) + `/auth/confirm` (앱 미설치 사용자용 fallback HTML + Google Play 링크).
+- Android: AndroidManifest intent-filter (autoVerify=true) + MainActivity 가 supabase-kt 빌트인 `SupabaseClient.handleDeeplinks` extension 으로 deep link 처리.
+- `AuthViewModel.onDeepLinkSuccess` / `onDeepLinkError` — 라이브러리 콜백 받아 sessionState / authOpState 갱신.
+- `mapAuthError` +3 매핑: `otp_expired` / `flow_state_expired` → 만료 메시지, `bad_code_verifier` / `flow_state_not_found` → 인증 정보 불일치 메시지.
+
+### Changed
+- `SupabaseModule` 에 `flowType = FlowType.PKCE`, `scheme = "https"`, `host = BuildConfig.APP_LINKS_HOST` 명시.
+- AndroidManifest MainActivity 에 `launchMode="singleTop"` 추가 — deep link 재진입 시 Compose state 보존.
+
+### Infrastructure
+- Container App 기본 subdomain (`eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io`) 활용. Custom domain 미보유 — v1.0 출시 전 재검토.
+- 단위 테스트: AuthErrorMappingTest +3 (11), AuthViewModelTest +4 (19), backend test_auth_routes +3 (44 total).
+
+### 운영 수동 절차 (이번 릴리스 머지 후 1회)
+- Supabase Dashboard → Authentication → URL Configuration → Site URL = `https://<APP_LINKS_HOST>/auth/confirm`, Additional Redirect URLs 에도 추가.
+- (선택) `local.properties` 에 `APP_LINKS_HOST=<container-app-fqdn>` 등록 — build.gradle.kts 기본값으로도 동작하지만 override 가능.
+- assetlinks.json 의 SHA256 fingerprint 가 release keystore 와 일치하는지 디바이스에서 `adb shell pm get-app-links --user 0 com.gunnys.eundunhealth` 로 확인 (`verified` 표시).
+
+### Refs
+- Design: `docs/plans/2026-05-26-applinks-deep-link-design.md`
+- Plan: `docs/plans/2026-05-26-applinks-deep-link-plan.md`
+
+---
+
 ## v0.1.2 — 2026-05-26 (versionCode 16) — Hotfix
 
 ### Fixed

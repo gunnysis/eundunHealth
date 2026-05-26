@@ -71,9 +71,10 @@ android {
         // v0.1.0 출시 빌드는 versionCode 14였음 (13은 첫 internal testing 시도, 14는 출시 직전 안정화 후 재빌드).
         // 15: v0.1.1 — 가입 이메일 확인 흐름(AwaitingEmailConfirmation + 60초 재전송) + 인증 상태 모델 리팩터.
         // 16: v0.1.2 — supabase-kt 3.6.0 SupabaseEncodingException 처리 (가입 무반응 hotfix).
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 17, 18, ...
-        versionCode = 16
-        versionName = "0.1.2"
+        // 17: v0.1.3 — Android App Links 도입 (메일 클릭 1회로 자동 로그인).
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 18, 19, ...
+        versionCode = 17
+        versionName = "0.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
