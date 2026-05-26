@@ -116,21 +116,17 @@ class AuthViewModel @Inject constructor(
     }
 
     fun login(email: String, password: String) = viewModelScope.launch {
-        _authState.value = AuthState.Loading
+        _authOpState.value = AuthOpState.Loading
         authRepo.signIn(email, password)
             .onSuccess { userId ->
                 val hasProfile = userRepo.getProfile().getOrNull() != null
-                _authState.value = AuthState.Authenticated(userId, needsOnboarding = !hasProfile)
+                _sessionState.value = SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
+                _authOpState.value = AuthOpState.Idle
             }
-            .onFailure {
-                _authState.value = AuthState.Unauthenticated
-                // signIn은 AuthRepositoryImpl에서 한국어 메시지로 매핑된 예외를 던지므로
-                // userMessage를 보존하기 위해 message가 있으면 그대로 Auth 에러로 사용
-                val appErr = it.message
-                    ?.let { msg -> AppError.Auth(msg) }
-                    ?: it.toAppError()
-                appErr.reportToSentry()
-                _error.value = appErr
+            .onFailure { e ->
+                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
+                    ?: e.toAppError().also { it.reportToSentry() }
+                _authOpState.value = AuthOpState.Failed(appErr)
             }
     }
 

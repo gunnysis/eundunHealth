@@ -140,14 +140,63 @@ class AuthViewModelTest {
         assertTrue(state is SignupState.Failed)
     }
 
+    // ---- login behavior tests ----
+
+    @Test
+    fun `login 성공 시 sessionState=Authenticated, authOpState 가 Idle 로 복귀`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+            signInResult = Result.success("user-1"),
+        )
+        val userRepo = FakeUserRepository(
+            profile = UserProfile(
+                userId = "user-1",
+                heightCm = 175f,
+                weightKg = 70f,
+                bodyFatPercent = 20f,
+                muscleMassKg = 30f,
+            ),
+        )
+
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.login("a@b.com", "pw")
+        advanceUntilIdle()
+
+        assertTrue(vm.sessionState.value is SessionState.Authenticated)
+        assertEquals(AuthOpState.Idle, vm.authOpState.value)
+    }
+
+    @Test
+    fun `login EmailNotConfirmed 에러 시 authOpState=Failed(EmailNotConfirmed)`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+            signInResult = Result.failure(
+                com.gunnys.eundunhealth.data.auth.AppErrorException(
+                    AppError.EmailNotConfirmed("a@b.com"),
+                ),
+            ),
+        )
+        val userRepo = FakeUserRepository()
+
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.login("a@b.com", "pw")
+        advanceUntilIdle()
+
+        val state = vm.authOpState.value
+        assertTrue(state is AuthOpState.Failed)
+        assertTrue((state as AuthOpState.Failed).error is AppError.EmailNotConfirmed)
+    }
+
     // ---- Test doubles ----
 
     private class FakeAuthRepository(
         private val signUpResult: Result<SignupResult>,
+        private val signInResult: Result<String> = Result.failure(IllegalStateException("not stubbed")),
         private val restoreSessionUserId: String? = null,
     ) : AuthRepository {
-        override suspend fun signIn(email: String, password: String): Result<String> =
-            Result.failure(IllegalStateException("not stubbed"))
+        override suspend fun signIn(email: String, password: String): Result<String> = signInResult
 
         override suspend fun signUp(email: String, password: String): Result<SignupResult> =
             signUpResult
