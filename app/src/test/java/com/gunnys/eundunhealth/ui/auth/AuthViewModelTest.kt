@@ -28,4 +28,23 @@ class AuthViewModelTest {
     fun `AuthState Unauthenticated is its own singleton`() {
         assertEquals(AuthState.Unauthenticated, AuthState.Unauthenticated)
     }
+
+    @Test
+    fun `SessionState Authenticated carries userId and onboarding flag`() {
+        val state = SessionState.Authenticated(userId = "u-1", needsOnboarding = true)
+        assertEquals("u-1", state.userId)
+        assertEquals(true, state.needsOnboarding)
+    }
+
+    @Test
+    fun `AuthOpState Idle and Loading singletons`() {
+        assertEquals(AuthOpState.Idle, AuthOpState.Idle)
+        assertEquals(AuthOpState.Loading, AuthOpState.Loading)
+    }
+
+    @Test
+    fun `SignupState AwaitingEmailConfirmation carries email`() {
+        val state = SignupState.AwaitingEmailConfirmation("a@b.com")
+        assertEquals("a@b.com", state.email)
+    }
 }

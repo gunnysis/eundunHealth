@@ -7,6 +7,7 @@ import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.reportToSentry
 import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
+import com.gunnys.eundunhealth.domain.repository.SignupResult
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,33 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed class SessionState {
+    @Immutable data object Unknown : SessionState()
+
+    @Immutable
+    data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : SessionState()
+
+    @Immutable data object Unauthenticated : SessionState()
+}
+
+sealed class AuthOpState {
+    @Immutable data object Idle : AuthOpState()
+
+    @Immutable data object Loading : AuthOpState()
+
+    @Immutable data class Failed(val error: AppError) : AuthOpState()
+}
+
+sealed class SignupState {
+    @Immutable data object Form : SignupState()
+
+    @Immutable data object Loading : SignupState()
+
+    @Immutable data class AwaitingEmailConfirmation(val email: String) : SignupState()
+
+    @Immutable data class Failed(val error: AppError) : SignupState()
+}
 
 sealed class AuthState {
     @Immutable
@@ -93,8 +121,14 @@ class AuthViewModel @Inject constructor(
     fun signup(email: String, password: String) = viewModelScope.launch {
         _authState.value = AuthState.Loading
         authRepo.signUp(email, password)
-            .onSuccess { userId ->
-                _authState.value = AuthState.Authenticated(userId, needsOnboarding = true)
+            .onSuccess { result ->
+                // TODO(Task 6): replace with SignupState transitions
+                when (result) {
+                    is SignupResult.AutoSignedIn ->
+                        _authState.value = AuthState.Authenticated(result.userId, needsOnboarding = true)
+                    is SignupResult.AwaitingConfirmation ->
+                        _authState.value = AuthState.Unauthenticated
+                }
             }
             .onFailure {
                 _authState.value = AuthState.Unauthenticated
