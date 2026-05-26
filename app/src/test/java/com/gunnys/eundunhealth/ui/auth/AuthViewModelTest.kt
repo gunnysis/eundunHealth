@@ -230,6 +230,24 @@ class AuthViewModelTest {
         assertEquals(0, vm.resendCooldownSec.value)
     }
 
+    // ---- pendingEmail set/clear ----
+
+    @Test
+    fun `pendingEmail set 후 clear 동작`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+        )
+        val userRepo = FakeUserRepository()
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+
+        assertEquals(null, vm.pendingEmail.value)
+        vm.setPendingEmail("a@b.com")
+        assertEquals("a@b.com", vm.pendingEmail.value)
+        vm.clearPendingEmail()
+        assertEquals(null, vm.pendingEmail.value)
+    }
+
     // ---- Test doubles ----
 
     private class FakeAuthRepository(

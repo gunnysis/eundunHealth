@@ -88,6 +88,21 @@ class AuthViewModel @Inject constructor(
         _error.value = null
     }
 
+    private val _pendingEmail = MutableStateFlow<String?>(null)
+    val pendingEmail: StateFlow<String?> = _pendingEmail.asStateFlow()
+
+    fun setPendingEmail(email: String) {
+        _pendingEmail.value = email
+    }
+
+    fun clearPendingEmail() {
+        _pendingEmail.value = null
+    }
+
+    fun resetSignupState() {
+        _signupState.value = SignupState.Form
+    }
+
     init {
         checkSession()
     }
