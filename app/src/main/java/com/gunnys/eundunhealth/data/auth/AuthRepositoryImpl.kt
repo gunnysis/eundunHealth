@@ -1,5 +1,6 @@
 package com.gunnys.eundunhealth.data.auth
 
+import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.api.generated.api.AccountApi
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
@@ -10,6 +11,19 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
+
+/**
+ * Supabase signUp / resendEmail 의 redirect_to 파라미터로 사용되는 URL.
+ *
+ * Supabase Console 의 Site URL 은 origin(host)만 사용되어 path(/auth/confirm) 가 누락된다.
+ * App Links autoVerify 가 작동하려면 redirect URL 의 path 가 AndroidManifest intent-filter
+ * 의 `pathPrefix="/auth/confirm"` 와 매칭해야 하므로 클라이언트에서 명시 전달.
+ *
+ * 이 URL 은 Supabase Console → Authentication → URL Configuration → Additional Redirect URLs
+ * allowlist 에 등록되어야 Supabase 가 redirect_to 로 honor 한다.
+ */
+private val authRedirectUrl: String
+    get() = "https://${BuildConfig.APP_LINKS_HOST}/auth/confirm"
 
 /**
  * Repository 내부에서 catch 한 supabase/네트워크 예외를 [AppError]로 분류한 뒤
@@ -101,7 +115,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun signUp(email: String, password: String): Result<SignupResult> = try {
-        supabaseClient.auth.signUpWith(Email) {
+        supabaseClient.auth.signUpWith(Email, redirectUrl = authRedirectUrl) {
             this.email = email
             this.password = password
         }
@@ -119,7 +133,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun resendConfirmation(email: String): Result<Unit> = try {
-        supabaseClient.auth.resendEmail(OtpType.Email.SIGNUP, email)
+        supabaseClient.auth.resendEmail(OtpType.Email.SIGNUP, email, redirectUrl = authRedirectUrl)
         Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(AppErrorException(mapAuthError(e.message ?: "", email, isLogin = false)))
