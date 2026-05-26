@@ -67,7 +67,9 @@ fun LoginScreen(
         val e = lastError ?: return@LaunchedEffect
         if (e !is AppError.EmailNotConfirmed) {
             snackbarHostState.showSnackbar(e.userMessage)
+            authViewModel.consumeAuthOpError()
         }
+        // EmailNotConfirmed는 inline 재전송 버튼 UI로 표시되므로 sticky 유지
     }
     LaunchedEffect(resendError) {
         val e = resendError ?: return@LaunchedEffect

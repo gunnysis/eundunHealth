@@ -171,6 +171,16 @@ class AuthViewModel @Inject constructor(
         _resendError.value = null
     }
 
+    /**
+     * 인증 작업 에러를 소비. EmailNotConfirmed는 inline UI가 직접 다루므로 [LoginScreen]은
+     * 일반 에러 스낵바를 띄운 직후에만 호출한다.
+     */
+    fun consumeAuthOpError() {
+        if (_authOpState.value is AuthOpState.Failed) {
+            _authOpState.value = AuthOpState.Idle
+        }
+    }
+
     fun resendConfirmation(email: String) = viewModelScope.launch {
         if (_resendCooldownSec.value > 0) return@launch
         authRepo.resendConfirmation(email)

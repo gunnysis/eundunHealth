@@ -242,6 +242,61 @@ class AuthViewModelTest {
         assertEquals(AuthOpState.Idle, vm.authOpState.value)
     }
 
+    @Test
+    fun `resendConfirmation 실패 시 resendError 가 설정됨`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+            resendConfirmationResult = Result.failure(
+                com.gunnys.eundunhealth.data.auth.AppErrorException(AppError.Network()),
+            ),
+        )
+        val userRepo = FakeUserRepository()
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.resendConfirmation("a@b.com")
+        advanceUntilIdle()
+
+        assertEquals(0, vm.resendCooldownSec.value)
+        assertTrue(vm.resendError.value is AppError.Network)
+    }
+
+    @Test
+    fun `login 성공 + 프로필 없음 시 needsOnboarding=true`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+            signInResult = Result.success("user-1"),
+        )
+        val userRepo = FakeUserRepository() // profile = null by default
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.login("a@b.com", "pw")
+        advanceUntilIdle()
+
+        val session = vm.sessionState.value
+        assertTrue(session is SessionState.Authenticated)
+        assertEquals(true, (session as SessionState.Authenticated).needsOnboarding)
+    }
+
+    @Test
+    fun `resetPassword 실패 시 authOpState=Failed`() = runTest {
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(IllegalStateException("not used")),
+            resetPasswordResult = Result.failure(
+                com.gunnys.eundunhealth.data.auth.AppErrorException(AppError.Network()),
+            ),
+        )
+        val userRepo = FakeUserRepository()
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.resetPassword("a@b.com")
+        advanceUntilIdle()
+
+        assertEquals(false, vm.passwordResetSent.value)
+        val state = vm.authOpState.value
+        assertTrue(state is AuthOpState.Failed)
+        assertTrue((state as AuthOpState.Failed).error is AppError.Network)
+    }
+
     // ---- Test doubles ----
 
     private class FakeAuthRepository(

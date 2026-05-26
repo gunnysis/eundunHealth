@@ -39,6 +39,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
+private const val SIGNUP_FAILURE_AUTO_DISMISS_MS = 2_000L
+
 @Composable
 fun SignupScreen(
     onNavigateToLogin: () -> Unit,
@@ -52,7 +54,7 @@ fun SignupScreen(
     LaunchedEffect(signupState) {
         val failed = signupState as? SignupState.Failed ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(failed.error.userMessage)
-        delay(2_000)
+        delay(SIGNUP_FAILURE_AUTO_DISMISS_MS)
         authViewModel.resetSignupState()
     }
     LaunchedEffect(resendError) {

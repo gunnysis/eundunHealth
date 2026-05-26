@@ -100,6 +100,8 @@ class AuthRepositoryImpl @Inject constructor(
         Result.failure(AppErrorException(mapAuthError(e.message ?: "", email, isLogin = false)))
     }
 
+    // signOut/deleteAccount는 best-effort cleanup — 실패해도 호출자가 토큰 폐기 +
+    // 세션 상태 전환을 수행하므로 별도 AppErrorException 매핑이 필요 없음.
     override suspend fun signOut(): Result<Unit> = runCatching {
         supabaseClient.auth.signOut()
         tokenHolder.set(null)
