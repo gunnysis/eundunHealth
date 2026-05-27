@@ -4,6 +4,26 @@
 
 ---
 
+## v0.1.4 — 2026-05-26 (versionCode 18) — Hotfix: redirect URL path
+
+### Fixed
+- **App Links 자동 로그인 미작동 hotfix**: v0.1.3 실기기 검증 결과, Supabase Console 의 Site URL 에 `/auth/confirm` path 를 포함시켜도 redirect_to 파라미터에는 origin(host) 만 사용됨이 확인됨. 메일 링크가 `https://host/?code=...` (root path) 로 와서 Android intent-filter (`pathPrefix=/auth/confirm`) 가 매칭되지 않아 App Links autoVerify 가 작동 못 함.
+- `AuthRepositoryImpl.signUp` 의 `signUpWith(Email)` 호출에 `redirectUrl = "https://${BuildConfig.APP_LINKS_HOST}/auth/confirm"` 명시 전달 — 클라이언트가 path 까지 포함된 redirect URL 을 지정.
+- `AuthRepositoryImpl.resendConfirmation` 의 `resendEmail` 호출에도 동일한 `redirectUrl` 전달 (재전송 메일에도 같은 형식 보장).
+
+### 운영 수동 절차 (v0.1.4 머지 후 1회)
+- Supabase Dashboard → Authentication → URL Configuration → **Additional Redirect URLs** allowlist 에 다음 URL 추가:
+  ```
+  https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/auth/confirm
+  ```
+  명시 redirectUrl 이 honor 되려면 allowlist 에 등록 필수 (Supabase 보안 정책).
+
+### Refs
+- 진단: v0.1.3 Phase 5 Step 4 디바이스 검증 중 발견
+- 원본 design: `docs/plans/2026-05-26-applinks-deep-link-design.md`
+
+---
+
 ## v0.1.3 — 2026-05-26 (versionCode 17) — Android App Links 자동 로그인
 
 ### Added

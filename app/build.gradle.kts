@@ -72,9 +72,10 @@ android {
         // 15: v0.1.1 — 가입 이메일 확인 흐름(AwaitingEmailConfirmation + 60초 재전송) + 인증 상태 모델 리팩터.
         // 16: v0.1.2 — supabase-kt 3.6.0 SupabaseEncodingException 처리 (가입 무반응 hotfix).
         // 17: v0.1.3 — Android App Links 도입 (메일 클릭 1회로 자동 로그인).
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 18, 19, ...
-        versionCode = 17
-        versionName = "0.1.3"
+        // 18: v0.1.4 — Supabase signUp/resendEmail redirectUrl 명시 (Site URL 의 path 누락 hotfix).
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 19, 20, ...
+        versionCode = 18
+        versionName = "0.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

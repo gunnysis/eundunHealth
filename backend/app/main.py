@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 import sentry_sdk
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -58,6 +59,20 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
         status_code=exc.status_code,
         content={"code": exc.code, "message": exc.message},
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # 422 응답 시 어떤 필드/값이 거부됐는지 console 로그로 즉시 진단 가능하게 한다.
+    # 응답 body 는 fastapi default 와 동일하므로 클라이언트 호환성 영향 없음.
+    logger.warning(
+        "Request validation failed | path=%s method=%s body=%r errors=%s",
+        request.url.path,
+        request.method,
+        exc.body,
+        exc.errors(),
+    )
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
 @app.exception_handler(Exception)
