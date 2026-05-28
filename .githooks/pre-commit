@@ -1,33 +1,47 @@
 #!/bin/bash
-# eundunHealth Android pre-commit hook
+# eundunHealth pre-commit hook
 #
 # 활성화: git config core.hooksPath .githooks
 # (한 번 실행하면 이 디렉토리의 훅이 적용됩니다.)
 #
-# 동작:
-# 1) 스테이지에 .kt/.kts 파일이 있을 때만 실행 — 백엔드 전용 커밋엔 영향 없음
-# 2) spotlessApply로 자동 포맷 → 변경된 파일을 다시 stage
-# 3) detektDebug로 정적 분석 — baseline에 없는 신규 위반이면 차단
+# 동작 (분기별 독립 — staged 변경에 해당하는 분기만 작동):
+# 1) Kotlin (.kt/.kts) staged → spotlessApply (자동 포맷) + detektDebug (baseline 외 신규 위반 차단)
+# 2) docs/plans/*.md staged → gen-plans-index.sh (README.md 자동 재생성 + auto-stage)
 set -euo pipefail
 
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# ---------- 1) Kotlin ----------
 CHANGED_KOTLIN=$(git diff --cached --name-only --diff-filter=ACM \
     | grep -E '\.(kt|kts)$' || true)
 
-if [ -z "$CHANGED_KOTLIN" ]; then
-    exit 0
+if [ -n "$CHANGED_KOTLIN" ]; then
+    echo "[pre-commit] Kotlin changes detected → spotlessApply + detektDebug"
+    cd "$REPO_ROOT"
+
+    # 자동 포맷
+    ./gradlew :app:spotlessApply -q
+
+    # 포맷 결과를 다시 스테이지 (변경된 파일만)
+    echo "$CHANGED_KOTLIN" | while read -r file; do
+        [ -f "$file" ] && git add "$file"
+    done
+
+    # 정적 분석
+    ./gradlew :app:detektDebug -q
 fi
 
-echo "[pre-commit] Kotlin changes detected → spotlessApply + detektDebug"
+# ---------- 2) docs/plans/ ----------
+# README.md / _templates/ 는 trigger 에서 제외 (자기참조 무한 루프 방지)
+CHANGED_PLANS=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '^docs/plans/.*\.md$' \
+    | grep -v '^docs/plans/README\.md$' \
+    | grep -v '^docs/plans/_templates/' || true)
 
-cd "$(git rev-parse --show-toplevel)"
+if [ -n "$CHANGED_PLANS" ]; then
+    echo "[pre-commit] docs/plans/ changes detected → regenerating README.md"
+    bash "$REPO_ROOT/scripts/gen-plans-index.sh"
+    git add "$REPO_ROOT/docs/plans/README.md"
+fi
 
-# 1) 자동 포맷
-./gradlew :app:spotlessApply -q
-
-# 2) 포맷 결과를 다시 스테이지 (변경된 파일만)
-echo "$CHANGED_KOTLIN" | while read -r file; do
-    [ -f "$file" ] && git add "$file"
-done
-
-# 3) 정적 분석
-./gradlew :app:detektDebug -q
+exit 0
