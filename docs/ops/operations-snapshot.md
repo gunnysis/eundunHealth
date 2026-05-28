@@ -232,7 +232,31 @@ gh workflow run backend.yml --ref main
 
 ---
 
-## 11. 변경 이력
+## 11. MCP 통합 (2026-05-28)
+
+Claude Code MCP 서버 4종 운영 활용:
+
+| MCP 서버 | 주 사용 시나리오 | 인증 |
+|---|---|---|
+| `mcp__sentry__*` | INC root cause 분석, Phase 5 검증, 신규 issue 알림 | OAuth (qkr133456@gmail.com) |
+| `mcp__azure__*` | Container App 상태/로그, ACR 정리, PG 쿼리, secret list 검증 | az CLI shared, `AZURE_TENANT_ID` env 주입 |
+| `mcp__github__*` | PR 작성/조회, CI run polling, 코드 검색 | GitHub Copilot OAuth (gunnysis) |
+| `mcp__plugin_context7_context7__*` | 공식 docs fetch (Alembic, PG, Docker, Container Apps) | 없음 (public) |
+
+권한 분리 (`.claude/settings.local.json`):
+- read-only tool 56개 → allow (prompt 없음)
+- write tool 23개 → ask (실수 차단)
+
+자동화:
+- `/verify-deploy <INC-ID>` — Phase 5 운영 검증 1-command
+- `scripts/hooks/secretref-guard.sh` — 룰 6 commit-time 가드 (PreToolUse hook)
+- `scripts/claude-context.sh` — SessionStart 보류 검증 리마인더
+
+자세한 설계: `docs/plans/2026-05-28-mcp-integration-setup-design.md`.
+
+---
+
+## 12. 변경 이력
 
 | 날짜 | 변경 |
 |------|------|

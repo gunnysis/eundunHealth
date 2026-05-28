@@ -275,6 +275,14 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 - `scripts/register-azure-credentials.ps1` — SP 생성/패치 + AcrPush + GitHub secret 등록 (INC-17, 운영자 1회/만료 갱신)
 - `scripts/warm-gradle.sh` — Gradle 데몬 사전 구동
 - `scripts/claude-context.sh` / `claude-precompact.sh` — SessionStart/PreCompact 훅
+- `scripts/hooks/secretref-guard.sh` — git commit 시 backend.yml 신규 secretref 가 Container
+  App 에 등록됐는지 자동 검증 (룰 6 1차 가드). PreToolUse hook 으로 자동 실행. fail-open.
+
+### Claude Code 슬래시 명령 (`.claude/commands/`)
+
+- `/verify-deploy <inc-id>` — MCP (Sentry/Azure) 로 Phase 5 운영 검증 자동화 (alembic head
+  + 스키마 컬럼 + Sentry 신규 issue). INC 별 검증 1-command. 자세한 내용:
+  `docs/plans/2026-05-28-mcp-integration-setup-design.md` §3.3.
 
 ### OpenAPI Generator (Android)
 - 입력: `backend/openapi.json` (git checked-in, `sync-openapi.sh`로 갱신)

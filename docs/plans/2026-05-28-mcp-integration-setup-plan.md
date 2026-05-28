@@ -895,7 +895,7 @@ Claude Code MCP 서버 4종 운영 활용:
 
 권한 분리 (`.claude/settings.local.json`):
 - read-only tool 56개 → allow (prompt 없음)
-- write tool 22개 → ask (실수 차단)
+- write tool 23개 → ask (실수 차단)
 
 자동화:
 - `/verify-deploy <INC-ID>` — Phase 5 운영 검증 1-command
