@@ -439,8 +439,15 @@ Claude 가 첫 응답에서 사용자에게 "/verify-deploy INC-2026-05-27-01 �
 ## 8. 잔여 리스크
 
 1. **Azure MCP tool 의 read/write 미구분** — `containerapps`, `postgres` 등 단일 tool 안에
-   list/show/update/delete 가 모두 있어 permission allow 가 write 도 같이 허용함. 완화책:
-   사용자 PR 리뷰 + Claude 의 호출 직전 확인 + 룰 6 가드.
+   list/show/update/delete 가 모두 있어 permission allow 가 write 도 같이 허용함. 특히
+   `mcp__azure__keyvault` 는 `get-secret-value` subaction 노출 여부 미확인 — 실제 사용 직전
+   첫 호출 시 subaction 표 확인 필요. 노출되면 ask 로 이동. 완화책: 사용자 PR 리뷰 + Claude
+   의 호출 직전 확인 + 룰 6 가드.
+1a. **Sentry read tool 의 user PII 자동 접근** — `get_event_attachment` /
+   `get_profile_details` / `get_replay_details` 는 read-only 분류가 옳지만 Health Connect
+   body metrics / auth token 등 사용자 PII 를 포함한 payload 를 prompt 없이 조회 가능. 현
+   solo-dev / internal testing 단계에서는 허용 가능 (사용자가 세션 리뷰) — v1.0 출시 + 실
+   사용자 데이터 적재 후에는 ask 로 격상 검토. 한국 PIPA / GDPR 고려.
 2. **secretref-guard fail-open** — `az` 인증 만료 등으로 hook 가 실패하면 commit 통과. 의도된
    설계 (운영 차단 회피) 지만 deploy 단계의 backend.yml CI step 가드가 2차 방어로 작동해야 함.
 3. **SessionStart hook timeout** — `gh pr view` 가 느릴 경우 10s → 20s 상향에도 부족 가능.

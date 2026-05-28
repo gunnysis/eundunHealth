@@ -264,7 +264,9 @@ Sentry 17개 + Azure 15개 + GitHub 24개 = 56개 (Context7 2개는 이미 있�
     ],
 ```
 
-- [ ] **Step 3: ask 배열 끝에 MCP write tool 21개 추가** (Edit tool)
+- [ ] **Step 3: ask 배열 끝에 MCP write tool 23개 추가** (Edit tool)
+
+> 22개 + `mcp__github__update_pull_request_branch` 1개 = 23개. (write tool 모두 포함하는 의도.)
 
 기존 ask 배열 마지막 항목:
 ```json
@@ -892,7 +894,7 @@ Claude Code MCP 서버 4종 운영 활용:
 
 권한 분리 (`.claude/settings.local.json`):
 - read-only tool 56개 → allow (prompt 없음)
-- write tool 21개 → ask (실수 차단)
+- write tool 22개 → ask (실수 차단)
 
 자동화:
 - `/verify-deploy <INC-ID>` — Phase 5 운영 검증 1-command
@@ -1008,7 +1010,7 @@ gh pr create --title "feat(ops): MCP 통합 + 운영 자동화 (Phase 5 / 룰 6 
 - Plan: `docs/plans/2026-05-28-mcp-integration-setup-plan.md`
 
 ## Components
-1. `.claude/settings.local.json` — MCP read 56개 allow, write 21개 ask
+1. `.claude/settings.local.json` — MCP read 56개 allow, write 22개 ask
 2. Azure MCP user-scope `AZURE_TENANT_ID` env 주입 (git 외부 — `claude mcp` CLI)
 3. `.claude/commands/verify-deploy.md` — Phase 5 자동화 슬래시 명령
 4. `scripts/hooks/secretref-guard.sh` + `.claude/settings.json` PreToolUse 등록
