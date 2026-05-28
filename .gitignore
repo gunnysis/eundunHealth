@@ -4,8 +4,14 @@
 .key
 app/release
 
-# Claude Code 로컬 설정
-.claude/
+# Claude Code 로컬 설정 — settings.local.json + 캐시만 ignore.
+# 프로젝트 공유: settings.json (hooks), commands/ (슬래시 명령), skills/ (스킬) 은 tracked.
+.claude/*
+!.claude/settings.json
+!.claude/commands/
+!.claude/commands/**
+!.claude/skills/
+!.claude/skills/**
 
 # Gradle 자동 생성 (JVM 버전 캐시)
 gradle/gradle-daemon-jvm.properties

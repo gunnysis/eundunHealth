@@ -1,0 +1,3 @@
+# shell scripts: 항상 LF (Bash tool 호환)
+*.sh text eol=lf
+scripts/**/*.sh text eol=lf
