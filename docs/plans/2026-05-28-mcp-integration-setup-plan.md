@@ -126,17 +126,23 @@ Azure 는 Task 2 후에 검증 (현재는 tenant 명시 필요한 상태).
 
 - [ ] **Step 3: 검증** (pwsh)
 
+`git check-ignore -v` 는 winning rule 을 항상 출력 — negation rule (`!...`) 이 winning 이어도
+해당 라인이 출력됨. unignored 판정은 출력 라인이 `!` 로 시작하는지 (또는 exit code 가 1인지) 로 판단.
+
 ```pwsh
-git check-ignore -v .claude/settings.json
-git check-ignore -v .claude/settings.local.json
-git check-ignore -v .claude/commands/test.md
-git check-ignore -v .claude/skills/changelog/SKILL.md
+git check-ignore -v .claude/settings.json; "exit: $LASTEXITCODE"
+git check-ignore -v .claude/settings.local.json; "exit: $LASTEXITCODE"
+git check-ignore -v .claude/commands/test.md; "exit: $LASTEXITCODE"
+git check-ignore -v .claude/skills/changelog/SKILL.md; "exit: $LASTEXITCODE"
 ```
 Expected:
-- `.claude/settings.json` → **no output** (untracked but not ignored)
-- `.claude/settings.local.json` → `.gitignore:8:.claude/*` 표시 (계속 ignored)
-- `.claude/commands/test.md` → **no output**
-- `.claude/skills/changelog/SKILL.md` → **no output**
+- `.claude/settings.json` → `.gitignore:N:!.claude/settings.json` + `exit: 1` (negation = NOT ignored)
+- `.claude/settings.local.json` → `.gitignore:N:.claude/*` + `exit: 0` (positive match = ignored)
+- `.claude/commands/test.md` → `.gitignore:N:!.claude/commands/**` + `exit: 1` (NOT ignored)
+- `.claude/skills/changelog/SKILL.md` → `.gitignore:N:!.claude/skills/**` + `exit: 1` (NOT ignored)
+
+> exit code 1 = "not ignored", exit code 0 = "ignored". `-q` 옵션을 추가하면 출력 없이 exit
+> code 만 반환되어 더 명확.
 
 - [ ] **Step 4: 기존 .claude/skills/ 추적 시작** (필요 시 — Task 6 의 changelog 스킬 보존)
 
