@@ -1,3 +1,13 @@
+---
+type: plan
+status: shipped
+pr: 40
+related_inc: null
+supersedes: null
+target_version: v0.1.1
+tags: [android, auth, supabase]
+---
+
 # 회원가입 이메일 확인 흐름 + 인증 상태 리팩터 구현 Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

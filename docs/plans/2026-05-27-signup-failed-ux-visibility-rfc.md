@@ -1,3 +1,13 @@
+---
+type: rfc
+status: proposed
+pr: null
+related_inc: INC-2026-05-26-01
+supersedes: null
+target_version: pending
+tags: [android, ux]
+---
+
 # Signup Failed 상태 UX 가시성 개선 — RFC
 
 - **작성일**: 2026-05-27

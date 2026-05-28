@@ -1,3 +1,13 @@
+---
+type: design
+status: shipped
+pr: 40
+related_inc: null
+supersedes: null
+target_version: v0.1.1
+tags: [android, auth, supabase]
+---
+
 # 회원가입 이메일 확인 흐름 + 인증 상태 리팩터 설계
 
 - **작성일**: 2026-05-26

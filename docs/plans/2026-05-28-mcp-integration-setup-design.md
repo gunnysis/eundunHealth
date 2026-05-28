@@ -1,3 +1,13 @@
+---
+type: design
+status: shipped
+pr: 46
+related_inc: null
+supersedes: null
+target_version: infra-only
+tags: [ops, mcp, automation]
+---
+
 # MCP 통합 + 운영 자동화 Design
 
 **작성일:** 2026-05-28
