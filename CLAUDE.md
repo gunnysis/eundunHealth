@@ -270,6 +270,7 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 - `@docs/TRD.md` — Technical Requirements
 - `@docs/SPEC.md` — 기능 명세
 - `@docs/privacy-policy.md` — 개인정보 처리방침 (Play Store URL 호스팅 대상)
+- `@docs/plans/README.md` — design+plan 페어 인덱스 (frontmatter 기반 자동 생성, status/PR/인시던트 추적 컬럼 포함)
 - `@docs/ops/operations-snapshot.md` — **현재 운영 상태 단일 출처**
 - `@docs/ops/incident-log.md` — 16건 인시던트 + root cause + 재발 방지 패턴
 - `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
@@ -282,6 +283,7 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 - `scripts/preflight-release.sh` — Spotless + Detekt + Tests + releaseArtifacts 일괄 (INC-04 방지)
 - `scripts/alembic-autogen.sh` — postgres:16-alpine 컨테이너 기반 autogenerate (INC-07 방지)
 - `scripts/sync-openapi.sh` — FastAPI 스펙을 `backend/openapi.json`으로 추출. 라우터/스키마 변경 시 필수 실행 + 같은 PR에 커밋. backend.yml의 drift detection step이 미커밋을 fast-fail로 차단.
+- `scripts/gen-plans-index.sh` (+ `gen_plans_index.py`) — `docs/plans/*.md` frontmatter 기반 `docs/plans/README.md` 자동 생성. pre-commit hook 자동 호출 + 별도 CI workflow (`docs-plans-index.yml`) 가 drift 차단. **D5**: missing frontmatter 는 silent skip (점진 도입 + 다중 PR coordination 안전), malformed 만 fail.
 - `scripts/register-azure-credentials.ps1` — SP 생성/패치 + AcrPush + GitHub secret 등록 (INC-17, 운영자 1회/만료 갱신)
 - `scripts/warm-gradle.sh` — Gradle 데몬 사전 구동
 - `scripts/claude-context.sh` / `claude-precompact.sh` — SessionStart/PreCompact 훅

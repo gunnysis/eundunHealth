@@ -1,3 +1,13 @@
+---
+type: plan
+status: shipped
+pr: 46
+related_inc: null
+supersedes: null
+target_version: infra-only
+tags: [ops, mcp, automation]
+---
+
 # MCP 통합 + 운영 자동화 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

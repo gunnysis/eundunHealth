@@ -1,0 +1,40 @@
+name: docs-plans-index
+
+# 본 workflow 는 docs/plans/ frontmatter ↔ docs/plans/README.md drift 만 차단한다.
+# backend.yml / android.yml 과 paths 가 disjoint — backend/android dev 의 CI 대기시간 보호.
+on:
+  pull_request:
+    paths:
+      - 'docs/plans/**'
+      - 'scripts/gen_plans_index.py'
+      - 'scripts/gen-plans-index.sh'
+      - 'scripts/test_gen_plans_index.py'
+      - '.github/workflows/docs-plans-index.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/plans/**'
+      - 'scripts/gen_plans_index.py'
+      - 'scripts/gen-plans-index.sh'
+      - 'scripts/test_gen_plans_index.py'
+      - '.github/workflows/docs-plans-index.yml'
+
+jobs:
+  check-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML + pytest
+        run: pip install 'PyYAML==6.0.3' 'pytest==9.0.3'
+
+      - name: Run unit tests (parser/validator/renderer)
+        run: python -m pytest scripts/test_gen_plans_index.py -v
+
+      - name: Check INDEX drift
+        run: bash scripts/gen-plans-index.sh --check

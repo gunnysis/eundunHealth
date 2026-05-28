@@ -1,3 +1,13 @@
+---
+type: design
+status: shipped
+pr: 42
+related_inc: null
+supersedes: null
+target_version: v0.1.3
+tags: [android, auth, deep-link]
+---
+
 # App Links / Deep Link 도입 — 메일 인증 자동 로그인 설계
 
 - **작성일**: 2026-05-26
