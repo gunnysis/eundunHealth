@@ -134,6 +134,22 @@ psql "postgres://gunny:<password>@healthapp.postgres.database.azure.com:5432/pos
 - **절대 `alembic upgrade head` 먼저 실행하지 말 것**. `--autogenerate`로 만든 마이그레이션은 기존 테이블을 `CREATE TABLE`하려 하므로 충돌한다.
 - 향후 스키마 변경은 정상적으로 `alembic revision --autogenerate -m "..."` → `alembic upgrade head` 흐름을 따른다.
 
+### 3.4 stamp 이후의 모델 변경 자동 적용 책임
+
+§3.3 의 "향후 스키마 변경은 정상적으로 ... → `alembic upgrade head` 흐름을 따른다" 가 **자동으로 보장되려면 entrypoint 가 책임진다**. 2026-05-27 이전엔 `backend/Dockerfile` CMD 가 uvicorn 직행 + `backend.yml` deploy job 에 `alembic upgrade head` step 없음 → 새 마이그레이션이 운영 DB 에 자동 반영되지 않았고, **INC-2026-05-27-01** (`user_profiles.rest_day` 누락 → PUT /profile 500) 의 root cause 가 됨.
+
+현 시점 책임 분담 (2026-05-28 entrypoint pattern 도입 이후):
+
+| 단계 | 책임 | 매커니즘 |
+|---|---|---|
+| dev/test | 작성자 | `bash scripts/alembic-autogen.sh "..."` 로 PG 컨테이너 위에서 작성 (룰 3 — SQLite false positive 방지) |
+| PR 검증 | CI `runtime-smoke` job | `docker compose up -d --build` → `backend/entrypoint.sh` 가 `alembic upgrade head` 호출 → PG 16 컨테이너에 실제 적용되는지 자동 가드 |
+| 운영 적용 | `backend.yml` deploy job + Container App | 새 image push → Container App 새 revision 생성 → `entrypoint.sh` 가 `alembic upgrade head` 수행 → startup probe `/health` 통과 시 traffic 전환 |
+
+**동시성 안전**: Alembic 의 `alembic_version` row lock 이 동시 실행 직렬화 보장. Azure 공식 경고("min-replicas=0 + max=1 이어도 fail/update 시 중복 인스턴스 가능, no singleton guaranteed")에도 안전.
+
+**예외 — 5분 이상 데이터 백필 마이그레이션**: Container Apps startup probe timeout 으로 entrypoint 가 실패할 수 있음. 그땐 Container Apps Jobs 패턴으로 분리 검토 (`docs/plans/2026-05-27-schema-drift-recovery-design.md` §2 Out-of-scope, §9 잔여 리스크).
+
 ---
 
 ## 4. 전환 실행 (Cutover)
