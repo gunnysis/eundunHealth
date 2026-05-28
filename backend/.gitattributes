@@ -1,0 +1,5 @@
+# backend shell scripts: 항상 LF (컨테이너 인터프리터 호환)
+# 호스트 git config core.autocrlf=true 이어도 entrypoint.sh 가 CRLF 로 체크아웃되지 않도록 강제.
+# Dockerfile 의 sed -i 's/\r$//' 가 2차 방어 — 둘 다 있어야 누락 안 됨.
+*.sh text eol=lf
+entrypoint.sh text eol=lf
