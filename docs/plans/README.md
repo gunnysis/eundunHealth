@@ -4,17 +4,17 @@
 > `docs/plans/` 는 비-trivial 작업의 design + plan 페어를 모은 폴더. 컨벤션은 memory `design-plan-docs-convention.md` 참조.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
+## In progress (1)
+
+| 날짜 | 주제 | type | PR | 인시던트 | tags |
+|---|---|---|---|---|---|
+| 2026-05-28 | plans-folder-maintenance | design + plan | — | — | docs, tooling, conventions, meta |
+
 ## Proposed (1)
 
 | 날짜 | 주제 | type | PR | 인시던트 | tags |
 |---|---|---|---|---|---|
 | 2026-05-27 | signup-failed-ux-visibility | rfc | — | INC-2026-05-26-01 | android, ux |
-
-## Approved (not started) (1)
-
-| 날짜 | 주제 | type | PR | 인시던트 | tags |
-|---|---|---|---|---|---|
-| 2026-05-28 | plans-folder-maintenance | design + plan | — | — | docs, tooling, conventions, meta |
 
 ## Shipped (3)
 
