@@ -27,6 +27,8 @@
 - [ ] DB 스키마 변경 없음
 - [ ] 또는 `bash scripts/alembic-autogen.sh "<message>"`로 PostgreSQL 컨테이너 기반 autogen 수행 — SQLite false positive 없음 (INC-07)
 - [ ] alembic 파일 diff 수동 검토 완료
+- [ ] `backend/alembic/versions/` 변경 시: 로컬 `cd backend && docker compose up -d --build` → `docker compose logs api` 에 `[entrypoint] ... alembic upgrade head` 라인 + `/health` 200 둘 다 확인 (CLAUDE.md 룰 7, INC-2026-05-27-01)
+- [ ] `backend/alembic/versions/` 변경 시: `docs/ops/operations-snapshot.md` Alembic head 값 갱신
 
 ## Backend secret / env 변경 (해당 시)
 <!-- backend.yml의 --set-env-vars 또는 Container App secret을 추가/변경할 때 -->

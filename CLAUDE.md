@@ -51,7 +51,7 @@ docker compose down -v                # 정리
 .venv/Scripts/bandit -r app -ll
 .venv/Scripts/pip-audit -r requirements.txt --strict --ignore-vuln PYSEC-2026-161
 
-# Alembic 마이그레이션 (현재 head: 24d0fe2eb397)
+# Alembic 마이그레이션 (현재 head: fa3915deab2f)
 .venv/Scripts/alembic upgrade head
 .venv/Scripts/alembic revision --autogenerate -m "..."
 
@@ -129,7 +129,7 @@ Package: `app`
 - `app/repositories/` — DB 접근 추상화. `profile_history_repo`, `goal_repo` (v0.3).
 - `app/services/` — 비즈니스 로직. `account_service`가 Supabase Admin API로 Auth 사용자 삭제. `statistics_service` (v0.2), `goal_service` (v0.3).
 - `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py` 신규.
-- `alembic/` — async 엔진 연동. **head: `24d0fe2eb397` (v0.3 history + goals)**.
+- `alembic/` — async 엔진 연동. **head: `fa3915deab2f` (rest_day 컬럼 추가 — INC-2026-05-27-01)**.
 
 **API Endpoints (12개 — `/health` 제외 모두 JWT 필요):**
 ```
@@ -170,7 +170,7 @@ DELETE /account
 - **starlette 0.49.1** (CVE 패치 위해 명시 pin), PyJWT 2.12 (JWKS), httpx (Supabase Admin API)
 - **Sentry SDK 2.19** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
 - mypy strict 통과, ruff/bandit clean, pytest 41/41 PASS, coverage 82%
-- Alembic head `24d0fe2eb397`
+- Alembic head `fa3915deab2f` (rest_day 컬럼 추가, INC-2026-05-27-01)
 
 ### Infrastructure
 - **Container App** `eundunhealth-api` (RG `apps`, Korea Central, Min replicas 0 → ScaledToZero)
@@ -219,6 +219,16 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 3. `docs/ops/operations-snapshot.md` §2 Secrets 목록 갱신
 
 세 가지 중 하나라도 빠지면 main 머지 후 첫 deploy job에서 `ContainerAppSecretRefNotFound`로 실패한다. PR template Backend 섹션 체크리스트 + `monitoring-and-cost.md §6.6` 참조.
+
+### 룰 7 — 스키마 변경 PR 은 같은 PR 에서 entrypoint 검증 포함 (INC-2026-05-27-01)
+`backend/alembic/versions/` 에 새 파일을 추가하면 반드시 같은 PR 에서:
+1. `bash scripts/alembic-autogen.sh "..."` 로 PG 컨테이너 위에서 작성 (룰 3 — SQLite false positive 방지). 수동 작성도 동일하게 `docker compose up -d db` 위에서 검증.
+2. 로컬 `cd backend && docker compose up -d --build` → `docker compose logs api` 에 `[entrypoint] ... alembic upgrade head` 라인 + `/health` 200 둘 다 확인. 같은 PR 의 `backend.yml runtime-smoke` job 이 CI 가드.
+3. `docs/ops/operations-snapshot.md` Alembic head 값을 새 revision hash 로 교체.
+
+자동 적용 경로 (수동 작업 0): main 머지 → `backend.yml` deploy job → 새 image 의 `backend/entrypoint.sh` 가 `alembic upgrade head` 실행 → Container Apps startup probe (`/health`) 통과 시 traffic 전환. Alembic `alembic_version` row lock 이 다중 인스턴스 race 안전성 보장.
+
+**예외**: 5분 이상 데이터 백필 마이그레이션은 Container Apps startup probe timeout 으로 entrypoint 가 실패할 수 있음 → Container Apps Jobs 패턴으로 분리 검토 (`docs/plans/2026-05-27-schema-drift-recovery-design.md` §2 Out-of-scope, §9 잔여 리스크).
 
 ### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.8`)
 1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?

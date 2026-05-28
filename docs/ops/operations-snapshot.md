@@ -89,7 +89,7 @@
 | Region | Korea Central |
 | Database | `postgres` |
 | User | `gunny` |
-| Alembic head | **`24d0fe2eb397`** (v0.3 — user_profile_history + goals) |
+| Alembic head | **`fa3915deab2f`** (rest_day 컬럼 추가 — INC-2026-05-27-01, [PR fix/schema-drift-rest-day](https://github.com/gunnysis/eundunHealth/tree/fix/schema-drift-rest-day)) |
 | Firewall | Container Apps IP allowlist + `allow-azure-services` 만 허용 |
 
 ### 테이블 row 카운트 (2026-05-25 출시 전 정리 직후)
