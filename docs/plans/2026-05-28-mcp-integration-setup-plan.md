@@ -752,7 +752,7 @@ grep -E "^(kotlin|agp|ktor|composeBom|sentry)" gradle/libs.versions.toml 2>/dev/
 echo "=== Pending Phase 5 Verifications ==="
 # 최근 7일 main 머지 commit 중 INC 등재 있고 "검증 완료" 라인 부재인 항목 찾기
 PENDING_OUTPUT=$(
-  git log main --merges --since="7 days ago" --pretty=format:'%h %s' 2>/dev/null | \
+  git log origin/main --merges --since="7 days ago" --pretty=format:'%h %s' 2>/dev/null | \
   while IFS= read -r line; do
     # subject 에서 PR 번호 추출 (예: "Merge pull request #45 from ...")
     PR_NUM=$(echo "$line" | grep -oE '#[0-9]+' | head -1 | tr -d '#')
@@ -765,8 +765,9 @@ PENDING_OUTPUT=$(
 
     # incident-log.md 에서 해당 INC 섹션의 "검증 완료" 라인 존재 확인
     if [ -f docs/ops/incident-log.md ]; then
-      VERIFIED=$(grep -A 200 "^### .*${INC_ID}" docs/ops/incident-log.md 2>/dev/null | \
-        grep -B 1000 -m1 "^### " | grep -c "검증 완료" || true)
+      # incident-log.md 의 INC 헤딩은 '## INC-...' (2 hash) — 3 hash 가 아님
+      VERIFIED=$(grep -A 200 "^## .*${INC_ID}" docs/ops/incident-log.md 2>/dev/null | \
+        grep -B 1000 -m1 "^## " | grep -c "검증 완료" || true)
       if [ "$VERIFIED" = "0" ]; then
         MERGE_DATE=$(echo "$line" | grep -oE '^[a-f0-9]+' | head -1 | \
           xargs -I {} git show -s --format=%ci {} 2>/dev/null | cut -d' ' -f1)
