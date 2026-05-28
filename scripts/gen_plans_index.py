@@ -21,6 +21,17 @@ import yaml
 
 REPO_URL = "https://github.com/gunnysis/eundunHealth"
 
+
+def _read_text_preserve_newlines(path: Path) -> str:
+    # Path.read_text gained `newline` kwarg in Python 3.13; CI pins 3.12.
+    with path.open(encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def _write_text_preserve_newlines(path: Path, text: str) -> None:
+    with path.open("w", encoding="utf-8", newline="") as f:
+        f.write(text)
+
 REQUIRED_FIELDS = ["type", "status", "target_version", "tags"]
 ALLOWED_TYPE = {"design", "plan", "rfc", "postmortem"}
 ALLOWED_STATUS = {
@@ -112,7 +123,7 @@ def collect_plans(plans_dir: Path) -> tuple[list[dict], list[str]]:
             continue
         if "_templates" in path.parts:
             continue
-        text = path.read_text(encoding="utf-8", newline="")
+        text = _read_text_preserve_newlines(path)
         fm = parse_frontmatter(text)
         try:
             display_path = path.relative_to(REPO_ROOT)
@@ -214,7 +225,7 @@ def main(argv: list[str]) -> int:
     rendered = render_readme(grouped)
     if check_only:
         existing = (
-            README_PATH.read_text(encoding="utf-8", newline="")
+            _read_text_preserve_newlines(README_PATH)
             if README_PATH.exists() else ""
         )
         if existing != rendered:
@@ -229,7 +240,7 @@ def main(argv: list[str]) -> int:
             )
             return 1
         return 0
-    README_PATH.write_text(rendered, encoding="utf-8", newline="")
+    _write_text_preserve_newlines(README_PATH, rendered)
     print(f"OK {README_PATH} ({len(grouped)} entries)")
     return 0
 

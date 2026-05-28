@@ -10,10 +10,11 @@
 |---|---|---|---|---|---|
 | 2026-05-28 | plans-folder-maintenance | design + plan | — | — | docs, tooling, conventions, meta |
 
-## Proposed (1)
+## Proposed (2)
 
 | 날짜 | 주제 | type | PR | 인시던트 | tags |
 |---|---|---|---|---|---|
+| 2026-05-28 | dependabot-triage | design | — | — | ops, dependencies, dependabot, process |
 | 2026-05-27 | signup-failed-ux-visibility | rfc | — | INC-2026-05-26-01 | android, ux |
 
 ## Shipped (3)
