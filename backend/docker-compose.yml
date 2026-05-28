@@ -9,6 +9,14 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # 새 entrypoint.sh 가 시작 즉시 `alembic upgrade head` 호출 → DB 미준비면 set -e 로
+    # 컨테이너 종료 → /health 도달 못 함 → CI runtime-smoke RED. healthcheck + service_healthy
+    # 의존성으로 race 제거 (운영 PG 는 항상 listen 중이라 영향 없음 — local/CI 한정).
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d eundunhealth"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
 
   api:
     build: .
@@ -21,7 +29,8 @@ services:
       SENTRY_DSN: ""
       ENVIRONMENT: development
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./app:/app/app  # 핫 리로드용
     command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
