@@ -45,9 +45,12 @@ import com.gunnys.eundunhealth.domain.model.Goal
 import com.gunnys.eundunhealth.domain.model.GoalType
 import com.gunnys.eundunhealth.domain.model.ProfileHistoryPoint
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
@@ -212,8 +215,16 @@ private fun ProgressChartCard(
             Spacer(Modifier.height(8.dp))
             CartesianChartHost(
                 chart = rememberCartesianChart(
-                    rememberLineCartesianLayer(),
-                    startAxis = VerticalAxis.rememberStart(),
+                    rememberLineCartesianLayer(
+                        lineProvider = LineCartesianLayer.LineProvider.series(
+                            LineCartesianLayer.rememberLine(
+                                interpolator = LineCartesianLayer.Interpolator.catmullRom(),
+                            ),
+                        ),
+                    ),
+                    startAxis = VerticalAxis.rememberStart(
+                        tickPosition = BaseAxis.TickPosition.Inside,
+                    ),
                 ),
                 modelProducer = producer,
                 modifier = Modifier.fillMaxWidth().height(200.dp),
