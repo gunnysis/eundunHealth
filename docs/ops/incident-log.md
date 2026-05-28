@@ -419,6 +419,40 @@ ERROR: (ContainerAppSecretRefNotFound) SecretRef 'supabase-url' defined for cont
 
 ---
 
+## INC-2026-05-27-01 — user_profiles.rest_day 컬럼 누락 (PUT /profile 500)
+
+**증상**: Onboarding "운동 계획 받기" 버튼 클릭 시 "서버 오류가 발생했습니다" 스낵바. Android `Throwable.toAppError()` 가 HTTP 500 → `Server(500, "서버 오류가 발생했습니다")` 로 매핑.
+
+**진단 경로**: `az containerapp logs show ...` 로 실제 예외 확인:
+```
+sqlalchemy.exc.ProgrammingError: (asyncpg.exceptions.UndefinedColumnError):
+  column user_profiles.rest_day does not exist
+```
+PR #44 의 422 RequestValidationError observability handler 는 이 경로에 닿지 않음 (422 가 아니라 500). FastAPI 의 `unhandled_exception_handler` (`app/main.py:78-83`) 가 `{"code":"INTERNAL_ERROR"}` 반환 → 한국어 사용자 메시지로 매핑됨.
+
+**근본 원인 (이중)**:
+1. **운영 DB 스키마 drift**: Ktor → FastAPI cutover 시 운영 DB 의 기존 `user_profiles` 테이블에 `alembic stamp head` 만 했고, FastAPI 모델이 새로 추가한 `rest_day` 컬럼은 실제 운영 DB 에 반영된 적이 없다 (`migration-runbook.md §3.3` 시나리오 부작용).
+2. **자동 적용 인프라 부재**: `backend.yml` deploy job (line 232-243) + `backend/Dockerfile` CMD 모두 `alembic upgrade head` step 이 없어서, 마이그레이션 파일이 image 에 포함돼도 운영 DB 에 영구히 반영 안 됨. 운영자가 매번 `az containerapp exec --command "alembic upgrade head"` 를 수동 실행해야 했고, 그 자체가 사일런트하게 빠짐.
+
+→ `rest_day` 만의 문제가 아니라 **앞으로의 모든 스키마 변경에 동일 사일런트 누락이 반복될 구조**.
+
+**복구**:
+1. `add_rest_day_to_user_profiles` 마이그레이션 (PG 11+ metadata fast path, `if_not_exists=True` 멱등)
+2. `backend/entrypoint.sh` 도입으로 모든 container startup 시 `alembic upgrade head` 자동 실행 (Docker / Postgres / Rails 공식 패턴: `exec "$@"` 로 PID 1 교체 → SIGTERM 전파)
+3. `backend/Dockerfile` 을 `ENTRYPOINT`/`CMD` exec form 분리 (Docker JSONArgsRecommended)
+4. `backend/.gitattributes` (`*.sh eol=lf`) + Dockerfile `sed -i 's/\r$//'` — Windows `core.autocrlf=true` 안전망 2중
+5. `backend/docker-compose.yml` 에 db `healthcheck` + api `depends_on: { db: { condition: service_healthy } }` — entrypoint 의 즉시 alembic 호출 race 제거 (local/CI 한정)
+
+**재발 방지**:
+- **구조적 보장**: entrypoint pattern 으로 같은 종류 누락이 발생할 수 없는 구조 (이제 image 에 마이그레이션이 들어가는 순간 자동 적용). Alembic `alembic_version` row lock 이 Container Apps 다중 인스턴스 race 안전성 보장 (Azure 공식 경고: "no singleton guaranteed").
+- **CLAUDE.md 룰 7 추가**: 스키마 변경 PR 은 같은 PR 에서 docker compose runtime-smoke 통과 확인 + `docs/ops/operations-snapshot.md` Alembic head 갱신.
+- **runbook §3.4 신설**: "stamp 이후의 모델 변경 자동 적용 책임은 entrypoint" 명시.
+- **Cosmetic drift 잔존**: `text→varchar`, `timestamp→timestamptz`, `real→double precision`, 인덱스 이름 차이는 런타임 영향 0 + 변환 위험 ↑ + 가치 0 → v1.0 이후 데이터 마이그레이션 윈도우에서 별도 검토 (의도적 tolerate).
+
+**참조**: `docs/plans/2026-05-27-schema-drift-recovery-design.md` (전체 분석 + 공식 문서 인용), `docs/plans/2026-05-27-schema-drift-recovery-plan.md` (구현 계획).
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
