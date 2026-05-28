@@ -15,7 +15,7 @@
 | 날짜 | 주제 | type | PR | 인시던트 | tags |
 |---|---|---|---|---|---|
 | 2026-05-28 | dependabot-triage | design | — | — | ops, dependencies, dependabot, process |
-| 2026-05-28 | vico-3-migration | design | — | — | android, dependencies, vico, chart, ui |
+| 2026-05-28 | vico-3-migration | design + plan | — | — | android, dependencies, vico, chart, ui |
 | 2026-05-27 | signup-failed-ux-visibility | rfc | — | INC-2026-05-26-01 | android, ux |
 
 ## Shipped (3)
