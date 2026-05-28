@@ -1,3 +1,13 @@
+---
+type: plan
+status: shipped
+pr: 47
+related_inc: INC-2026-05-27-01
+supersedes: null
+target_version: v0.1.5
+tags: [backend, alembic, ops]
+---
+
 # DB 스키마 drift 복구 + 마이그레이션 자동화 Implementation Plan
 
 > **For Claude (next session):** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task.

@@ -1,7 +1,7 @@
 ---
 type: plan
-status: in-progress
-pr: null
+status: shipped
+pr: 48
 related_inc: null
 supersedes: null
 target_version: docs-only
