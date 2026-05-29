@@ -74,9 +74,10 @@ android {
         // 17: v0.1.3 — Android App Links 도입 (메일 클릭 1회로 자동 로그인).
         // 18: v0.1.4 — Supabase signUp/resendEmail redirectUrl 명시 (Site URL 의 path 누락 hotfix).
         // 19: v0.1.5 — vico 2.1 → 3.1 chart migration + healthConnect 1.1.0-rc01 → 1.1.0 stable.
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 20, 21, ...
-        versionCode = 19
-        versionName = "0.1.5"
+        // 20: v0.1.6 — Signup Failed UX inline error banner (INC-2026-05-26-01 해소).
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 21, 22, ...
+        versionCode = 20
+        versionName = "0.1.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

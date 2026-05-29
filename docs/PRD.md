@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v1.3 (2026-05-29 — v0.1.5 vico 3.1 + healthConnect stable 반영)
-**제품 버전:** v0.1.5 (versionCode 19) — vico 2.1→3.1 chart migration + healthConnect 1.1.0-rc01→1.1.0 stable. 이전 누적: v0.1.1 가입 이메일 확인 / v0.1.2 supabase encoding hotfix / v0.1.3 App Links / v0.1.4 redirectUrl 명시 + 422 observability. v0.1·v0.2·v0.3 spec 전체 구현 완료. Play Store **Internal Testing** 활성
+**문서 버전:** v1.4 (2026-05-29 — v0.1.6 signup error banner 반영)
+**제품 버전:** v0.1.6 (versionCode 20) — Signup Failed UX inline error banner (INC-2026-05-26-01 해소). 이전 누적: v0.1.1~v0.1.4 (signup 흐름 + App Links + redirect hotfix + 422 observability) / v0.1.5 (vico 3.1 + healthConnect stable). v0.1·v0.2·v0.3 spec 전체 구현 완료. Play Store **Internal Testing** 활성
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

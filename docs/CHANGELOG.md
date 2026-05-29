@@ -4,6 +4,34 @@
 
 ---
 
+## v0.1.6 — 2026-05-29 (versionCode 20) — Signup Failed UX inline error banner
+
+### Fixed
+- **INC-2026-05-26-01 가시성 결함 해소**: Signup 화면의 Failed 상태가 하단 snackbar 2초 자동 dismiss 로 사용자 인지 부족하던 문제 (실기기 검증 중 발견). RFC 작성 후 review 12 개선 통합 (D1~D12). `AuthErrorBanner` 를 form headline 아래/email input 위에 표시. dismiss = button enabled (모든 validation pass) 시점 자동 (D1). resendError 도 같은 Banner 재사용 (D7). a11y liveRegion Polite + Sentry breadcrumb (`auth.error_banner_shown`).
+
+### Added
+- `AuthErrorBanner` private composable (SignupScreen.kt) — Material 3 `Surface(errorContainer)` + `Icon(ErrorOutline)` + `Text(userMessage)`. LoginScreen 등 다른 화면 마이그레이션 시점에 `ui/components/` 로 promote (D5 YAGNI).
+- `AuthViewModel.clearSignupError()` — current state == `Failed` 시만 `Form` 전환, 그 외 silent no-op (D6 race 회피).
+- `BuildConfig.MOCK_AUTH_ERROR` (debug-only) — 수동 검증 reproducibility. 사용: `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` → `AuthRepositoryImpl.signUp` 가 강제 `AppError.Auth("요청이 너무 많습니다...")` 반환. release 빈 string + DEBUG short-circuit 으로 double-guard (D11).
+
+### Changed
+- `SignupScreen.kt`: `LaunchedEffect(signupState)` snackbar + delay + `resetSignupState` 블록 제거. `LaunchedEffect(resendError)` 제거. `SnackbarHostState` + `Scaffold.snackbarHost` 인프라 제거 (D12 — dead code).
+- `SignupForm` 시그니처: `error: AppError?` + `onClearError: () -> Unit` 추가. `LaunchedEffect(formValid, error)` 가 button enabled 시점에 `onClearError()` 호출.
+- `AwaitingConfirmationCard` 시그니처: `resendError: AppError?` 추가. `onResend` 가 `clearResendError()` + `resendConfirmation()` 둘 다 호출.
+- `AuthRepositoryImpl.signUp`: expression body 의 if-else 분기로 mock 통합 (return 사용 불가, if-then-else try-catch 구조).
+
+### Test
+- `AuthViewModelTest.kt` +2: `clearSignupError` Failed → Form 전환 + Form 상태 no-op (D6).
+- Compose UI test (Banner / SignupScreen) 는 Out-of-scope (D2) — `androidTest/` 인프라 부재. 별도 RFC.
+
+### Refs
+- PR: #NN (Task 8 의 PR 생성 후 fix)
+- Design + Plan: `docs/plans/2026-05-29-signup-error-banner-{design,plan}.md` (머지 후 `logs/android.md` entry 로 흡수 + git rm)
+- Supersedes RFC: `docs/plans/2026-05-27-signup-failed-ux-visibility-rfc.md`
+- INC: `docs/ops/incident-log.md` INC-2026-05-26-01
+
+---
+
 ## v0.1.5 — 2026-05-29 (versionCode 19) — Vico 3.1 + healthConnect stable + starlette 1.1.0
 
 ### Changed
