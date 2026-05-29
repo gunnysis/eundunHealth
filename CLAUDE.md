@@ -228,7 +228,21 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 
 자동 적용 경로 (수동 작업 0): main 머지 → `backend.yml` deploy job → 새 image 의 `backend/entrypoint.sh` 가 `alembic upgrade head` 실행 → Container Apps startup probe (`/health`) 통과 시 traffic 전환. Alembic `alembic_version` row lock 이 다중 인스턴스 race 안전성 보장.
 
-**예외**: 5분 이상 데이터 백필 마이그레이션은 Container Apps startup probe timeout 으로 entrypoint 가 실패할 수 있음 → Container Apps Jobs 패턴으로 분리 검토 (`docs/plans/2026-05-27-schema-drift-recovery-design.md` §2 Out-of-scope, §9 잔여 리스크).
+**예외**: 5분 이상 데이터 백필 마이그레이션은 Container Apps startup probe timeout 으로 entrypoint 가 실패할 수 있음 → Container Apps Jobs 패턴으로 분리 검토 (`docs/plans/logs/backend.md` 의 schema-drift entry §9 잔여 리스크).
+
+### 룰 8 — Auth/UI 의 사용자 액션 실패 표시는 inline + persistent 패턴 (INC-2026-05-26-01)
+Auth (signup / login / forgot-password) + 기타 사용자 액션 결과의 실패/에러 UI 는 **inline component** (form 안 banner / card / surface) + **사용자 액션까지 persistent** + **a11y `liveRegion`** + **Sentry breadcrumb** 4 요소 모두 만족. **Snackbar 단독 사용 금지** — 가시성 결함 (위치 하단 + 자동 dismiss + 짧은 duration) 의 반복 회귀 차단.
+
+체크리스트 (새 화면의 Failed/Error UI 작성 시):
+1. **위치**: form 의 CTA 버튼이 보이는 시각 영역 안 — 보통 headline 아래 + 첫 input 위. 사용자가 CTA 누르기 전 반드시 시야에 들어와야 함.
+2. **dismiss 정책**: 자동 timeout 금지. 사용자 의도 신호 (button enabled 시점 / 명시적 X / 다음 액션) 까지 유지. input typo 같은 미세 변경은 보존.
+3. **a11y**: Compose `Modifier.semantics { liveRegion = LiveRegionMode.Polite }` — TalkBack 사용자에게 즉시 음성 알림.
+4. **Sentry**: `Sentry.addBreadcrumb(Breadcrumb().apply { category = "<domain>.error_banner_shown"; level = SentryLevel.INFO; setData(...) })` — production 디버깅 시 사용자가 어떤 에러를 봤는지 timeline 추적 가능.
+5. **컴포넌트 위치**: 첫 화면 = `<Screen>.kt` 안 `@Composable private fun` (YAGNI). 두 번째 화면 마이그레이션 시점에 `ui/components/` 로 promote — premature generic 회피.
+
+참조 구현: `app/src/main/java/com/gunnys/eundunhealth/ui/auth/SignupScreen.kt::AuthErrorBanner` (v0.1.6, #58). 첫 통합 사례 = `SignupForm` (button enabled dismiss) + `AwaitingConfirmationCard` (resendError 재사용).
+
+**예외**: 비-critical 일회성 알림 (e.g., 성공 toast "저장됐습니다") 은 Snackbar 그대로 OK. 룰의 대상 = "사용자 액션이 실패했고, 사용자 후속 액션이 필요한 경우".
 
 ### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.8`)
 1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?

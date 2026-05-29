@@ -413,8 +413,8 @@ ERROR: (ContainerAppSecretRefNotFound) SecretRef 'supabase-url' defined for cont
 
 **재발 방지**:
 - **출시 전 필수 인프라**: Supabase Pro 업그레이드($25/월) + custom SMTP (SendGrid 무료 등급으로 시작). 무료 등급 4건/시간 한도는 internal testing 단계에서도 디버깅 차단 — 사용자 출시 후엔 catastrophic.
-- **Failed UX 개선 follow-up**: `SignupState.Failed` 의 메시지 표시를 (a) 스낵바 duration 을 `SnackbarDuration.Long` 으로 변경, (b) 또는 form 위 inline alert/banner 로 승격하여 사용자가 반드시 인지하게 함. 별도 RFC.
-- **디버깅 사이클 시 instrumented 빌드 사용 protocol**: release APK 로 사이드로드 검증 시 `Log.w("EunDun", ...)` instrumentation 을 임시 commit 으로 추가 + revert. 본 인시던트의 진단은 instrumentation 추가 후 첫 가입 시도에서 즉시 root cause 식별 (URL + 정확한 error code) — 이전 "무반응" 추정으로만 디버깅 시 시간 낭비 했음.
+- ✅ **Failed UX 개선 — v0.1.6 (#58, 2026-05-29 머지) 로 완료**: RFC `2026-05-27-signup-failed-ux-visibility` 작성 → review 12 개선 통합 (D1~D12) → `AuthErrorBanner` (SignupScreen.kt 안 private composable, Material 3 `Surface(errorContainer)` + a11y `liveRegion Polite` + Sentry breadcrumb `auth.error_banner_shown`) 도입. dismiss = `LaunchedEffect(formValid)` button enabled 시점 (input 1글자 typo 수정 시 보존). resendError 도 같은 Banner 재사용. Snackbar 인프라 제거. 단위 test +2 (`AuthViewModel.clearSignupError`). LoginScreen / ForgotPassword 마이그레이션 + Compose UI test 인프라 도입 = 별도 RFC. 자세한 history: `docs/plans/logs/android.md` 의 2026-05-29 entry (RFC + design + plan 페어 흡수).
+- **디버깅 사이클 시 instrumented 빌드 사용 protocol**: release APK 로 사이드로드 검증 시 `Log.w("EunDun", ...)` instrumentation 을 임시 commit 으로 추가 + revert. 본 인시던트의 진단은 instrumentation 추가 후 첫 가입 시도에서 즉시 root cause 식별 (URL + 정확한 error code) — 이전 "무반응" 추정으로만 디버깅 시 시간 낭비 했음. **v0.1.6 부터는** `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (D11, release 빈 string + DEBUG short-circuit double-guard) 로 mock 분기 reproducibility 확보 — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` 한 줄로 재현. 추가 mock variant 는 같은 패턴.
 - **rate limit 회피 운영 가이드**: `memory/supabase-testing-tips.md` 에 이미 alias 이메일 + Pro 업그레이드 권장 명시. 적극 활용 + 디버깅 사이클 분산 (1시간 cooldown 사이에 묶음).
 
 ---
