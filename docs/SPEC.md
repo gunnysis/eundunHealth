@@ -31,7 +31,7 @@
 | Coil | 2.7.0 | 이미지/GIF 로딩 |
 | DataStore | 1.1.4 | 설정 영속화 (다크모드) |
 | Supabase Kotlin SDK | 3.6.0 | 인증 (Auth) |
-| Health Connect | 1.1.0-rc01 | 운동 세션 자동 감지 |
+| Health Connect | 1.1.0 | 운동 세션 자동 감지 |
 | Sentry Android SDK | 7.14.0 | 크래시/에러 모니터링 |
 | Navigation Compose | 2.9.0 | 화면 전환 |
 | Activity Compose | 1.13.0 | Activity + Compose 연동 |

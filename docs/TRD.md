@@ -183,7 +183,7 @@ Supabase 세션 복원 시도
 | 항목 | 상세 |
 |------|------|
 | 라이브러리 | `androidx.health.connect:connect-client` |
-| 버전 | 1.1.0-rc01 |
+| 버전 | 1.1.0 |
 | 권한 | `READ_EXERCISE` (읽기 전용) |
 | 데이터 유형 | `ExerciseSessionRecord` |
 | 기능 | 운동 세션 자동 감지 → 해당 날짜 완료 처리 |
