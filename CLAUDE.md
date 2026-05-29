@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
-**Current state**: versionName `0.1.0` (versionCode `14` — 13은 첫 시도, 14는 출시 직전 안정화 후 재빌드). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. Ready for Play Store **Internal Testing** track. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+**Current state**: versionName `0.1.5` (versionCode `19` — vico 2.1→3.1 chart migration + healthConnect 1.1.0-rc01→1.1.0 stable). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. Play Store **Internal Testing** track 활성. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
 > Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
@@ -156,7 +156,7 @@ DELETE /account
 - **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
 - **Gradle 9.4.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
-- **App version**: versionName **`0.1.0`**, versionCode **`14`** (13은 첫 internal testing 시도, 14는 출시 직전 안정화 후 재빌드. 다음 빌드부터 15, 16, ...)
+- **App version**: versionName **`0.1.5`**, versionCode **`19`** (이력: 14=v0.1.0 출시 / 15=v0.1.1 가입 이메일 확인 / 16=v0.1.2 supabase encoding hotfix / 17=v0.1.3 App Links / 18=v0.1.4 redirectUrl 명시 / 19=v0.1.5 vico 3.1 + healthConnect stable. 다음 빌드부터 20, 21, ...)
 - **Sentry Android 8.16.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 2.1.0** (compose-m3) — 통계 + 목표 진행 차트
 - **Detekt 1.23.7 + Spotless 7.0.4 + ktlint 1.5.0**
@@ -276,7 +276,7 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 - `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
 - `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
-- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목 (kotlin 2.3, starlette 1.1, healthConnect 1.2.0-alpha04) + 재개 조건 + 검증 절차
+- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.3 (Hilt 2.59.3+ 출시 대기)
 - `@docs/ops/containerapp-env-ktor-backup.json` — cutover 직전 env 스냅샷 (historical)
 
 ### 자동화 스크립트 (`scripts/`)

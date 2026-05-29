@@ -4,6 +4,25 @@
 
 ---
 
+## v0.1.5 — 2026-05-29 (versionCode 19) — Vico 3.1 + healthConnect stable + starlette 1.1.0
+
+### Changed
+- **Vico 차트 라이브러리 2.1.0 → 3.1.0** (#52): v3 의 변경은 import 경로 (`com.patrykandpatrick.vico.core.cartesian.*` → `compose.cartesian.*`) 만, builder DSL 은 v2.1 과 동일. dependabot #39 (close) follow-up 정식 마이그레이션. 2 commit 분리 보존 — Commit 1 minimal import migration, Commit 2 opportunistic 개선 (`LineCartesianLayer.Interpolator.catmullRom` 으로 line 부드럽게 + `VerticalAxis.rememberStart(tickPosition = BaseAxis.TickPosition.Inside)` 로 chart 영역 활용성 ↑). 실기기 시각 검증 통과.
+- **Health Connect 1.1.0-rc01 → 1.1.0 stable** (#53): 2025-10-08 stable 출시 (rc03 → stable 승격, API 변경 없음). `dependency-deferred.md §3` 보류 종료. dependabot #35 follow-up.
+- **starlette 0.49.1 → 1.1.0** (#54): fastapi 0.136.1 의 starlette 의존성 범위가 `>=0.46.0` (상한 없음) 이라 1.x 허용 확인. starlette 1.1.0 이 `PYSEC-2026-161` fix 포함 → `backend.yml` 의 `--ignore-vuln PYSEC-2026-161` 옵션 제거 (직접 fix 됨). `app/main.py` 의 `add_middleware` 는 INC-2026-05-24-03 fix 후 모듈 레벨 등록이라 starlette 1.x lifespan 정책 무관. 로컬 pytest 44 PASS + docker compose runtime-smoke `/health` 200 + CI runtime-smoke 통과. `dependency-deferred.md §2` 보류 종료. dependabot #9 follow-up.
+
+### Infrastructure
+- **detekt baseline drift 1차 해소** (#52 동반): `config/detekt/baseline.xml` (git tracked) vs `config/detekt/baseline-debug.xml` (.gitignore) 의 task 갱신 비대칭으로 PR #42 부터 main 의 detekt 가 chronic failure 였던 것을 baseline 재생성으로 해소. drift 자체의 구조적 fix 는 TODO (기록: `~/.claude/.../memory/detekt-baseline-drift.md`).
+- **dependency-deferred 정리** (#55): `docs/ops/dependency-deferred.md` 의 §2 (starlette) + §3 (healthConnect) 삭제, §1 (kotlin 2.3) 에 상태 점검 메모 추가. 남은 블로커: Hilt 2.59.3+ 출시 대기 (최신 2.59.2 from 2026-02-20).
+
+### Refs
+- PRs: #52 vico migration / #53 healthConnect 1.1.0 stable / #54 starlette 1.1.0 / #55 kotlin docs
+- Design+plan: `docs/plans/2026-05-28-vico-3-migration-design.md` + `-plan.md`
+- 트리거: 2026-05-28 dependabot 8 PR triage 세션 (PR #50 plan)
+- 보류 정책: `docs/ops/dependency-deferred.md`
+
+---
+
 ## v0.1.4 — 2026-05-26 (versionCode 18) — Hotfix: redirect URL path
 
 ### Fixed
