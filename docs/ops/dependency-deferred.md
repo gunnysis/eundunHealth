@@ -118,37 +118,6 @@ pip-audit -r ${{ env.BACKEND_DIR }}/requirements.txt --strict
 
 ---
 
-## 3. healthConnect 1.1.0-rc01 → 1.2.0-alpha04
-
-원본: `dependabot/gradle/androidx-56731a6fbe`의 8 updates 중 하나 (close됨, 2026-05-25, 우리가 #26으로 안전한 5개만 처리)
-
-### 보류 사유
-- **rc → alpha 다운그레이드** — 안정성 측면 명백히 후퇴
-- 1.1.0-rc01보다 1.2.0-alpha04이 새 기능 있더라도 rc 안정성 우선
-
-### 재개 조건
-- healthConnect 1.2.0 **stable release** (예: `1.2.0` 또는 `1.2.x` 정식)
-- 또는 1.1.0 stable release (현재 rc만 있음)
-
-### 검증 절차
-```bash
-# 1. libs.versions.toml 직접 수정
-# gradle/libs.versions.toml
-healthConnect = "1.2.0"  # stable 출시 후
-
-# 2. 컴파일 + Health Connect 권한 검증
-./gradlew :app:compileDebugKotlin
-
-# 3. 실기기 또는 에뮬레이터에서 권한 흐름 확인
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-# HomeScreen에서 "Health Connect 연동" 버튼 → 권한 요청 → 운동 자동 추적 확인
-```
-
-### 머지 패턴
-- 단순 버전 bump라 별도 PR로 깔끔히 처리
-
----
-
 ## 부록: 보류 항목 재추가 시 절차
 
 새 보류 항목이 생기면 이 문서에 추가:
