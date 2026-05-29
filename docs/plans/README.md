@@ -9,7 +9,7 @@
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-05-27 | signup-failed-ux-visibility | rfc | proposed | android, ux |
+| 2026-05-29 | signup-error-banner | design + plan | proposed | android, ux, auth, signup |
 
 ## Topic Ledgers (완료 작업 history)
 
@@ -17,6 +17,12 @@
 - [Backend](logs/backend.md) — recent 1, older 0
 - [Dependencies](logs/dependencies.md) — recent 4, older 0
 - [Process & Infra](logs/process-infra.md) — recent 3, older 0
+
+## Superseded (1)
+
+| 날짜 | 주제 | superseded_by |
+|---|---|---|
+| 2026-05-27 | signup-failed-ux-visibility | 2026-05-29-signup-error-banner-design |
 
 ## 워크플로
 
