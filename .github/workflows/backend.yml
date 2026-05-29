@@ -152,11 +152,7 @@ jobs:
         run: pip install pip-audit==2.7.3 bandit==1.8.0
 
       - name: pip-audit (의존성 CVE)
-        # PYSEC-2026-161: starlette 1.0.1 fix이지만 FastAPI 0.136이 아직 1.0을 지원하지 않음.
-        # FastAPI가 starlette 1.0을 지원하면 ignore 제거.
-        run: |
-          pip-audit -r ${{ env.BACKEND_DIR }}/requirements.txt --strict \
-            --ignore-vuln PYSEC-2026-161
+        run: pip-audit -r ${{ env.BACKEND_DIR }}/requirements.txt --strict
 
       - name: bandit (정적 보안 분석)
         run: bandit -r ${{ env.BACKEND_DIR }}/app -ll

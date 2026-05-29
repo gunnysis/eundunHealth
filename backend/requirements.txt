@@ -4,9 +4,12 @@
 # Downgraded to safe 0.136.1 (2026-04-23). Re-evaluate when a clean 0.136.4+ is released.
 # Note: 0.136.2 is 404 on PyPI (presumed yanked).
 fastapi==0.136.1
-# starlette: transitive dep of fastapi, explicitly pinned for security patch
-# (fastapi's default resolves to 0.48 which has GHSA-7f5h-v6xp-fcq8)
-starlette==0.49.1
+# starlette: transitive dep of fastapi. 1.1.0 (2026-04 release) includes
+# PYSEC-2026-161 fix. fastapi master pyproject.toml allows starlette>=0.46.0
+# (no upper bound) so 1.x is permitted. Our app/main.py registers middleware
+# at module level (post INC-2026-05-24-03), unaffected by starlette 1.x's
+# lifespan policy.
+starlette==1.1.0
 uvicorn[standard]==0.48.0
 sqlalchemy[asyncio]==2.0.50
 asyncpg==0.31.0
