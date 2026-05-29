@@ -34,15 +34,16 @@ import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.ui.components.EmptyContent
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
+import com.patrykandpatrick.vico.compose.cartesian.axis.BaseAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
-import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import kotlinx.coroutines.runBlocking
 import java.time.format.DateTimeFormatter
 
@@ -182,8 +183,16 @@ private fun CompletionRateChart(stats: Statistics, modifier: Modifier = Modifier
 
     CartesianChartHost(
         chart = rememberCartesianChart(
-            rememberLineCartesianLayer(),
-            startAxis = VerticalAxis.rememberStart(),
+            rememberLineCartesianLayer(
+                lineProvider = LineCartesianLayer.LineProvider.series(
+                    LineCartesianLayer.rememberLine(
+                        interpolator = LineCartesianLayer.Interpolator.catmullRom(),
+                    ),
+                ),
+            ),
+            startAxis = VerticalAxis.rememberStart(
+                tickPosition = BaseAxis.TickPosition.Inside,
+            ),
             bottomAxis = HorizontalAxis.rememberBottom(
                 valueFormatter = { _, value, _ ->
                     labels.getOrNull(value.toInt()) ?: ""
