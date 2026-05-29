@@ -5,6 +5,7 @@ pr: null
 related_inc: null
 supersedes: null
 target_version: vX.Y.Z
+ledger_topic: android  # android | backend | dependencies | process-infra — PR 머지 후 entry 흡수 대상
 tags: [TBD]
 ---
 

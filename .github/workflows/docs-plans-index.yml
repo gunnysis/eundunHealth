@@ -38,3 +38,20 @@ jobs:
 
       - name: Check INDEX drift
         run: bash scripts/gen-plans-index.sh --check
+
+      - name: Shipped 페어 잔존 가드 (hybrid 컨벤션 — 2026-05-29 plans-ledger-restructure)
+        run: |
+          shipped_found=0
+          # docs/plans/ 루트의 *.md 만 scan (logs/ + _templates/ 제외, README 제외)
+          for f in docs/plans/*.md; do
+            base=$(basename "$f")
+            if [ "$base" = "README.md" ]; then continue; fi
+            if grep -q "^status: shipped$" "$f" 2>/dev/null; then
+              topic=$(grep '^ledger_topic:' "$f" | awk '{print $2}' || echo "process-infra")
+              echo "::error file=$f::shipped frontmatter 페어가 docs/plans/ 루트에 남아있습니다."
+              echo "→ docs/plans/logs/${topic}.md 의 Recent 섹션에 entry 추가 후 git rm 하세요."
+              echo "→ 컨벤션: docs/plans/README.md 워크플로 섹션"
+              shipped_found=1
+            fi
+          done
+          if [ $shipped_found -eq 1 ]; then exit 1; fi
