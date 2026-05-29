@@ -2,6 +2,7 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
+    <ID>CyclomaticComplexMethod:AuthRepositoryImpl.kt$internal fun mapAuthError(rawMessage: String, email: String, isLogin: Boolean): AppError</ID>
     <ID>EmptyClassBlock:BadgeResponse.kt$BadgeResponse${ }</ID>
     <ID>EmptyClassBlock:CompletionRequest.kt$CompletionRequest${ }</ID>
     <ID>EmptyClassBlock:GoalResponse.kt$GoalResponse${ }</ID>
@@ -35,7 +36,6 @@
     <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$Result.success(userId)</ID>
     <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)</ID>
     <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$val userId = supabaseClient.auth.currentUserOrNull()?.id ?: throw IllegalStateException("로그인 후 사용자 정보를 가져올 수 없습니다")</ID>
-    <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$val userId = supabaseClient.auth.currentUserOrNull()?.id ?: throw IllegalStateException("회원가입 후 사용자 정보를 가져올 수 없습니다")</ID>
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$_uiState.value = successWithStats(updatedPlan, current.hasHealthPermission)</ID>
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val day = current.plan.days.find { it.date == date } ?: return@launch</ID>
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val newCompleted = !day.isCompleted</ID>
@@ -50,12 +50,14 @@
     <ID>UnusedPrivateProperty:MainActivity.kt$MainActivity$private val permissionLauncher = registerForActivityResult( androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(), ) { /* Health Connect uses its own permission contract */ }</ID>
     <ID>UnusedPrivateProperty:SyncHealthDataUseCase.kt$SyncHealthDataUseCase$private val workoutRepo: WorkoutRepository</ID>
     <ID>UseCheckOrError:AuthRepositoryImpl.kt$AuthRepositoryImpl$throw IllegalStateException("로그인 후 사용자 정보를 가져올 수 없습니다")</ID>
-    <ID>UseCheckOrError:AuthRepositoryImpl.kt$AuthRepositoryImpl$throw IllegalStateException("회원가입 후 사용자 정보를 가져올 수 없습니다")</ID>
     <ID>UseOrEmpty:AppNavigation.kt$backStackEntry.arguments?.getString("exerciseId") ?: ""</ID>
     <ID>UseOrEmpty:AuthRepositoryImpl.kt$AuthRepositoryImpl$e.message ?: ""</ID>
+    <ID>UseOrEmpty:AuthRepositoryImpl.kt$e.message ?: ""</ID>
     <ID>UseOrEmpty:BadgeCatalog.kt$BadgeCatalog$template?.description ?: ""</ID>
     <ID>WildcardImport:AccountApi.kt$import com.gunnys.eundunhealth.api.generated.infrastructure.CollectionFormats.*</ID>
     <ID>WildcardImport:AccountApi.kt$import retrofit2.http.*</ID>
+    <ID>WildcardImport:AuthApi.kt$import com.gunnys.eundunhealth.api.generated.infrastructure.CollectionFormats.*</ID>
+    <ID>WildcardImport:AuthApi.kt$import retrofit2.http.*</ID>
     <ID>WildcardImport:BadgesApi.kt$import com.gunnys.eundunhealth.api.generated.infrastructure.CollectionFormats.*</ID>
     <ID>WildcardImport:BadgesApi.kt$import retrofit2.http.*</ID>
     <ID>WildcardImport:GoalsApi.kt$import com.gunnys.eundunhealth.api.generated.infrastructure.CollectionFormats.*</ID>
