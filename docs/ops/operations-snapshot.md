@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 출시 빌드(versionCode 14) 시점
-> 작성 기준: v0.1.0 (versionCode 14) — Play Store Internal Testing 출시 빌드
+> 작성일: 2026-05-25 / 최근 갱신: 2026-05-29 v0.1.5 (versionCode 19) 빌드 시점
+> 작성 기준: v0.1.5 (versionCode 19) — vico 2.1→3.1 chart migration + healthConnect 1.1.0 stable + starlette 1.1.0
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,19 +11,20 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.0` / `14`** (13은 안정화 전 첫 시도, 14가 정식 출시) |
+| versionName / versionCode | **`0.1.5` / `19`** (14=v0.1.0 출시 / 15=v0.1.1 / 16=v0.1.2 / 17=v0.1.3 / 18=v0.1.4 / 19=v0.1.5) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
-| 차트 | Vico 2.1.0 (compose-m3) |
-| 정적 분석 | Detekt 1.23.7 (baseline.xml — 64 issue 박제, generated 포함) + Spotless 8.5.1 + ktlint 1.5.0 |
+| 차트 | Vico 3.1.0 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 |
+| Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
+| 정적 분석 | Detekt 1.23.7 (baseline.xml — generated 포함) + Spotless 8.5.1 + ktlint 1.5.0 |
 | API client | openapi-generator 7.10.0 (jvm-retrofit2 + gson + coroutines) — preBuild 자동 |
 | Sentry SDK | Android 8.42.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
-산출물 경로:
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (8.3MB)
-- APK: `app/build/outputs/apk/release/app-release.apk` (6.1MB)
+산출물 경로 (v0.1.5 빌드 시점 기준):
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (7.96 MB)
+- APK: `app/build/outputs/apk/release/app-release.apk` (5.76 MB)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 자동 업로드)
 
 ---
