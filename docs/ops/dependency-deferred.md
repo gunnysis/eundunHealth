@@ -22,6 +22,11 @@ v0.1.0 Internal Testing 직전 안정성 우선으로 보류한 dependabot 의�
   - **OpenAPI generator** — KSP를 직접 안 쓰지만 build pipeline 영향 가능
 - v0.1.0 출시 후 한 사이클 안정성 확보 후 재검토
 
+### 상태 점검 (2026-05-29)
+- **Hilt**: 최신 release = **2.59.2** (2026-02-20). 2.59.3+ 또는 2.60 미출시 → 재개 조건 2번 미충족, 계속 대기.
+- **Compose Compiler / Kotlin lockstep**: Kotlin 2.0+ 부터 Compose Compiler 는 Kotlin 과 같은 버전으로 lockstep release (Compose Compiler Gradle plugin = `org.jetbrains.kotlin.plugin.compose`). 따라서 Kotlin 2.3.21 자체에는 호환 보장 — 재개 조건 1번은 별도 검증 불필요.
+- **결론**: 재개 블로커 = Hilt 2.59.3+ 출시 대기. Dagger/Hilt GitHub releases 페이지 모니터링.
+
 ### 재개 조건 (다음 중 하나)
 1. Compose Compiler (composeBom 2026.06.xx+)가 Kotlin 2.3 명시 지원
 2. Hilt 2.59.3+ 또는 2.60+이 Kotlin 2.3 호환 명시
