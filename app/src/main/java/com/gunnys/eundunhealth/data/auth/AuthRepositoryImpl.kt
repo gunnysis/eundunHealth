@@ -123,22 +123,24 @@ class AuthRepositoryImpl @Inject constructor(
         Result.failure(
             AppErrorException(AppError.Auth("요청이 너무 많습니다. 잠시 후 다시 시도해주세요")),
         )
-    } else try {
-        supabaseClient.auth.signUpWith(Email, redirectUrl = authRedirectUrl) {
-            this.email = email
-            this.password = password
+    } else {
+        try {
+            supabaseClient.auth.signUpWith(Email, redirectUrl = authRedirectUrl) {
+                this.email = email
+                this.password = password
+            }
+            val user = supabaseClient.auth.currentUserOrNull()
+            if (user != null) {
+                // Supabase 프로젝트에서 email confirmation 이 꺼져 있어 가입과 동시에 세션이 발급된 경우.
+                tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)
+                Result.success(SignupResult.AutoSignedIn(user.id))
+            } else {
+                // 정상 경로: confirmation 메일 발송됨, 사용자는 메일을 확인해 인증해야 한다.
+                Result.success(SignupResult.AwaitingConfirmation(email))
+            }
+        } catch (e: Exception) {
+            mapSignUpException(e, email)
         }
-        val user = supabaseClient.auth.currentUserOrNull()
-        if (user != null) {
-            // Supabase 프로젝트에서 email confirmation 이 꺼져 있어 가입과 동시에 세션이 발급된 경우.
-            tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)
-            Result.success(SignupResult.AutoSignedIn(user.id))
-        } else {
-            // 정상 경로: confirmation 메일 발송됨, 사용자는 메일을 확인해 인증해야 한다.
-            Result.success(SignupResult.AwaitingConfirmation(email))
-        }
-    } catch (e: Exception) {
-        mapSignUpException(e, email)
     }
 
     override suspend fun resendConfirmation(email: String): Result<Unit> = try {
