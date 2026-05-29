@@ -1,10 +1,12 @@
 ---
 type: rfc
-status: proposed
+status: superseded
 pr: null
 related_inc: INC-2026-05-26-01
 supersedes: null
+superseded_by: 2026-05-29-signup-error-banner-design
 target_version: pending
+ledger_topic: android
 tags: [android, ux]
 ---
 
