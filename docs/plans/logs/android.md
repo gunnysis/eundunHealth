@@ -4,6 +4,15 @@
 
 ## Recent (last 90 days)
 
+### 2026-05-29 — Signup Failed UX inline error banner (v0.1.6)
+
+- **PR**: [#58](https://github.com/gunnysis/eundunHealth/pull/58) (shipped, v0.1.6, **supersedes** RFC `2026-05-27-signup-failed-ux-visibility` — git history)
+- **Why**: INC-2026-05-26-01 의 가시성 결함 — Signup 화면의 Failed 상태가 하단 snackbar 2초 자동 dismiss 로 사용자 인지 부족 (v0.1.4 실기기 검증 중 발견). RFC 작성 후 review 12 개선 사항 통합 (D1~D12). 단순 duration 상향 (Option A) 보다 form 내 inline banner (Option B) 가 본질적 해결.
+- **What**: `AuthErrorBanner` (SignupScreen.kt 안 private, D5 YAGNI) — Material 3 `Surface(errorContainer)` + Icon + a11y liveRegion Polite + Sentry breadcrumb `auth.error_banner_shown` (D10). `AuthViewModel.clearSignupError()` Failed 시만 Form 전환 (D6 race 회피). dismiss = `LaunchedEffect(formValid, error)` button enabled 시점 (D1, input 변경 시 보존). resendError 도 같은 Banner 재사용 (AwaitingConfirmationCard, D7). `BuildConfig.MOCK_AUTH_ERROR` debug-only flag — release 빈 string + DEBUG short-circuit double-guard (D11). Snackbar 인프라 제거 (D12 dead code).
+- **Outcome**: v0.1.6 (versionCode 20) release. 6 commit 분리 보존 (--merge): A docs / BC AuthErrorBanner+ViewModel+test+UI 통합 / D BuildConfig+mock / E version+docs / spotless fixup / F PR# fix. AuthViewModelTest +2 PASS. preflight-release green (AAB 7.96 MB / APK 5.76 MB). RFC + design + plan 3 페어 git rm + 본 entry 로 흡수 — **plans hybrid 컨벤션 (#57 plans-ledger-restructure) 의 첫 검증 사례**.
+- **Lessons**: (postmortem — 머지 + 7일 후 작성. hybrid 컨벤션 워크플로 마찰점 / 개선 의견 + 실기기 manual 검증 결과 + Sentry breadcrumb production 활용 사례 기록)
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/ui/auth/SignupScreen.kt`, `.../AuthViewModel.kt`, `app/src/test/.../AuthViewModelTest.kt`, `app/src/main/java/com/gunnys/eundunhealth/data/auth/AuthRepositoryImpl.kt`, `app/build.gradle.kts`, `CLAUDE.md`, `docs/{PRD,SPEC,ops/operations-snapshot,CHANGELOG}.md`
+
 ### 2026-05-29 — Vico 2.1 → 3.1 chart migration
 
 - **PR**: [#52](https://github.com/gunnysis/eundunHealth/pull/52) (shipped, v0.1.5)
