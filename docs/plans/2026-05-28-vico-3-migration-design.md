@@ -1,10 +1,10 @@
 ---
 type: design
-status: proposed
-pr: null
+status: shipped
+pr: 52
 related_inc: null
 supersedes: null
-target_version: docs-only
+target_version: 0.1.5
 tags: [android, dependencies, vico, chart, ui]
 ---
 

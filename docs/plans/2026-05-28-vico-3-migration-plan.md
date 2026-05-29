@@ -1,7 +1,7 @@
 ---
 type: plan
-status: proposed
-pr: null
+status: shipped
+pr: 52
 related_inc: null
 supersedes: null
 target_version: 0.1.5

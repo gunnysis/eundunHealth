@@ -1,7 +1,7 @@
 ---
 type: design
-status: proposed
-pr: null
+status: shipped
+pr: 50
 related_inc: null
 supersedes: null
 target_version: docs-only

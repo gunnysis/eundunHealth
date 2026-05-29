@@ -1,9 +1,10 @@
 ---
 type: design
-status: in-progress
-pr: null
+status: superseded
+pr: 48
 related_inc: null
 supersedes: null
+superseded_by: 2026-05-29-plans-ledger-restructure-design
 target_version: docs-only
 tags: [docs, tooling, conventions, meta]
 ---

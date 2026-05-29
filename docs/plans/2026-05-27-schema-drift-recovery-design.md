@@ -1,3 +1,13 @@
+---
+type: design
+status: shipped
+pr: 47
+related_inc: INC-2026-05-27-01
+supersedes: null
+target_version: 0.1.5
+tags: [backend, schema, alembic, ci]
+---
+
 # 운영 DB 스키마 drift 복구 + 마이그레이션 자동화 설계
 
 - **작성일**: 2026-05-27
