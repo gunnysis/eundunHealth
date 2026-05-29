@@ -74,6 +74,22 @@ class AuthViewModel @Inject constructor(
         _signupState.value = SignupState.Form
     }
 
+    /**
+     * Signup Failed 상태 해소 (Form 으로 전환). 다른 상태에서는 silent no-op (D6 race 회피).
+     *
+     * 호출 시점:
+     * - SignupForm 의 validation pass (button enabled) 시 자동 (D1)
+     * - 사용자가 명시적 retry click 시 (signup() 호출 직전)
+     *
+     * 참조: docs/plans/2026-05-29-signup-error-banner-design.md D6.
+     */
+    fun clearSignupError() {
+        if (_signupState.value is SignupState.Failed) {
+            _signupState.value = SignupState.Form
+        }
+        // 다른 state (Loading / Form / AwaitingEmailConfirmation) 에서는 no-op
+    }
+
     init {
         checkSession()
     }

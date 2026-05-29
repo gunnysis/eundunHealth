@@ -381,6 +381,49 @@ class AuthViewModelTest {
         assertEquals(SessionState.Unauthenticated, vm.sessionState.value)
     }
 
+    // ---- clearSignupError tests (D6 — race 회피) ----
+
+    @Test
+    fun `clearSignupError transitions Failed to Form`() = runTest {
+        // signUp 실패 → Failed 진입 → clearSignupError → Form 전환 확인
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.failure(
+                com.gunnys.eundunhealth.data.auth.AppErrorException(
+                    AppError.Auth("요청이 너무 많습니다. 잠시 후 다시 시도해주세요"),
+                ),
+            ),
+        )
+        val userRepo = FakeUserRepository()
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+
+        vm.signup("a@b.com", "password123")
+        advanceUntilIdle()
+
+        // precondition: Failed 상태
+        assertTrue(vm.signupState.value is SignupState.Failed)
+
+        vm.clearSignupError()
+        assertEquals(SignupState.Form, vm.signupState.value)
+    }
+
+    @Test
+    fun `clearSignupError is no-op when state is Form (D6)`() = runTest {
+        // Form 상태 (초기) 에서 clearSignupError 호출 시 변화 없음
+        // Loading 상태 race 회피 보장은 코드의 `if (_signupState.value is SignupState.Failed)`
+        // guard 로 같이 covered (Form 도 Failed 아님 → no-op 와 동일 경로).
+        val authRepo = FakeAuthRepository(
+            signUpResult = Result.success(SignupResult.AwaitingConfirmation("a@b.com")),
+        )
+        val userRepo = FakeUserRepository()
+        val vm = AuthViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+
+        assertEquals(SignupState.Form, vm.signupState.value)
+        vm.clearSignupError()
+        assertEquals(SignupState.Form, vm.signupState.value)
+    }
+
     // ---- Test doubles ----
 
     private class FakeAuthRepository(
