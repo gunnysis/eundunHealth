@@ -16,20 +16,3 @@
 |---|---|---|---|---|---|
 | 2026-05-27 | signup-failed-ux-visibility | rfc | — | INC-2026-05-26-01 | android, ux |
 
-## Shipped (6)
-
-| 날짜 | 주제 | type | PR | 인시던트 | tags |
-|---|---|---|---|---|---|
-| 2026-05-28 | dependabot-triage | design | [#50](https://github.com/gunnysis/eundunHealth/pull/50) | — | ops, dependencies, dependabot, process |
-| 2026-05-28 | mcp-integration-setup | design + plan | [#46](https://github.com/gunnysis/eundunHealth/pull/46) | — | ops, mcp, automation |
-| 2026-05-28 | vico-3-migration | design + plan | [#52](https://github.com/gunnysis/eundunHealth/pull/52) | — | android, dependencies, vico, chart, ui |
-| 2026-05-27 | schema-drift-recovery | design + plan | [#47](https://github.com/gunnysis/eundunHealth/pull/47) | INC-2026-05-27-01 | backend, schema, alembic, ci |
-| 2026-05-26 | applinks-deep-link | design + plan | [#42](https://github.com/gunnysis/eundunHealth/pull/42) | — | android, auth, deep-link |
-| 2026-05-26 | signup-confirmation-flow | design + plan | [#40](https://github.com/gunnysis/eundunHealth/pull/40) | — | android, auth, supabase |
-
-## Superseded (1)
-
-| 날짜 | 주제 | type | PR | 인시던트 | tags |
-|---|---|---|---|---|---|
-| 2026-05-28 | plans-folder-maintenance | design + plan | [#48](https://github.com/gunnysis/eundunHealth/pull/48) | — | docs, tooling, conventions, meta |
-
