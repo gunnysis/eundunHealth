@@ -1,31 +1,43 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-05-25, v0.1.0):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-05-30, v0.1.6):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
 ---
 
-## 구현 후 변경 사항 (v0.1.0)
+## 구현 후 변경 사항 (v0.1.0 → v0.1.6)
 
-본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.**
+본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.6 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
-| 영역 | TRD v1.0 | v0.1.0 현재 |
+| 영역 | TRD v1.0 | 현재 (v0.1.6) |
 |------|----------|------------|
-| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.136.3 (Python 3.12)** + uvicorn |
+| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.136.1 (Python 3.12)** + uvicorn |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0 async + asyncpg** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (41 PASS) |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (44 PASS) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API | RapidAPI ExerciseDB | **OSS** `oss.exercisedb.dev` (인증 불필요) |
 | Supabase 리전 | (US) | **Korea (project `ttzzbfoksncqazvcsfiu`)** |
 | Sentry 프로젝트 | 단일 `eundunhealth` | **두 프로젝트 분리** — Android `eundunhealth`, Backend `eundunhealth-backend` |
-| Android 정적 분석 | 미적용 | **Detekt 1.23.7 + Spotless 7.0.4 + ktlint 1.5.0** |
-| 차트 라이브러리 | 미사용 | **Vico 2.1.0** (통계 + 목표 진행 차트) |
-| versionCode / versionName | (미정) | **13 / 0.1.0** |
-| Alembic head | (미정) | `24d0fe2eb397` (v0.3 history + goals 포함) |
+| Android 정적 분석 | 미적용 | **Detekt 1.23.7 + Spotless 8.5.1 + ktlint 1.5.0** |
+| 차트 라이브러리 | 미사용 | **Vico 3.1.0** (compose-m3) — 통계 + 목표 진행 차트 |
+| Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
+| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.1.0** (PYSEC-2026-161 fix 포함, v0.1.5 #54) |
+| versionCode / versionName | (미정) | **20 / 0.1.6** (이력: 14=v0.1.0 / 15=v0.1.1 / 16=v0.1.2 / 17=v0.1.3 / 18=v0.1.4 / 19=v0.1.5 / 20=v0.1.6) |
+| Alembic head | (미정) | `fa3915deab2f` (v0.3 history + goals + rest_day 컬럼, INC-2026-05-27-01 fix 포함) |
+| Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6, #58) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
+| 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
 
-신규 도메인 / 화면(v0.2·v0.3): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, 비밀번호 재설정 — 자세한 내용은 [CHANGELOG.md v0.1.0 entry](./CHANGELOG.md).
+신규 도메인 / 화면 (v0.2·v0.3): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, 비밀번호 재설정.
+
+v0.1.1~v0.1.6 누적 (Android UI + Auth + Backend 안정화):
+- v0.1.1 (#40) signup 가입 이메일 확인 흐름 + 인증 상태 모델 리팩터 (`SessionState` / `AuthOpState` / `SignupState` 분리)
+- v0.1.2 (#41) supabase-kt 3.6.0 `SupabaseEncodingException` 처리 hotfix
+- v0.1.3 (#42) Android App Links 자동 로그인 (intent-filter autoVerify + supabase-kt `handleDeeplinks` + assetlinks.json + `/auth/confirm` fallback)
+- v0.1.4 (#44) Supabase signUp/resendEmail explicit `redirectUrl` (Site URL path 누락 hotfix) + backend 422 RequestValidationError observability
+- v0.1.5 (#56) Vico 2.1→3.1 chart migration + healthConnect rc01→1.1.0 stable + starlette 0.49.1→1.1.0 + dependabot 보류 항목 정리
+- v0.1.6 (#58) Signup Failed UX inline error banner (INC-2026-05-26-01 해소) + `AuthErrorBanner` + `clearSignupError` + BuildConfig mock + a11y liveRegion + Sentry breadcrumb
 
 ---
 
