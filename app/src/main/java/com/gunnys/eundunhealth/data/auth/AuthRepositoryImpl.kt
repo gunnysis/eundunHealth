@@ -114,7 +114,16 @@ class AuthRepositoryImpl @Inject constructor(
         Result.failure(AppErrorException(mapAuthError(e.message ?: "", email, isLogin = true)))
     }
 
-    override suspend fun signUp(email: String, password: String): Result<SignupResult> = try {
+    // D11: debug-only mock 분기. release 빌드 = BuildConfig.DEBUG false 로 short-circuit
+    // + BuildConfig.MOCK_AUTH_ERROR 도 항상 빈 string. double-guard 로 production leak 차단.
+    // 사용: ./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit
+    override suspend fun signUp(email: String, password: String): Result<SignupResult> = if (
+        BuildConfig.DEBUG && BuildConfig.MOCK_AUTH_ERROR == "ratelimit"
+    ) {
+        Result.failure(
+            AppErrorException(AppError.Auth("요청이 너무 많습니다. 잠시 후 다시 시도해주세요")),
+        )
+    } else try {
         supabaseClient.auth.signUpWith(Email, redirectUrl = authRedirectUrl) {
             this.email = email
             this.password = password

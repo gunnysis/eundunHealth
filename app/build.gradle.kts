@@ -104,11 +104,22 @@ android {
     }
 
     buildTypes {
+        debug {
+            // D11: 수동 검증 reproducibility. ./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit
+            // 같은 field 가 release 에도 명시되어야 AuthRepositoryImpl 의 분기가 compile 됨.
+            buildConfigField(
+                "String",
+                "MOCK_AUTH_ERROR",
+                "\"${project.findProperty("MOCK_AUTH_ERROR") ?: ""}\"",
+            )
+        }
         release {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // D11 double-guard: release 는 항상 빈 string (compile 통과 + DEBUG=false 로 분기 미발동).
+            buildConfigField("String", "MOCK_AUTH_ERROR", "\"\"")
         }
     }
     compileOptions {
