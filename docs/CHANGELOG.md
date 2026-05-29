@@ -25,7 +25,7 @@
 - Compose UI test (Banner / SignupScreen) 는 Out-of-scope (D2) — `androidTest/` 인프라 부재. 별도 RFC.
 
 ### Refs
-- PR: #NN (Task 8 의 PR 생성 후 fix)
+- PR: #58
 - Design + Plan: `docs/plans/2026-05-29-signup-error-banner-{design,plan}.md` (머지 후 `logs/android.md` entry 로 흡수 + git rm)
 - Supersedes RFC: `docs/plans/2026-05-27-signup-failed-ux-visibility-rfc.md`
 - INC: `docs/ops/incident-log.md` INC-2026-05-26-01
