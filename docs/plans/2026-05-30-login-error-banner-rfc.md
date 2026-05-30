@@ -1,10 +1,11 @@
 ---
 type: rfc
-status: proposed
-pr: null
-related_inc: null
+status: superseded
+pr: 61
+related_inc: INC-2026-05-26-01
 supersedes: null
-target_version: pending
+superseded_by: 2026-05-30-login-error-banner-design.md
+target_version: v0.1.7
 ledger_topic: android
 tags: [android, ux, auth, login, forgot-password]
 ---
