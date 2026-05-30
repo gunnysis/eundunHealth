@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +52,8 @@ fun ForgotPasswordScreen(
     val isLoading = authOpState is AuthOpState.Loading
     val opError = (authOpState as? AuthOpState.Failed)?.error
 
+    val formValid = email.contains("@")
+
     LaunchedEffect(passwordResetSent) {
         if (passwordResetSent) {
             snackbarHostState.showSnackbar("비밀번호 재설정 링크를 이메일로 보냈습니다")
@@ -59,9 +62,10 @@ fun ForgotPasswordScreen(
         }
     }
 
-    LaunchedEffect(opError) {
-        opError?.let {
-            snackbarHostState.showSnackbar(it.userMessage)
+    // D5: input 보완 (formValid) 시점에 banner 자동 dismiss.
+    LaunchedEffect(formValid, opError) {
+        if (formValid && opError != null) {
+            authViewModel.consumeAuthOpError()
         }
     }
 
@@ -105,9 +109,14 @@ fun ForgotPasswordScreen(
             )
             Spacer(Modifier.height(16.dp))
 
+            opError?.let {
+                AuthErrorBanner(error = it, screen = "forgot_password")
+                Spacer(Modifier.height(16.dp))
+            }
+
             Button(
                 onClick = { authViewModel.resetPassword(email.trim()) },
-                enabled = !isLoading && email.contains("@"),
+                enabled = !isLoading && formValid,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (isLoading) {
