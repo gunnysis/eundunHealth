@@ -38,8 +38,11 @@ PENDING_OUTPUT=$(
     # incident-log.md 에서 해당 INC 섹션의 "검증 완료" 라인 존재 확인
     if [ -f docs/ops/incident-log.md ]; then
       # incident-log.md 의 INC 헤딩은 '## INC-...' (2 hash) — 3 hash 가 아님
-      VERIFIED=$(grep -A 200 "^## .*${INC_ID}" docs/ops/incident-log.md 2>/dev/null | \
-        grep -B 1000 -m1 "^## " | grep -c "검증 완료" || true)
+      # awk: 해당 INC 헤더 다음 줄부터 다음 ## 헤더 직전까지 추출 (현재 헤더 자신 제외)
+      VERIFIED=$(awk -v id="${INC_ID}" '
+        $0 ~ "^## .*" id { found=1; next }
+        found && /^## / { exit }
+        found' docs/ops/incident-log.md 2>/dev/null | grep -c "검증 완료" || true)
       if [ "$VERIFIED" = "0" ]; then
         MERGE_DATE=$(echo "$line" | grep -oE '^[a-f0-9]+' | head -1 | \
           xargs -I {} git show -s --format=%ci {} 2>/dev/null | cut -d' ' -f1)
