@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-05-29 v0.1.6 (versionCode 20) 빌드 시점
-> 작성 기준: v0.1.6 (versionCode 20) — Signup Failed UX inline error banner (INC-2026-05-26-01 해소)
+> 작성일: 2026-05-25 / 최근 갱신: 2026-05-30 v0.1.7 (versionCode 21) 빌드 시점
+> 작성 기준: v0.1.7 (versionCode 21) — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote to `ui/components/`
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.6` / `20`** (14=v0.1.0 출시 / 15=v0.1.1 / 16=v0.1.2 / 17=v0.1.3 / 18=v0.1.4 / 19=v0.1.5 / 20=v0.1.6) |
+| versionName / versionCode | **`0.1.7` / `21`** (14=v0.1.0 출시 / 15=v0.1.1 / 16=v0.1.2 / 17=v0.1.3 / 18=v0.1.4 / 19=v0.1.5 / 20=v0.1.6 / 21=v0.1.7) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |

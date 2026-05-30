@@ -21,8 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,7 +28,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,6 +36,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 
 @Composable
 fun LoginScreen(
@@ -52,9 +50,9 @@ fun LoginScreen(
     val pendingEmail by authViewModel.pendingEmail.collectAsState()
     val resendCooldownSec by authViewModel.resendCooldownSec.collectAsState()
     val resendError by authViewModel.resendError.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
     val isLoading = authOpState is AuthOpState.Loading
     val lastError = (authOpState as? AuthOpState.Failed)?.error
+    val formValid = email.isNotBlank() && password.isNotBlank()
 
     LaunchedEffect(Unit) {
         pendingEmail?.let {
@@ -63,21 +61,23 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(lastError) {
-        val e = lastError ?: return@LaunchedEffect
-        if (e !is AppError.EmailNotConfirmed) {
-            snackbarHostState.showSnackbar(e.userMessage)
+    // D4: button enabled (formValid) 시점에 banner 자동 dismiss.
+    // EmailNotConfirmed 는 inline 재전송 UI 가 sticky 유지하므로 dismiss 분기.
+    LaunchedEffect(formValid, lastError) {
+        val e = lastError
+        if (formValid && e != null && e !is AppError.EmailNotConfirmed) {
             authViewModel.consumeAuthOpError()
         }
-        // EmailNotConfirmed는 inline 재전송 버튼 UI로 표시되므로 sticky 유지
-    }
-    LaunchedEffect(resendError) {
-        val e = resendError ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(e.userMessage)
-        authViewModel.clearResendError()
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+    // D10: resendError 도 같은 dismiss 정책.
+    LaunchedEffect(formValid, resendError) {
+        if (formValid && resendError != null) {
+            authViewModel.clearResendError()
+        }
+    }
+
+    Scaffold { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -126,6 +126,14 @@ fun LoginScreen(
                 singleLine = true,
             )
 
+            // D3 / D4: 일반 AppError 의 Banner — password input 아래, 로그인 버튼 위.
+            // EmailNotConfirmed 는 inline 재전송 UI (아래 분기) 가 처리하므로 제외.
+            val errorForBanner = lastError
+            if (errorForBanner != null && errorForBanner !is AppError.EmailNotConfirmed) {
+                Spacer(modifier = Modifier.height(8.dp))
+                AuthErrorBanner(error = errorForBanner, screen = "login")
+            }
+
             val notConfirmedEmail = (lastError as? AppError.EmailNotConfirmed)?.email
             if (notConfirmedEmail != null) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -146,6 +154,11 @@ fun LoginScreen(
                         },
                     )
                 }
+                // D10: resend 실패 시 같은 영역에 Banner 추가.
+                resendError?.let {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AuthErrorBanner(error = it, screen = "login_resend")
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -153,7 +166,7 @@ fun LoginScreen(
             Button(
                 onClick = { authViewModel.login(email.trim(), password) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
+                enabled = !isLoading && formValid,
             ) {
                 AnimatedVisibility(visible = isLoading) {
                     CircularProgressIndicator(

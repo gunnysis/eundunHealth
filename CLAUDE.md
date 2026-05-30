@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
-**Current state**: versionName `0.1.6` (versionCode `20` — Signup Failed UX inline error banner: INC-2026-05-26-01 해소). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. Play Store **Internal Testing** track 활성. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+**Current state**: versionName `0.1.7` (versionCode `21` — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote to `ui/components/`). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. Play Store **Internal Testing** track 활성. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
 > Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
@@ -156,7 +156,7 @@ DELETE /account
 - **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
 - **Gradle 9.4.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
-- **App version**: versionName **`0.1.6`**, versionCode **`20`** (이력: 14=v0.1.0 출시 / 15=v0.1.1 가입 이메일 확인 / 16=v0.1.2 supabase encoding hotfix / 17=v0.1.3 App Links / 18=v0.1.4 redirectUrl 명시 / 19=v0.1.5 vico 3.1 + healthConnect stable / 20=v0.1.6 signup error banner. 다음 빌드부터 21, 22, ...)
+- **App version**: versionName **`0.1.7`**, versionCode **`21`** (이력: 14=v0.1.0 출시 / 15=v0.1.1 가입 이메일 확인 / 16=v0.1.2 supabase encoding hotfix / 17=v0.1.3 App Links / 18=v0.1.4 redirectUrl 명시 / 19=v0.1.5 vico 3.1 + healthConnect stable / 20=v0.1.6 signup error banner / 21=v0.1.7 login+forgot 룰 8 + Banner promote. 다음 빌드부터 22, 23, ...)
 - **Sentry Android 8.16.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 2.1.0** (compose-m3) — 통계 + 목표 진행 차트
 - **Detekt 1.23.7 + Spotless 7.0.4 + ktlint 1.5.0**
@@ -240,7 +240,7 @@ Auth (signup / login / forgot-password) + 기타 사용자 액션 결과의 실�
 4. **Sentry**: `Sentry.addBreadcrumb(Breadcrumb().apply { category = "<domain>.error_banner_shown"; level = SentryLevel.INFO; setData(...) })` — production 디버깅 시 사용자가 어떤 에러를 봤는지 timeline 추적 가능.
 5. **컴포넌트 위치**: 첫 화면 = `<Screen>.kt` 안 `@Composable private fun` (YAGNI). 두 번째 화면 마이그레이션 시점에 `ui/components/` 로 promote — premature generic 회피.
 
-참조 구현: `app/src/main/java/com/gunnys/eundunhealth/ui/auth/SignupScreen.kt::AuthErrorBanner` (v0.1.6, #58). 첫 통합 사례 = `SignupForm` (button enabled dismiss) + `AwaitingConfirmationCard` (resendError 재사용).
+참조 구현: `app/src/main/java/com/gunnys/eundunhealth/ui/components/AuthErrorBanner.kt` (v0.1.7 promote, v0.1.6 #58 SignupScreen private 으로 시작). v0.1.7 (#TBD) 에서 LoginScreen + ForgotPasswordScreen 마이그레이션 시점에 `ui/components/` 로 promote — 3 Auth 화면 공유.
 
 **예외**: 비-critical 일회성 알림 (e.g., 성공 toast "저장됐습니다") 은 Snackbar 그대로 OK. 룰의 대상 = "사용자 액션이 실패했고, 사용자 후속 액션이 필요한 경우".
 

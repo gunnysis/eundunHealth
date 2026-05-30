@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v1.4 (2026-05-29 — v0.1.6 signup error banner 반영)
-**제품 버전:** v0.1.6 (versionCode 20) — Signup Failed UX inline error banner (INC-2026-05-26-01 해소). 이전 누적: v0.1.1~v0.1.4 (signup 흐름 + App Links + redirect hotfix + 422 observability) / v0.1.5 (vico 3.1 + healthConnect stable). v0.1·v0.2·v0.3 spec 전체 구현 완료. Play Store **Internal Testing** 활성
+**문서 버전:** v1.5 (2026-05-30 — v0.1.7 login+forgot 룰 8 + AuthErrorBanner promote 반영)
+**제품 버전:** v0.1.7 (versionCode 21) — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote to `ui/components/`. 이전 누적: v0.1.1~v0.1.4 (signup 흐름 + App Links + redirect hotfix + 422 observability) / v0.1.5 (vico 3.1 + healthConnect stable) / v0.1.6 (Signup Failed UX inline banner — INC-2026-05-26-01). v0.1·v0.2·v0.3 spec 전체 구현 완료. Play Store **Internal Testing** 활성
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

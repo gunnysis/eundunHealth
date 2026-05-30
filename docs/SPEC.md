@@ -1,7 +1,7 @@
 # eundunHealth 기능 명세서
 
 > **문서 버전:** v1.0 (초기 설계) — 본문은 그대로 보존.
-> **현재 제품 상태(2026-05-29):** v0.1.6 (versionCode 20) — Signup Failed UX inline error banner (INC-2026-05-26-01 해소). 이전 누적 v0.1.1~v0.1.5 (signup 흐름 + App Links + redirect hotfix + 422 observability + vico 3.1 + healthConnect stable). v0.2·v0.3 spec 모두 구현 완료. 자세한 차이는 [CHANGELOG.md](./CHANGELOG.md) / [TRD.md](./TRD.md) 참조.
+> **현재 제품 상태(2026-05-30):** v0.1.7 (versionCode 21) — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote to `ui/components/`. 이전 누적 v0.1.1~v0.1.6 (signup 흐름 + App Links + redirect hotfix + 422 observability + vico 3.1 + healthConnect stable + Signup Failed UX inline banner). v0.2·v0.3 spec 모두 구현 완료. 자세한 차이는 [CHANGELOG.md](./CHANGELOG.md) / [TRD.md](./TRD.md) 참조.
 >
 > **Supabase 사용 범위 (v0.1.1 명시):** Authentication 한정. Database(테이블)/Storage/Realtime/Edge Functions는 사용하지 않음 — 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장. Supabase는 JWT 발급(ES256/JWKS) + 회원가입 이메일 확인 + 비밀번호 재설정 메일만 담당.
 

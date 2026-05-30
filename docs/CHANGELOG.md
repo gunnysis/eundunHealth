@@ -4,6 +4,20 @@
 
 ---
 
+## v0.1.7 — 2026-05-30 (versionCode 21) — LoginScreen + ForgotPasswordScreen 룰 8 적용
+
+### Changed
+- **LoginScreen 룰 8 적용**: Snackbar 단독 → inline `AuthErrorBanner` (persistent + a11y liveRegion + Sentry breadcrumb). password input 아래 / "로그인" 버튼 위 (D3). `LaunchedEffect(formValid, lastError)` 가 input 보완 시점 자동 dismiss (D4). EmailNotConfirmed 만 기존 inline 재전송 UI 보존 (Option A, D2). resendError 도 EmailNotConfirmed 영역 아래 같은 Banner 재사용 (D10). Sentry breadcrumb `screen=login` / `login_resend`.
+- **ForgotPasswordScreen opError Banner 통합**: `LaunchedEffect(opError)` snackbar 제거 → Banner (`screen=forgot_password`). `LaunchedEffect(formValid, opError)` dismiss (D5). `passwordResetSent` 성공 snackbar 는 그대로 유지 (룰 8 예외 — 비-critical 성공).
+
+### Refactored
+- **`AuthErrorBanner` promote**: `ui/auth/SignupScreen.kt` 내 `private @Composable` → `ui/components/AuthErrorBanner.kt` public composable. 3 Auth 화면 (Signup, Login, ForgotPassword) 공유. 룰 8 의 "두 번째 화면 마이그레이션 시점에 promote" 트리거 (CLAUDE.md). SignupScreen 호출부는 동일 시그니처 → 동작 변경 없음.
+
+### Why
+INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPassword 에도 일관 적용. CLAUDE.md 룰 8 (PR #60, 2026-05-30) 등재 후 **첫 다중 화면 마이그레이션 사례**. 룰 8 의 4 요소 (inline + persistent + a11y + Sentry) 모두 만족.
+
+---
+
 ## v0.1.6 — 2026-05-29 (versionCode 20) — Signup Failed UX inline error banner
 
 ### Fixed
