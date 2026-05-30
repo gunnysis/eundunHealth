@@ -3,7 +3,6 @@ package com.gunnys.eundunhealth.ui.auth
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,20 +10,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,17 +30,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.AppError
-import io.sentry.Breadcrumb
-import io.sentry.Sentry
-import io.sentry.SentryLevel
+import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 
 @Composable
 fun SignupScreen(
@@ -232,62 +221,6 @@ private fun AwaitingConfirmationCard(
         Spacer(modifier = Modifier.height(8.dp))
         Button(onClick = onGoToLogin, modifier = Modifier.fillMaxWidth()) {
             Text("로그인하러 가기")
-        }
-    }
-}
-
-/**
- * Inline error banner for auth flows (signup form / awaiting confirmation card).
- *
- * D5 YAGNI: SignupScreen.kt 안 private 으로 시작. LoginScreen 등 다른 화면이
- * 같은 패턴 마이그레이션 시점에 `ui/components/` 로 promote.
- *
- * 동작:
- * - 첫 composition 시 [Sentry] breadcrumb (`auth.error_banner_shown`, level INFO) — D10
- * - `liveRegion = Polite` — TalkBack 사용자에게 즉시 알림 (a11y)
- * - Material 3 `errorContainer` color scheme
- *
- * @param error 표시할 에러. [AppError.userMessage] 가 한국어로 노출됨.
- * @param screen Sentry breadcrumb 의 `screen` data — "signup" 또는 "awaiting_confirmation".
- */
-@Composable
-private fun AuthErrorBanner(
-    error: AppError,
-    screen: String,
-    modifier: Modifier = Modifier,
-) {
-    LaunchedEffect(error, screen) {
-        Sentry.addBreadcrumb(
-            Breadcrumb().apply {
-                category = "auth.error_banner_shown"
-                level = SentryLevel.INFO
-                setData("error_type", error::class.simpleName ?: "Unknown")
-                setData("screen", screen)
-            },
-        )
-    }
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics { liveRegion = LiveRegionMode.Polite },
-        color = MaterialTheme.colorScheme.errorContainer,
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.ErrorOutline,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = error.userMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
         }
     }
 }
