@@ -417,6 +417,10 @@ ERROR: (ContainerAppSecretRefNotFound) SecretRef 'supabase-url' defined for cont
 - **디버깅 사이클 시 instrumented 빌드 사용 protocol**: release APK 로 사이드로드 검증 시 `Log.w("EunDun", ...)` instrumentation 을 임시 commit 으로 추가 + revert. 본 인시던트의 진단은 instrumentation 추가 후 첫 가입 시도에서 즉시 root cause 식별 (URL + 정확한 error code) — 이전 "무반응" 추정으로만 디버깅 시 시간 낭비 했음. **v0.1.6 부터는** `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (D11, release 빈 string + DEBUG short-circuit double-guard) 로 mock 분기 reproducibility 확보 — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` 한 줄로 재현. 추가 mock variant 는 같은 패턴.
 - **rate limit 회피 운영 가이드**: `memory/supabase-testing-tips.md` 에 이미 alias 이메일 + Pro 업그레이드 권장 명시. 적극 활용 + 디버깅 사이클 분산 (1시간 cooldown 사이에 묶음).
 
+**검증 완료**: 2026-05-30 — Phase 5 `/verify-deploy` 비해당 (Android UI/UX 인시던트, alembic head / 스키마 컬럼 / backend Sentry 영역 무관). 두 근본 원인 해결 경로:
+- (1) Failed UX 가시성 결함 → v0.1.6 (#58, 2026-05-29) `AuthErrorBanner` 도입 + v0.1.7 (#62, 2026-05-30) Login/Forgot 마이그레이션 + CLAUDE.md 룰 8 등재 (#60, 2026-05-29). 운영 측 확인 — 무반응 에러 현상 해소.
+- (2) Supabase 이메일 rate limit → 디버깅 사이클 차원에서 해소 (운영 측 확인 — 이메일 인증 불가 현상 해소). v1.0 출시 전 인프라 작업 (Supabase Pro + custom SMTP) 은 별도 트랙으로 추적.
+
 ---
 
 ## INC-2026-05-27-01 — user_profiles.rest_day 컬럼 누락 (PUT /profile 500)
