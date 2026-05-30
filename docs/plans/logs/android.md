@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-05-30 — LoginScreen + ForgotPasswordScreen 룰 8 적용 (v0.1.7)
+
+- **PR**: [#62](https://github.com/gunnysis/eundunHealth/pull/62) (shipped, v0.1.7, **supersedes** RFC `2026-05-30-login-error-banner-rfc` + design+plan 페어 `2026-05-30-login-error-banner-{design,plan}` — git history)
+- **Why**: INC-2026-05-26-01 의 가시성 결함을 SignupScreen (v0.1.6) 외 Login + ForgotPassword 에도 일관 적용. CLAUDE.md 룰 8 (PR #60, 2026-05-30) 등재 후 첫 다중 화면 마이그레이션 사례. 룰 8 의 4 요소 (inline + persistent + a11y + Sentry) 모두 만족.
+- **What**: `AuthErrorBanner` promote (SignupScreen 내 private → `ui/components/AuthErrorBanner.kt` public, 3 Auth 화면 공유). LoginScreen 의 `SnackbarHost` + `LaunchedEffect(lastError)`/`LaunchedEffect(resendError)` snackbar 인프라 제거 + Banner 통합 + `LaunchedEffect(formValid, lastError)` dismiss (D4). EmailNotConfirmed 만 기존 inline 재전송 UI (재전송 버튼 + cooldown) sticky 유지 (Option A, D2) — Banner 분기 제외. resendError 도 EmailNotConfirmed 영역 아래 같은 Banner 재사용 (D10). ForgotPasswordScreen 의 `opError` Banner 통합 (D5) + `passwordResetSent` 성공 snackbar 보존 (룰 8 예외 — 비-critical 성공). Sentry breadcrumb screen 값: `login` / `login_resend` / `forgot_password` 추가.
+- **Outcome**: v0.1.7 (versionCode 21) release. 5 commit 분리 보존 (`--merge`): A docs (design+plan+RFC frontmatter) / B Banner promote / C Login 통합 / D Forgot 통합 / E version+docs. + fixup F (`1e5f2a6`) plans/README.md gen-plans-index.sh 누락 보완. AuthViewModelTest 19 PASS 유지 (회귀 없음). preflight-release.sh green (AAB 7.96 MB / APK 5.76 MB — v0.1.6 와 동일 size, 변경량 작음).
+- **Lessons**:
+  - **plan miss — gen-plans-index.sh Task 1 누락**: Task 1 (docs commit) 시점에 design+plan 페어 + RFC superseded 가 추가됐는데 README.md 재생성을 plan 에 포함 안 함 → CI `check-index` job fail → fixup commit 으로 보완 (이로 인해 5 → 6 commit). **개선**: docs/plans/_templates/plan.md 의 "PR 머지 후" 섹션 뿐 아니라 **page-level commit 시점에도 `bash scripts/gen-plans-index.sh` 명시**. design+plan 페어 추가 시 INDEX drift 가 즉시 발생함 (CI guard).
+  - **v0.1.6 의 Lessons 3건 회피 결과**: (1) detekt UnusedPrivateMember — public composable promote 라 rule 비대상, **회피 성공**. (2) Spotless preflight 발견 — 각 commit 전 `spotlessApply` 명시 실행, **회피 성공** (모든 commit 이 한 번에 BUILD SUCCESSFUL). (3) design+plan 페어 staged — Task 0 Step 4 에서 명시 `git add`, **회피 성공** (self-apply 시 git rm 사용 가능).
+  - **검증**: production / 실기기 시나리오 검증 + Sentry `auth.error_banner_shown` breadcrumb 의 `screen=login`/`forgot_password`/`login_resend` 확인은 머지 후 24h+ 별도 작업.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/ui/components/AuthErrorBanner.kt` (NEW), `app/src/main/java/com/gunnys/eundunhealth/ui/auth/{LoginScreen,SignupScreen,ForgotPasswordScreen}.kt`, `app/build.gradle.kts`, `CLAUDE.md`, `docs/{PRD,SPEC,TRD,CHANGELOG,ops/operations-snapshot}.md`
+
 ### 2026-05-29 — Signup Failed UX inline error banner (v0.1.6)
 
 - **PR**: [#58](https://github.com/gunnysis/eundunHealth/pull/58) (shipped, v0.1.6, **supersedes** RFC `2026-05-27-signup-failed-ux-visibility` — git history)
