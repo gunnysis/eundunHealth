@@ -3,7 +3,7 @@ from pydantic.alias_generators import to_camel
 
 
 class CamelSchema(BaseModel):
-    """Android Gson camelCase ↔ Backend snake_case 자동 변환"""
+    """Android Gson camelCase ↔ Backend snake_case 자동 변환."""
 
     model_config = ConfigDict(
         alias_generator=to_camel,

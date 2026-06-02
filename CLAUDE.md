@@ -292,6 +292,7 @@ Auth (signup / login / forgot-password) + 기타 사용자 액션 결과의 실�
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
 - `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.3 (Hilt 2.59.3+ 출시 대기)
 - `@docs/ops/containerapp-env-ktor-backup.json` — cutover 직전 env 스냅샷 (historical)
+- `@docs/conventions/naming.md` — 명명/문서화 SSoT (5종 공식 가이드 + 본 프로젝트 결정 D1~D10)
 
 ### 자동화 스크립트 (`scripts/`)
 - `scripts/preflight-release.sh` — Spotless + Detekt + Tests + releaseArtifacts 일괄 (INC-04 방지)
@@ -309,6 +310,9 @@ Auth (signup / login / forgot-password) + 기타 사용자 액션 결과의 실�
 - `/verify-deploy <inc-id>` — MCP (Sentry/Azure) 로 Phase 5 운영 검증 자동화 (alembic head
   + 스키마 컬럼 + Sentry 신규 issue). INC 별 검증 1-command. 자세한 내용:
   `docs/plans/2026-05-28-mcp-integration-setup-design.md` §3.3.
+- `/naming-audit` — 명명/문서화 컨벤션 drift 점검 (ruff D + detekt naming + Azure CAF 표 sync).
+  자세한 룰: `docs/conventions/naming.md`. 결정 기록:
+  `docs/plans/2026-06-02-naming-convention-audit-design.md`. 분기당 1~2회 권장.
 
 ### OpenAPI Generator (Android)
 - 입력: `backend/openapi.json` (git checked-in, `sync-openapi.sh`로 갱신)

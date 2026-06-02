@@ -449,6 +449,7 @@
   "paths": {
     "/.well-known/assetlinks.json": {
       "get": {
+        "description": "Android App Links 검증용 assetlinks.json을 반환한다.",
         "operationId": "getAssetlinks",
         "responses": {
           "200": {
@@ -475,6 +476,7 @@
     },
     "/account": {
       "delete": {
+        "description": "현재 인증 사용자의 계정을 삭제한다. Supabase Auth + 앱 DB 데이터 모두 제거.",
         "operationId": "deleteAccount",
         "responses": {
           "200": {
@@ -505,6 +507,7 @@
     },
     "/auth/confirm": {
       "get": {
+        "description": "앱 미설치 디바이스용 이메일 인증 완료 fallback 페이지를 반환한다.",
         "operationId": "getAuthConfirmFallback",
         "responses": {
           "200": {
@@ -526,6 +529,7 @@
     },
     "/badges": {
       "get": {
+        "description": "현재 인증 사용자가 획득한 배지 목록을 반환한다.",
         "operationId": "getBadges",
         "responses": {
           "200": {
@@ -556,6 +560,7 @@
     },
     "/badges/{key}": {
       "post": {
+        "description": "지정한 key 의 배지를 사용자에게 부여한다. 이미 보유하면 409 반환.",
         "operationId": "awardBadge",
         "parameters": [
           {
@@ -603,6 +608,7 @@
     },
     "/goals": {
       "get": {
+        "description": "현재 인증 사용자의 목표 목록을 반환한다.",
         "operationId": "getGoals",
         "responses": {
           "200": {
@@ -631,6 +637,7 @@
         ]
       },
       "put": {
+        "description": "목표를 생성하거나 갱신한다. 이미 존재하면 덮어쓴다 (upsert).",
         "operationId": "upsertGoal",
         "requestBody": {
           "content": {
@@ -677,6 +684,7 @@
     },
     "/health": {
       "get": {
+        "description": "서버 가동 상태를 확인한다. JWT 불필요 — probe 전용.",
         "operationId": "healthCheck",
         "responses": {
           "200": {
@@ -702,6 +710,7 @@
     },
     "/profile": {
       "get": {
+        "description": "현재 인증 사용자의 프로필을 반환한다. 없으면 404.",
         "operationId": "getProfile",
         "responses": {
           "200": {
@@ -726,6 +735,7 @@
         ]
       },
       "put": {
+        "description": "프로필을 생성하거나 갱신한다. 변경 이력에 스냅샷을 자동 기록한다.",
         "operationId": "updateProfile",
         "requestBody": {
           "content": {
@@ -831,6 +841,7 @@
     },
     "/weekly-plan": {
       "get": {
+        "description": "지정한 주(week_start)의 운동 계획을 반환한다. 없으면 404.",
         "operationId": "getWeeklyPlan",
         "parameters": [
           {
@@ -876,6 +887,7 @@
         ]
       },
       "post": {
+        "description": "주간 운동 계획을 생성하거나 교체한다. ExerciseDB 기반 자동 생성 결과를 저장한다.",
         "operationId": "createWeeklyPlan",
         "requestBody": {
           "content": {
@@ -922,6 +934,7 @@
     },
     "/weekly-plan/complete": {
       "patch": {
+        "description": "특정 요일의 운동 완료 여부를 갱신한다. 모든 항목 완료 시 배지를 자동 부여한다.",
         "operationId": "updateDayCompletion",
         "requestBody": {
           "content": {
@@ -972,6 +985,7 @@
     },
     "/weekly-plan/history": {
       "get": {
+        "description": "과거 주간 계획 목록을 페이지 단위로 반환한다. 최신 순 정렬.",
         "operationId": "getWeeklyPlanHistory",
         "parameters": [
           {
@@ -1089,6 +1103,7 @@
     },
     "/weekly-plan/statistics": {
       "get": {
+        "description": "최근 N주간 완료율과 연속 streak 통계를 반환한다.",
         "operationId": "getStatistics",
         "parameters": [
           {

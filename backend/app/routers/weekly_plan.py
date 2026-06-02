@@ -24,6 +24,7 @@ async def get_plan(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> WeeklyPlanResponse:
+    """지정한 주(week_start)의 운동 계획을 반환한다. 없으면 404."""
     return await WeeklyPlanService(db).get_plan(user_id, week_start)
 
 
@@ -33,6 +34,7 @@ async def create_plan(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> WeeklyPlanResponse:
+    """주간 운동 계획을 생성하거나 교체한다. ExerciseDB 기반 자동 생성 결과를 저장한다."""
     return await WeeklyPlanService(db).upsert_plan(user_id, req)
 
 
@@ -42,6 +44,7 @@ async def complete(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
+    """특정 요일의 운동 완료 여부를 갱신한다. 모든 항목 완료 시 배지를 자동 부여한다."""
     await WeeklyPlanService(db).update_completion(user_id, req)
     return {"status": "ok"}
 
@@ -53,6 +56,7 @@ async def history(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> WeeklyPlanHistoryResponse:
+    """과거 주간 계획 목록을 페이지 단위로 반환한다. 최신 순 정렬."""
     return await WeeklyPlanService(db).get_history(user_id, page, size)
 
 
@@ -72,4 +76,5 @@ async def statistics(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> StatisticsResponse:
+    """최근 N주간 완료율과 연속 streak 통계를 반환한다."""
     return await StatisticsService(db).get_statistics(user_id, weeks)

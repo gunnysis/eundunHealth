@@ -136,6 +136,9 @@ jobs:
   security:
     name: Security scans
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read  # gitleaks-action 이 PR commits 조회 (403 회피)
     steps:
       - uses: actions/checkout@v4
         with:
