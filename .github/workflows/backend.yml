@@ -165,7 +165,7 @@ jobs:
         run: bandit -r ${{ env.BACKEND_DIR }}/app -ll
 
       - name: gitleaks (시크릿 검출)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
