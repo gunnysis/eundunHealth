@@ -59,7 +59,12 @@
   2. workload 명은 `eundunhealth` (기존 명명과 일관성 유지)
   3. environment suffix (예: `-prod`, `-dev`) 명시
   4. ACR/Storage 처럼 alphanumeric only 리소스는 하이픈 제거 + 압축형
-  5. `docs/plans/2026-06-02-naming-convention-audit-design.md` §3.2 audit 표에 신규 리소스 1행 추가
+  5. `docs/plans/logs/process-infra.md` 의 `2026-06-02 — naming convention audit` entry Azure 리소스 매핑 1행 추가 (SSoT `docs/conventions/naming.md` §3 abbreviation list 참조)
+
+## CI/CD (workflow 변경 시)
+<!-- .github/workflows/*.yml 추가 또는 신규 job 추가 시 -->
+- [ ] 해당 없음
+- [ ] 신규 workflow 또는 workflow job 추가 시 `permissions:` 블록 명시 (default `contents: read`, write 필요 step 만 grant — PR #68 lesson L5)
 
 ## 보안 / 시크릿
 - [ ] 새 secret 없음

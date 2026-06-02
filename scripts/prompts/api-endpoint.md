@@ -83,3 +83,9 @@ cd backend
 - 모든 endpoint 는 JWT 인증 필수 (`/health` 제외). Supabase ES256 (JWKS, PyJWKClient 24h TTL).
 - Token: NetworkModule 의 `AtomicReference`, `TokenAuthenticator` 가 401 자동 갱신.
 - Android ↔ Backend 필드명 일치는 OpenAPI 가 자동 보장 — `@SerialName` 수동 명시 불요.
+
+## L1 측정 명령 작성 노트 (PR #68 lesson)
+
+ruff / mypy / bandit / detekt 등 lint CLI 의 `--select <rule>` flag 는 pyproject 의 ignore + per-file-ignore 를 override 한다. 항상 config-driven (`ruff check --statistics <path>`, `mypy <path>`, `bandit -r <path>`) 우선 사용. `--select` 명시가 필요하면 의도적 ignore 동반 명시 (e.g., `--select N --ignore N818`).
+
+학습 사례: PR #68 Task 2 — `ruff --select D` 로 D100/D104 글로벌 ignore override → 7건 잘못된 module/package docstring 추가. spec reviewer(SDD Task 3 subagent) 발견 → fix.

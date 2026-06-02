@@ -24,6 +24,8 @@ jobs:
   check:
     name: Lint, Detekt, Test, Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 

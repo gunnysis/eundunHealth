@@ -38,6 +38,16 @@ Task N  push + PR
 
 ---
 
+### L1 측정 명령 작성 시 (PR #68 lesson)
+
+bite-sized task 안의 "측정" / "검증" step 에 lint CLI 명령 작성 시:
+- **항상 config-driven 우선** — `ruff check --statistics <path>`, `mypy <path>`, `bandit -r <path>`, `./gradlew :app:detektDebug`.
+- **`--select <rule>` 단독 사용 금지** — pyproject 의 ignore + per-file-ignore 를 override 한다. 명시 룰 list (`--select D101,D102,D103`) 또는 의도적 ignore 동반 (`--select N --ignore N818`) 만 허용.
+
+학습 사례: PR #68 Task 2 spec reviewer 가 `ruff --select D` 로 측정 → D100/D104 글로벌 ignore override → 잘못된 7건 docstring 추가 보고. fact-check 룰 (CLAUDE.md 룰 10, meta PR `lessons-meta-rules`) 과 함께 적용.
+
+---
+
 ## Phase 1: ...
 
 ### Task 1: ...

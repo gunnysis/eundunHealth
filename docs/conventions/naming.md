@@ -24,6 +24,7 @@
   - 1-2 줄 한국어 요약, behavioral "why" 중심.
   - type 정보 중복 금지 (mypy + Pydantic 이 cover).
   - 도메인 용어 (Supabase, JWT, Container App, ES256 등) 는 영문 유지.
+- **Auto-generated 디렉토리** (alembic, openapi-generator 출력 등): per-file-ignore 작성 시 D 외 lint 룰 (UP/I/N) 도 보일러플레이트로 위반 가능 — 모두 검토 (PR #68 lesson L4 — alembic UP007/UP035/I001 16건 사례).
 
 ## 3. Azure 인프라
 
@@ -55,6 +56,7 @@
 - [ ] ACR/Storage 처럼 alphanumeric only 리소스는 하이픈 제거 + 압축형
 - [ ] Azure portal 자동 생성 이름 (예: `workspace-*`) 그대로 두지 말고 deploy 시 명시
 - [ ] 머지 후 `/naming-audit` 1회 실행 → `docs/plans/logs/process-infra.md` 의 최신 audit entry 또는 신규 entry 에 1행 추가
+- [ ] Container Apps environment 생성 시 `--logs-workspace-id <id>` 명시 (auto-gen `workspace-*` suffix 회피 — PR #68 lesson L7, `workspace-appsDOlM` 사례)
 
 ## 6. 참고
 
