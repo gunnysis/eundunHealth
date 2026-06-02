@@ -16,7 +16,9 @@
 ## 테스트
 <!-- 명시적 명령어 + 결과 -->
 - [ ] `./gradlew :app:detektDebug :app:testDebugUnitTest` 통과
-- [ ] `cd backend && pytest tests/ -v` 통과
+- [ ] `cd backend && .venv/Scripts/ruff.exe check app/ tests/` 통과 (PEP 8/257/import order)
+- [ ] `cd backend && .venv/Scripts/mypy app/` 통과 (PEP 484/526 type hints)
+- [ ] `cd backend && .venv/Scripts/pytest tests/ -v` 통과
 - [ ] (UI 변경 시) 실기기 / 에뮬레이터로 골든패스 수동 검증
 
 ## 릴리스 산출물 (Android 변경 시)
@@ -48,6 +50,16 @@
   3. 연쇄 영향(manifest 공유, secretref 연결, firewall 의존성) 검증함
   4. 롤백 경로(이미지 캐시, git 백업, DB PITR) 있음
   5. 실패 시 Sentry / Health Check로 인지 가능
+
+## Azure 신규 리소스 추가 (해당 시)
+<!-- 새 RG / Container App / ACR / DB 등을 생성하는 PR 일 때 -->
+- [ ] 해당 없음
+- [ ] 또는 다음을 확인했음 (Microsoft CAF, `docs/conventions/naming.md`):
+  1. 리소스 타입 abbreviation 사용 (예: `ca-`, `cae-`, `cr`, `psql-`, `rg-`)
+  2. workload 명은 `eundunhealth` (기존 명명과 일관성 유지)
+  3. environment suffix (예: `-prod`, `-dev`) 명시
+  4. ACR/Storage 처럼 alphanumeric only 리소스는 하이픈 제거 + 압축형
+  5. `docs/plans/2026-06-02-naming-convention-audit-design.md` §3.2 audit 표에 신규 리소스 1행 추가
 
 ## 보안 / 시크릿
 - [ ] 새 secret 없음
