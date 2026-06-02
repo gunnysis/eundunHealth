@@ -4,6 +4,16 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-02 — lessons-infra-guards (PR #68 lessons L1/L4/L5/L7 재발방지)
+
+- **PR**: [#70](https://github.com/gunnysis/eundunHealth/pull/70) (merged, squash `799426a`)
+- **Why**: PR #68 (naming convention audit) 작업의 7 lessons 중 자동 가드 채널 가능 4건을 가장 가까운 채널에 묶음. 사용자 명시 (2026-06-02): "오늘 작업에 대해 재발방지 설계 작업". 페어 분리 D2 — 별도 meta PR (`lessons-meta-rules`, L2/L6) 후속.
+- **What**: L1 ruff `--select` 함정 — `scripts/prompts/*.md` 3개 audit + `_templates/plan.md` 측정 명령 룰 (config-driven 우선). L4 alembic UP/I auto-gen ignore 일반화 — `backend/pyproject.toml` 주석 2줄 (정책 + 학습 사례) + SSoT (`docs/conventions/naming.md`) §2 1줄. L5 workflow permissions 명시 — 3 workflow.yml 의 6 jobs 모두 명시 `permissions: contents: read` (test/runtime-smoke/security/deploy/check/check-index) + PR template 신규 workflow 체크박스 + Azure CAF 섹션 broken design doc reference fix 1줄. L7 Azure `workspace-*` auto-gen 탐지 — `.claude/commands/naming-audit.md` Step 4.1 패턴 표 (workspace-/defaultkv-/defaultstor-) + SSoT §5 `--logs-workspace-id` 체크박스.
+- **Outcome**: 13 commits + 1 README drift fix = 14 commits, 14 파일, +1216/-3 LOC. 모든 CI green — backend ruff/mypy/pytest pass + runtime-smoke docker compose `/health` 200 + security gitleaks-action pass (PR #68 fix 유지 + 신규 명시 permissions 양립) + android Lint/Detekt/Test/Build pass + check-index pass + deploy skipping (PR 조건 unmet, 정상). controller 룰 10 (subagent reviewer fact-check) 사전 적용 — 본 PR 의 자동 검증 명령에 plan 의 grep 함정 발견 후 semantic YAML parse 로 ground truth 확립.
+- **Lessons**: (postmortem — 머지 + 7일 후 작성)
+- **Files touched**: `scripts/prompts/{api-endpoint,bug-fix,new-screen}.md`, `docs/plans/_templates/plan.md`, `backend/pyproject.toml`, `docs/conventions/naming.md` (§2 + §5), `.github/workflows/{backend,android,docs-plans-index}.yml`, `.github/PULL_REQUEST_TEMPLATE.md`, `.claude/commands/naming-audit.md`, `docs/plans/README.md` (자동 갱신)
+- **Follow-up**: (1) meta PR `lessons-meta-rules` (L2/L6 — CLAUDE.md 룰 9/10 + design template + memory feedback). (2) Task 12 의 plan grep 명령 (`grep -cE '^  [a-zA-Z]...' workflow.yml`) false positive (on: trigger 매칭) — 미래 비슷한 task 작성 시 semantic YAML parse 사용 권장. (3) `.claude/commands/naming-audit.md` 의 `defaultkv-*` / `defaultstor-*` unverified 예시 행 — 실제 발견 시 추가 가이드.
+
 ### 2026-06-02 — naming convention audit + PEP 257 enforce + automation infra
 
 - **PR**: [#68](https://github.com/gunnysis/eundunHealth/pull/68) (merged, squash `a47515c`)
