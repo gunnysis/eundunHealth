@@ -3,10 +3,23 @@ line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP"]
-# N818: 예외 클래스 이름은 "Error" 접미사를 권장하지만,
-# 설계서가 AppException/NotFoundException 등으로 명명하므로 유지
-ignore = ["N818"]
+select = ["E", "F", "I", "N", "UP", "D"]
+ignore = [
+    "N818",         # AppException 네이밍 유지 (기존)
+    "D100", "D104", # 모듈/패키지 헤더 docstring 의무 X — 모듈 헤더 주석 스타일 유지
+    "D107",         # __init__ docstring 의무 X — 클래스 docstring 으로 대체
+    "D203", "D213", # convention="pep257" 와 redundant 하지만 의도 명확화 위해 명시
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]              # test 이름이 spec — 48건 제외
+"alembic/**" = ["D"]             # auto-generated — 16건 제외
+"app/main.py" = ["D"]            # FastAPI 앱 인스턴스
+"app/schemas/**" = ["D101"]      # Pydantic schema — Field(description=) 대체, 7건 제외
+"app/models/**" = ["D101"]       # SQLAlchemy ORM table — 3건 제외
 
 [tool.mypy]
 python_version = "3.12"
