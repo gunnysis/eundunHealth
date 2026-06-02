@@ -12,9 +12,7 @@ class ProfileRepository:
 
     async def get_by_user_id(self, user_id: str) -> UserProfile | None:
         """user_id 로 프로필 1건 조회. 미존재 시 None 반환."""
-        result = await self.db.execute(
-            select(UserProfile).where(UserProfile.user_id == user_id)
-        )
+        result = await self.db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
         return result.scalar_one_or_none()
 
     async def upsert(self, user_id: str, data: dict[str, object]) -> UserProfile:

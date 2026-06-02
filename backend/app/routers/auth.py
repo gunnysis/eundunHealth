@@ -4,6 +4,7 @@
 - GET /.well-known/assetlinks.json: Android App Links 검증용
 - GET /auth/confirm: 앱 미설치 디바이스용 fallback HTML (안내 + Play Store 링크)
 """
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 

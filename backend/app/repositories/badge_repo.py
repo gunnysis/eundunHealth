@@ -27,9 +27,7 @@ class BadgeRepository:
 
     async def get_all_by_user(self, user_id: str) -> list[Badge]:
         """사용자의 전체 획득 배지 목록 반환."""
-        result = await self.db.execute(
-            select(Badge).where(Badge.user_id == user_id)
-        )
+        result = await self.db.execute(select(Badge).where(Badge.user_id == user_id))
         return list(result.scalars().all())
 
     async def award(self, user_id: str, badge_key: str) -> Badge:

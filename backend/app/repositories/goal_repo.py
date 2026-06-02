@@ -12,16 +12,12 @@ class GoalRepository:
 
     async def get_all(self, user_id: str) -> list[Goal]:
         """사용자의 전체 목표 목록을 goal_type 오름차순으로 반환."""
-        result = await self.db.execute(
-            select(Goal).where(Goal.user_id == user_id).order_by(Goal.goal_type)
-        )
+        result = await self.db.execute(select(Goal).where(Goal.user_id == user_id).order_by(Goal.goal_type))
         return list(result.scalars().all())
 
     async def get_by_type(self, user_id: str, goal_type: str) -> Goal | None:
         """goal_type(weight / body_fat) 으로 목표 1건 조회."""
-        result = await self.db.execute(
-            select(Goal).where(and_(Goal.user_id == user_id, Goal.goal_type == goal_type))
-        )
+        result = await self.db.execute(select(Goal).where(and_(Goal.user_id == user_id, Goal.goal_type == goal_type)))
         return result.scalar_one_or_none()
 
     async def upsert(self, user_id: str, goal_type: str, target_value: float) -> Goal:

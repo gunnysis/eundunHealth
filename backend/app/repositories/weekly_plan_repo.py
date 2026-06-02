@@ -15,9 +15,7 @@ class WeeklyPlanRepository:
     async def get_by_user_and_week(self, user_id: str, week_start: datetime.date) -> WeeklyPlan | None:
         """UserId + weekStart 로 plan 1건 조회. v0.1 INC: userId 필터링 누락 시 다른 사용자 데이터 노출 위험."""
         result = await self.db.execute(
-            select(WeeklyPlan).where(
-                and_(WeeklyPlan.user_id == user_id, WeeklyPlan.week_start == week_start)
-            )
+            select(WeeklyPlan).where(and_(WeeklyPlan.user_id == user_id, WeeklyPlan.week_start == week_start))
         )
         return result.scalar_one_or_none()
 
@@ -34,10 +32,7 @@ class WeeklyPlanRepository:
     async def get_recent(self, user_id: str, limit: int) -> list[WeeklyPlan]:
         """최근 N개의 plan을 week_start 내림차순으로 반환 (통계용)."""
         result = await self.db.execute(
-            select(WeeklyPlan)
-            .where(WeeklyPlan.user_id == user_id)
-            .order_by(WeeklyPlan.week_start.desc())
-            .limit(limit)
+            select(WeeklyPlan).where(WeeklyPlan.user_id == user_id).order_by(WeeklyPlan.week_start.desc()).limit(limit)
         )
         return list(result.scalars().all())
 
@@ -67,9 +62,7 @@ class WeeklyPlanRepository:
     async def count_by_user(self, user_id: str) -> int:
         """History envelope 의 total_count 필드용 — Android 페이지 인디케이터 입력."""
         result = await self.db.execute(
-            select(func.count())
-            .select_from(WeeklyPlan)
-            .where(WeeklyPlan.user_id == user_id)
+            select(func.count()).select_from(WeeklyPlan).where(WeeklyPlan.user_id == user_id)
         )
         return int(result.scalar_one())
 
