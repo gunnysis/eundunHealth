@@ -16,6 +16,8 @@ convention = "pep257"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]              # test 이름이 spec — 48건 제외
+# auto-generated 디렉토리는 D 외 lint 룰 (UP/I/N) 도 보일러플레이트로 위반 가능 — 모두 검토 후 ignore.
+# 학습 사례: PR #68 alembic init 의 UP007/UP035/I001 16건 (lesson L4).
 "alembic/**" = ["D", "UP", "I"]  # auto-generated — D + UP007/UP035/I001 (alembic init 보일러플레이트) 제외
 "app/main.py" = ["D"]            # FastAPI 앱 인스턴스
 "app/schemas/**" = ["D101"]      # Pydantic schema — Field(description=) 대체, 7건 제외

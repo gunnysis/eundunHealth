@@ -24,6 +24,7 @@
   - 1-2 줄 한국어 요약, behavioral "why" 중심.
   - type 정보 중복 금지 (mypy + Pydantic 이 cover).
   - 도메인 용어 (Supabase, JWT, Container App, ES256 등) 는 영문 유지.
+- **Auto-generated 디렉토리** (alembic, openapi-generator 출력 등): per-file-ignore 작성 시 D 외 lint 룰 (UP/I/N) 도 보일러플레이트로 위반 가능 — 모두 검토 (PR #68 lesson L4 — alembic UP007/UP035/I001 16건 사례).
 
 ## 3. Azure 인프라
 
