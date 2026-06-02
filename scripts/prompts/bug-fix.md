@@ -30,3 +30,9 @@
 ## Sentry 확인
 - Sentry DSN: `local.properties` → BuildConfig.SENTRY_DSN
 - 초기화: `EundunHealthApplication.kt` (DSN blank 체크 후 수동 초기화)
+
+## L1 측정 명령 작성 노트 (PR #68 lesson)
+
+ruff / mypy / bandit / detekt 등 lint CLI 의 `--select <rule>` flag 는 pyproject 의 ignore + per-file-ignore 를 override 한다. 항상 config-driven (`ruff check --statistics <path>`, `mypy <path>`, `bandit -r <path>`) 우선 사용. `--select` 명시가 필요하면 의도적 ignore 동반 명시 (e.g., `--select N --ignore N818`).
+
+학습 사례: PR #68 Task 2 — `ruff --select D` 로 D100/D104 글로벌 ignore override → 7건 잘못된 module/package docstring 추가. spec reviewer(SDD Task 3 subagent) 발견 → fix.
