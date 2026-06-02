@@ -1,8 +1,8 @@
 # 명명/문서화 컨벤션 (SSoT)
 
 > 본 문서는 single source of truth.
-> - 변경 시 `docs/plans/2026-06-02-naming-convention-audit-design.md` 의 §3 + §4 와 동기.
-> - 신규 개발자: 본 문서만 읽으면 컨벤션 파악 가능. 의사결정 배경은 design doc 참조.
+> - 의사결정 배경 + audit 데이터: `docs/plans/logs/process-infra.md` 의 `2026-06-02 — naming convention audit + PEP 257 enforce + automation infra` entry (#68 ledger absorb).
+> - 신규 개발자: 본 문서만 읽으면 컨벤션 파악 가능.
 
 ## 1. Kotlin (Android)
 
@@ -34,8 +34,9 @@
   - Container Apps environment → `cae`
   - Container Registry → `cr` (alphanumeric only — 하이픈 제거, 압축형)
   - PostgreSQL Flexible Server → `psql`
+  - Log Analytics workspace → `log` (auto-generated `workspace-*` suffix 회피)
 - **기존 리소스 rename 금지**: CAF 공식 "Most Azure resource names can't be changed after creation". v0.1.7 Internal Testing 활성 + Container App URL 이 Android `BACKEND_URL` baked → 다운타임 + tester 일제 갱신 비용 큼.
-- **신규 리소스에만 적용**.
+- **신규 리소스에만 적용**. 실측은 `/naming-audit` 슬래시 명령 또는 process-infra.md 의 audit entry 참조 (SSoT inline 시 drift 위험).
 
 ## 4. 신규 코드 추가 시 체크리스트
 
@@ -48,15 +49,16 @@
 
 ## 5. 신규 Azure 리소스 추가 시 체크리스트
 
-- [ ] CAF abbreviation 사용 (`ca-`, `cae-`, `cr`, `psql-`, `rg-`)
+- [ ] CAF abbreviation 사용 (`ca-`, `cae-`, `cr`, `psql-`, `rg-`, `log-` 등)
 - [ ] workload 명 = `eundunhealth` (기존 명명 일관성)
 - [ ] env suffix (`-prod`, `-dev`) 명시
 - [ ] ACR/Storage 처럼 alphanumeric only 리소스는 하이픈 제거 + 압축형
-- [ ] `docs/plans/2026-06-02-naming-convention-audit-design.md` §3.2 표에 신규 리소스 1행 추가
+- [ ] Azure portal 자동 생성 이름 (예: `workspace-*`) 그대로 두지 말고 deploy 시 명시
+- [ ] 머지 후 `/naming-audit` 1회 실행 → `docs/plans/logs/process-infra.md` 의 최신 audit entry 또는 신규 entry 에 1행 추가
 
 ## 6. 참고
 
-- **의사결정 기록 (배경 + audit 데이터)**: `docs/plans/2026-06-02-naming-convention-audit-design.md`
+- **의사결정 기록 (배경 + audit 데이터)**: `docs/plans/logs/process-infra.md` 의 `2026-06-02 — naming convention audit + PEP 257 enforce + automation infra` entry
 - **Drift 점검 슬래시 명령**: `/naming-audit` (분기당 1~2회 권장)
 - **공식 문서 URL**:
   - JetBrains Kotlin Conventions — https://kotlinlang.org/docs/coding-conventions.html

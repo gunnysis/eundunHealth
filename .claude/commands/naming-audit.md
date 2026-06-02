@@ -8,17 +8,19 @@ argument-hint: [--update-doc] (audit 결과로 design doc §3 갱신 patch 제�
 
 ## 검증 단계
 
-### 1. Python PEP 257 violation 측정
+### 1. Python PEP 257 violation 측정 (config-driven)
 ```bash
-cd backend && .venv/Scripts/ruff.exe check --select D --statistics app/ tests/ alembic/
+cd backend && .venv/Scripts/ruff.exe check --statistics app/ tests/ alembic/
 ```
-기대: 0 errors (본 PR 머지 후 baseline). 잔존 시 카테고리별 list + 파일 경로 보고.
+기대: `All checks passed!` (본 PR 머지 후 baseline). 잔존 시 카테고리별 list + 파일 경로 보고.
 
-### 2. Python PEP 8 naming (N) 측정
+**주의**: `--select D` 단독 사용 금지 — pyproject 의 글로벌 `ignore` (D100/D104/D107/D203/D213) 와 per-file-ignore (schemas/models D101, main.py D 전체, alembic D/UP/I) 를 override 해서 false 위반이 카운트됨 (PR #68 Task 2 lesson). 항상 config-driven 측정.
+
+### 2. Python PEP 8 naming (N) 측정 (config-driven)
 ```bash
-cd backend && .venv/Scripts/ruff.exe check --select N --statistics app/
+cd backend && .venv/Scripts/ruff.exe check --select N --ignore N818 --statistics app/
 ```
-기대: 0 errors (N818 은 글로벌 ignore 라 count 0).
+기대: 0 errors. **주의**: `--select N` 단독 시 N818 (의도된 ignore, `AppException` 네이밍 유지) 가 false 위반 1건으로 출력됨. 항상 `--ignore N818` 명시 또는 그냥 `--statistics app/` (config-driven, 전체 룰셋).
 
 ### 3. Kotlin detekt naming 측정
 ```bash
@@ -27,7 +29,7 @@ cd backend && .venv/Scripts/ruff.exe check --select N --statistics app/
 build/reports/detekt/detekt.html 의 naming 카테고리 확인. baseline 외 신규 위반 0 기대. fail 시 `baseline.xml` vs `baseline-debug.xml` drift 가 원인 가능 — `detekt-baseline-drift.md` 메모리 참조.
 
 ### 4. Azure CAF 표 sync 안내
-`docs/plans/2026-06-02-naming-convention-audit-design.md` §3.2 표 vs 실측 Azure 리소스 명 비교:
+`docs/plans/logs/process-infra.md` 의 `2026-06-02 — naming convention audit` entry (또는 그 후속 audit entry) 의 Azure 리소스 매핑 vs 실측 비교:
 ```bash
 az resource list -g apps -o table
 az containerapp env list -g apps -o tsv
@@ -36,11 +38,11 @@ az containerapp env list -g apps -o tsv
 - `mcp__azure__group_list --tenant <TENANT_ID>`
 - `mcp__azure__group_resource_list --tenant <TENANT_ID> --resource-group apps`
 
-신규 리소스 발견 시 §3.2 표에 1행 추가 + CAF 권장 매핑 작성.
+신규 리소스 발견 시 SSoT (`docs/conventions/naming.md` §5) 체크리스트 적용 + 후속 chore PR 으로 process-infra.md 의 audit entry 보강.
 
 ### 5. 결과 보고
 - 1~3 의 위반 개수 표로 정리.
 - 4 의 drift (신규/누락 리소스) list.
-- `--update-doc` flag 시: design doc §3.2 (Azure 표) + §3.4 (자동화 인프라 채널 현재 상태) 갱신 patch 를 **제안**. **자동 commit 안 함** — CLAUDE.md "NEVER commit unless explicitly asked" 룰. 사용자가 검토 후 `commit` 명시 시에만 진행.
+- `--update-doc` flag 시: SSoT (`docs/conventions/naming.md` §3 Azure abbreviation) 갱신 patch + process-infra.md audit entry 보강 patch 를 **제안**. **자동 commit 안 함** — CLAUDE.md "NEVER commit unless explicitly asked" 룰. 사용자가 검토 후 `commit` 명시 시에만 진행.
 
 예상 소요: ruff D+N (~2s) + detekt (~30~60s, gradle daemon hot) + Azure MCP 호출 (~5~10s) — 총 ~1~2 분.
