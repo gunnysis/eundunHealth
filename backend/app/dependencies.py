@@ -26,6 +26,7 @@ async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     settings: Settings = Depends(get_settings),
 ) -> str:
+    """Bearer JWT 를 JWKS(ES256)로 검증하고 Supabase user_id(sub) 반환."""
     try:
         jwk_client = _get_jwk_client(settings.supabase_url)
         signing_key = jwk_client.get_signing_key_from_jwt(credentials.credentials)
