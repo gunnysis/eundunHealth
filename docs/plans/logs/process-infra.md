@@ -4,6 +4,16 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-02 — lessons-meta-rules (PR #68 lessons L2/L6 재발방지)
+
+- **PR**: [#71](https://github.com/gunnysis/eundunHealth/pull/71) (merged, squash `c923da7`)
+- **Why**: PR #68 작업의 7 lessons 중 자동 가드 채널 없는 2건 (L2 산수 미검증 / L6 subagent reviewer 측정 오류) 의 프로세스 룰화. infra PR (#70 — L1/L4/L5/L7) 머지 후 후속. 사용자 명시 (2026-06-02): "오늘 작업에 대해 재발방지 설계 작업". 페어 분리 D2 + 순서 D3.
+- **What**: L2 — `CLAUDE.md` 룰 9 (Design doc baseline/추정값 측정 후 결정 + 3 라벨 `MEASURED` / `DEFERRED — verify at Phase N` / `ESTIMATE-ONLY`) + `docs/plans/_templates/design.md` §6.X "추정값 → 측정 검증" 섹션 (3 라벨 표 + spec self-review controller fact-check 연계). L6 — `CLAUDE.md` 룰 10 (SDD subagent reviewer 의 측정 수치 보고 시 controller 직접 1회 verify, 정성 평가는 면제, root cause 의심 시 명령 형태 검토) + memory feedback `subagent-reviewer-fact-check.md` 신규 + `MEMORY.md` INDEX 1줄 (둘 다 git 추적 밖, 로컬 시스템).
+- **Outcome**: 4 commits (Task 1 룰 9 / Task 2 룰 10 / Task 3 design template / 페어 staging) + design + plan = 7 git tracked changes (+memory 2 파일 로컬). CI green — check-index pass 14s (본 PR 의 paths trigger = `docs/plans/**` + `_templates/design.md` 만 매칭, backend/android 비실행 정상). PR #70 의 workflow permissions 가드가 본 PR 의 docs-plans-index job 에도 적용 검증 통과 (D3 페어 순서 의도 달성).
+- **Lessons**: (postmortem — 머지 + 7일 후 작성. 룰 10 의 첫 실 적용 사례 1건 기록 예정.)
+- **Files touched**: `CLAUDE.md` (룰 9 + 룰 10, 2 commit), `docs/plans/_templates/design.md` (§6.X 신규 섹션)
+- **Follow-up**: (1) 다음 SDD 세션의 첫 reviewer 측정 수치 보고 시 controller fact-check 실 발화 + ledger postmortem 의 Lessons 섹션 사례 1건 기록 (룰 10 의 첫 적용 검증). (2) PR #68 lessons 7건 처리 완료 — infra (L1/L4/L5/L7) + meta (L2/L6) + L3 services minor fix (룰화 부적합, 제외). 본 PR 이 시리즈의 마지막.
+
 ### 2026-06-02 — lessons-infra-guards (PR #68 lessons L1/L4/L5/L7 재발방지)
 
 - **PR**: [#70](https://github.com/gunnysis/eundunHealth/pull/70) (merged, squash `799426a`)
