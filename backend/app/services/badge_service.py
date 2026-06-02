@@ -11,10 +11,13 @@ def _to_response(badge: Badge) -> BadgeResponse:
 
 
 class BadgeService:
+    """배지 조회 및 신규 수여를 담당한다. 중복 수여는 ConflictException으로 차단한다."""
+
     def __init__(self, db: AsyncSession):
         self.repo = BadgeRepository(db)
 
     async def get_badges(self, user_id: str) -> list[BadgeResponse]:
+        """사용자가 보유한 모든 배지를 획득 일시와 함께 반환한다."""
         badges = await self.repo.get_all_by_user(user_id)
         return [_to_response(b) for b in badges]
 

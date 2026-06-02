@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class AccountService:
+    """계정 삭제 흐름을 Supabase Auth + 앱 DB 두 단계로 조율한다."""
+
     def __init__(self, db: AsyncSession, settings: Settings):
         self.db = db
         self.settings = settings
@@ -21,7 +23,7 @@ class AccountService:
         self.badge_repo = BadgeRepository(db)
 
     async def delete_account(self, user_id: str) -> None:
-        """1. Supabase Auth 사용자 삭제 → 2. 앱 DB 데이터 삭제
+        """Supabase Auth 삭제 후 앱 DB 데이터를 순서대로 제거한다.
 
         Auth 먼저 삭제하면:
         - Auth 실패 시 DB 데이터 보존 → 사용자가 재로그인 가능 (안전)

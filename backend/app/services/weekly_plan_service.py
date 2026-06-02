@@ -25,10 +25,13 @@ def _to_response(plan: WeeklyPlan) -> WeeklyPlanResponse:
 
 
 class WeeklyPlanService:
+    """주간 운동 계획의 조회·생성·완료 갱신·이력 페이지네이션을 처리한다."""
+
     def __init__(self, db: AsyncSession):
         self.repo = WeeklyPlanRepository(db)
 
     async def get_plan(self, user_id: str, week_start: str) -> WeeklyPlanResponse:
+        """특정 주의 plan을 반환한다. 없으면 NotFoundException을 발생시킨다."""
         date = datetime.date.fromisoformat(week_start)
         plan = await self.repo.get_by_user_and_week(user_id, date)
         if not plan:
@@ -36,8 +39,11 @@ class WeeklyPlanService:
         return _to_response(plan)
 
     async def get_previous_plan(self, user_id: str, week_start: str) -> WeeklyPlanResponse | None:
-        """기준 주 직전(week_start 미만 중 가장 가까운) plan. 없으면 None — Android 측에서
-        '이전 주 plan 없음' = 첫 사용자 케이스로 처리하므로 404가 아닌 nullable 응답을 쓴다."""
+        """기준 주 직전(week_start 미만 중 가장 가까운) plan을 반환한다.
+
+        없으면 None — Android 측에서 '이전 주 plan 없음' = 첫 사용자 케이스로 처리하므로
+        404가 아닌 nullable 응답을 쓴다.
+        """
         date = datetime.date.fromisoformat(week_start)
         plan = await self.repo.get_previous(user_id, date)
         if not plan:
@@ -72,6 +78,7 @@ class WeeklyPlanService:
         plan.day_plans = json.dumps(days)
 
     async def get_history(self, user_id: str, page: int, size: int) -> WeeklyPlanHistoryResponse:
+        """주간 plan 이력을 페이지네이션해 반환한다. size는 최대 50으로 클램프된다."""
         size = min(size, 50)
         plans = await self.repo.get_history(user_id, page, size)
         total = await self.repo.count_by_user(user_id)

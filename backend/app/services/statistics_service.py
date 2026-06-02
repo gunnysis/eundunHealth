@@ -22,6 +22,7 @@ class StatisticsService:
         self.repo = WeeklyPlanRepository(db)
 
     async def get_statistics(self, user_id: str, weeks: int = DEFAULT_WEEKS) -> StatisticsResponse:
+        """최근 N주(최대 52) 완료율과 현재·최장 스트릭을 집계해 반환한다."""
         weeks = max(1, min(weeks, 52))
         plans = await self.repo.get_recent(user_id, weeks)
         # repo는 내림차순 → 차트는 오름차순이 자연스럽다
