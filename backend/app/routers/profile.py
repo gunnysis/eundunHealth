@@ -15,6 +15,7 @@ async def get_profile(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> UserProfileResponse:
+    """현재 인증 사용자의 프로필을 반환한다. 없으면 404."""
     return await ProfileService(db).get_profile(user_id)
 
 
@@ -24,6 +25,7 @@ async def upsert_profile(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
+    """프로필을 생성하거나 갱신한다. 변경 이력에 스냅샷을 자동 기록한다."""
     await ProfileService(db).upsert_profile(user_id, req)
     return {"status": "ok"}
 

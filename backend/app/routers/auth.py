@@ -50,6 +50,7 @@ _CONFIRM_HTML = """<!DOCTYPE html>
 
 @router.get("/.well-known/assetlinks.json", operation_id="getAssetlinks")
 def assetlinks_json() -> list[dict[str, object]]:
+    """Android App Links 검증용 assetlinks.json을 반환한다."""
     return [
         {
             "relation": ["delegate_permission/common.handle_all_urls"],
@@ -64,4 +65,5 @@ def assetlinks_json() -> list[dict[str, object]]:
 
 @router.get("/auth/confirm", operation_id="getAuthConfirmFallback", response_class=HTMLResponse)
 def confirm_fallback() -> str:
+    """앱 미설치 디바이스용 이메일 인증 완료 fallback 페이지를 반환한다."""
     return _CONFIRM_HTML
