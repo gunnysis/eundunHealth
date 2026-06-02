@@ -47,6 +47,18 @@ tags: [TBD]
 
 ## 6. 검증 계획
 
+### 6.X. 추정값 → 측정 검증 (PR #68 lesson L2 — CLAUDE.md 룰 9)
+
+Design doc 의 정량 표현마다 라벨 1개 명시 + 측정 명령 동봉:
+
+| 라벨 | 의미 | 작성 예시 |
+|---|---|---|
+| `MEASURED` | 측정 완료, 명령 + 결과 동봉 (default) | "변경 파일 14개 (MEASURED: `ls ... \| wc -l` = 14)" |
+| `DEFERRED — verify at Phase N` | 환경 부재로 보류, plan Task N 에서 검증 의무 | "Sentry 신규 issue 수 (DEFERRED — verify at Phase 5)" |
+| `ESTIMATE-ONLY` | 정량 의미 없는 추정 (e.g., "수십 건") | "후속 작업 ESTIMATE-ONLY: 수십 줄 추가 예상" |
+
+spec self-review step (controller) 가 `MEASURED` 라벨의 명령 1회 재실행 + 결과 일치 확인 (CLAUDE.md 룰 10 의 fact-check 와 연계).
+
 ## 7. 롤백 절차
 
 ## 8. 잔여 리스크
