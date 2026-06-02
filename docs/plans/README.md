@@ -9,7 +9,7 @@
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-06-02 | lessons-meta-rules | design | proposed | process, sdd, review, claude-md, lessons |
+| 2026-06-02 | lessons-meta-rules | design + plan | proposed | process, sdd, review, claude-md, lessons |
 
 ## Topic Ledgers (완료 작업 history)
 
