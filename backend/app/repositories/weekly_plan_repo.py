@@ -7,10 +7,13 @@ from app.models.weekly_plan import WeeklyPlan
 
 
 class WeeklyPlanRepository:
+    """주간 운동 plan 의 DB 접근. user_id + week_start 복합 키."""
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
     async def get_by_user_and_week(self, user_id: str, week_start: datetime.date) -> WeeklyPlan | None:
+        """UserId + weekStart 로 plan 1건 조회. v0.1 INC: userId 필터링 누락 시 다른 사용자 데이터 노출 위험."""
         result = await self.db.execute(
             select(WeeklyPlan).where(
                 and_(WeeklyPlan.user_id == user_id, WeeklyPlan.week_start == week_start)
@@ -39,6 +42,7 @@ class WeeklyPlanRepository:
         return list(result.scalars().all())
 
     async def upsert(self, user_id: str, week_start: datetime.date, day_plans: str) -> WeeklyPlan:
+        """주간 plan upsert 후 flush. id/created_at 노출을 위해 flush 필수 — service 의 _to_response 전제."""
         plan = await self.get_by_user_and_week(user_id, week_start)
         if plan:
             plan.day_plans = day_plans
@@ -50,6 +54,7 @@ class WeeklyPlanRepository:
         return plan
 
     async def get_history(self, user_id: str, page: int, size: int) -> list[WeeklyPlan]:
+        """페이지네이션 기반 plan 이력 조회. GET /weekly-plan/history 엔드포인트 전용."""
         result = await self.db.execute(
             select(WeeklyPlan)
             .where(WeeklyPlan.user_id == user_id)
@@ -60,7 +65,7 @@ class WeeklyPlanRepository:
         return list(result.scalars().all())
 
     async def count_by_user(self, user_id: str) -> int:
-        """history envelope의 total_count 필드용 — Android 페이지 인디케이터 입력."""
+        """History envelope 의 total_count 필드용 — Android 페이지 인디케이터 입력."""
         result = await self.db.execute(
             select(func.count())
             .select_from(WeeklyPlan)
@@ -69,4 +74,5 @@ class WeeklyPlanRepository:
         return int(result.scalar_one())
 
     async def delete_all_by_user(self, user_id: str) -> None:
+        """회원 탈퇴 시 사용자의 전체 주간 plan 삭제."""
         await self.db.execute(delete(WeeklyPlan).where(WeeklyPlan.user_id == user_id))
