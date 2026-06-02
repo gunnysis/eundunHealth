@@ -40,6 +40,20 @@ az containerapp env list -g apps -o tsv
 
 신규 리소스 발견 시 SSoT (`docs/conventions/naming.md` §5) 체크리스트 적용 + 후속 chore PR 으로 process-infra.md 의 audit entry 보강.
 
+### 4.1 Azure portal auto-generated 명 탐지 (PR #68 lesson L7)
+
+`az resource list -g apps` 결과에서 아래 패턴 매칭 시 "확인 필요" 경고 (rename 불가 + 신규 deploy 시 명시 권장):
+
+| 패턴 | Azure 리소스 | 학습 사례 |
+|---|---|---|
+| `workspace-.*` | Log Analytics workspace (Container Apps env 생성 시 portal 자동 생성) | PR #68 `workspace-appsDOlM` |
+| `defaultkv-.*` | (예시 — 발견 시 추가) | — |
+| `defaultstor-.*` | (예시 — 발견 시 추가) | — |
+
+매칭 시 보고에 1줄 동봉: "신규 Container Apps env 생성 시 `--logs-workspace-id <id>` 또는 ARM/azd template 에 명시 권장 (rename 불가)".
+
+미래 신규 auto-gen 패턴 발견 시 본 표에 1행 추가 + SSoT (`docs/conventions/naming.md` §5) 의 체크리스트 갱신.
+
 ### 5. 결과 보고
 - 1~3 의 위반 개수 표로 정리.
 - 4 의 drift (신규/누락 리소스) list.

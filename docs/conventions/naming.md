@@ -56,6 +56,7 @@
 - [ ] ACR/Storage 처럼 alphanumeric only 리소스는 하이픈 제거 + 압축형
 - [ ] Azure portal 자동 생성 이름 (예: `workspace-*`) 그대로 두지 말고 deploy 시 명시
 - [ ] 머지 후 `/naming-audit` 1회 실행 → `docs/plans/logs/process-infra.md` 의 최신 audit entry 또는 신규 entry 에 1행 추가
+- [ ] Container Apps environment 생성 시 `--logs-workspace-id <id>` 명시 (auto-gen `workspace-*` suffix 회피 — PR #68 lesson L7, `workspace-appsDOlM` 사례)
 
 ## 6. 참고
 
