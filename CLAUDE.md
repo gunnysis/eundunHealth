@@ -244,6 +244,28 @@ Auth (signup / login / forgot-password) + 기타 사용자 액션 결과의 실�
 
 **예외**: 비-critical 일회성 알림 (e.g., 성공 toast "저장됐습니다") 은 Snackbar 그대로 OK. 룰의 대상 = "사용자 액션이 실패했고, 사용자 후속 액션이 필요한 경우".
 
+### 룰 9 — Design doc 의 baseline / 추정값은 측정 후 결정 (PR #68 lesson L2)
+Design 또는 plan 작성 시 "약 N건", "~M 파일" 같은 정량 표현은 **측정 명령으로 확정 후 기록**. 추정 후 측정하면 chain 전체 drift (예: PR #68 — D415 2건이 모두 `main.py` ignore 안에 있어 실제 작성 대상 63 → 59, plan task scope 가 drift).
+
+**체크리스트**:
+1. Design doc 의 정량 표현마다 측정 명령 1줄 동봉 (e.g., `grep -c ... | wc -l` 결과 = N).
+2. 측정 환경 부재 시 3 라벨 명시 — `MEASURED` / `DEFERRED — verify at Phase N` / `ESTIMATE-ONLY` (`_templates/design.md` 참조).
+3. spec self-review step 에서 controller 가 측정값 1회 재확인 — drift 시 fix.
+
+**예외**: 정성 표현 (e.g., "복잡한 case", "trivial fix") 은 본 룰 비대상.
+
+### 룰 10 — Subagent reviewer 의 측정 결과는 controller 가 직접 fact-check (PR #68 lesson L6)
+SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality reviewer 가 **측정 수치** (lint 위반 수, 테스트 수, 커버리지 등) 보고 시 controller 가 같은 명령 1회 실행 + 결과 일치 확인. 불일치 시 reviewer 의 명령 형태 (e.g., 룰 9 의 측정 명령 함정, ruff `--select` 함정 [[ruff-select-flag-pitfall]]) 의심.
+
+**Trigger 좁히기**:
+- 측정 수치 보고 시 → fact-check 필수
+- 정성 평가 (e.g., "코드 깔끔", "스타일 OK") → fact-check 면제 (verify 비용 > 효용)
+- 일반 Agent tool (Explore / general-purpose) 호출 결과 → 측정 수치 보고 시만
+
+**사례**: PR #68 Task 3 spec reviewer 가 D107 위반 85건 보고 → controller 가 직접 측정 = 32건. D107 글로벌 ignore 누락 (룰 9 + ruff `--select` 함정). controller 재측정 + plan fix.
+
+**예외**: SDD 외 일반 대화의 답변, code-explorer 의 발견 사항 등은 비대상 (별도 verify 룰).
+
 ### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.8`)
 1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?
 2. `--yes`/`--no-confirm` 플래그가 무엇을 묵시적으로 동의하는가?
