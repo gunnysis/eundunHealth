@@ -44,4 +44,20 @@ if [ -n "$CHANGED_PLANS" ]; then
     git add "$REPO_ROOT/docs/plans/README.md"
 fi
 
+# ---------- 3) Backend Python ----------
+CHANGED_PY=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '^backend/.*\.py$' || true)
+
+if [ -n "$CHANGED_PY" ]; then
+    echo "[pre-commit] backend/*.py changes detected → ruff check"
+    cd "$REPO_ROOT/backend"
+
+    # venv ruff 우선, 없으면 PATH ruff fallback (CI 와 동일 룰셋, pyproject 자동 로딩)
+    RUFF=".venv/Scripts/ruff.exe"
+    [ -x "$RUFF" ] || RUFF="ruff"
+
+    # 변경된 파일만 검사 (전체 app/ 스캔보다 빠름, file-local 룰만 적용되므로 충분)
+    echo "$CHANGED_PY" | sed 's|^backend/||' | xargs "$RUFF" check
+fi
+
 exit 0
