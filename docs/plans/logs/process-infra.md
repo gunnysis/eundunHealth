@@ -4,6 +4,21 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-02 — naming convention audit + PEP 257 enforce + automation infra
+
+- **PR**: [#68](https://github.com/gunnysis/eundunHealth/pull/68) (merged, squash `a47515c`)
+- **Why**: 5종 공식 명명/문서화 가이드 (JetBrains Kotlin / Google Android Style / PEP 8/257/484/526 / Microsoft CAF) 대비 코드+인프라 준수도 audit + PEP 257 docstring gap 해소 + 신규 코드/리소스 추가 시점에 자동 점검되는 인프라 보강. 사용자 3축 의도 (role 적용 / `.claude/` 활용 / 추후 효율성) 의 통합 해소.
+- **What**: ruff `D` rule + `convention="pep257"` + per-file-ignore (`tests`/`alembic`/`main.py`/`schemas` D101/`models` D101, alembic 의 UP/I 보일러플레이트도 ignore) / backend public API 59건 docstring 추가 + 5건 minor fix (D205/D400/D209/D403) / `.githooks/pre-commit` 의 backend `.py` 분기 / `.github/pull_request_template.md` 의 ruff/mypy + Azure CAF 신규 리소스 체크리스트 / `.claude/commands/naming-audit.md` slash command (`verify-deploy.md` 패턴) / `scripts/prompts/api-endpoint.md` Ktor legacy → FastAPI+openapi-generator+PEP 257 전면 재작성 / `docs/conventions/naming.md` SSoT (5종 가이드 요약 + D1~D10 결정 + 신규 코드/리소스 체크리스트) + CLAUDE.md 의 SSoT link 2줄 / Phase 5 cutover 후 첫 backend-touching PR 에서 발견된 `backend.yml` security job `pull-requests: read` permission 추가.
+- **Outcome**: 15 commits, 40 files, +2140/-89 LOC. ruff `app/ tests/ alembic/` All checks passed + mypy strict + pytest 44 passed (83% coverage) + docker compose smoke green (`/health` 200 + alembic head + Uvicorn running). 자동화 인프라 5종 모두 작동 검증 — pre-commit hook 차단 / slash command 즉시 등록 / api-endpoint.md legacy 0건 / SSoT link 자동 컨텍스트 로딩. 인프라 변경 0 (Container Apps deploy 무관, versionCode 미증가).
+- **Lessons**:
+  - **ruff `--select D` 함정**: CLI flag 가 pyproject 의 ignore list 를 override → D2 결정 (D100/D104 글로벌 ignore) 위반 위험. Task 2 implementer 가 7건 잘못된 module/package docstring 추가 → spec reviewer 발견 → fix. 후속 Task 들의 measurement 명령을 `--select D101,D102,D103` 명시로 정정. **신규 lint task 작성 시 항상 config-driven (`ruff check --statistics <path>`) 또는 명시적 룰 list 사용**.
+  - **D415 = 0 발견**: 80건 baseline 의 D415 2건이 모두 `main.py` 안 (D 전체 ignore) → 실제 작성 대상 63 → 59. 산수 검증 없이 baseline 추정하면 chain 전체 drift. **위반 분포는 측정 후 결정, 추정 후 측정 X**.
+  - **services 의 부수 minor fix**: Task 3 implementer 가 services 안 기존 docstring 의 D205/D209/D400 3건 동시 fix (Task 5 scope 와 overlap). net positive — 같은 commit 묶음이 review 단위로 자연스러움. Plan 의 task scope 가 작성 대상만 명시했지만 작업 중 발견된 동종 fix 는 묶는 게 효율적.
+  - **alembic UP/I 미예상**: `alembic/**` per-file-ignore 를 `["D"]` 만으로 했더니 alembic init 보일러플레이트의 UP007/UP035/I001 16건이 다음 alembic migration commit 차단 risk. final reviewer 발견 → `["D", "UP", "I"]` 확장. **auto-generated 디렉토리 ignore 는 D 외 lint 룰도 모두 포함 검토 필요**.
+  - **gitleaks-action permission**: `backend.yml` security job 이 default GITHUB_TOKEN 으로 `GET /pulls/{n}/commits` 시 403 "Resource not accessible by integration". 명시 `permissions: pull-requests: read, contents: read` 필요. Phase 5 Ktor→FastAPI cutover 이후 backend-touching PR (Android/docs only 가 아닌) 가 본 PR 이 첫 케이스라 늦게 발견. **워크플로 job 단위 permission 은 명시 default 가 안전**.
+  - **subagent spec reviewer 측정 오류 (Task 3)**: implementer 측정이 정확했고 spec reviewer 가 잘못된 옵션 (`--select D107` 같은) 으로 false report. controller 가 직접 verify 로 해결. **reviewer 도 fact-check 대상**.
+- **Files touched**: `backend/pyproject.toml`, `backend/app/{routers,services,repositories,exceptions,config,database,dependencies}/*.py` (~20 .py files), `backend/openapi.json`, `backend/app/schemas/base.py`, `.githooks/pre-commit`, `.github/pull_request_template.md`, `.github/workflows/backend.yml`, `.claude/commands/naming-audit.md`, `scripts/prompts/api-endpoint.md`, `docs/conventions/naming.md` (신규), `CLAUDE.md`
+
 ### 2026-05-29 — plans-ledger-restructure (hybrid 구조 도입)
 
 - **PR**: [#57](https://github.com/gunnysis/eundunHealth/pull/NN) (shipped, **supersedes** [#48 plans-folder-maintenance](https://github.com/gunnysis/eundunHealth/pull/48))
