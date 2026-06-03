@@ -4,6 +4,38 @@
 
 ---
 
+## [main] — 2026-06-03 — Azure Monitor Alerts 프로비저닝 (P1+P2)
+
+### 🎯 Prompts
+1. "Implement the following plan: Azure Monitor Alerts (P1+P2) 설계 및 적용"
+2. "push it"
+3. "firewall alert 이메일 왔는지 확인해봐"
+
+### ✅ Changes
+- **Added**: `scripts/setup-azure-alerts.sh` — idempotent Azure CLI 스크립트 (`--dry-run`, `--delete`, `--help`). MSYS path conversion 방지 포함
+  - Action Group `ag-eundunhealth-prod` (email → `qkr133456@gmail.com`)
+  - P1 Activity Log alerts 3개: ServiceHealth, ResourceHealth, Deletion (무료)
+  - P2 Metric alerts 4개: PG CPU/Storage/Connections, CA 5xx (~$0.40/월)
+  - P2 Activity Log alert 1개: PG Firewall 변경 (무료)
+- **Added**: `docs/plans/2026-06-03-azure-monitor-alerts-design.md` — 설계 문서 (D1~D8 의사결정, 옵션 비교, 검증 계획, 롤백 절차)
+- **Modified**: `docs/ops/monitoring-and-cost.md` — §7 Alert 섹션 신설, §4 비용 갱신 (+~700원), §5 체크리스트에 alert 확인 항목 추가
+- **Modified**: `docs/ops/operations-snapshot.md` — §12 Alert 인벤토리 신설 (8개 alert 테이블), §9 비용 갱신, §13 변경 이력 추가
+
+### 📊 Verification
+- 스크립트 실행 결과: metric alert 4개 + activity log alert 4개 = 총 8개 정상 생성
+- PG Firewall alert 실측 테스트: temp rule 생성/삭제 → email 3통 수신 확인 (Gmail MCP 검증)
+- Action Group 파이프라인 end-to-end 정상 동작
+
+### 📁 Files Modified
+- `scripts/setup-azure-alerts.sh` (+385 lines, new)
+- `docs/plans/2026-06-03-azure-monitor-alerts-design.md` (+149 lines, new)
+- `docs/ops/monitoring-and-cost.md` (+65, -2 lines)
+- `docs/ops/operations-snapshot.md` (+33, -2 lines)
+- `docs/plans/README.md` (+4, -2 lines, auto-generated)
+- `docs/CHANGELOG.md` (this entry)
+
+---
+
 ## [main] — 2026-06-03 — PowerShell 7.6 LTS 전환 + atomic commit 워크플로우
 
 ### 🎯 Prompts
