@@ -4,27 +4,30 @@
 
 ---
 
-## [main] — 2026-06-03
+## [main] — 2026-06-03 — PowerShell 7.6 LTS 전환 + atomic commit 워크플로우
 
 ### 🎯 Prompts
 1. "Implement the following plan: PowerShell 7 전환: 프로젝트 설정 적용 설계"
-2. "commit this"
-3. "push it"
+2. "지금까지 한 두 커밋 squash 해줘" → main force push 불가 확인 → 추천 방식 연구 요청
+3. "atomic commit 워크플로우: changelog amend 패턴 설계" (plan → 구현)
 
 ### ✅ Changes
-- **Modified**: CLAUDE.md PowerShell 섹션을 7.6 LTS 기준으로 리팩토링 (`CLAUDE.md:276-318`)
+- **Modified**: CLAUDE.md PowerShell 섹션을 7.6 LTS 기준으로 리팩토링 (`CLAUDE.md:283-325`)
   - 버전 명시: "PowerShell 7(`pwsh`)" → "**PowerShell 7.6 LTS** (`pwsh.exe`, .NET 10)"
-  - `pwsh.exe` vs `powershell.exe` 실행 파일 구분 추가
-  - UTF-8 NoBOM 인코딩 기본값 명시 (5.1 ASCII 와 차이, 한국어 안전)
-  - `ConciseView` 에러 표시 기본값 + `Get-Error` 안내
-  - Profile 경로 (`~\Documents\PowerShell\` vs `WindowsPowerShell`) 추가
-  - `&&` 행에서 5.1 비교 제거, "pwsh 7+ 네이티브 지원"으로 변경
-  - 7.x 신규 연산자 표 추가 (ternary, `??`, `??=`, null-conditional, `-Parallel`)
-  - WMI cmdlet 제거 사항 추가 (`Get-WmiObject` → `Get-CimInstance`)
-- **Modified**: 자동화 스크립트 섹션에 bash 유지 사유 추가 (`CLAUDE.md:338`)
+  - `pwsh.exe` vs `powershell.exe` 실행 파일 구분, UTF-8 인코딩, ConciseView, Profile 경로
+  - 7.x 신규 연산자 표 (ternary, `??`, `??=`, null-conditional, `-Parallel`)
+  - WMI cmdlet 제거 (`Get-WmiObject` → `Get-CimInstance`)
+- **Modified**: 자동화 스크립트 섹션에 bash 유지 사유 추가 (`CLAUDE.md:345`)
+- **Added**: Commit / Push 워크플로우 컨벤션 (`CLAUDE.md:276-281`)
+  - main 직접 작업 시 changelog 포함 후 1회 push, amend 패턴, fallback squash
+- **Added**: `/changelog` 스킬 amend 패턴 전환 (`.claude/skills/changelog/SKILL.md`)
+  - push 상태 판별 (`@{push}..HEAD`) → 미push 시 amend 기본, push 후 별도 커밋
+  - `docs/CHANGELOG.md` 경로 수정, 프로젝트 맞춤 템플릿, 불필요 Helper Script 섹션 제거
 
 ### 📁 Files Modified
-- `CLAUDE.md` (+23, -3 lines)
+- `CLAUDE.md` (+30, -3 lines)
+- `.claude/skills/changelog/SKILL.md` (+280 lines, new)
+- `docs/CHANGELOG.md` (this entry)
 
 ---
 
