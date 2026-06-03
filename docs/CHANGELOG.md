@@ -10,6 +10,7 @@
 1. "Implement the following plan: Azure Monitor Alerts (P1+P2) 설계 및 적용"
 2. "push it"
 3. "firewall alert 이메일 왔는지 확인해봐"
+4. "CLAUDE.md에 setup-azure-alerts.sh 추가해줘"
 
 ### ✅ Changes
 - **Added**: `scripts/setup-azure-alerts.sh` — idempotent Azure CLI 스크립트 (`--dry-run`, `--delete`, `--help`). MSYS path conversion 방지 포함
@@ -20,6 +21,7 @@
 - **Added**: `docs/plans/2026-06-03-azure-monitor-alerts-design.md` — 설계 문서 (D1~D8 의사결정, 옵션 비교, 검증 계획, 롤백 절차)
 - **Modified**: `docs/ops/monitoring-and-cost.md` — §7 Alert 섹션 신설, §4 비용 갱신 (+~700원), §5 체크리스트에 alert 확인 항목 추가
 - **Modified**: `docs/ops/operations-snapshot.md` — §12 Alert 인벤토리 신설 (8개 alert 테이블), §9 비용 갱신, §13 변경 이력 추가
+- **Modified**: `CLAUDE.md` — 자동화 스크립트 섹션에 `setup-azure-alerts.sh` 항목 추가
 
 ### 📊 Verification
 - 스크립트 실행 결과: metric alert 4개 + activity log alert 4개 = 총 8개 정상 생성
@@ -32,6 +34,7 @@
 - `docs/ops/monitoring-and-cost.md` (+65, -2 lines)
 - `docs/ops/operations-snapshot.md` (+33, -2 lines)
 - `docs/plans/README.md` (+4, -2 lines, auto-generated)
+- `CLAUDE.md` (+1 line)
 - `docs/CHANGELOG.md` (this entry)
 
 ---
