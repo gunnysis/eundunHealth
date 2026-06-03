@@ -273,6 +273,13 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 4. 롤백 경로(이미지 캐시, git 백업, DB PITR)는?
 5. 실패 시 Sentry/Health Check로 즉시 인지 가능한가?
 
+### Commit / Push 워크플로우
+- main 직접 작업 시: 모든 부수 변경 (changelog, docs 갱신) 을 포함한 뒤 **1회 push**.
+- `/changelog` 는 push 전에 실행 → `git commit --amend --no-edit` 로 직전 커밋에 합침.
+- 이미 push 한 뒤 changelog 를 뒤늦게 추가하면 별도 커밋이 된다 (main force push 금지).
+- Fallback: 여러 커밋이 쌓였으면 push 전 `git rebase -i HEAD~N` 으로 squash 가능.
+- PR 워크플로우 (feature branch) 에서는 GitHub squash merge 로 자연 해결.
+
 ## PowerShell / Windows 11 환경 빠른 참조
 
 이 저장소의 개발 호스트는 Windows 11 Pro + **PowerShell 7.6 LTS** (`pwsh.exe`, .NET 10). `~/.claude/settings.json`에 `CLAUDE_CODE_USE_POWERSHELL_TOOL=1`, `defaultShell=powershell`, `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`이 등록되어 있어 Claude는 **PowerShell tool**을 primary shell로 사용하고 input-box `!`도 PowerShell로 라우팅된다. `defaultShell=powershell`이면 Claude Code가 `pwsh.exe` (7.x)를 자동 감지하여 사용한다. Bash tool은 POSIX 스크립트(`scripts/*.sh`)용으로 보조.
