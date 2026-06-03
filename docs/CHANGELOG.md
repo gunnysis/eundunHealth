@@ -4,6 +4,30 @@
 
 ---
 
+## [main] — 2026-06-03
+
+### 🎯 Prompts
+1. "Implement the following plan: PowerShell 7 전환: 프로젝트 설정 적용 설계"
+2. "commit this"
+3. "push it"
+
+### ✅ Changes
+- **Modified**: CLAUDE.md PowerShell 섹션을 7.6 LTS 기준으로 리팩토링 (`CLAUDE.md:276-318`)
+  - 버전 명시: "PowerShell 7(`pwsh`)" → "**PowerShell 7.6 LTS** (`pwsh.exe`, .NET 10)"
+  - `pwsh.exe` vs `powershell.exe` 실행 파일 구분 추가
+  - UTF-8 NoBOM 인코딩 기본값 명시 (5.1 ASCII 와 차이, 한국어 안전)
+  - `ConciseView` 에러 표시 기본값 + `Get-Error` 안내
+  - Profile 경로 (`~\Documents\PowerShell\` vs `WindowsPowerShell`) 추가
+  - `&&` 행에서 5.1 비교 제거, "pwsh 7+ 네이티브 지원"으로 변경
+  - 7.x 신규 연산자 표 추가 (ternary, `??`, `??=`, null-conditional, `-Parallel`)
+  - WMI cmdlet 제거 사항 추가 (`Get-WmiObject` → `Get-CimInstance`)
+- **Modified**: 자동화 스크립트 섹션에 bash 유지 사유 추가 (`CLAUDE.md:338`)
+
+### 📁 Files Modified
+- `CLAUDE.md` (+23, -3 lines)
+
+---
+
 ## v0.1.7 — 2026-05-30 (versionCode 21) — LoginScreen + ForgotPasswordScreen 룰 8 적용
 
 ### Changed
