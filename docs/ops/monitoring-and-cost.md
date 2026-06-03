@@ -131,9 +131,10 @@ az consumption budget create \
 | Container Apps (Min replicas 0, Scale to Zero) | ~0원 (무료 할당량) |
 | Container Registry Basic | ~7,000원 |
 | PostgreSQL Flexible B1ms + 32GB | ~30,000원 |
-| **합계** | **~37,000원** |
+| Azure Monitor Alerts (metric 4개) | ~550-700원 |
+| **합계** | **~37,700원** |
 
-70,000원 budget 알림은 약 2배 buffer.
+70,000원 budget 알림은 약 1.9배 buffer. Monitor Alert 비용 = metric alert 4개 × ~$0.10/월. Activity Log alert 4개는 무료.
 
 ## 5. 운영 점검 체크리스트 (월 1회)
 
@@ -142,6 +143,7 @@ az consumption budget create \
 - [ ] Container App revision 수 정리: `az containerapp revision list --name eundunhealth-api -o table` → 활성 외 inactive revision 정리
 - [ ] PostgreSQL slow query 확인: Azure Portal → Insights
 - [ ] 월간 비용 actual vs budget 비교
+- [ ] Azure Monitor alert 확인: `az monitor metrics alert list -g apps -o table` + `az monitor activity-log alert list -g apps -o table` (8개 enabled)
 - [ ] (분기별) GitHub Actions `AZURE_CREDENTIALS` service principal 만료 점검 — `az ad sp credential list --id <clientId> --query "[].endDate"`. 만료 6개월 전이면 갱신 (`az ad sp credential reset` + `gh secret set`). 참고: `docs/ops/incident-log.md` INC-17.
 
 ## 6. Destructive 명령 안전 패턴
@@ -254,3 +256,62 @@ pwsh -File scripts\register-azure-credentials.ps1 -Verify
 3. **연쇄 영향이 있는가?** (manifest 공유, secretref 연결, firewall rule 의존성)
 4. **롤백 경로가 있는가?** (이미지 캐시·git 백업·DB PITR)
 5. **에러 시 대비책이 있는가?** Sentry/Health Check로 즉시 인지 가능?
+
+## 7. Azure Monitor Alerts
+
+> 설계 문서: `docs/plans/2026-06-03-azure-monitor-alerts-design.md`
+> 프로비저닝 스크립트: `scripts/setup-azure-alerts.sh`
+
+### 7.1 Action Group
+
+| 항목 | 값 |
+|------|---|
+| Name | `ag-eundunhealth-prod` |
+| Short name | `ag-eundun` (12자 제한) |
+| Notification | Email → `qkr133456@gmail.com` |
+
+### 7.2 Alert 인벤토리
+
+**P1 — Activity Log (무료)**
+
+| Alert | 유형 | 조건 | Severity |
+|---|---|---|---|
+| `alert-servicehealth-eundunhealth-prod` | ServiceHealth | Korea Central + Container Apps / PostgreSQL 서비스 장애/유지보수 | Sev3 |
+| `alert-resourcehealth-eundunhealth-prod` | ResourceHealth | `eundunhealth-api` 또는 `healthapp` Degraded/Unavailable | Sev1 |
+| `alert-deletion-eundunhealth-prod` | Administrative | RG `apps` 내 리소스 삭제 이벤트 | Sev1 |
+
+**P2 — Metric (~550-700원/월)**
+
+| Alert | Metric | 조건 | Sev | Eval | Window |
+|---|---|---|---|---|---|
+| `alert-psql-cpu-eundunhealth-prod` | `cpu_percent` | avg > 80% | Sev2 | 1m | 5m |
+| `alert-psql-storage-eundunhealth-prod` | `storage_percent` | avg > 80% | Sev1 | 5m | 15m |
+| `alert-psql-connections-eundunhealth-prod` | `active_connections` | avg > 20 | Sev2 | 1m | 5m |
+| `alert-ca-5xx-eundunhealth-prod` | `Requests` (5xx) | total > 3 | Sev1 | 1m | 5m |
+
+**P2 — Activity Log (무료)**
+
+| Alert | 조건 | Severity |
+|---|---|---|
+| `alert-psql-firewall-eundunhealth-prod` | PostgreSQL firewall rule 변경 (write) | Sev3 |
+
+### 7.3 관리
+
+```bash
+# 전체 재생성 (idempotent)
+bash scripts/setup-azure-alerts.sh
+
+# dry-run (명령 출력만)
+bash scripts/setup-azure-alerts.sh --dry-run
+
+# 전체 삭제 (롤백)
+bash scripts/setup-azure-alerts.sh --delete
+
+# 상태 확인
+az monitor metrics alert list -g apps --query "[?starts_with(name,'alert-')].{name:name,enabled:enabled}" -o table
+az monitor activity-log alert list -g apps --query "[?starts_with(name,'alert-')].{name:name,enabled:enabled}" -o table
+```
+
+### 7.4 비용
+
+Metric alert 4개 × ~$0.10/월 = ~$0.40/월 (~550-700원). Activity Log alert 4개는 무료. 현 37,000원 대비 1.9% 증가.

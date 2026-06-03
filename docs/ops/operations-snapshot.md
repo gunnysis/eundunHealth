@@ -178,9 +178,10 @@ GitHub Actions:
 | Container Apps (Min 0) | ~0원 | scale-to-zero, 무료 할당량 |
 | Container Registry Basic | ~7,000원 | 10GB 한도 |
 | PostgreSQL Flexible B1ms + 32GB | ~30,000원 | |
+| Azure Monitor Alerts (metric 4) | ~550-700원 | Activity Log 4개 무료 |
 | Sentry | 0원 | 무료 plan (10K events/mo) |
 | Supabase | 0원 | 무료 plan |
-| **합계** | **~37,000원** | budget 70,000원(2배 buffer) 설정 권장 |
+| **합계** | **~37,700원** | budget 70,000원(1.9배 buffer) 설정 |
 
 ---
 
@@ -257,9 +258,37 @@ Claude Code MCP 서버 4종 운영 활용:
 
 ---
 
-## 12. 변경 이력
+## 12. Azure Monitor Alerts
+
+> 프로비저닝: `bash scripts/setup-azure-alerts.sh` (idempotent)
+> 롤백: `bash scripts/setup-azure-alerts.sh --delete`
+> 설계: `docs/plans/2026-06-03-azure-monitor-alerts-design.md`
+
+### Action Group
+
+`ag-eundunhealth-prod` → Email `qkr133456@gmail.com`
+
+### Alert 인벤토리 (총 8개)
+
+| Name | Type | Severity | Enabled |
+|---|---|---|---|
+| `alert-servicehealth-eundunhealth-prod` | Activity Log (ServiceHealth) | Sev3 | True |
+| `alert-resourcehealth-eundunhealth-prod` | Activity Log (ResourceHealth) | Sev1 | True |
+| `alert-deletion-eundunhealth-prod` | Activity Log (Administrative) | Sev1 | True |
+| `alert-psql-firewall-eundunhealth-prod` | Activity Log (Administrative) | Sev3 | True |
+| `alert-psql-cpu-eundunhealth-prod` | Metric (cpu_percent avg > 80%) | Sev2 | True |
+| `alert-psql-storage-eundunhealth-prod` | Metric (storage_percent avg > 80%) | Sev1 | True |
+| `alert-psql-connections-eundunhealth-prod` | Metric (active_connections avg > 20) | Sev2 | True |
+| `alert-ca-5xx-eundunhealth-prod` | Metric (Requests 5xx total > 3) | Sev1 | True |
+
+비용: metric 4개 × ~$0.10/월 = ~$0.40/월 (~550-700원). Activity Log 4개 무료.
+
+---
+
+## 13. 변경 이력
 
 | 날짜 | 변경 |
 |------|------|
 | 2026-05-25 | 초안 작성. v0.1.0 출시 직전 상태 |
 | 2026-05-25 (자동 배포) | INC-17·18 해결 + GitHub Actions 자동 배포 end-to-end 정상 동작. revision `0000007` 활성. secret `supabase-url` 추가(총 5개). backend.yml에 secret precheck step + workflow_dispatch trigger 추가. `scripts/register-azure-credentials.ps1` 신규. PR #15·#16·#17 머지 |
+| 2026-06-03 | Azure Monitor Alerts 프로비저닝. Action Group `ag-eundunhealth-prod` + Activity Log alert 4개 (ServiceHealth/ResourceHealth/Deletion/PG Firewall) + Metric alert 4개 (PG CPU/Storage/Connections + CA 5xx). §12 신설. `scripts/setup-azure-alerts.sh` 신규 |
