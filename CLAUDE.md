@@ -275,12 +275,20 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 
 ## PowerShell / Windows 11 환경 빠른 참조
 
-이 저장소의 개발 호스트는 Windows 11 Pro + PowerShell 7(`pwsh`). `~/.claude/settings.json`에 `CLAUDE_CODE_USE_POWERSHELL_TOOL=1`, `defaultShell=powershell`, `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`이 등록되어 있어 Claude는 **PowerShell tool**을 primary shell로 사용하고 input-box `!`도 PowerShell로 라우팅된다. Bash tool은 POSIX 스크립트(`scripts/*.sh`)용으로 보조.
+이 저장소의 개발 호스트는 Windows 11 Pro + **PowerShell 7.6 LTS** (`pwsh.exe`, .NET 10). `~/.claude/settings.json`에 `CLAUDE_CODE_USE_POWERSHELL_TOOL=1`, `defaultShell=powershell`, `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`이 등록되어 있어 Claude는 **PowerShell tool**을 primary shell로 사용하고 input-box `!`도 PowerShell로 라우팅된다. `defaultShell=powershell`이면 Claude Code가 `pwsh.exe` (7.x)를 자동 감지하여 사용한다. Bash tool은 POSIX 스크립트(`scripts/*.sh`)용으로 보조.
+
+> **실행 파일 구분**: `pwsh.exe` = PowerShell 7.x (Core), `powershell.exe` = 5.1 (Desktop, side-by-side 설치됨). 본 프로젝트는 `pwsh` 전용.
+
+**인코딩**: `$OutputEncoding` = UTF-8 NoBOM (7.x 기본). 5.1은 US-ASCII 였으므로 한국어 파이프라인 출력이 깨질 수 있었으나 7.x에서 해소.
+
+**에러 표시**: `$ErrorView = 'ConciseView'` (7.x 기본) — 짧은 에러 메시지. 풀 stacktrace는 `Get-Error`.
+
+**Profile 경로**: `~\Documents\PowerShell\` (7.x) vs `~\Documents\WindowsPowerShell\` (5.1). 현재 7.x 프로파일 미생성 (기본값 사용).
 
 **README/runbook의 bash 1-liner를 PowerShell로 옮길 때 자주 어긋나는 곳:**
 | Bash | PowerShell 7 |
 |---|---|
-| `cmd1 && cmd2` | `cmd1 && cmd2` (pwsh 7+는 그대로 OK, 5.1 X) |
+| `cmd1 && cmd2` | `cmd1 && cmd2` (pwsh 7+ 네이티브 지원) |
 | `cmd > /dev/null 2>&1` | `cmd *> $null` |
 | `cmd1 \| head -20` | `cmd1 \| Select-Object -First 20` |
 | `cat x.json \| jq .` | `Get-Content x.json -Raw \| ConvertFrom-Json` (또는 `jq`도 그대로 사용) |
@@ -289,10 +297,20 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 | `grep -r foo .` | Grep tool (NOT `Select-String -Recurse`) |
 | `rm -rf path` | `Remove-Item -Recurse -Force path` (ACR 정리는 **룰 1 — untag**) |
 
-**자주 깨지는 syntax 3개:**
+**7.x 신규 연산자 (5.1에 없음):**
+| 구문 | 예시 |
+|---|---|
+| 삼항 연산자 | `$count -gt 0 ? 'yes' : 'no'` |
+| Null-coalescing `??` | `$env:PORT ?? '8080'` |
+| Null-coalescing 대입 `??=` | `$x ??= 'default'` |
+| Null-conditional `?.` | `${obj}?.Property` (Bash 경유 시 변수 확장 문제 — pwsh 직접 사용) |
+| `ForEach-Object -Parallel` | `1..10 \| ForEach-Object -Parallel { $_ * 2 } -ThrottleLimit 4` |
+
+**자주 깨지는 syntax:**
 - here-string 닫는 `'@`는 **column 0 (들여쓰기 0)** 이어야 함. 안 그러면 parse error.
 - `-ErrorAction SilentlyContinue`는 출력만 죽이고 exit code는 1. 진짜 무시하려면 `try { Cmdlet ... -ErrorAction Stop } catch {}`.
 - `$PSVersionTable.PSVersion` 같은 변수 표현은 Bash tool로 보내면 `.PSVersion...`으로 잘려 파싱 에러 — 반드시 PowerShell tool 사용.
+- `Get-WmiObject` 등 WMI cmdlet은 7.x에서 **제거**됨 → `Get-CimInstance` 등 CIM cmdlet 사용.
 
 **권한 동작 (`~/.claude/settings.json` 기준):**
 - `Get-*`, `Test-Path`, `Select-String`, `git status/log/diff`, `gh pr view/list`, `docker ps`, `az containerapp show/logs`, `./gradlew *`, `adb devices`는 prompt 없이 통과.
@@ -317,6 +335,8 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 - `@docs/conventions/naming.md` — 명명/문서화 SSoT (5종 공식 가이드 + 본 프로젝트 결정 D1~D10)
 
 ### 자동화 스크립트 (`scripts/`)
+> `.sh` 스크립트는 CI (GitHub Actions) 호환성 위해 bash 유지. 로컬에서는 Git Bash로 실행.
+
 - `scripts/preflight-release.sh` — Spotless + Detekt + Tests + releaseArtifacts 일괄 (INC-04 방지)
 - `scripts/alembic-autogen.sh` — postgres:16-alpine 컨테이너 기반 autogenerate (INC-07 방지)
 - `scripts/sync-openapi.sh` — FastAPI 스펙을 `backend/openapi.json`으로 추출. 라우터/스키마 변경 시 필수 실행 + 같은 PR에 커밋. backend.yml의 drift detection step이 미커밋을 fast-fail로 차단.
