@@ -81,7 +81,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleAuthDeepLink(intent: Intent?) {
-        val uri = intent?.data ?: return
+        val uri = intent?.data
+            ?: return
         if (uri == consumedDeepLinkUri) return
         consumedDeepLinkUri = uri
 

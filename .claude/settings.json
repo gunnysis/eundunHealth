@@ -1,7 +1,6 @@
 {
   "enabledPlugins": {
-    "kotlin-lsp@claude-plugins-official": true,
-    "vtsls@claude-code-lsps": true
+    "kotlin-lsp@claude-plugins-official": true
   },
   "hooks": {
     "PreToolUse": [

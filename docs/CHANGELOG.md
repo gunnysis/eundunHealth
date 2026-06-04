@@ -4,6 +4,39 @@
 
 ---
 
+## [main] — 2026-06-04 — Android 프론트엔드 분석 + Plugin 에러 해결
+
+### 🎯 Prompts
+1. "`https://developer.android.com/develop/ui/compose/performance` 문서 분석하여 프로젝트에 적용 검토 후 memory에 작업해줘."
+2. "아래 내용으로 프로젝트 설계 검토 작업해줘 [Clean Architecture + MVI + Multi-module 아키텍처]"
+3. "아래 claude code plugin error 해결 방안 연구 설계 작업해줘 [10개 에러]"
+4. "plugin error 해결 작업 진행해줘"
+
+### ✅ Changes
+- **Added**: `docs/plans/logs/android.md` — 8개 분석 엔트리 추가 (+1469 lines)
+  - Compose 퍼포먼스 공식 문서 기반 성능 점검 (13항목 체크리스트, P1 double padding 버그 발견)
+  - Clean Architecture + MVI + Multi-module 아키텍처 설계 검토 (6개 gap 식별, 7-phase 마이그레이션 로드맵)
+  - Claude Code Plugin Errors 진단 및 해결 방안 (근본 원인 분석 + 4개 조치 설계)
+  - HomeScreen 레이아웃 UX/UI, UDF 디자인 패턴, 프론트엔드 전수 분석, 의존성 LTS, 빌드 환경 검토
+- **Fixed**: Claude Code plugin 에러 10건 해결
+  - 마켓플레이스 `claude-plugins-official` re-clone (`.git` 누락 → 9개 "not found" 해소)
+  - `~/.claude/plugins/blocklist.json` — `code-review` 테스트 항목 제거
+  - `.claude/settings.json` — `vtsls@claude-code-lsps` 제거 (Android 프로젝트에 TS LSP 불필요)
+  - `~/.claude/settings.json` — `vtsls@claude-code-lsps: false` (글로벌 비활성화)
+
+### 📊 Verification
+- 재시작 후 plugin error 0건 확인
+
+### 📁 Files Modified
+- `docs/plans/logs/android.md` (+1469 lines)
+- `.claude/settings.json` (+1, -2 lines)
+- `~/.claude/settings.json` (global, vtsls false)
+- `~/.claude/plugins/blocklist.json` (global, code-review 제거)
+- `~/.claude/plugins/marketplaces/claude-plugins-official/` (global, re-clone)
+- `docs/CHANGELOG.md` (this entry)
+
+---
+
 ## [main] — 2026-06-03 — Azure Monitor Alerts 프로비저닝 (P1+P2)
 
 ### 🎯 Prompts
