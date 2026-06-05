@@ -363,7 +363,7 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 - `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
 - `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
-- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.3 (Hilt 2.59.3+ 출시 대기)
+- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.4 (Hilt 2.59.3+ 출시 대기 + build.gradle.kts DSL 마이그레이션 필요)
 - `@docs/ops/containerapp-env-ktor-backup.json` — cutover 직전 env 스냅샷 (historical)
 - `@docs/conventions/naming.md` — 명명/문서화 SSoT (5종 공식 가이드 + 본 프로젝트 결정 D1~D10)
 

@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-06-06 프론트엔드 UDF-Enhanced 마이그레이션 + 회귀 방지 가드
-> 작성 기준: v0.1.7 (versionCode 21) — 코드 미커밋 변경: 12 VM UDF 마이그레이션 + OkHttp 5 / Coil 3 + collectAsState CI 가드
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-06 dependabot 의존성 일괄 업그레이드
+> 작성 기준: v0.1.7 (versionCode 21) — UDF-Enhanced 마이그레이션 완료 + OkHttp 5 / Coil 3 + dependabot 배치 머지 (vico 3.2.2, sentry-gradle 6.10, mypy 2.1 등)
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -15,11 +15,11 @@
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
-| 차트 | Vico 3.1.0 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 |
+| 차트 | Vico 3.2.2 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
 | 정적 분석 | Detekt 1.23.7 (baseline.xml — generated 포함) + Spotless 8.5.1 + ktlint 1.5.0 |
 | API client | openapi-generator 7.10.0 (jvm-retrofit2 + gson + coroutines) — preBuild 자동 |
-| Sentry SDK | Android 8.42.0 |
+| Sentry SDK | Android 8.42.0 / Gradle plugin 6.10.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
 산출물 경로 (v0.1.5 빌드 시점 기준):
@@ -293,3 +293,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-05-25 (자동 배포) | INC-17·18 해결 + GitHub Actions 자동 배포 end-to-end 정상 동작. revision `0000007` 활성. secret `supabase-url` 추가(총 5개). backend.yml에 secret precheck step + workflow_dispatch trigger 추가. `scripts/register-azure-credentials.ps1` 신규. PR #15·#16·#17 머지 |
 | 2026-06-03 | Azure Monitor Alerts 프로비저닝. Action Group `ag-eundunhealth-prod` + Activity Log alert 4개 (ServiceHealth/ResourceHealth/Deletion/PG Firewall) + Metric alert 4개 (PG CPU/Storage/Connections + CA 5xx). §12 신설. `scripts/setup-azure-alerts.sh` 신규 |
 | 2026-06-06 | 프론트엔드 UDF-Enhanced 마이그레이션 (12 VM + 11 Screen). `@Immutable` 45건, `collectAsStateWithLifecycle` 33건, SideEffect Channel 7건. AuthVM 분리 → Login/Signup/ForgotPasswordVM 신규. OkHttp 4→5, Coil 2→3 의존성 메이저 업그레이드. CLAUDE.md 룰 11 + CI collectAsState 가드 + pre-commit collectAsState 검사 추가 |
+| 2026-06-06 | GitHub Actions Node.js 20→24 런타임 업그레이드 (checkout v6, gitleaks v3, trivy v0.36.0 pin). Dependabot PR 7건 일괄 정리: merged 4건 (foojay-resolver 1.0, sentry-gradle 6.10, vico 3.2.2, mypy 2.1), 수동 적용 1건 (starlette 1.2.1, uvicorn 0.49.0, sentry-sdk 2.61.1, pytest-asyncio 1.4.0, ruff 0.15.16 — fastapi 0.136.3 MAL-2026-4750 제외), closed 2건 (kotlin 2.4.0 / openapi-generator 7.22 — CI 실패) |
