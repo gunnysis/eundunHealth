@@ -180,9 +180,10 @@ dependencies {
     implementation(libs.retrofit.scalars)
     implementation(libs.okhttp.logging)
 
-    // Coil (images + GIF)
+    // Coil 3 (images + GIF + network)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
+    implementation(libs.coil.network.okhttp)
 
     // Navigation
     implementation(libs.navigation.compose)

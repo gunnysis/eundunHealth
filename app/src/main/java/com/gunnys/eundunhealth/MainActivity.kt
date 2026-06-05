@@ -7,10 +7,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
 import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.ui.navigation.AppNavigation
@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         handleAuthDeepLink(intent)
         setContent {
-            val themeMode by themePreferences.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
+            val themeMode by themePreferences.themeMode.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
             EundunHealthTheme(themeMode = themeMode) {
                 AppNavigation(
                     onRequestHealthPermissions = {

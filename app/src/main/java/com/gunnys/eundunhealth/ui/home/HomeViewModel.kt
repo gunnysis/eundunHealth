@@ -15,10 +15,12 @@ import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.GetOrCreateWeeklyPlanUseCase
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -39,7 +41,12 @@ sealed class HomeUiState {
     }
 
     @Immutable
-    data object Empty : HomeUiState() // 로드 실패 → 화면은 _error로 메시지 표시
+    data class Error(val error: AppError) : HomeUiState()
+}
+
+@Immutable
+sealed class HomeSideEffect {
+    data class ShowSnackbar(val message: String) : HomeSideEffect()
 }
 
 @HiltViewModel
@@ -67,12 +74,8 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private val _error = MutableStateFlow<AppError?>(null)
-    val error: StateFlow<AppError?> = _error.asStateFlow()
-
-    fun clearError() {
-        _error.value = null
-    }
+    private val _sideEffect = Channel<HomeSideEffect>(Channel.BUFFERED)
+    val sideEffect = _sideEffect.receiveAsFlow()
 
     init {
         loadPlan()
@@ -105,8 +108,7 @@ class HomeViewModel @Inject constructor(
             .onFailure {
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
-                _error.value = appErr
-                _uiState.value = HomeUiState.Empty
+                _uiState.value = HomeUiState.Error(appErr)
             }
     }
 
@@ -131,7 +133,7 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = current
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
-                _error.value = appErr
+                _sideEffect.trySend(HomeSideEffect.ShowSnackbar(appErr.userMessage))
             }
     }
 }

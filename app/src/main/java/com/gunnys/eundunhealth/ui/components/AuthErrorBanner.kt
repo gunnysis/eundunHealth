@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.AppError
 import io.sentry.Breadcrumb
@@ -79,5 +80,16 @@ fun AuthErrorBanner(
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AuthErrorBannerPreview() {
+    MaterialTheme {
+        AuthErrorBanner(
+            error = AppError.Auth("이메일 또는 비밀번호가 올바르지 않습니다"),
+            screen = "login",
+        )
     }
 }

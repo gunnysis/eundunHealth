@@ -19,15 +19,17 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.ui.components.ProfileSlider
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 
@@ -40,19 +42,15 @@ fun OnboardingScreen(
     var weight by rememberSaveable { mutableFloatStateOf(65f) }
     var bodyFat by rememberSaveable { mutableFloatStateOf(20f) }
     var muscleMass by rememberSaveable { mutableFloatStateOf(30f) }
-    val saved by viewModel.saved.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(saved) {
-        if (saved) onComplete()
-    }
-
-    LaunchedEffect(error) {
-        error?.let {
-            snackbarHostState.showSnackbar(it.userMessage)
-            viewModel.clearError()
+    LaunchedEffect(Unit) {
+        viewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is OnboardingSideEffect.NavigateToHome -> onComplete()
+                is OnboardingSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
+            }
         }
     }
 
@@ -68,7 +66,11 @@ fun OnboardingScreen(
                 .padding(24.dp)
                 .animateContentSize(),
         ) {
-            Text("신체 정보 입력", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "신체 정보 입력",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.semantics { heading() },
+            )
             Text(
                 "맞춤 운동 계획을 위해 기본 정보를 입력해주세요",
                 style = MaterialTheme.typography.bodyMedium,
@@ -101,9 +103,9 @@ fun OnboardingScreen(
             Button(
                 onClick = { viewModel.saveProfile(height, weight, bodyFat, muscleMass) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading,
+                enabled = !uiState.isLoading,
             ) {
-                if (isLoading) {
+                if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.padding(end = 8.dp),
                         strokeWidth = 2.dp,

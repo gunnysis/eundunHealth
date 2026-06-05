@@ -21,6 +21,7 @@ data class HistoryUiState(
     val isLoading: Boolean = false,
     val hasMore: Boolean = true,
     val page: Int = 0,
+    val error: AppError? = null,
 )
 
 @HiltViewModel
@@ -30,13 +31,6 @@ class HistoryViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
-
-    private val _error = MutableStateFlow<AppError?>(null)
-    val error: StateFlow<AppError?> = _error.asStateFlow()
-
-    fun clearError() {
-        _error.value = null
-    }
 
     private val pageSize = 10
 
@@ -49,7 +43,7 @@ class HistoryViewModel @Inject constructor(
         if (current.isLoading || !current.hasMore) return
 
         viewModelScope.launch {
-            _uiState.value = current.copy(isLoading = true)
+            _uiState.value = current.copy(isLoading = true, error = null)
             workoutRepo.getHistory(current.page, pageSize)
                 .onSuccess { (plans, totalCount) ->
                     _uiState.value = current.copy(
@@ -57,13 +51,13 @@ class HistoryViewModel @Inject constructor(
                         isLoading = false,
                         page = current.page + 1,
                         hasMore = current.plans.size + plans.size < totalCount,
+                        error = null,
                     )
                 }
                 .onFailure {
-                    _uiState.value = current.copy(isLoading = false)
                     val appErr = it.toAppError()
                     appErr.reportToSentry()
-                    _error.value = appErr
+                    _uiState.value = current.copy(isLoading = false, error = appErr)
                 }
         }
     }

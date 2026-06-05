@@ -4,6 +4,61 @@
 
 ---
 
+## [main] — 2026-06-06 — 프론트엔드 UDF-Enhanced 마이그레이션 + 회귀 방지 가드
+
+### 🎯 Prompts
+1. "프론트엔드 대규모 개선 종합 설계 (Rev.2) 기반 Phase 1-5 구현"
+2. "프론트엔드 회귀 방지 설계 — 실행 계획 구현"
+3. "프로젝트의 문서 최신화 작업해줘"
+
+### ✅ Changes
+
+#### Phase 1-5: 12 ViewModel UDF-Enhanced 패턴 마이그레이션
+- **Modified** 9 ViewModels → 단일 `_uiState: MutableStateFlow<XxxUiState>` 패턴으로 전환. 분산 StateFlow (`_error`/`_isLoading`) 제거.
+  - AuthVM, BadgeVM, GoalVM, HistoryVM, HomeVM, OnboardingVM, ProfileVM, StatisticsVM, WorkoutDetailVM
+- **Added** 3 ViewModels (AuthVM 분리): `LoginViewModel` (96L), `SignupViewModel` (102L), `ForgotPasswordViewModel` (61L). AuthVM 은 session lifecycle 전용으로 축소.
+- **Modified** 11 Screens → 모든 `collectAsState()` 를 `collectAsStateWithLifecycle()` 로 교체 (lifecycle-aware collection).
+- **Added** `@Immutable` annotation 45건 across 17 files — domain models 5개 (Exercise, Goal, Statistics, UserProfile, WeeklyPlan) + 12 ViewModel UiState/SideEffect sealed class.
+- **Added** SideEffect Channel 7 VMs — 일회성 이벤트 (navigation, snackbar) 를 `Channel<SideEffect>(Channel.BUFFERED)` + `receiveAsFlow()` 로 전달.
+- **Added** 3 test files: `LoginViewModelTest` (202L), `SignupViewModelTest` (192L), `ForgotPasswordViewModelTest` (110L)
+- **Modified** `AuthViewModelTest` — AuthVM 축소에 따라 per-screen 테스트를 신규 테스트 파일로 분리. 대폭 감소.
+
+#### 의존성 메이저 업그레이드
+- **OkHttp 4.12.0 → 5.3.2**: Kotlin-first API, HTTP/3 지원, 개선된 connection pool.
+- **Coil 2.7.0 → 3.4.0**: module group `io.coil-kt` → `io.coil-kt.coil3`. `coil-network-okhttp` 신규 의존성 추가. `CoilModule` Coil 3 API 마이그레이션 (`ImageLoader` → `SingletonImageLoader.Factory` 패턴).
+- **gradle.properties**: `android.r8.strictFullModeForKeepRules=false` 제거 (OkHttp 5 / Coil 3 호환).
+
+#### 회귀 방지 3계층 가드
+- **Added** CLAUDE.md **룰 11** — ViewModel UDF-Enhanced 패턴 5개 체크리스트 + 허용 예외 + baseline.
+- **Added** `.github/workflows/android.yml` "Check collectAsState anti-pattern" CI step — import `$` anchor + 호출부 `grep -v` 필터, false positive 0.
+- **Modified** `.githooks/pre-commit` — collectAsState grep check 섹션 추가 (staged `.kt` 파일 한정, 룰 11).
+- **Added** `docs/plans/_staging/2026-06-06-frontend-regression-prevention-design.md` — 설계 문서 (D1~D6 결정 테이블 + 잔여 리스크).
+
+#### 문서 동기화
+- **Modified** `CLAUDE.md` — Key patterns 섹션 UDF-Enhanced 반영, stale 버전 수정 (Sentry 8.16→8.42, Vico 2.1→3.1, Spotless 7.0→8.5, OkHttp/Coil 추가), pre-commit 설명 갱신.
+- **Modified** `docs/ops/operations-snapshot.md` — §8 CI/자동화에 collectAsState 가드 추가, §13 변경 이력 추가.
+- **Modified** `docs/CHANGELOG.md` (this entry)
+
+### 📊 Metrics (MEASURED 2026-06-06)
+- `@Immutable`: 45 annotations across 17 files
+- `collectAsStateWithLifecycle`: 33 occurrences across 13 files
+- `collectAsState()`: **0건** (anti-pattern 완전 제거)
+- SideEffect Channel: 7 VMs
+- Total: 46 files, +752 / -869 lines (net -117)
+
+### 📁 Files Modified
+- ViewModels: 9 modified + 3 new
+- Screens: 11 modified
+- Tests: 1 modified + 3 new
+- Domain models: 3 modified (`@Immutable` 추가)
+- UI components: 6 modified (`@Immutable` 추가)
+- Infra: `CoilModule`, `MainActivity`, `AppNavigation`, `build.gradle.kts`, `libs.versions.toml`, `gradle.properties`
+- Guards: `CLAUDE.md`, `android.yml`, `.githooks/pre-commit`
+- Docs: `operations-snapshot.md`, `CHANGELOG.md`
+- Design: `docs/plans/_staging/2026-06-06-frontend-regression-prevention-design.md` (new)
+
+---
+
 ## [main] — 2026-06-05 — docs/plans/ lifecycle 관리 개선
 
 ### 🎯 Prompts

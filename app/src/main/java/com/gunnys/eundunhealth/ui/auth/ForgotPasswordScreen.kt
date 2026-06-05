@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,36 +35,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForgotPasswordScreen(
     onNavigateBack: () -> Unit,
-    authViewModel: AuthViewModel = hiltViewModel(),
+    forgotPasswordViewModel: ForgotPasswordViewModel = hiltViewModel(),
 ) {
     var email by rememberSaveable { mutableStateOf("") }
-    val authOpState by authViewModel.authOpState.collectAsState()
-    val passwordResetSent by authViewModel.passwordResetSent.collectAsState()
+    val uiState by forgotPasswordViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val isLoading = authOpState is AuthOpState.Loading
-    val opError = (authOpState as? AuthOpState.Failed)?.error
+    val isLoading = uiState is ForgotPasswordUiState.Loading
+    val opError = (uiState as? ForgotPasswordUiState.Failed)?.error
 
     val formValid = email.contains("@")
 
-    LaunchedEffect(passwordResetSent) {
-        if (passwordResetSent) {
-            snackbarHostState.showSnackbar("비밀번호 재설정 링크를 이메일로 보냈습니다")
-            authViewModel.consumePasswordResetSent()
-            onNavigateBack()
+    // ResetSent SideEffect → snackbar + navigate back
+    LaunchedEffect(Unit) {
+        forgotPasswordViewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is ForgotPasswordSideEffect.ResetSent -> {
+                    snackbarHostState.showSnackbar("비밀번호 재설정 링크를 이메일로 보냈습니다")
+                    onNavigateBack()
+                }
+            }
         }
     }
 
     // D5: input 보완 (formValid) 시점에 banner 자동 dismiss.
     LaunchedEffect(formValid, opError) {
         if (formValid && opError != null) {
-            authViewModel.consumeAuthOpError()
+            forgotPasswordViewModel.consumeError()
         }
     }
 
@@ -115,7 +118,7 @@ fun ForgotPasswordScreen(
             }
 
             Button(
-                onClick = { authViewModel.resetPassword(email.trim()) },
+                onClick = { forgotPasswordViewModel.resetPassword(email.trim()) },
                 enabled = !isLoading && formValid,
                 modifier = Modifier.fillMaxWidth(),
             ) {

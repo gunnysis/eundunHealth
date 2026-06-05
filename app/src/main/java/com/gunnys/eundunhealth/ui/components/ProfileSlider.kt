@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 /**
@@ -100,6 +101,21 @@ fun ProfileSlider(
             onValueChange = onValueChange,
             valueRange = range,
             modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ProfileSliderPreview() {
+    MaterialTheme {
+        ProfileSlider(
+            label = "키",
+            value = 175f,
+            range = 140f..210f,
+            unit = "cm",
+            decimals = 0,
+            onValueChange = {},
         )
     }
 }

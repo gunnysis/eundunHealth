@@ -23,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,6 +33,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 
@@ -41,34 +42,45 @@ import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 fun SignupScreen(
     onNavigateToLogin: () -> Unit,
     authViewModel: AuthViewModel,
+    signupViewModel: SignupViewModel = hiltViewModel(),
 ) {
-    val signupState by authViewModel.signupState.collectAsState()
-    val resendCooldownSec by authViewModel.resendCooldownSec.collectAsState()
-    val resendError by authViewModel.resendError.collectAsState()
+    val uiState by signupViewModel.uiState.collectAsStateWithLifecycle()
+    val resendCooldownSec by signupViewModel.resendCooldownSec.collectAsStateWithLifecycle()
+    val resendError by signupViewModel.resendError.collectAsStateWithLifecycle()
+
+    // AutoSignedIn SideEffect → AuthViewModel 세션 전환
+    LaunchedEffect(Unit) {
+        signupViewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is SignupSideEffect.AutoSignedIn ->
+                    authViewModel.onAuthSuccess(effect.userId, needsOnboarding = true)
+            }
+        }
+    }
 
     Scaffold { padding ->
-        when (val state = signupState) {
-            is SignupState.AwaitingEmailConfirmation -> AwaitingConfirmationCard(
+        when (val state = uiState) {
+            is SignupUiState.AwaitingEmailConfirmation -> AwaitingConfirmationCard(
                 email = state.email,
                 cooldownSec = resendCooldownSec,
                 resendError = resendError,
                 onResend = {
-                    authViewModel.clearResendError()
-                    authViewModel.resendConfirmation(state.email)
+                    signupViewModel.clearResendError()
+                    signupViewModel.resendConfirmation(state.email)
                 },
                 onGoToLogin = {
                     authViewModel.setPendingEmail(state.email)
-                    authViewModel.resetSignupState()
+                    signupViewModel.resetSignupState()
                     onNavigateToLogin()
                 },
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
             else -> SignupForm(
-                isLoading = signupState is SignupState.Loading,
-                error = (signupState as? SignupState.Failed)?.error,
-                onClearError = authViewModel::clearSignupError,
+                isLoading = uiState is SignupUiState.Loading,
+                error = (uiState as? SignupUiState.Failed)?.error,
+                onClearError = signupViewModel::clearSignupError,
                 onSubmit = { email, password ->
-                    authViewModel.signup(email.trim(), password)
+                    signupViewModel.signup(email.trim(), password)
                 },
                 onNavigateToLogin = onNavigateToLogin,
                 modifier = Modifier.fillMaxSize().padding(padding),
@@ -95,7 +107,6 @@ private fun SignupForm(
         password == confirmPassword
 
     // D1: button enabled (= 모든 validation pass) 시점에 banner 자동 dismiss.
-    // input 1글자 typo 수정 같은 미세 변경 시에는 dismiss 안 함 — 메시지 다시 보고 싶을 때 보존.
     LaunchedEffect(formValid, error) {
         if (formValid && error != null) {
             onClearError()
@@ -113,7 +124,6 @@ private fun SignupForm(
         Text("회원가입", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(32.dp))
 
-        // D5 위치: headline 아래, email input 위. error 있을 때만 표시.
         error?.let {
             AuthErrorBanner(error = it, screen = "signup")
             Spacer(modifier = Modifier.height(16.dp))
@@ -199,7 +209,6 @@ private fun AwaitingConfirmationCard(
         Text("메일을 보냈습니다", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // D7: resendError 도 같은 Banner 재사용. headline 아래, 본문/버튼 위.
         resendError?.let {
             AuthErrorBanner(error = it, screen = "awaiting_confirmation")
             Spacer(modifier = Modifier.height(16.dp))

@@ -3,7 +3,6 @@ package com.gunnys.eundunhealth.ui.goal
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.Goal
 import com.gunnys.eundunhealth.domain.model.GoalType
 import com.gunnys.eundunhealth.domain.model.ProfileHistoryPoint
@@ -11,11 +10,18 @@ import com.gunnys.eundunhealth.domain.model.reportToSentry
 import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+@Immutable
+sealed class GoalSideEffect {
+    data class ShowSnackbar(val message: String) : GoalSideEffect()
+}
 
 @Immutable
 data class GoalUiState(
@@ -33,12 +39,8 @@ class GoalViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(GoalUiState())
     val uiState: StateFlow<GoalUiState> = _uiState.asStateFlow()
 
-    private val _error = MutableStateFlow<AppError?>(null)
-    val error: StateFlow<AppError?> = _error.asStateFlow()
-
-    fun clearError() {
-        _error.value = null
-    }
+    private val _sideEffect = Channel<GoalSideEffect>(Channel.BUFFERED)
+    val sideEffect = _sideEffect.receiveAsFlow()
 
     init {
         load()
@@ -77,6 +79,6 @@ class GoalViewModel @Inject constructor(
     private fun handleError(t: Throwable) {
         val appErr = t.toAppError()
         appErr.reportToSentry()
-        _error.value = appErr
+        _sideEffect.trySend(GoalSideEffect.ShowSnackbar(appErr.userMessage))
     }
 }

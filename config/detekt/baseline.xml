@@ -41,12 +41,15 @@
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val newCompleted = !day.isCompleted</ID>
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val updatedDays = current.plan.days.map { if (it.date == date) it.copy(isCompleted = newCompleted) else it }</ID>
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val updatedPlan = current.plan.copy(days = updatedDays)</ID>
-    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$workoutRepo.updateDayCompletion(current.plan.id, date, newCompleted) .onFailure { // Revert on failure _uiState.value = current val appErr = it.toAppError() appErr.reportToSentry() _error.value = appErr }</ID>
-    <ID>UnsafeCallOnNullableType:BadgeScreen.kt$error!!</ID>
-    <ID>UnsafeCallOnNullableType:HistoryScreen.kt$error!!</ID>
-    <ID>UnsafeCallOnNullableType:WorkoutDetailScreen.kt$exercise!!</ID>
+    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$workoutRepo.updateDayCompletion(current.plan.id, date, newCompleted) .onFailure { // Revert on failure _uiState.value = current val appErr = it.toAppError() appErr.reportToSentry() _sideEffect.trySend(HomeSideEffect.ShowSnackbar(appErr.userMessage)) }</ID>
     <ID>UnusedParameter:WorkoutDetailScreen.kt$exerciseId: String</ID>
+    <ID>UnusedPrivateMember:AuthErrorBanner.kt$@Preview(showBackground = true) @Composable private fun AuthErrorBannerPreview()</ID>
+    <ID>UnusedPrivateMember:EmptyContent.kt$@Preview(showBackground = true) @Composable private fun EmptyContentPreview()</ID>
+    <ID>UnusedPrivateMember:ErrorContent.kt$@Preview(showBackground = true) @Composable private fun ErrorContentPreview()</ID>
     <ID>UnusedPrivateMember:GoalRepositoryImpl.kt$GoalRepositoryImpl$private fun ProfileHistoryEntry.toDomain(): ProfileHistoryPoint</ID>
+    <ID>UnusedPrivateMember:ProfileSlider.kt$@Preview(showBackground = true) @Composable private fun ProfileSliderPreview()</ID>
+    <ID>UnusedPrivateMember:ProfileSummaryCard.kt$@Preview(showBackground = true) @Composable private fun ProfileSummaryCardPreview()</ID>
+    <ID>UnusedPrivateMember:SkeletonUi.kt$@Preview(showBackground = true) @Composable private fun SkeletonHomeContentPreview()</ID>
     <ID>UnusedPrivateProperty:MainActivity.kt$MainActivity$private val permissionLauncher = registerForActivityResult( androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(), ) { /* Health Connect uses its own permission contract */ }</ID>
     <ID>UnusedPrivateProperty:SyncHealthDataUseCase.kt$SyncHealthDataUseCase$private val workoutRepo: WorkoutRepository</ID>
     <ID>UseCheckOrError:AuthRepositoryImpl.kt$AuthRepositoryImpl$throw IllegalStateException("로그인 후 사용자 정보를 가져올 수 없습니다")</ID>

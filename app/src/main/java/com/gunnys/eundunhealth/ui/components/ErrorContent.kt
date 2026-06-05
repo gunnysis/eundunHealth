@@ -16,7 +16,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.AppError
 
@@ -50,10 +54,22 @@ fun ErrorContent(
             text = error.userMessage,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
         if (onRetry != null) {
             Spacer(Modifier.height(24.dp))
             Button(onClick = onRetry) { Text("다시 시도") }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ErrorContentPreview() {
+    MaterialTheme {
+        ErrorContent(
+            error = AppError.Network("네트워크 연결을 확인해주세요"),
+            onRetry = {},
+        )
     }
 }

@@ -30,7 +30,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -38,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.ui.components.EmptyContent
 import com.gunnys.eundunhealth.ui.components.ErrorContent
@@ -52,8 +52,7 @@ fun HistoryScreen(
     onBack: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val pullState = rememberPullToRefreshState()
 
@@ -82,22 +81,21 @@ fun HistoryScreen(
         PullToRefreshBox(
             isRefreshing = uiState.isLoading && uiState.plans.isEmpty(),
             onRefresh = {
-                viewModel.clearError()
                 // 페이지를 0으로 되돌리려면 새로운 fixture가 필요하지만 우선 다음 페이지 로드로 폴백
+                // loadNextPage()가 내부에서 error = null 초기화 수행
                 viewModel.loadNextPage()
             },
             state = pullState,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             when {
-                error != null && uiState.plans.isEmpty() -> {
-                    ErrorContent(
-                        error = error!!,
-                        onRetry = {
-                            viewModel.clearError()
-                            viewModel.loadNextPage()
-                        },
-                    )
+                uiState.error != null && uiState.plans.isEmpty() -> {
+                    uiState.error?.let { error ->
+                        ErrorContent(
+                            error = error,
+                            onRetry = { viewModel.loadNextPage() },
+                        )
+                    }
                 }
                 uiState.plans.isEmpty() && !uiState.isLoading -> {
                     EmptyContent(message = "아직 운동 기록이 없습니다")

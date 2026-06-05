@@ -33,7 +33,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,8 +42,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.ui.components.ProfileSlider
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 
@@ -55,35 +57,17 @@ fun ProfileScreen(
     onAccountDeleted: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val isSaving by viewModel.isSaving.collectAsState()
-    val saveState by viewModel.saveState.collectAsState()
-    val deleteState by viewModel.deleteState.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(deleteState) {
-        if (deleteState is DeleteState.Success) {
-            onAccountDeleted()
-        }
-    }
-
-    LaunchedEffect(saveState) {
-        when (saveState) {
-            is SaveState.Success -> {
-                snackbarHostState.showSnackbar("신체 정보가 저장되었습니다")
-                viewModel.clearSaveState()
-                onBack()
+    LaunchedEffect(Unit) {
+        viewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is ProfileSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
+                is ProfileSideEffect.SavedAndNavigateBack -> onBack()
+                is ProfileSideEffect.NavigateToLogin -> onAccountDeleted()
             }
-            is SaveState.Idle -> {}
-        }
-    }
-
-    LaunchedEffect(error) {
-        error?.let {
-            snackbarHostState.showSnackbar(it.userMessage)
-            viewModel.clearError()
         }
     }
 
@@ -107,24 +91,19 @@ fun ProfileScreen(
                 }
             }
             is ProfileUiState.Empty -> {
-                val currentError = error
-                if (currentError != null) {
-                    com.gunnys.eundunhealth.ui.components.ErrorContent(
-                        error = currentError,
-                        modifier = Modifier.padding(padding),
-                        onRetry = {
-                            viewModel.clearError()
-                            viewModel.loadProfile()
-                        },
-                    )
-                } else {
-                    com.gunnys.eundunhealth.ui.components.EmptyContent(
-                        message = "프로필 정보를 찾을 수 없습니다",
-                        modifier = Modifier.padding(padding),
-                        actionLabel = "다시 시도",
-                        onAction = { viewModel.loadProfile() },
-                    )
-                }
+                com.gunnys.eundunhealth.ui.components.EmptyContent(
+                    message = "프로필 정보를 찾을 수 없습니다",
+                    modifier = Modifier.padding(padding),
+                    actionLabel = "다시 시도",
+                    onAction = { viewModel.loadProfile() },
+                )
+            }
+            is ProfileUiState.Error -> {
+                com.gunnys.eundunhealth.ui.components.ErrorContent(
+                    error = state.error,
+                    modifier = Modifier.padding(padding),
+                    onRetry = { viewModel.loadProfile() },
+                )
             }
             is ProfileUiState.Loaded -> {
                 ProfileEditContent(
@@ -133,8 +112,8 @@ fun ProfileScreen(
                     initialBodyFat = state.profile.bodyFatPercent,
                     initialMuscleMass = state.profile.muscleMassKg,
                     initialRestDay = state.profile.restDay,
-                    isSaving = isSaving,
-                    isDeleting = deleteState is DeleteState.Loading,
+                    isSaving = state.isSaving,
+                    isDeleting = state.isDeleting,
                     onSave = viewModel::saveProfile,
                     onDeleteClick = { showDeleteDialog = true },
                     modifier = Modifier.padding(padding),
@@ -260,7 +239,11 @@ private fun BodyMetricsSliders(
 
 @Composable
 private fun RestDaySelector(restDay: Int, onRestDayChange: (Int) -> Unit) {
-    Text("휴식일", style = MaterialTheme.typography.titleMedium)
+    Text(
+        "휴식일",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.semantics { heading() },
+    )
     Spacer(modifier = Modifier.height(8.dp))
     val dayLabels = listOf("월", "화", "수", "목", "금", "토", "일")
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {

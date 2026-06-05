@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 
@@ -43,16 +44,26 @@ fun LoginScreen(
     onNavigateToSignup: () -> Unit,
     onNavigateToForgotPassword: () -> Unit,
     authViewModel: AuthViewModel,
+    loginViewModel: LoginViewModel = hiltViewModel(),
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    val authOpState by authViewModel.authOpState.collectAsState()
-    val pendingEmail by authViewModel.pendingEmail.collectAsState()
-    val resendCooldownSec by authViewModel.resendCooldownSec.collectAsState()
-    val resendError by authViewModel.resendError.collectAsState()
-    val isLoading = authOpState is AuthOpState.Loading
-    val lastError = (authOpState as? AuthOpState.Failed)?.error
+    val uiState by loginViewModel.uiState.collectAsStateWithLifecycle()
+    val pendingEmail by authViewModel.pendingEmail.collectAsStateWithLifecycle()
+    val deepLinkError by authViewModel.deepLinkError.collectAsStateWithLifecycle()
+    val resendCooldownSec by loginViewModel.resendCooldownSec.collectAsStateWithLifecycle()
+    val resendError by loginViewModel.resendError.collectAsStateWithLifecycle()
+    val isLoading = uiState is LoginUiState.Loading
+    val lastError = (uiState as? LoginUiState.Failed)?.error
     val formValid = email.isNotBlank() && password.isNotBlank()
+
+    // Deep link 에러를 LoginVM 으로 import (최초 1회)
+    LaunchedEffect(deepLinkError) {
+        deepLinkError?.let {
+            loginViewModel.setExternalError(it)
+            authViewModel.consumeDeepLinkError()
+        }
+    }
 
     LaunchedEffect(Unit) {
         pendingEmail?.let {
@@ -61,19 +72,29 @@ fun LoginScreen(
         }
     }
 
+    // LoginSuccess SideEffect → AuthViewModel 세션 전환
+    LaunchedEffect(Unit) {
+        loginViewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is LoginSideEffect.LoginSuccess ->
+                    authViewModel.onAuthSuccess(effect.userId, effect.needsOnboarding)
+            }
+        }
+    }
+
     // D4: button enabled (formValid) 시점에 banner 자동 dismiss.
     // EmailNotConfirmed 는 inline 재전송 UI 가 sticky 유지하므로 dismiss 분기.
     LaunchedEffect(formValid, lastError) {
         val e = lastError
         if (formValid && e != null && e !is AppError.EmailNotConfirmed) {
-            authViewModel.consumeAuthOpError()
+            loginViewModel.consumeError()
         }
     }
 
     // D10: resendError 도 같은 dismiss 정책.
     LaunchedEffect(formValid, resendError) {
         if (formValid && resendError != null) {
-            authViewModel.clearResendError()
+            loginViewModel.clearResendError()
         }
     }
 
@@ -144,7 +165,7 @@ fun LoginScreen(
                 )
                 TextButton(
                     enabled = resendCooldownSec == 0,
-                    onClick = { authViewModel.resendConfirmation(notConfirmedEmail) },
+                    onClick = { loginViewModel.resendConfirmation(notConfirmedEmail) },
                 ) {
                     Text(
                         if (resendCooldownSec == 0) {
@@ -164,7 +185,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = { authViewModel.login(email.trim(), password) },
+                onClick = { loginViewModel.login(email.trim(), password) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading && formValid,
             ) {

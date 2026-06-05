@@ -52,6 +52,25 @@ jobs:
       - name: Spotless check
         run: ./gradlew :app:spotlessCheck
 
+      - name: Check collectAsState anti-pattern
+        run: |
+          echo "Checking for banned collectAsState() usage..."
+          FAIL=0
+          # 1) Import 검사 — collectAsState 단독 import ($ anchor: collectAsStateWithLifecycle 제외)
+          if grep -rn 'import androidx.compose.runtime.collectAsState$' app/src/main/java/; then
+            echo "::error::Found banned 'import collectAsState'. Use collectAsStateWithLifecycle instead."
+            FAIL=1
+          fi
+          # 2) 호출부 검사 — .collectAsState( 호출 (collectAsStateWithLifecycle 제외)
+          if grep -rn '\.collectAsState(' app/src/main/java/ | grep -v 'collectAsStateWithLifecycle('; then
+            echo "::error::Found banned '.collectAsState()' call. Use collectAsStateWithLifecycle instead."
+            FAIL=1
+          fi
+          if [ "$FAIL" -eq 1 ]; then
+            exit 1
+          fi
+          echo "No collectAsState anti-pattern found."
+
       - name: Detekt
         run: ./gradlew :app:detektDebug
 

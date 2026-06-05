@@ -107,12 +107,13 @@ Package: `com.gunnys.eundunhealth`
 - **DI** (`di/`): Hilt 모듈 — `NetworkModule`, `SupabaseModule`, `DatabaseModule`, `RepositoryModule`(GoalRepository 포함), `CoilModule`.
 
 **Key patterns:**
+- **UDF-Enhanced ViewModel** (룰 11): 단일 `_uiState: MutableStateFlow<XxxUiState>` + `@Immutable` UiState/SideEffect sealed class + `collectAsStateWithLifecycle` + `Channel<SideEffect>`. 12 VM 전수 마이그레이션 완료 (2026-06-06). 자세한 체크리스트는 룰 11 참조.
+- **Auth ViewModel 분리**: `AuthViewModel`(session lifecycle) + `LoginViewModel` / `SignupViewModel` / `ForgotPasswordViewModel`(per-screen). AuthVM 에 화면별 로직 추가 금지.
 - ViewModel은 `AuthRepository.getCurrentUserId()`로 userId를 받는다 — `SupabaseClient` 직접 주입 금지.
-- 모든 ViewModel: `_error: MutableStateFlow<AppError?>` + `clearError()` 통일. `runCatching { ... }.onFailure { e -> val a = e.toAppError(); a.reportToSentry(); _error.value = a }`.
 - Token: `NetworkModule`의 `AtomicReference`, `TokenAuthenticator`가 401 시 5초 timeout으로 갱신 + 실패 시 무효화.
 - `RetryInterceptor` 지수 백오프 (3회 / 500ms·1s·2s).
 - Auth 에러는 `AuthRepositoryImpl.mapAuthError()`로 한국어 사용자 메시지.
-- 공통 UI: `ui/components/` (`ProfileSummaryCard`, `ProfileSlider`, `SkeletonUi`, `ErrorContent`, `EmptyContent`).
+- 공통 UI: `ui/components/` (`ProfileSummaryCard`, `ProfileSlider`, `SkeletonUi`, `ErrorContent`, `EmptyContent`, `AuthErrorBanner`).
 - `SentryInitProvider`는 AndroidManifest `tools:node="remove"`로 비활성 — `EundunHealthApplication`에서 DSN blank 검사 후 수동 init.
 - **WeeklyPlanDao.getPlan(userId, weekStart)**: userId 필터링 필수 (v0.1 CRITICAL fix). EundunDatabase version=2 + fallbackToDestructiveMigration.
 
@@ -154,22 +155,23 @@ DELETE /account
 
 ### Android App
 - **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
-- **Gradle 9.4.1**, AGP 9.2.1
+- **Gradle 9.5.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
 - **App version**: versionName **`0.1.7`**, versionCode **`21`** (이력: 14=v0.1.0 출시 / 15=v0.1.1 가입 이메일 확인 / 16=v0.1.2 supabase encoding hotfix / 17=v0.1.3 App Links / 18=v0.1.4 redirectUrl 명시 / 19=v0.1.5 vico 3.1 + healthConnect stable / 20=v0.1.6 signup error banner / 21=v0.1.7 login+forgot 룰 8 + Banner promote. 다음 빌드부터 22, 23, ...)
-- **Sentry Android 8.16.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
-- **Vico 2.1.0** (compose-m3) — 통계 + 목표 진행 차트
-- **Detekt 1.23.7 + Spotless 7.0.4 + ktlint 1.5.0**
+- **Sentry Android 8.42.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
+- **Vico 3.1.0** (compose-m3) — 통계 + 목표 진행 차트
+- **OkHttp 5.3.2** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
+- **Detekt 1.23.7 + Spotless 8.5.1 + ktlint 1.5.0**
 - Supabase JWT algorithm: **ES256 (ECDSA)** — backend uses JWKS public key verification
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)
-- pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug 자동 실행
+- pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
-- **Python 3.12**, FastAPI 0.136.3, SQLAlchemy 2.0 async + asyncpg, Alembic 1.14
-- **starlette 0.49.1** (CVE 패치 위해 명시 pin), PyJWT 2.12 (JWKS), httpx (Supabase Admin API)
-- **Sentry SDK 2.19** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy strict 통과, ruff/bandit clean, pytest 41/41 PASS, coverage 82%
+- **Python 3.12**, FastAPI 0.136.1, SQLAlchemy 2.0.50 async + asyncpg 0.31.0, Alembic 1.18.4
+- **starlette 1.1.0** (PYSEC-2026-161 fix 포함), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
+- **Sentry SDK 2.60.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
+- mypy strict 통과, ruff/bandit clean, pytest 44/44 PASS, coverage 82%
 - Alembic head `fa3915deab2f` (rest_day 컬럼 추가, INC-2026-05-27-01)
 
 ### Infrastructure
@@ -265,6 +267,30 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 **사례**: PR #68 Task 3 spec reviewer 가 D107 위반 85건 보고 → controller 가 직접 측정 = 32건. D107 글로벌 ignore 누락 (룰 9 + ruff `--select` 함정). controller 재측정 + plan fix.
 
 **예외**: SDD 외 일반 대화의 답변, code-explorer 의 발견 사항 등은 비대상 (별도 verify 룰).
+
+### 룰 11 — ViewModel 은 UDF-Enhanced 패턴 준수 (2026-06-06 Phase 1-5 마이그레이션 후)
+12 ViewModel 전수를 UDF-Enhanced 패턴으로 마이그레이션 완료. 신규 VM 작성 · 기존 VM 수정 시 아래 5개 체크리스트 **모두** 만족.
+
+**체크리스트** (새 ViewModel 작성 · 기존 ViewModel 수정 시):
+1. **단일 `_uiState` MutableStateFlow** — 화면의 모든 렌더 상태를 `data class XxxUiState(...)` 하나로 관리. 별도 `_error` / `_isLoading` StateFlow 금지 (허용 예외 아래 참조).
+2. **`@Immutable` 필수** — UiState sealed class + SideEffect sealed class + 모든 하위 타입에 `@Immutable` 어노테이션.
+3. **`collectAsStateWithLifecycle` 전용** — Screen Composable 에서 `collectAsState()` 사용 **금지**. 반드시 `collectAsStateWithLifecycle()` 사용 (lifecycle-aware, onStop 시 collection 중단).
+4. **SideEffect Channel** — 일회성 이벤트 (navigation, snackbar) 는 `Channel<SideEffect>(Channel.BUFFERED)` + `receiveAsFlow()` 로 전달. UiState 에 넣지 않는다.
+5. **AuthViewModel 독립성** — `AuthViewModel` 은 session lifecycle (로그인 상태 · 딥링크) 전용. per-screen 로직 (signup validation, login form) 추가 금지 — `LoginViewModel` / `SignupViewModel` / `ForgotPasswordViewModel` 에 위임.
+
+**허용 예외** (독립 sub-operation — 메인 UiState 와 lifecycle 이 다른 경우):
+- `AuthViewModel`: `_sessionState` / `_deepLinkError` / `_pendingEmail` (session-scoped, 전 화면 공유)
+- `LoginViewModel` / `SignupViewModel`: `_resendCooldownSec` / `_resendError` (이메일 재발송 타이머, 메인 UiState 와 독립)
+- `HomeViewModel`: `themeMode` (DataStore `stateIn()`, MutableStateFlow 아님)
+
+**자동 가드**:
+- CI: `.github/workflows/android.yml` "Check collectAsState anti-pattern" step (import + 호출부 grep)
+- Pre-commit: `.githooks/pre-commit` staged `.kt` 파일 한정 동일 검사
+- 항목 2 (`@Immutable`) / 항목 4 (SideEffect) / 항목 5 (AuthVM scope) 는 AST 분석 필요 → 코드 리뷰 + Claude Code 준수로 경감
+
+**Baseline** (MEASURED 2026-06-06):
+- `collectAsState()` 호출: **0건** (`grep -rn '\.collectAsState(' app/src/main/java/`)
+- `collectAsStateWithLifecycle` 사용: **33건** across 13 files
 
 ### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.8`)
 1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?

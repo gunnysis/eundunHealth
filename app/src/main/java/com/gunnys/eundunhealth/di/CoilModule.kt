@@ -2,9 +2,11 @@ package com.gunnys.eundunhealth.di
 
 import android.content.Context
 import android.os.Build
-import coil.ImageLoader
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
+import coil3.ImageLoader
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
+import coil3.request.CachePolicy
+import coil3.request.crossfade
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,13 +22,13 @@ object CoilModule {
     fun provideImageLoader(@ApplicationContext context: Context): ImageLoader = ImageLoader.Builder(context)
         .components {
             if (Build.VERSION.SDK_INT >= 28) {
-                add(ImageDecoderDecoder.Factory())
+                add(AnimatedImageDecoder.Factory())
             } else {
                 add(GifDecoder.Factory())
             }
         }
         .crossfade(true)
-        .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
-        .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+        .memoryCachePolicy(CachePolicy.ENABLED)
+        .diskCachePolicy(CachePolicy.ENABLED)
         .build()
 }

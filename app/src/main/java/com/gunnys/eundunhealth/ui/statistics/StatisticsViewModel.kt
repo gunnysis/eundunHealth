@@ -22,6 +22,8 @@ sealed class StatisticsUiState {
     @Immutable data class Loaded(val data: Statistics) : StatisticsUiState()
 
     @Immutable data object Empty : StatisticsUiState()
+
+    @Immutable data class Error(val error: AppError) : StatisticsUiState()
 }
 
 @HiltViewModel
@@ -31,13 +33,6 @@ class StatisticsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<StatisticsUiState>(StatisticsUiState.Loading)
     val uiState: StateFlow<StatisticsUiState> = _uiState.asStateFlow()
-
-    private val _error = MutableStateFlow<AppError?>(null)
-    val error: StateFlow<AppError?> = _error.asStateFlow()
-
-    fun clearError() {
-        _error.value = null
-    }
 
     init {
         load()
@@ -56,8 +51,7 @@ class StatisticsViewModel @Inject constructor(
             .onFailure {
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
-                _error.value = appErr
-                _uiState.value = StatisticsUiState.Empty
+                _uiState.value = StatisticsUiState.Error(appErr)
             }
     }
 }

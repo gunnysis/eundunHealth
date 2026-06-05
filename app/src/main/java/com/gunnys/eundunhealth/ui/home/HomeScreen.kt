@@ -2,6 +2,7 @@ package com.gunnys.eundunhealth.ui.home
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,30 +22,41 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.ui.components.ErrorContent
@@ -65,12 +77,21 @@ fun HomeScreen(
     onRequestHealthPermissions: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val themeMode by viewModel.themeMode.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val pullState = rememberPullToRefreshState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is HomeSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
+            }
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("이번 주 운동 계획") },
@@ -100,16 +121,10 @@ fun HomeScreen(
                 is HomeUiState.Loading -> {
                     SkeletonHomeContent()
                 }
-                is HomeUiState.Empty -> {
+                is HomeUiState.Error -> {
                     ErrorContent(
-                        error = error ?: com.gunnys.eundunhealth.domain.model.AppError.Unknown(
-                            Throwable("운동 계획을 불러올 수 없습니다"),
-                            "운동 계획을 불러올 수 없습니다",
-                        ),
-                        onRetry = {
-                            viewModel.clearError()
-                            viewModel.loadPlan()
-                        },
+                        error = state.error,
+                        onRetry = { viewModel.loadPlan() },
                     )
                 }
                 is HomeUiState.Success -> {
@@ -150,23 +165,92 @@ private fun HomeTopBarActions(
     onBadgesClick: () -> Unit,
     onLogout: () -> Unit,
 ) {
-    IconButton(onClick = onProfileClick) { Icon(Icons.Default.Person, "프로필") }
-    IconButton(onClick = onCycleTheme) {
-        Icon(
-            when (themeMode) {
-                ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
-                ThemeMode.DARK -> Icons.Default.DarkMode
-                ThemeMode.LIGHT -> Icons.Default.LightMode
-            },
-            "테마",
-        )
-    }
+    var menuExpanded by remember { mutableStateOf(false) }
+
     IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "새로고침") }
-    IconButton(onClick = onHistoryClick) { Icon(Icons.Default.History, "기록") }
-    IconButton(onClick = onStatisticsClick) { Icon(Icons.Default.QueryStats, "통계") }
-    IconButton(onClick = onGoalClick) { Icon(Icons.Default.Flag, "목표") }
-    IconButton(onClick = onBadgesClick) { Icon(Icons.Default.EmojiEvents, "배지") }
-    IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.ExitToApp, "로그아웃") }
+    Box {
+        IconButton(onClick = { menuExpanded = true }) {
+            Icon(Icons.Default.MoreVert, "더보기")
+        }
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("프로필") },
+                onClick = {
+                    menuExpanded = false
+                    onProfileClick()
+                },
+                leadingIcon = { Icon(Icons.Default.Person, null) },
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        when (themeMode) {
+                            ThemeMode.SYSTEM -> "테마 (시스템)"
+                            ThemeMode.DARK -> "테마 (다크)"
+                            ThemeMode.LIGHT -> "테마 (라이트)"
+                        },
+                    )
+                },
+                onClick = {
+                    menuExpanded = false
+                    onCycleTheme()
+                },
+                leadingIcon = {
+                    Icon(
+                        when (themeMode) {
+                            ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                            ThemeMode.DARK -> Icons.Default.DarkMode
+                            ThemeMode.LIGHT -> Icons.Default.LightMode
+                        },
+                        null,
+                    )
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("기록") },
+                onClick = {
+                    menuExpanded = false
+                    onHistoryClick()
+                },
+                leadingIcon = { Icon(Icons.Default.History, null) },
+            )
+            DropdownMenuItem(
+                text = { Text("통계") },
+                onClick = {
+                    menuExpanded = false
+                    onStatisticsClick()
+                },
+                leadingIcon = { Icon(Icons.Default.QueryStats, null) },
+            )
+            DropdownMenuItem(
+                text = { Text("목표") },
+                onClick = {
+                    menuExpanded = false
+                    onGoalClick()
+                },
+                leadingIcon = { Icon(Icons.Default.Flag, null) },
+            )
+            DropdownMenuItem(
+                text = { Text("배지") },
+                onClick = {
+                    menuExpanded = false
+                    onBadgesClick()
+                },
+                leadingIcon = { Icon(Icons.Default.EmojiEvents, null) },
+            )
+            DropdownMenuItem(
+                text = { Text("로그아웃") },
+                onClick = {
+                    menuExpanded = false
+                    onLogout()
+                },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, null) },
+            )
+        }
+    }
 }
 
 @Composable
@@ -198,7 +282,11 @@ fun WeeklyProgressCard(completedCount: Int, totalDays: Int, completionRate: Floa
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("이번 주 진행률", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "이번 주 진행률",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
                 progress = { completionRate },
@@ -215,7 +303,6 @@ fun WeeklyProgressCard(completedCount: Int, totalDays: Int, completionRate: Floa
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit, onToggleComplete: () -> Unit) {
     val dayName = day.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)
@@ -230,7 +317,6 @@ fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit, onToggleComplet
     )
 
     Card(
-        onClick = { if (!day.isRestDay) onToggleComplete() },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
@@ -239,10 +325,14 @@ fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit, onToggleComplet
                 Column(modifier = Modifier.weight(1f)) {
                     Text("$dayName ($dateStr)", style = MaterialTheme.typography.titleMedium)
                 }
-                if (day.isCompleted) {
-                    Icon(Icons.Default.CheckCircle, "완료", tint = MaterialTheme.colorScheme.primary)
-                } else if (!day.isRestDay) {
-                    Icon(Icons.Outlined.Circle, "미완료", tint = MaterialTheme.colorScheme.outline)
+                if (!day.isRestDay) {
+                    IconButton(onClick = onToggleComplete) {
+                        if (day.isCompleted) {
+                            Icon(Icons.Default.CheckCircle, "완료 해제", tint = MaterialTheme.colorScheme.primary)
+                        } else {
+                            Icon(Icons.Outlined.Circle, "완료 처리", tint = MaterialTheme.colorScheme.outline)
+                        }
+                    }
                 }
             }
             if (day.isRestDay) {

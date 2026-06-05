@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-05-30 v0.1.7 (versionCode 21) 빌드 시점
-> 작성 기준: v0.1.7 (versionCode 21) — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote to `ui/components/`
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-06 프론트엔드 UDF-Enhanced 마이그레이션 + 회귀 방지 가드
+> 작성 기준: v0.1.7 (versionCode 21) — 코드 미커밋 변경: 12 VM UDF 마이그레이션 + OkHttp 5 / Coil 3 + collectAsState CI 가드
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -160,14 +160,14 @@ GitHub Actions:
 - **`.github/workflows/backend.yml`** — `backend/**` 또는 `backend.yml` 변경 시: ruff + mypy + pytest + Codecov → docker compose runtime smoke (INC-03 차단) → pip-audit + bandit + gitleaks → (main push) Trivy + ACR push + **secret precheck (INC-18 차단)** → Container App 배포 → /health
   - `workflow_dispatch` 지원 — 수동 실행 가능 (`gh workflow run backend.yml --ref main`)
   - GitHub repo secret `AZURE_CREDENTIALS` 필요 (service principal JSON, scope `RG apps` + `AcrPush` on ACR)
-- **`.github/workflows/android.yml`** — `app/**` 변경 시 spotlessCheck + detektDebug + testDebugUnitTest + assembleDebug + PR이면 APK artifact 업로드
+- **`.github/workflows/android.yml`** — `app/**` 변경 시 spotlessCheck + **collectAsState anti-pattern 검사** (룰 11) + detektDebug + testDebugUnitTest + assembleDebug + PR이면 APK artifact 업로드
 - **`.github/dependabot.yml`** — pip + github-actions + gradle 주간 PR (KST 월 06:00, 보안 패치는 단일 PR로 그룹화)
 
 로컬 자동화:
 - **`scripts/preflight-release.sh`** — Spotless + Detekt + Tests + `releaseArtifacts`(AAB+APK 동시) 일괄 (INC-04 차단)
 - **`scripts/alembic-autogen.sh`** — postgres:16-alpine 컨테이너에 autogen 실행 (INC-07 차단)
 - **`scripts/register-azure-credentials.ps1`** — SP 생성/패치 + AcrPush role + GitHub secret 등록 (INC-17 운영자 1회/만료 갱신용)
-- **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + detektDebug
+- **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11)
 
 ---
 
@@ -292,3 +292,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-05-25 | 초안 작성. v0.1.0 출시 직전 상태 |
 | 2026-05-25 (자동 배포) | INC-17·18 해결 + GitHub Actions 자동 배포 end-to-end 정상 동작. revision `0000007` 활성. secret `supabase-url` 추가(총 5개). backend.yml에 secret precheck step + workflow_dispatch trigger 추가. `scripts/register-azure-credentials.ps1` 신규. PR #15·#16·#17 머지 |
 | 2026-06-03 | Azure Monitor Alerts 프로비저닝. Action Group `ag-eundunhealth-prod` + Activity Log alert 4개 (ServiceHealth/ResourceHealth/Deletion/PG Firewall) + Metric alert 4개 (PG CPU/Storage/Connections + CA 5xx). §12 신설. `scripts/setup-azure-alerts.sh` 신규 |
+| 2026-06-06 | 프론트엔드 UDF-Enhanced 마이그레이션 (12 VM + 11 Screen). `@Immutable` 45건, `collectAsStateWithLifecycle` 33건, SideEffect Channel 7건. AuthVM 분리 → Login/Signup/ForgotPasswordVM 신규. OkHttp 4→5, Coil 2→3 의존성 메이저 업그레이드. CLAUDE.md 룰 11 + CI collectAsState 가드 + pre-commit collectAsState 검사 추가 |

@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -65,5 +66,13 @@ fun SkeletonHomeContent(modifier: Modifier = Modifier) {
         repeat(5) {
             SkeletonDayCard()
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SkeletonHomeContentPreview() {
+    MaterialTheme {
+        SkeletonHomeContent()
     }
 }

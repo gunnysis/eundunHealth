@@ -24,29 +24,34 @@ data class BadgeDisplayItem(
     val earnedAt: String? = null,
 )
 
+@Immutable
+sealed class BadgeUiState {
+    @Immutable data object Loading : BadgeUiState()
+
+    @Immutable data class Loaded(val badges: List<BadgeDisplayItem>) : BadgeUiState()
+
+    @Immutable data object Empty : BadgeUiState()
+
+    @Immutable data class Error(val error: AppError) : BadgeUiState()
+}
+
 @HiltViewModel
 class BadgeViewModel @Inject constructor(
     private val badgeRepo: BadgeRepository,
 ) : ViewModel() {
 
-    private val _badges = MutableStateFlow<List<BadgeDisplayItem>>(emptyList())
-    val badges: StateFlow<List<BadgeDisplayItem>> = _badges.asStateFlow()
-
-    private val _error = MutableStateFlow<AppError?>(null)
-    val error: StateFlow<AppError?> = _error.asStateFlow()
-
-    fun clearError() {
-        _error.value = null
-    }
+    private val _uiState = MutableStateFlow<BadgeUiState>(BadgeUiState.Loading)
+    val uiState: StateFlow<BadgeUiState> = _uiState.asStateFlow()
 
     init {
         loadBadges()
     }
 
     fun loadBadges() = viewModelScope.launch {
+        _uiState.value = BadgeUiState.Loading
         badgeRepo.getEarnedBadges()
             .onSuccess { earned ->
-                _badges.value = BadgeCatalog.all.map { template ->
+                val items = BadgeCatalog.all.map { template ->
                     val (name, desc) = BadgeCatalog.getInfo(template.key)
                     val earnedBadge = earned.find { it.key == template.key }
                     BadgeDisplayItem(
@@ -60,11 +65,16 @@ class BadgeViewModel @Inject constructor(
                         },
                     )
                 }
+                _uiState.value = if (items.isEmpty()) {
+                    BadgeUiState.Empty
+                } else {
+                    BadgeUiState.Loaded(items)
+                }
             }
             .onFailure {
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
-                _error.value = appErr
+                _uiState.value = BadgeUiState.Error(appErr)
             }
     }
 }

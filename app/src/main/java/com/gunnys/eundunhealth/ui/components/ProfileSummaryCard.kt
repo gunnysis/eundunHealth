@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -32,5 +33,13 @@ fun ProfileSummaryCard(
             Text("키: ${"%.0f".format(height)}cm | 몸무게: ${"%.1f".format(weight)}kg")
             Text("체지방: ${"%.1f".format(bodyFat)}% | 근육량: ${"%.1f".format(muscleMass)}kg")
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ProfileSummaryCardPreview() {
+    MaterialTheme {
+        ProfileSummaryCard(height = 175f, weight = 70.5f, bodyFat = 18.2f, muscleMass = 32.1f)
     }
 }

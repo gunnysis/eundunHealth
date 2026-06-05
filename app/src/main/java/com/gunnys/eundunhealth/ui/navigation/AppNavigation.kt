@@ -2,9 +2,9 @@ package com.gunnys.eundunhealth.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,7 +31,7 @@ fun AppNavigation(
     onRequestHealthPermissions: () -> Unit = {},
 ) {
     val navController = rememberNavController()
-    val sessionState by authViewModel.sessionState.collectAsState()
+    val sessionState by authViewModel.sessionState.collectAsStateWithLifecycle()
 
     LaunchedEffect(sessionState) {
         when (val s = sessionState) {
@@ -70,7 +70,6 @@ fun AppNavigation(
         composable(Screen.ForgotPassword.route) {
             ForgotPasswordScreen(
                 onNavigateBack = { navController.popBackStack() },
-                authViewModel = authViewModel,
             )
         }
         composable(Screen.Onboarding.route) {

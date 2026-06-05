@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 /**
@@ -57,5 +58,13 @@ fun EmptyContent(
             Spacer(Modifier.height(16.dp))
             TextButton(onClick = onAction) { Text(actionLabel) }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun EmptyContentPreview() {
+    MaterialTheme {
+        EmptyContent(message = "아직 데이터가 없습니다")
     }
 }

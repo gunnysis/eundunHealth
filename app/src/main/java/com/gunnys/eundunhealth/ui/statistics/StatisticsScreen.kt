@@ -23,13 +23,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.ui.components.EmptyContent
 import com.gunnys.eundunhealth.ui.components.ErrorContent
@@ -55,8 +57,7 @@ fun StatisticsScreen(
     onBack: () -> Unit,
     viewModel: StatisticsViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -77,22 +78,17 @@ fun StatisticsScreen(
                 }
             }
             is StatisticsUiState.Empty -> {
-                val currentError = error
-                if (currentError != null) {
-                    ErrorContent(
-                        error = currentError,
-                        modifier = Modifier.padding(padding),
-                        onRetry = {
-                            viewModel.clearError()
-                            viewModel.load()
-                        },
-                    )
-                } else {
-                    EmptyContent(
-                        message = "아직 통계로 보여줄 운동 기록이 없습니다",
-                        modifier = Modifier.padding(padding),
-                    )
-                }
+                EmptyContent(
+                    message = "아직 통계로 보여줄 운동 기록이 없습니다",
+                    modifier = Modifier.padding(padding),
+                )
+            }
+            is StatisticsUiState.Error -> {
+                ErrorContent(
+                    error = state.error,
+                    modifier = Modifier.padding(padding),
+                    onRetry = { viewModel.load() },
+                )
             }
             is StatisticsUiState.Loaded -> {
                 StatisticsContent(state.data, modifier = Modifier.padding(padding))
@@ -124,7 +120,11 @@ private fun StatisticsContent(stats: Statistics, modifier: Modifier = Modifier) 
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("주간 완료율 추이", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "주간 완료율 추이",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { heading() },
+                )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "최근 ${stats.weeklyRates.size}주",

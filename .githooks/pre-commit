@@ -29,6 +29,22 @@ if [ -n "$CHANGED_KOTLIN" ]; then
 
     # 정적 분석
     ./gradlew :app:detektDebug -q
+
+    # collectAsState anti-pattern 검사 (staged .kt 파일만, 룰 11)
+    echo "[pre-commit] Checking for banned collectAsState() in staged Kotlin files..."
+    COLLECT_FAIL=0
+    if echo "$CHANGED_KOTLIN" | xargs grep -n 'import androidx.compose.runtime.collectAsState$' 2>/dev/null; then
+        echo "ERROR: Found banned 'import collectAsState'. Use collectAsStateWithLifecycle instead."
+        COLLECT_FAIL=1
+    fi
+    if echo "$CHANGED_KOTLIN" | xargs grep -n '\.collectAsState(' 2>/dev/null | grep -v 'collectAsStateWithLifecycle('; then
+        echo "ERROR: Found banned '.collectAsState()' call. Use collectAsStateWithLifecycle instead."
+        COLLECT_FAIL=1
+    fi
+    if [ "$COLLECT_FAIL" -eq 1 ]; then
+        echo "Commit blocked by collectAsState anti-pattern check (CLAUDE.md Rule 11)."
+        exit 1
+    fi
 fi
 
 # ---------- 2) docs/plans/ ----------
