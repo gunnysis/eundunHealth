@@ -11,7 +11,7 @@
 
 ## Topic Ledgers (완료 작업 history)
 
-- [Android](logs/android.md) — recent 13, older 0
+- [Android](logs/android.md) — recent 14, older 0
 - [Backend](logs/backend.md) — recent 1, older 0
 - [Dependencies](logs/dependencies.md) — recent 4, older 0
 - [Process & Infra](logs/process-infra.md) — recent 7, older 0

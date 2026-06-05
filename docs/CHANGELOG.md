@@ -4,6 +4,33 @@
 
 ---
 
+## [main] — 2026-06-06 — 프로젝트 문서 최신화 + _staging 점검
+
+### 🎯 Prompts
+1. "프로젝트의 문서 최신화 작업해줘"
+2. "changelog 작업해줘. docs\plans\_staging 경로의 문서들 점검해줘."
+
+### ✅ Changes
+
+#### 문서 최신화 (dependabot 머지 반영)
+- **Modified** `CLAUDE.md` — dependency-deferred 참조 "kotlin 2.3"→"kotlin 2.4" + DSL 마이그레이션 블로커
+- **Modified** `docs/ops/operations-snapshot.md` — 헤더 갱신 (커밋 완료 상태), Vico 3.2.2, Sentry Gradle 6.10.0 추가, §13 dependabot 배치 이력
+- **Modified** `docs/ops/dependency-deferred.md` — kotlin 타겟 2.3.21→2.4.0, build.gradle.kts DSL 마이그레이션 블로커 추가, 재개 조건 OR→AND 변경
+
+#### _staging 점검 (3건 status 갱신 + ledger entry)
+- **Modified** `docs/plans/_staging/` 3파일 — frontmatter `status: proposed` → `shipped` (gitignored, 로컬 참조용)
+- **Modified** `docs/plans/logs/android.md` — ledger entry 2건 추가:
+  - 2026-06-05/06 프론트엔드 대규모 개선 Phase 1-5
+  - 2026-06-06 프론트엔드 회귀 방지 3계층 가드
+
+### 📁 Files Modified
+- `CLAUDE.md` (+1, -1)
+- `docs/ops/operations-snapshot.md` (+5, -4)
+- `docs/ops/dependency-deferred.md` (+19, -12)
+- `docs/plans/logs/android.md` (+28, ledger entries)
+
+---
+
 ## [main] — 2026-06-06 — Dependabot PR 일괄 정리 + 의존성 업그레이드
 
 ### 🎯 Prompts
