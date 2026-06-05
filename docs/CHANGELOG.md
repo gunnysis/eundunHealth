@@ -4,6 +4,39 @@
 
 ---
 
+## [main] — 2026-06-06 — _staging 문서 승격 + shipped pr:null 검증 버그 수정
+
+### 🎯 Prompts
+1. "docs\plans\_staging 경로의 문서 정리 role은 뭐야?"
+2. "_staging 문서들 점검해서 shipped 되면 정리해줘"
+3. "커밋 필요해."
+
+### ✅ Changes
+
+#### _staging → docs/plans/ 승격 (3건 shipped 문서)
+- **Added** `docs/plans/2026-06-05-frontend-major-improvement-design.md` — 프론트엔드 대규모 개선 설계 (Rev.2, 613줄)
+- **Added** `docs/plans/2026-06-05-frontend-major-improvement-plan.md` — 실행 계획 (Rev.2, 244줄)
+- **Added** `docs/plans/2026-06-06-frontend-regression-prevention-design.md` — 회귀 방지 설계 (90줄)
+- 본문 상태 텍스트 frontmatter `shipped`와 동기화, 내부 `_staging/` 경로 참조 수정
+
+#### gen_plans_index.py shipped pr:null 검증 버그 수정
+- **Root cause**: `validate()` line 108의 `shipped requires pr` 검증이 main 직접 커밋 워크플로우를 차단. v2 hybrid 구조에서 traceability는 topic ledger entry가 담당하므로 pr 필드 필수 근거 소멸
+- **Modified** `scripts/gen_plans_index.py` — shipped status의 pr 필드를 선택으로 완화
+- **Modified** `scripts/test_gen_plans_index.py` — `test_validate_shipped_without_pr_passes` + `test_main_shipped_without_pr_succeeds` 신규, `test_main_fails_on_invalid_frontmatter` invalid status 케이스로 변경 (32/32 PASS)
+
+#### 경로 참조 수정
+- **Modified** `docs/plans/logs/android.md` — `_staging/` → `docs/plans/` 경로 3건 수정
+
+### 📁 Files Modified
+- `docs/plans/2026-06-05-frontend-major-improvement-design.md` (+613, new)
+- `docs/plans/2026-06-05-frontend-major-improvement-plan.md` (+244, new)
+- `docs/plans/2026-06-06-frontend-regression-prevention-design.md` (+90, new)
+- `docs/plans/logs/android.md` (+3, -3)
+- `scripts/gen_plans_index.py` (+2, -2)
+- `scripts/test_gen_plans_index.py` (+21, -5)
+
+---
+
 ## [main] — 2026-06-06 — 프로젝트 문서 최신화 + _staging 점검
 
 ### 🎯 Prompts
