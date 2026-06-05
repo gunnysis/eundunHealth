@@ -32,7 +32,7 @@ jobs:
       run:
         working-directory: ${{ env.BACKEND_DIR }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v6
@@ -108,7 +108,7 @@ jobs:
       run:
         working-directory: ${{ env.BACKEND_DIR }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Compose up (db + api)
         env:
@@ -144,7 +144,7 @@ jobs:
       contents: read
       pull-requests: read  # gitleaks-action 이 PR commits 조회 (403 회피)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0  # gitleaks가 전체 히스토리 검사
 
@@ -165,7 +165,7 @@ jobs:
         run: bandit -r ${{ env.BACKEND_DIR }}/app -ll
 
       - name: gitleaks (시크릿 검출)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -180,7 +180,7 @@ jobs:
       run:
         working-directory: ${{ env.BACKEND_DIR }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Azure login
         uses: azure/login@v3
@@ -199,7 +199,7 @@ jobs:
           echo "IMAGE_LATEST=$LATEST" >> $GITHUB_ENV
 
       - name: Trivy 이미지 스캔 (CRITICAL/HIGH 차단)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ env.IMAGE_TAG }}
           format: table
