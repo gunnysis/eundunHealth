@@ -8,6 +8,7 @@
 
 ### 🎯 Prompts
 1. "Implement the following plan: docs/plans/ 문서 lifecycle 관리 개선 [holding/deferred status + root-only scan + grouped rendering + _staging gitignore]"
+2. "CLAUDE.md 업데이트해줘"
 
 ### ✅ Changes
 - **Modified**: `scripts/gen_plans_index.py` — `holding`/`deferred` status 추가, `rglob`→`glob` root-only 스캔, `render_readme_v2` status 그룹별 하위 섹션 렌더링 (`진행 중`/`대기`/`보류`)
@@ -15,6 +16,7 @@
 - **Modified**: `.gitignore` — `docs/plans/_staging/` 추가 (scratch 작업 폴더)
 - **Modified**: `docs/plans/_templates/{design,plan}.md` — status lifecycle 주석 추가
 - **Moved**: `docs/plans/expected/` → `docs/plans/_staging/` (gitignored)
+- **Modified**: `CLAUDE.md` — `gen-plans-index.sh` 항목에 root-only scan, 8개 status 값, 그룹 렌더링, `_staging/` 설명 반영
 
 ### 📊 Test Results
 - Total: 31/31 passed (100%)
@@ -26,6 +28,7 @@
 - `.gitignore` (+3 lines)
 - `docs/plans/_templates/design.md` (+1, -1 lines)
 - `docs/plans/_templates/plan.md` (+1, -1 lines)
+- `CLAUDE.md` (+1, -1 lines)
 
 ---
 
