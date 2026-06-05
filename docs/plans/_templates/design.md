@@ -1,6 +1,6 @@
 ---
 type: design
-status: proposed
+status: proposed  # proposed → approved → in-progress → [holding|deferred] → shipped (→ ledger archive)
 pr: null
 related_inc: null
 supersedes: null

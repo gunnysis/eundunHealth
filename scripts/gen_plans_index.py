@@ -40,17 +40,21 @@ REQUIRED_FIELDS = ["type", "status", "target_version", "tags"]
 ALLOWED_TYPE = {"design", "plan", "rfc", "postmortem"}
 ALLOWED_STATUS = {
     "proposed", "approved", "in-progress",
+    "holding", "deferred",
     "shipped", "superseded", "abandoned",
 }
 # Display order (top to bottom in README)
 STATUS_ORDER = [
     "in-progress", "proposed", "approved",
+    "holding", "deferred",
     "shipped", "superseded", "abandoned",
 ]
 STATUS_HEADING = {
     "in-progress": "In progress",
     "proposed": "Proposed",
     "approved": "Approved (not started)",
+    "holding": "Holding",
+    "deferred": "Deferred",
     "shipped": "Shipped",
     "superseded": "Superseded",
     "abandoned": "Abandoned",
@@ -137,7 +141,7 @@ def collect_plans(plans_dir: Path) -> tuple[list[dict], list[str]]:
     """
     records: list[dict] = []
     all_errs: list[str] = []
-    for path in sorted(plans_dir.rglob("*.md")):
+    for path in sorted(plans_dir.glob("*.md")):
         if path.name == "README.md":
             continue
         if "_templates" in path.parts:
@@ -378,6 +382,13 @@ def count_ledger_stats(plans_dir: Path) -> dict[str, tuple[int, int]]:
     return stats
 
 
+ACTIVE_GROUPS = [
+    ("진행 중", {"in-progress"}),
+    ("대기 (proposed / approved)", {"proposed", "approved"}),
+    ("보류 (holding / deferred)", {"holding", "deferred"}),
+]
+
+
 def render_readme_v2(
     active: list[dict],
     superseded: list[dict],
@@ -395,22 +406,26 @@ def render_readme_v2(
         "> 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.",
         "",
     ]
-    # 활성 작업 섹션
+    # 활성 작업 섹션 — status 그룹별 하위 섹션
+    lines.append(f"## 활성 작업 (페어 파일, {len(active)})")
+    lines.append("")
     if active:
         active_sorted = sorted(active, key=lambda r: r["date"], reverse=True)
-        lines.append(f"## 활성 작업 (페어 파일, {len(active_sorted)})")
-        lines.append("")
-        lines.append("| 날짜 | 주제 | type | status | tags |")
-        lines.append("|---|---|---|---|---|")
-        for r in active_sorted:
-            tags_cell = ", ".join(r["tags"])
-            lines.append(
-                f"| {r['date']} | {r['topic']} | {r['type']} | {r['status']} | {tags_cell} |"
-            )
-        lines.append("")
+        for group_label, group_statuses in ACTIVE_GROUPS:
+            group_rows = [r for r in active_sorted if r["status"] in group_statuses]
+            if not group_rows:
+                continue
+            lines.append(f"### {group_label} ({len(group_rows)})")
+            lines.append("")
+            lines.append("| 날짜 | 주제 | type | status | tags |")
+            lines.append("|---|---|---|---|---|")
+            for r in group_rows:
+                tags_cell = ", ".join(r["tags"])
+                lines.append(
+                    f"| {r['date']} | {r['topic']} | {r['type']} | {r['status']} | {tags_cell} |"
+                )
+            lines.append("")
     else:
-        lines.append("## 활성 작업 (페어 파일, 0)")
-        lines.append("")
         lines.append("(없음 — 모든 작업이 ledger 에 흡수됨 또는 신규 작업 없음)")
         lines.append("")
 
@@ -473,7 +488,8 @@ def main(argv: list[str]) -> int:
         return 1
 
     # 3) Status 별 분류 — active / shipped_stragglers / superseded
-    active = [r for r in records if r["status"] in {"proposed", "in-progress", "approved"}]
+    active_statuses = {"proposed", "in-progress", "approved", "holding", "deferred"}
+    active = [r for r in records if r["status"] in active_statuses]
     shipped_stragglers = [r for r in records if r["status"] == "shipped"]
     superseded_rows = [r for r in records if r["status"] == "superseded"]
 

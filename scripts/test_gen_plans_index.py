@@ -64,6 +64,16 @@ def test_validate_invalid_status():
     assert any("invalid status 'weird'" in e for e in errs)
 
 
+def test_validate_holding_status_passes():
+    fm = dict(VALID_FM, status="holding")
+    assert validate(Path("docs/plans/foo.md"), fm) == []
+
+
+def test_validate_deferred_status_passes():
+    fm = dict(VALID_FM, status="deferred")
+    assert validate(Path("docs/plans/foo.md"), fm) == []
+
+
 def test_validate_shipped_requires_pr():
     fm = dict(VALID_FM, status="shipped")  # pr 누락
     errs = validate(Path("docs/plans/foo.md"), fm)
@@ -117,7 +127,7 @@ def test_extract_date_topic_no_suffix():
 
 # ---------- group_pairs ----------
 
-from gen_plans_index import group_pairs, render_readme  # noqa: E402
+from gen_plans_index import group_pairs, render_readme, render_readme_v2  # noqa: E402
 
 
 def test_group_pairs_merges_design_and_plan():
@@ -293,3 +303,64 @@ def test_collect_plans_skips_doc_without_frontmatter(tmp_path, capsys):
     captured = capsys.readouterr()
     assert "warning" in captured.err.lower() or "no frontmatter" in captured.err
     assert "orphan" in captured.err
+
+
+def test_collect_plans_root_only_ignores_subdirs(tmp_path):
+    """glob (root-only) scan: 하위 디렉토리의 .md 파일은 무시."""
+    plans_dir = tmp_path / "docs" / "plans"
+    plans_dir.mkdir(parents=True)
+    # root-level pair file (should be collected)
+    (plans_dir / "2026-06-05-foo-design.md").write_text(
+        "---\ntype: design\nstatus: proposed\n"
+        "target_version: v1\ntags: [a]\n---\n# foo\n",
+        encoding="utf-8",
+    )
+    # subdirectory files (should be ignored)
+    subdir = plans_dir / "expected"
+    subdir.mkdir()
+    (subdir / "2026-06-05-bar-design.md").write_text(
+        "---\ntype: design\nstatus: proposed\n"
+        "target_version: v1\ntags: [b]\n---\n# bar\n",
+        encoding="utf-8",
+    )
+    staging = plans_dir / "_staging"
+    staging.mkdir()
+    (staging / "2026-06-05-baz-plan.md").write_text(
+        "---\ntype: plan\nstatus: proposed\n"
+        "target_version: v1\ntags: [c]\n---\n# baz\n",
+        encoding="utf-8",
+    )
+    records, errs = collect_plans(plans_dir)
+    assert errs == []
+    assert len(records) == 1
+    assert records[0]["topic"] == "foo"
+
+
+def test_render_readme_v2_groups_by_status(tmp_path):
+    """비어있지 않은 status 그룹만 하위 섹션으로 렌더링."""
+    # ledger 디렉토리 (count_ledger_stats 용)
+    plans_dir = tmp_path / "docs" / "plans"
+    (plans_dir / "logs").mkdir(parents=True)
+    active = [
+        {"date": "2026-06-05", "topic": "feat-a", "type": "design + plan",
+         "status": "in-progress", "pr": None, "related_inc": None,
+         "tags": ["android"], "superseded_by": None},
+        {"date": "2026-06-04", "topic": "feat-b", "type": "design",
+         "status": "proposed", "pr": None, "related_inc": None,
+         "tags": ["backend"], "superseded_by": None},
+        {"date": "2026-06-03", "topic": "feat-c", "type": "plan",
+         "status": "holding", "pr": None, "related_inc": None,
+         "tags": ["infra"], "superseded_by": None},
+    ]
+    rendered = render_readme_v2(active, [], plans_dir)
+    # 3개 그룹 모두 렌더링
+    assert "### 진행 중 (1)" in rendered
+    assert "### 대기 (proposed / approved) (1)" in rendered
+    assert "### 보류 (holding / deferred) (1)" in rendered
+    # 총 active 수 표시
+    assert "## 활성 작업 (페어 파일, 3)" in rendered
+    # deferred 그룹에 항목 없으므로 holding/deferred 그룹에 feat-c만
+    assert "feat-c" in rendered
+    # 순서: 진행 중 → 대기 → 보류
+    assert rendered.index("진행 중") < rendered.index("대기")
+    assert rendered.index("대기") < rendered.index("보류")

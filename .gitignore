@@ -62,3 +62,6 @@ backend/alembic/versions/__pycache__/
 
 # detekt baseline-debug.xml은 task가 자동 갱신 — git 추적 안 함 (baseline.xml만 추적)
 config/detekt/baseline-debug.xml
+
+# docs/plans scratch 작업용 — 커밋 전 개인 정리/메모
+docs/plans/_staging/
