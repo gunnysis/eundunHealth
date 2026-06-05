@@ -105,8 +105,8 @@ def validate(path: Path, fm: dict) -> list[str]:
     s = fm.get("status")
     if s is not None and s not in ALLOWED_STATUS:
         errs.append(f"{path}: invalid status '{s}' (allowed: {sorted(ALLOWED_STATUS)})")
-    if s == "shipped" and not fm.get("pr"):
-        errs.append(f"{path}: status=shipped requires pr field (PR number)")
+    # shipped 에서 pr 은 선택 — main 직접 커밋 워크플로우 허용.
+    # traceability 는 topic ledger entry (커밋 해시/PR 링크) 가 담당.
     if s == "superseded" and not fm.get("superseded_by"):
         errs.append(f"{path}: status=superseded requires superseded_by")
     tags = fm.get("tags")

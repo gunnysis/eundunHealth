@@ -7,7 +7,7 @@
 ### 2026-06-06 — 프론트엔드 회귀 방지 3계층 가드
 
 - **Why**: Phase 1-5 UDF-Enhanced 마이그레이션 후 옛 패턴 (분산 StateFlow, `collectAsState()`, `@Immutable` 누락) 재도입 방지.
-- **설계**: `docs/plans/_staging/2026-06-06-frontend-regression-prevention-design.md`
+- **설계**: `docs/plans/2026-06-06-frontend-regression-prevention-design.md`
 - **산출물**: CLAUDE.md 룰 11 (ViewModel UDF-Enhanced 5개 체크리스트) + `.github/workflows/android.yml` collectAsState CI step + `.githooks/pre-commit` collectAsState check
 - **커밋**: `614545d`
 - **결과**: CI + pre-commit + CLAUDE.md 3계층 가드 운영 중. baseline: `collectAsState()` 0건, `collectAsStateWithLifecycle` 33건.
@@ -17,8 +17,8 @@
 ### 2026-06-05/06 — 프론트엔드 대규모 개선 Phase 1-5 (UDF-Enhanced 마이그레이션)
 
 - **Why**: 12 ViewModel의 분산 StateFlow / `collectAsState()` / `@Immutable` 누락 등 6개 Gap을 일괄 해소. Compose lifecycle 리소스 낭비 + recomposition 회귀 + SSOT 위반 제거.
-- **설계**: `docs/plans/_staging/2026-06-05-frontend-major-improvement-design.md` (Rev.2)
-- **실행 계획**: `docs/plans/_staging/2026-06-05-frontend-major-improvement-plan.md` (Rev.2)
+- **설계**: `docs/plans/2026-06-05-frontend-major-improvement-design.md` (Rev.2)
+- **실행 계획**: `docs/plans/2026-06-05-frontend-major-improvement-plan.md` (Rev.2)
 - **산출물**:
   - 9 ViewModel → 단일 `_uiState: MutableStateFlow<XxxUiState>` 전환
   - 3 ViewModel 신규 (AuthVM 분리 → LoginVM, SignupVM, ForgotPasswordVM)

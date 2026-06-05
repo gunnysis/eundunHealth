@@ -74,10 +74,10 @@ def test_validate_deferred_status_passes():
     assert validate(Path("docs/plans/foo.md"), fm) == []
 
 
-def test_validate_shipped_requires_pr():
-    fm = dict(VALID_FM, status="shipped")  # pr 누락
-    errs = validate(Path("docs/plans/foo.md"), fm)
-    assert any("status=shipped requires pr" in e for e in errs)
+def test_validate_shipped_without_pr_passes():
+    """main 직접 커밋 워크플로우: shipped + pr:null 허용."""
+    fm = dict(VALID_FM, status="shipped")  # pr 없음
+    assert validate(Path("docs/plans/foo.md"), fm) == []
 
 
 def test_validate_shipped_with_pr_passes():
@@ -250,7 +250,7 @@ def test_main_fails_on_invalid_frontmatter(tmp_path, monkeypatch, capsys):
     plans_dir = tmp_path / "docs" / "plans"
     plans_dir.mkdir(parents=True)
     (plans_dir / "2026-05-28-bad.md").write_text(
-        "---\ntype: design\nstatus: shipped\n"  # pr 누락 → 검증 실패
+        "---\ntype: design\nstatus: bogus\n"  # invalid status → 검증 실패
         "target_version: v1.0\ntags: [a]\n---\n",
         encoding="utf-8",
     )
@@ -258,7 +258,23 @@ def test_main_fails_on_invalid_frontmatter(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("gen_plans_index.README_PATH", plans_dir / "README.md")
     assert main([]) == 1
     captured = capsys.readouterr()
-    assert "status=shipped requires pr" in captured.err
+    assert "invalid status 'bogus'" in captured.err
+
+
+def test_main_shipped_without_pr_succeeds(tmp_path, monkeypatch, capsys):
+    """main 직접 커밋 워크플로우: shipped + pr:null → 검증 통과 + shipped_stragglers warning."""
+    plans_dir = tmp_path / "docs" / "plans"
+    plans_dir.mkdir(parents=True)
+    (plans_dir / "2026-05-28-direct-commit-design.md").write_text(
+        "---\ntype: design\nstatus: shipped\n"
+        "target_version: v1.0\ntags: [a]\n---\n# Direct commit\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("gen_plans_index.PLANS_DIR", plans_dir)
+    monkeypatch.setattr("gen_plans_index.README_PATH", plans_dir / "README.md")
+    assert main([]) == 0
+    captured = capsys.readouterr()
+    assert "shipped frontmatter" in captured.err  # shipped_stragglers warning
 
 
 def test_collect_plans_skips_readme_and_templates(tmp_path):
