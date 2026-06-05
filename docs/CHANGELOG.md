@@ -4,6 +4,32 @@
 
 ---
 
+## [main] — 2026-06-06 — GitHub Actions Node.js 20 → 24 런타임 업그레이드
+
+### 🎯 Prompts
+1. "dependabot Node.js 20 경고 해결해줘"
+2. "CI 결과 확인해줘"
+3. "changelog 작업해줘"
+
+### ✅ Changes
+- **Modified** `.github/workflows/android.yml` — `actions/checkout@v4` → `@v6`
+- **Modified** `.github/workflows/backend.yml` — `actions/checkout@v4` → `@v6` (4곳), `gitleaks/gitleaks-action@v2` → `@v3`, `aquasecurity/trivy-action@master` → `@v0.36.0`
+- **Modified** `.github/workflows/docs-plans-index.yml` — `actions/checkout@v5` → `@v6`
+- **Closed** Dependabot PR #72 (`actions/checkout` v4→v6), PR #73 (`gitleaks-action` v2→v3)
+
+### 📁 Files Modified
+- `.github/workflows/android.yml` (+1, -1)
+- `.github/workflows/backend.yml` (+6, -6)
+- `.github/workflows/docs-plans-index.yml` (+1, -1)
+
+### 🔍 Notes
+- Node.js 20 deprecated June 2026, removed September 2026
+- 9개 action 중 3개만 업그레이드 필요 — 나머지 6개 (`setup-java@v5`, `setup-gradle@v6`, `upload-artifact@v7`, `setup-python@v6`, `codecov-action@v6`, `azure/login@v3`) 는 이미 Node.js 24 런타임
+- `trivy-action`은 Docker 기반이라 Node.js 런타임 경고 대상 아님, `@master` → `@v0.36.0` pin은 supply chain 보안 목적
+- 첫 push에서 `@0.36.0` (`v` prefix 누락)으로 deploy 실패 → `@v0.36.0`으로 즉시 수정
+
+---
+
 ## [main] — 2026-06-06 — 프론트엔드 UDF-Enhanced 마이그레이션 + 회귀 방지 가드
 
 ### 🎯 Prompts
