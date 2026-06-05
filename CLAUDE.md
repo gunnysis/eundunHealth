@@ -159,7 +159,7 @@ DELETE /account
 - **Min SDK 26**, Target SDK 37, Java 17
 - **App version**: versionName **`0.1.7`**, versionCode **`21`** (이력: 14=v0.1.0 출시 / 15=v0.1.1 가입 이메일 확인 / 16=v0.1.2 supabase encoding hotfix / 17=v0.1.3 App Links / 18=v0.1.4 redirectUrl 명시 / 19=v0.1.5 vico 3.1 + healthConnect stable / 20=v0.1.6 signup error banner / 21=v0.1.7 login+forgot 룰 8 + Banner promote. 다음 빌드부터 22, 23, ...)
 - **Sentry Android 8.42.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
-- **Vico 3.1.0** (compose-m3) — 통계 + 목표 진행 차트
+- **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.3.2** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
 - **Detekt 1.23.7 + Spotless 8.5.1 + ktlint 1.5.0**
 - Supabase JWT algorithm: **ES256 (ECDSA)** — backend uses JWKS public key verification
@@ -169,8 +169,8 @@ DELETE /account
 
 ### Backend (FastAPI)
 - **Python 3.12**, FastAPI 0.136.1, SQLAlchemy 2.0.50 async + asyncpg 0.31.0, Alembic 1.18.4
-- **starlette 1.1.0** (PYSEC-2026-161 fix 포함), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
-- **Sentry SDK 2.60.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
+- **starlette 1.2.1** (PYSEC-2026-161 fix 포함), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
+- **Sentry SDK 2.61.1** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
 - mypy strict 통과, ruff/bandit clean, pytest 44/44 PASS, coverage 82%
 - Alembic head `fa3915deab2f` (rest_day 컬럼 추가, INC-2026-05-27-01)
 
