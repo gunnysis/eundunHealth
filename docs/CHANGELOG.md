@@ -4,6 +4,43 @@
 
 ---
 
+## [main] — 2026-06-06 — Dependabot PR 일괄 정리 + 의존성 업그레이드
+
+### 🎯 Prompts
+1. "dependabot 나머지 PR들도 정리해줘"
+2. "CI 결과 확인해줘"
+3. "changelog 작업해줘"
+
+### ✅ Changes
+
+#### Merged (squash merge, 4건)
+- **#78** `org.gradle.toolchains.foojay-resolver-convention` 0.10.0 → 1.0.0 (`settings.gradle.kts`)
+- **#79** `io.sentry.android.gradle` 5.8.0 → 6.10.0 (`gradle/libs.versions.toml`)
+- **#80** `com.patrykandpatrick.vico:compose-m3` 3.1.0 → 3.2.2 (`gradle/libs.versions.toml`)
+- **#67** `mypy` 1.13.0 → 2.1.0 (`backend/requirements-dev.txt`)
+
+#### 수동 적용 (1건 — merge conflict로 직접 main 커밋)
+- **#81 partial** backend 5/6 패키지 (`backend/requirements.txt`, `backend/requirements-dev.txt`)
+  - starlette 1.1.0 → 1.2.1, uvicorn 0.48.0 → 0.49.0, sentry-sdk 2.60.0 → 2.61.1
+  - pytest-asyncio 1.3.0 → 1.4.0, ruff 0.15.14 → 0.15.16
+  - **fastapi 0.136.3 제외** — MAL-2026-4750 compromised release, 0.136.1 유지
+
+#### Closed (CI 실패 / 마이그레이션 필요, 2건)
+- **#74** Kotlin 2.2.10 → 2.4.0 — `BaseAppModuleExtension` deprecated + `kotlinOptions` DSL 제거 + Hilt 호환성 미충족
+- **#75** openapi-generator 7.10 → 7.22 — generated code detekt 실패
+
+#### 문서 동기화
+- **Modified** `CLAUDE.md` — Vico 3.1.0→3.2.2, starlette 1.1.0→1.2.1, Sentry SDK 2.60.0→2.61.1
+
+### 📁 Files Modified
+- `settings.gradle.kts` (+1, -1) — #78
+- `gradle/libs.versions.toml` (+2, -2) — #79, #80
+- `backend/requirements-dev.txt` (+3, -3) — #67, #81 partial
+- `backend/requirements.txt` (+3, -3) — #81 partial
+- `CLAUDE.md` (+3, -3) — version sync
+
+---
+
 ## [main] — 2026-06-06 — GitHub Actions Node.js 20 → 24 런타임 업그레이드
 
 ### 🎯 Prompts
