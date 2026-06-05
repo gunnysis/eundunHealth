@@ -4,6 +4,31 @@
 
 ---
 
+## [main] — 2026-06-05 — docs/plans/ lifecycle 관리 개선
+
+### 🎯 Prompts
+1. "Implement the following plan: docs/plans/ 문서 lifecycle 관리 개선 [holding/deferred status + root-only scan + grouped rendering + _staging gitignore]"
+
+### ✅ Changes
+- **Modified**: `scripts/gen_plans_index.py` — `holding`/`deferred` status 추가, `rglob`→`glob` root-only 스캔, `render_readme_v2` status 그룹별 하위 섹션 렌더링 (`진행 중`/`대기`/`보류`)
+- **Modified**: `scripts/test_gen_plans_index.py` — 4개 테스트 추가 (31 total, all pass)
+- **Modified**: `.gitignore` — `docs/plans/_staging/` 추가 (scratch 작업 폴더)
+- **Modified**: `docs/plans/_templates/{design,plan}.md` — status lifecycle 주석 추가
+- **Moved**: `docs/plans/expected/` → `docs/plans/_staging/` (gitignored)
+
+### 📊 Test Results
+- Total: 31/31 passed (100%)
+- `gen-plans-index.sh --check` drift 없음
+
+### 📁 Files Modified
+- `scripts/gen_plans_index.py` (+27, -10 lines)
+- `scripts/test_gen_plans_index.py` (+71, -1 lines)
+- `.gitignore` (+3 lines)
+- `docs/plans/_templates/design.md` (+1, -1 lines)
+- `docs/plans/_templates/plan.md` (+1, -1 lines)
+
+---
+
 ## [main] — 2026-06-04 — Android 프론트엔드 분석 + Plugin 에러 해결
 
 ### 🎯 Prompts
