@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-03 — Azure Monitor Alerts (P1+P2) 프로비저닝
+
+- **PR**: 없음 (main 직접 커밋 4건: `6e607c8` ~ `fa30d22`)
+- **Design**: `docs/plans/2026-06-03-azure-monitor-alerts-design.md` (approved, 본 entry 로 아카이브)
+- **Related INC**: INC-2026-05-27-01 (schema drift 500), INC-2026-05-24-01 (ACR manifest 삭제)
+- **Why**: Azure Monitor 알림 전무 — Sentry (앱 레벨) + GitHub Actions `/health` (배포 시점 1회) 만 존재. 배포~수동 점검 사이 인프라 이상 실시간 감지 불가. 과거 INC 2건 모두 Monitor alert 으로 조기 감지 가능했음.
+- **What**: `scripts/setup-azure-alerts.sh` — idempotent bash 스크립트 (9단계, `--dry-run` / `--delete` / `--help`). Action Group (`ag-eundunhealth-prod`, email) + Activity Log alert 4개 (Service Health / Resource Health / Resource Deletion / PG Firewall 변경, 무료) + Metric alert 4개 (PG CPU / Storage / Connections / CA 5xx, ~700원/월). Activity Log 은 `az rest --method PUT` (ARM REST API), Metric 은 `az monitor metrics alert create`. 네이밍 `alert-<type>-eundunhealth-prod` (CAF 패턴). `docs/ops/monitoring-and-cost.md` §4 비용 + §5 체크리스트 + §7 Alert 섹션 신설. `docs/ops/operations-snapshot.md` §9 비용 + §12 인벤토리 + §13 변경이력. `CLAUDE.md` scripts 섹션 등재.
+- **Decisions**: D1 기존 workspace 재사용 (rename 불가) / D2 Azure CLI 스크립트 (기존 `scripts/*.sh` 패턴) / D3 Activity Log = ARM REST API (CLI 문법 제한) / D4 Metric = CLI (dimension filter 지원) / D5 CAF 네이밍 / D7 5xx > 3 (5분, scale-to-zero false positive 방지) / D8 PG connections avg > 20 (B1ms 최대 50 의 40%)
+- **Outcome**: 4 commits, 5 files (+ CHANGELOG 2건), +666 LOC. Alert 8개 프로비저닝 완료 (metric 4 + activity log 4, MEASURED). 비용 ~$0.40/월 (ESTIMATE-ONLY, Azure 무료 tier 포함 시 $0 가능). PG Firewall alert 로 Action Group 파이프라인 실측 테스트 가능 (설계 §6.2).
+- **Residual risks**: Scale-to-zero 시 CA metric 미발생 (Sentry 보완) / Activity Log deletion 이 의도된 작업에도 발화 (Sev1 의도적) / Email-only 누락 가능 (현 규모 충분, 향후 Discord 확장 가능) / Git Bash MSYS path conversion (`MSYS_NO_PATHCONV=1` 해결)
+- **Files touched**: `scripts/setup-azure-alerts.sh` (신규), `docs/ops/monitoring-and-cost.md`, `docs/ops/operations-snapshot.md`, `docs/plans/README.md` (자동), `CLAUDE.md`, `docs/CHANGELOG.md`
+
 ### 2026-06-02 — lessons-meta-rules (PR #68 lessons L2/L6 재발방지)
 
 - **PR**: [#71](https://github.com/gunnysis/eundunHealth/pull/71) (merged, squash `c923da7`)
