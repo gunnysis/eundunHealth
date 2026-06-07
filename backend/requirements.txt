@@ -3,7 +3,7 @@
 # `pip install "fastapi[standard]"` pulls in fastar as a side effect.
 # Downgraded to safe 0.136.1 (2026-04-23). Re-evaluate when a clean 0.136.4+ is released.
 # Note: 0.136.2 is 404 on PyPI (presumed yanked).
-fastapi==0.136.1
+fastapi==0.136.3
 # starlette: transitive dep of fastapi. 1.1.0 (2026-04 release) includes
 # PYSEC-2026-161 fix. fastapi master pyproject.toml allows starlette>=0.46.0
 # (no upper bound) so 1.x is permitted. Our app/main.py registers middleware
