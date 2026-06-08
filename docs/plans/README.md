@@ -11,7 +11,7 @@
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-06-08 | health-bodycomp-import | design | proposed | health-connect, body-composition, goal, profile, weight, body-fat |
+| 2026-06-08 | health-bodycomp-import | design + plan | proposed | health-connect, body-composition, goal, profile, weight, body-fat |
 | 2026-06-08 | health-data-roadmap | design | proposed | health-connect, galaxy-watch, roadmap, architecture, governance |
 
 ## Topic Ledgers (완료 작업 history)
