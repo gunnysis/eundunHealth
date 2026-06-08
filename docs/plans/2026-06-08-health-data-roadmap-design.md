@@ -47,17 +47,27 @@ tags: [health-connect, galaxy-watch, roadmap, architecture, governance]
 | D2 | 진행 형태 | 4개 하위 프로젝트 순차 (1→2→3→4) | 각 단계가 앞 단계 인프라 재사용. 컴플라이언스(#4)는 최종 권한 세트 확정 후 |
 | D3 | 베이스 의존성 | #1은 PR #83 머지 후 시작 | #1이 HealthRepository/SyncHealthDataUseCase 확장 — #83이 그 코드를 리팩토링 |
 | D4 | 문서/통합 | 하위 프로젝트별 design+plan + feature branch + PR | 프로젝트 git·plans 컨벤션 |
+| D5 | 골격근량(근육량) 처리 | 표기 "근육량"→"골격근량" 변경 + 수동 입력 유지(#1) / HC 가져오기 불가 | HC에 골격근량 레코드 타입 없음 + 삼성헬스가 HC로 골격근량 미동기화(체중·체지방·키·BMR 4종만). 공식 확인 |
+| D6 | 골격근량 가져오기 | Samsung Health Data SDK 경유로만 가능 → **#1c 별도 하위 프로젝트**(파트너 승인 전제, 후순위) | D1 일부 번복. #1과 결합 시 승인 대기가 #1 전체를 차단하므로 분리 |
 
 ## 4. 하위 프로젝트 개요 (1→2→3→4)
 
 > 규모 표기는 모두 **ESTIMATE-ONLY** (각 Phase 0에서 MEASURED로 확정). 권한 문자열·레코드 타입은 각 Phase 0에서 Health Connect 공식 문서로 fact-check 후 확정.
 
-### #1. 체성분(체중/체지방) 자동 동기화
-- **목표**: `WeightRecord`(+ `BodyFatRecord`) 읽어 기존 goal(v0.3) 진행을 자동 갱신. 수기 입력 의존 축소.
-- **추가 권한(후보, Phase 0 확정)**: `READ_WEIGHT`, `READ_BODY_FAT`.
-- **핵심 변경 영역**: HealthConnectDataSource(read API) / HealthRepository / Goal·Profile 도메인·연동 / Home·Goal UI.
+### #1. 체성분(체중/체지방) Health Connect 가져오기 + 골격근량 표기 변경
+- **목표**: `WeightRecord`/`BodyFatRecord`를 **사용자 확인 가져오기**(프로필 화면)로 읽어 기존 goal(v0.3) 진행을 갱신. 표기 "근육량"→"골격근량"(라벨 한정). 골격근량은 수동 입력 유지.
+- **추가 권한(Phase 0 확정)**: `READ_WEIGHT`, `READ_BODY_FAT`.
+- **핵심 변경 영역**: HealthConnectDataSource(read API) / HealthRepository / `ImportBodyCompositionUseCase` / ProfileViewModel·ProfileScreen / 라벨(Onboarding·Profile·SummaryCard). **백엔드 변경 없음**(PUT /profile가 이미 history append).
 - **의존성**: PR #83 머지.
+- **상세 설계**: `docs/plans/2026-06-08-health-bodycomp-import-design.md`.
 - **가치**: 즉시(체중계·워치 연동), 다중 권한 패턴 최초 도입 → 이후 단계 기반.
+
+### #1c. 골격근량 가져오기 (Samsung Health Data SDK) — 보류(파트너 승인 전제)
+- **목표**: 골격근량(skeletal muscle mass)을 Samsung Health Data SDK로 읽어 프로필에 가져오기. #1의 import UX 패턴 재사용.
+- **제약**: HC 경로 불가(D5). 배포에 **Samsung 파트너 승인 필수**(미승인 `2003` 에러), **Samsung 기기 한정**(비-Samsung은 버튼 비노출 + 수동 fallback), Android 10+/삼성헬스 6.30.2+/새 의존성.
+- **구성(점검)**: `SamsungHealthDataSource`(HealthDataStore connect+permission+read) / HealthRepository 확장 / `ImportSkeletalMuscleMassUseCase` / ProfileScreen 버튼(graceful degradation).
+- **의존성**: #1 완료 + 파트너 승인 절차. **후순위**(승인 리드타임).
+- **상태**: 설계 점검만 완료(2026-06-08), 구현 미착수.
 
 ### #2. 읽는 데이터 타입 확장 + 표시
 - **목표**: 걸음수/소모칼로리/심박 등 읽어 홈·통계 대시보드 표시.
