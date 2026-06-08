@@ -9,6 +9,12 @@ class HealthRepositoryImpl @Inject constructor(
     private val healthConnect: HealthConnectDataSource,
 ) : HealthRepository {
 
+    override suspend fun isAvailable(): Boolean = try {
+        healthConnect.isAvailable()
+    } catch (_: Exception) {
+        false
+    }
+
     override suspend fun hasPermissions(): Boolean = try {
         healthConnect.hasPermissions()
     } catch (_: Exception) {

@@ -9,10 +9,10 @@ import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.reportToSentry
 import com.gunnys.eundunhealth.domain.model.toAppError
-import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.GetOrCreateWeeklyPlanUseCase
+import com.gunnys.eundunhealth.domain.usecase.HealthSyncResult
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -33,6 +33,7 @@ sealed class HomeUiState {
     @Immutable
     data class Success(
         val plan: WeeklyPlan,
+        val isHealthConnectAvailable: Boolean = true,
         val hasHealthPermission: Boolean = false,
         val completedCount: Int = 0,
         val totalWorkoutDays: Int = 0,
@@ -54,7 +55,6 @@ class HomeViewModel @Inject constructor(
     private val getOrCreateWeeklyPlan: GetOrCreateWeeklyPlanUseCase,
     private val syncHealth: SyncHealthDataUseCase,
     private val checkBadges: CheckAndAwardBadgesUseCase,
-    private val healthRepo: HealthRepository,
     private val workoutRepo: WorkoutRepository,
     private val themePreferences: ThemePreferences,
 ) : ViewModel() {
@@ -81,9 +81,10 @@ class HomeViewModel @Inject constructor(
         loadPlan()
     }
 
-    private fun successWithStats(plan: WeeklyPlan, hasPerm: Boolean) = HomeUiState.Success(
+    private fun successWithStats(plan: WeeklyPlan, isAvailable: Boolean, hasPermission: Boolean) = HomeUiState.Success(
         plan = plan,
-        hasHealthPermission = hasPerm,
+        isHealthConnectAvailable = isAvailable,
+        hasHealthPermission = hasPermission,
         completedCount = plan.days.count { !it.isRestDay && it.isCompleted },
         totalWorkoutDays = plan.days.count { !it.isRestDay },
     )
@@ -92,18 +93,18 @@ class HomeViewModel @Inject constructor(
         _uiState.value = HomeUiState.Loading
         getOrCreateWeeklyPlan()
             .onSuccess { plan ->
-                val synced = syncHealth(plan).getOrElse { plan }
-                checkBadges(synced)
-                val hasPerm = healthRepo.hasPermissions()
-
-                // Sync HC-detected completions to server
-                synced.days.zip(plan.days).forEach { (syncedDay, originalDay) ->
-                    if (syncedDay.isCompleted && !originalDay.isCompleted) {
-                        workoutRepo.updateDayCompletion(synced.id, syncedDay.date, true)
-                    }
+                val sync = syncHealth(plan).getOrElse {
+                    HealthSyncResult(plan, isAvailable = false, hasPermission = false, newlyCompletedDates = emptyList())
                 }
 
-                _uiState.value = successWithStats(synced, hasPerm)
+                // 렌더 먼저 — 서버 푸시/배지 적립을 기다리지 않고 즉시 화면을 그린다.
+                _uiState.value = successWithStats(sync.plan, sync.isAvailable, sync.hasPermission)
+
+                // Health Connect 가 새로 감지한 완료만 서버에 반영 (백그라운드, 실패는 다음 사이클 재시도).
+                sync.newlyCompletedDates.forEach { date ->
+                    workoutRepo.updateDayCompletion(sync.plan.id, date, true)
+                }
+                checkBadges(sync.plan)
             }
             .onFailure {
                 val appErr = it.toAppError()
@@ -124,7 +125,7 @@ class HomeViewModel @Inject constructor(
             if (it.date == date) it.copy(isCompleted = newCompleted) else it
         }
         val updatedPlan = current.plan.copy(days = updatedDays)
-        _uiState.value = successWithStats(updatedPlan, current.hasHealthPermission)
+        _uiState.value = successWithStats(updatedPlan, current.isHealthConnectAvailable, current.hasHealthPermission)
 
         // Server sync
         workoutRepo.updateDayCompletion(current.plan.id, date, newCompleted)

@@ -8,9 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
-import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
 import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.ui.navigation.AppNavigation
@@ -31,14 +30,6 @@ class MainActivity : ComponentActivity() {
 
     private var consumedDeepLinkUri: Uri? = null
 
-    private val healthPermissions = setOf(
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
-    )
-
-    private val permissionLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
-    ) { /* Health Connect uses its own permission contract */ }
-
     private val healthPermissionLauncher = registerForActivityResult(
         androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
     ) { /* permissions granted or denied */ }
@@ -52,7 +43,7 @@ class MainActivity : ComponentActivity() {
             EundunHealthTheme(themeMode = themeMode) {
                 AppNavigation(
                     onRequestHealthPermissions = {
-                        healthPermissionLauncher.launch(healthPermissions)
+                        healthPermissionLauncher.launch(HealthConnectDataSource.PERMISSIONS)
                     },
                 )
             }
