@@ -36,7 +36,9 @@ run() {
 run "Spotless" "$GRADLEW" :app:spotlessCheck --quiet
 run "Detekt"   "$GRADLEW" :app:detektDebug --quiet
 run "Unit Tests" "$GRADLEW" :app:testDebugUnitTest --quiet
-run "Release artifacts (AAB + APK)" "$GRADLEW" :app:releaseArtifacts --quiet
+# -PsentryRelease=true: 출시 빌드에서만 Sentry ProGuard 매핑 생성 + 업로드 (build.gradle.kts sentry 블록).
+# 로컬 실험용 release 빌드는 이 플래그 없이 결정적 + 업로드 없음.
+run "Release artifacts (AAB + APK)" "$GRADLEW" :app:releaseArtifacts -PsentryRelease=true --quiet
 
 # versionCode/versionName 추출 — aapt 의존을 피하기 위해 apkanalyzer 대신 build.gradle.kts에서 직접 파싱.
 # (release signing 끝난 AAB/APK 메타 비교는 환경 따라 깨지기 쉬워 보수적으로 간다.)

@@ -4,6 +4,36 @@
 
 ---
 
+## [main] — 2026-06-08 — Sentry ProGuard 매핑 게이팅 (로컬 release 빌드 결정성 회복)
+
+### 🎯 Prompts
+1. "'부수 발견' 근본 원인 해결 작업해줘." (직전 세션의 Sentry 매핑 비결정성 부수발견)
+2. (brainstorming) 해결 강도 선택 → "완전 해결 (권장)" → "구현 작업"
+
+### ✅ Changes
+
+#### 근본 원인
+- Sentry Gradle 플러그인의 ProGuard 매핑 처리(UUID 생성 + `sentry-debug-meta.properties` asset 주입 + Sentry 업로드)가 `hasToken`만 게이트로 **모든 release 빌드에서 무조건 실행**. → 로컬 release 빌드마다 ① asset 비결정성(UUID 매번 변경) ② Sentry 업로드 churn(네트워크/프로젝트 오염) ③ release on-device 의 "Apply Code Changes" 깨짐.
+- CI(android.yml)는 release 를 빌드하지 않음 → 출시는 항상 로컬 preflight 경로. 따라서 "실제 출시 빌드"와 "로컬 실험용 release 빌드"를 명시 신호로 구분하는 게 근본 해결.
+
+#### Fix — 명시적 출시 신호 게이팅
+- **Modified** `app/build.gradle.kts` — `sentry {}` 블록에 `isOfficialRelease` 도입 (`-PsentryRelease=true` 또는 `SENTRY_RELEASE=true`). `includeProguardMapping`/`autoUploadProguardMapping` 게이트를 `hasToken` → `hasToken && isOfficialRelease` 로 변경.
+- **Modified** `scripts/preflight-release.sh` — releaseArtifacts 호출에 `-PsentryRelease=true` 추가 (출시 경로 자동 ON).
+- **Modified** `CLAUDE.md` — 룰 2 에 Sentry 매핑 게이트 설명 + 출시는 preflight/플래그 경로 필수 명시.
+
+#### 검증 (MEASURED)
+- 플래그 없이 `assembleRelease` task graph: `generateSentryProguardUuidRelease`·`uploadSentryProguardMappingsRelease` **부재**. inject 실행돼도 `sentry-debug-meta.properties` **미생성** = 결정적.
+- `-PsentryRelease=true`: UUID asset 생성 + upload task graph 포함.
+- 트레이드오프: preflight 아닌 경로로 빌드한 release 는 crash deobfuscation 불가 (출시는 룰 2 = preflight 유일 경로라 안전).
+
+### 📁 Files Modified
+- `app/build.gradle.kts` (+8, -2)
+- `scripts/preflight-release.sh` (+2)
+- `CLAUDE.md` (+2, -1)
+- `docs/CHANGELOG.md` (+이 엔트리)
+
+---
+
 ## [v0.1.8] — 2026-06-08 — AndroidManifest "modified" 근본 원인 규명 + v0.1.8 릴리즈
 
 ### 🎯 Prompts

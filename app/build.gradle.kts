@@ -212,6 +212,15 @@ sentry {
         System.getenv("SENTRY_AUTH_TOKEN")
             ?: localProperties.getProperty("SENTRY_AUTH_TOKEN", "")
     val hasToken = token.isNotBlank()
+    // 명시적 출시 신호. ProGuard 매핑(UUID 생성 + sentry-debug-meta.properties asset 주입 + 업로드)은
+    // 실제 출시 빌드에서만 수행한다. preflight-release.sh 가 `-PsentryRelease=true` 로 켠다.
+    // 로컬 실험용 release 빌드(assembleRelease/bundleRelease 직접)는 매핑을 건너뛰어
+    // ① asset 결정적(빌드마다 동일) ② Sentry 업로드 없음 ③ release on-device 의 Apply Code Changes 유지.
+    // 트레이드오프: preflight 아닌 경로로 빌드한 release 는 crash deobfuscation 불가 (출시는 룰 2 = preflight 사용).
+    val isOfficialRelease =
+        (project.findProperty("sentryRelease") as String?)?.toBoolean() == true ||
+            System.getenv("SENTRY_RELEASE") == "true"
+    val enableMapping = hasToken && isOfficialRelease
     // Sentry 프로젝트 slug — 실제 Sentry 대시보드의 slug와 일치해야 ProGuard mapping 업로드 성공.
     // 현재 Android 프로젝트 slug: "eundunhealth" (백엔드는 "eundunhealth-backend" — 별개 프로젝트)
     // local.properties의 DSN 키 prefix(eundunhealth-app_*)와는 다른 값임에 주의.
@@ -221,8 +230,8 @@ sentry {
     org.set("gunnys")
     projectName.set(sentryProject)
     authToken.set(token)
-    includeProguardMapping.set(hasToken)
-    autoUploadProguardMapping.set(hasToken)
+    includeProguardMapping.set(enableMapping)
+    autoUploadProguardMapping.set(enableMapping)
     autoUploadSourceContext.set(false)
     uploadNativeSymbols.set(false)
     includeNativeSources.set(false)

@@ -196,10 +196,12 @@ az acr repository untag --name eundunhealthacr --image eundunhealth-api:<tag>
 ### 룰 2 — 릴리스 산출물은 `releaseArtifacts` 하나로만 (INC-04)
 AAB와 APK를 따로 빌드하면 사이에 versionCode가 바뀌어 어긋날 수 있다. **반드시**:
 ```bash
-./gradlew :app:releaseArtifacts        # AAB + APK 동시
-# 또는 (모든 게이트 + 빌드를 한 번에)
-bash scripts/preflight-release.sh
+bash scripts/preflight-release.sh      # 모든 게이트 + AAB + APK + Sentry 매핑 (출시용, 권장)
+# 또는 (게이트 없이 산출물만)
+./gradlew :app:releaseArtifacts -PsentryRelease=true   # 실제 출시 시 플래그 필수
+./gradlew :app:releaseArtifacts                         # 로컬 실험용 (Sentry 매핑/업로드 생략)
 ```
+**Sentry 매핑 게이트**: `-PsentryRelease=true`(preflight 가 자동 설정) 가 있어야만 ProGuard 매핑 UUID 생성 + Sentry 업로드. 없으면 로컬 release 빌드가 결정적 + 업로드 없음 (build.gradle.kts `sentry` 블록). **출시 산출물은 반드시 preflight 또는 플래그 경로로 빌드** — 안 그러면 production crash deobfuscation 불가.
 
 ### 룰 3 — Alembic autogenerate은 PostgreSQL 컨테이너 사용 (INC-07)
 `pytest`가 띄우는 SQLite로 autogenerate를 돌리면 UUID↔NUMERIC 거짓 양성이 마이그레이션 파일에 박혀 프로덕션에서 cast 에러 발생. **항상**:
