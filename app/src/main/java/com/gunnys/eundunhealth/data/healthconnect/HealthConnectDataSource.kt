@@ -5,10 +5,15 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.gunnys.eundunhealth.domain.model.BodyComposition
+import com.gunnys.eundunhealth.domain.model.DailyActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Duration
 import java.time.Instant
@@ -44,6 +49,35 @@ class HealthConnectDataSource @Inject constructor(
         return granted.containsAll(BODY_COMPOSITION_PERMISSIONS)
     }
 
+    suspend fun hasDailyActivityPermissions(): Boolean {
+        val granted = client.permissionController.getGrantedPermissions()
+        return granted.containsAll(DAILY_ACTIVITY_PERMISSIONS)
+    }
+
+    /** 오늘 0시~현재 걸음·칼로리·평균심박 집계 (aggregate 1회). */
+    suspend fun readTodayActivity(): DailyActivity {
+        val zone = ZoneId.systemDefault()
+        val filter = TimeRangeFilter.between(
+            LocalDate.now(zone).atStartOfDay(zone).toInstant(),
+            Instant.now(),
+        )
+        val res = client.aggregate(
+            AggregateRequest(
+                metrics = setOf(
+                    StepsRecord.COUNT_TOTAL,
+                    TotalCaloriesBurnedRecord.ENERGY_TOTAL,
+                    HeartRateRecord.BPM_AVG,
+                ),
+                timeRangeFilter = filter,
+            ),
+        )
+        return DailyActivity(
+            steps = res[StepsRecord.COUNT_TOTAL],
+            totalCaloriesKcal = res[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.toInt(),
+            avgHeartRateBpm = res[HeartRateRecord.BPM_AVG],
+        )
+    }
+
     /** 최근 [daysBack] 일 내 가장 최신(time 기준) 체중·체지방을 채택한다. */
     suspend fun readLatestBodyComposition(daysBack: Long = 30): BodyComposition {
         val end = Instant.now()
@@ -73,6 +107,12 @@ class HealthConnectDataSource @Inject constructor(
         val BODY_COMPOSITION_PERMISSIONS = setOf(
             HealthPermission.getReadPermission(WeightRecord::class),
             HealthPermission.getReadPermission(BodyFatRecord::class),
+        )
+
+        val DAILY_ACTIVITY_PERMISSIONS = setOf(
+            HealthPermission.getReadPermission(StepsRecord::class),
+            HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
+            HealthPermission.getReadPermission(HeartRateRecord::class),
         )
     }
 }
