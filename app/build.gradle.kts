@@ -76,9 +76,10 @@ android {
         // 19: v0.1.5 — vico 2.1 → 3.1 chart migration + healthConnect 1.1.0-rc01 → 1.1.0 stable.
         // 20: v0.1.6 — Signup Failed UX inline error banner (INC-2026-05-26-01 해소).
         // 21: v0.1.7 — LoginScreen / ForgotPasswordScreen 룰 8 적용 + AuthErrorBanner promote (ui/components/).
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 22, 23, ...
-        versionCode = 21
-        versionName = "0.1.7"
+        // 22: v0.1.8 — 12 ViewModel UDF-Enhanced 리팩토링(룰 11) + Sentry Gradle 6.10.0 + 의존성 일괄 bump.
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 23, 24, ...
+        versionCode = 22
+        versionName = "0.1.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

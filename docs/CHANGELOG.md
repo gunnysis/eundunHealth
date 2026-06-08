@@ -4,6 +4,33 @@
 
 ---
 
+## [v0.1.8] — 2026-06-08 — AndroidManifest "modified" 근본 원인 규명 + v0.1.8 릴리즈
+
+### 🎯 Prompts
+1. "'Modifications to AndroidManifest.xml require an app restart...' 에러 근본 원인 해결 작업하고 프로젝트의 release 버전 빌드 작업"
+2. (작업 방식) "리팩토링/성능 개선/디자인/테스트와 디버깅/펙트 체크/연구/공식 문서 검색을 곁들여 작업"
+3. "git tag v0.1.7 하고 푸시해줘" → 태그 기존재 + 미출시 코드 발견 → "새 버전으로 릴리즈"
+
+### ✅ Changes
+
+#### AndroidManifest "modified" 에러 근본 원인 조사 (코드 변경 없음 — 빌드 버그 아님)
+- **Root cause**: 메시지는 Android Studio Apply Changes/Live Edit의 **설계상 동작**. manifest 변경은 hot-swap 불가 → full restart 요구. 빌드 측 비결정성 원인 아님.
+- **증거 (MEASURED)**: `processDebugMainManifest` / `processReleaseMainManifest` `--rerun-tasks` 후 merged manifest diff = byte 동일(결정적). 최종 packaged manifest에 변동값 없음. 빌드 후 소스 manifest `git status` clean.
+- **Fact-check (공식)**: Sentry Gradle plugin 6.10.0은 proguard UUID를 manifest가 아닌 `assets/sentry-debug-meta.properties`에 기록 (getsentry/sentry-android-gradle-plugin#313). 방금 빌드 UUID `35da139f...`도 assets에서 확인.
+- 해결은 IDE/workflow: manifest 편집 후 ▶Run, Live Edit 활성, spurious 시 Invalidate Caches + clean reinstall.
+
+#### v0.1.8 릴리즈 (버전 bump)
+- **Modified** `app/build.gradle.kts` — versionCode 21→**22**, versionName 0.1.7→**0.1.8** + 버전 주석 추가. v0.1.7 태그(658d2de) 이후 미출시 누적분(12 ViewModel UDF 리팩토링 + Sentry Gradle 6.10.0 + 의존성 bump)을 정식 출시.
+- **Modified** `docs/ops/operations-snapshot.md` — 버전 표기 0.1.7/21 → 0.1.8/22, 최근 갱신일 갱신.
+- preflight-release.sh 일괄 green (Spotless·Detekt·Unit 테스트·releaseArtifacts). AAB 7.69 MB / APK 5.53 MB. ProGuard 매핑 Sentry 업로드 완료.
+
+### 📁 Files Modified
+- `app/build.gradle.kts` (+2, -1)
+- `docs/ops/operations-snapshot.md` (+2, -2)
+- `docs/CHANGELOG.md` (+이 엔트리)
+
+---
+
 ## [main] — 2026-06-06 — _staging 문서 승격 + shipped pr:null 검증 버그 수정
 
 ### 🎯 Prompts
