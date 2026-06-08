@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,9 +61,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.PermissionController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
+import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
@@ -139,6 +143,14 @@ fun HomeScreen(
                                 completedCount = state.completedCount,
                                 totalDays = state.totalWorkoutDays,
                                 completionRate = state.completionRate,
+                            )
+                        }
+                        item {
+                            TodayActivityCard(
+                                activity = state.todayActivity,
+                                hasPermission = state.hasActivityPermission,
+                                isAvailable = state.isHealthConnectAvailable,
+                                onRefresh = { viewModel.refreshActivity() },
                             )
                         }
                         if (!state.isHealthConnectAvailable) {
@@ -319,6 +331,80 @@ private fun openHealthConnectListing(context: Context) {
 }
 
 private const val HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata"
+
+@Composable
+private fun TodayActivityCard(
+    activity: DailyActivity?,
+    hasPermission: Boolean,
+    isAvailable: Boolean,
+    onRefresh: () -> Unit,
+) {
+    if (!isAvailable) return // HC 미설치는 HealthConnectUnavailableCard 가 커버
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract(),
+    ) { granted ->
+        if (granted.containsAll(HealthConnectDataSource.DAILY_ACTIVITY_PERMISSIONS)) onRefresh()
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "오늘의 활동",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            when {
+                !hasPermission -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "걸음수·소모 칼로리·심박을 자동으로 표시",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        TextButton(
+                            onClick = { permissionLauncher.launch(HealthConnectDataSource.DAILY_ACTIVITY_PERMISSIONS) },
+                        ) { Text("연동") }
+                    }
+                }
+                activity?.hasAny != true -> {
+                    Text(
+                        "오늘 활동 기록이 없습니다",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                else -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        activity.steps?.let { ActivityMetric("👟", "$it", "걸음") }
+                        activity.totalCaloriesKcal?.let { ActivityMetric("🔥", "$it", "kcal") }
+                        activity.avgHeartRateBpm?.let { ActivityMetric("❤", "$it", "bpm") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityMetric(icon: String, value: String, unit: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(icon, style = MaterialTheme.typography.titleLarge)
+        Text(value, style = MaterialTheme.typography.titleMedium)
+        Text(
+            unit,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 
 @Composable
 fun WeeklyProgressCard(completedCount: Int, totalDays: Int, completionRate: Float) {
