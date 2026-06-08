@@ -144,7 +144,13 @@ class HomeViewModel @Inject constructor(
             if (it.date == date) it.copy(isCompleted = newCompleted) else it
         }
         val updatedPlan = current.plan.copy(days = updatedDays)
-        _uiState.value = successWithStats(updatedPlan, current.isHealthConnectAvailable, current.hasHealthPermission)
+        // current.copy 로 todayActivity·hasActivityPermission 등 기존 Success 필드 보존
+        // (successWithStats 는 활동 필드를 기본값으로 리셋하므로 토글 시 활동 카드가 사라짐)
+        _uiState.value = current.copy(
+            plan = updatedPlan,
+            completedCount = updatedPlan.days.count { !it.isRestDay && it.isCompleted },
+            totalWorkoutDays = updatedPlan.days.count { !it.isRestDay },
+        )
 
         // Server sync
         workoutRepo.updateDayCompletion(current.plan.id, date, newCompleted)

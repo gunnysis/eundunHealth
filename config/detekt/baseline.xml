@@ -36,7 +36,7 @@
     <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$Result.success(userId)</ID>
     <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)</ID>
     <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$val userId = supabaseClient.auth.currentUserOrNull()?.id ?: throw IllegalStateException("로그인 후 사용자 정보를 가져올 수 없습니다")</ID>
-    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$_uiState.value = successWithStats(updatedPlan, current.isHealthConnectAvailable, current.hasHealthPermission)</ID>
+    <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$_uiState.value = current.copy( plan = updatedPlan, completedCount = updatedPlan.days.count { !it.isRestDay &amp;&amp; it.isCompleted }, totalWorkoutDays = updatedPlan.days.count { !it.isRestDay }, )</ID>
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val day = current.plan.days.find { it.date == date } ?: return@launch</ID>
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val newCompleted = !day.isCompleted</ID>
     <ID>UnreachableCode:HomeViewModel.kt$HomeViewModel$val updatedDays = current.plan.days.map { if (it.date == date) it.copy(isCompleted = newCompleted) else it }</ID>
