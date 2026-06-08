@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-08 — 체성분(체중·체지방) Health Connect 가져오기 (#1) + 골격근량 표기
+
+- **PR**: [#84](https://github.com/gunnysis/eundunHealth/pull/84) (merged, squash `0315a84`)
+- **Why**: 체중·체지방을 수기 입력하던 것을, HC 최신 측정값(워치/체중계→삼성헬스→HC)을 **사용자 확인 가져오기**로 줄임. health data 로드맵 #1 (`docs/plans/2026-06-08-health-data-roadmap-design.md`).
+- **What**: `BodyComposition` 모델 + `HealthConnectDataSource.readLatestBodyComposition()`(Weight/BodyFat 최신) + `BODY_COMPOSITION_PERMISSIONS` + `HealthRepository.getLatestBodyComposition()`/`hasBodyCompositionPermissions()` + `ImportBodyCompositionUseCase`(TDD 5) + `ProfileViewModel.importBodyComposition()` → `PrefillBodyComposition` SideEffect(룰 11) + ProfileScreen 가져오기 버튼/권한 launcher/슬라이더 prefill. "근육량"→"골격근량" 표기(내부 필드 `muscleMassKg` 유지). **백엔드 무변경**(PUT /profile → history append 재사용).
+- **Outcome**: spotlessCheck+detektDebug+testDebugUnitTest(Import 5 + Sync 6)+assembleDebug green. 최종 독립 코드리뷰 "머지 가능"(Critical/Important 0). v0.2.0 대상. Subagent-Driven 실행(데이터→UI→라벨 3그룹). 수동 실기기 검증은 미완(HC 실기기 필요).
+- **Lessons**: check-index 의 *shipped-페어-잔존 가드* 가 기존 frontend shipped 문서 3건(ledger entry 는 있었으나 `git rm` 누락)을 본 PR 의 docs/plans 변경으로 탐지 → 누락 `git rm` 완료로 해소. shipped 처리는 ledger entry + `git rm` 둘 다 같은 변경에 포함해야 함.
+- **Follow-ups**: Play Console Health 권한 선언(READ_WEIGHT/READ_BODY_FAT, #4) · 권한 거부 UX·한쪽 권한(WEIGHT only) import(#4/후속) · 골격근량 가져오기(#1c, Samsung Health Data SDK, 파트너 승인).
+- **Files touched**: AndroidManifest.xml, domain/model/BodyComposition.kt, data/healthconnect/HealthConnectDataSource.kt, domain/repository/HealthRepository.kt, data/repository/HealthRepositoryImpl.kt, domain/usecase/ImportBodyCompositionUseCase.kt(+Test), ui/profile/ProfileViewModel.kt, ui/profile/ProfileScreen.kt, ui/onboarding/OnboardingScreen.kt, ui/components/ProfileSummaryCard.kt, SyncHealthDataUseCaseTest.kt, README/PRD/SPEC/privacy-policy
+
+---
+
 ### 2026-06-06 — 프론트엔드 회귀 방지 3계층 가드
 
 - **Why**: Phase 1-5 UDF-Enhanced 마이그레이션 후 옛 패턴 (분산 StateFlow, `collectAsState()`, `@Immutable` 누락) 재도입 방지.
