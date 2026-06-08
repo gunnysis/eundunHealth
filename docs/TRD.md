@@ -223,15 +223,15 @@ HealthConnectDataSource
        PATCH /weekly-plan/complete (서버 동기화)
 ```
 
-#### Samsung Health Data SDK (미래 통합 고려)
+#### Samsung Health Data SDK (도입하지 않음 — Health Connect 경로 유지)
 
-현재 코드베이스에는 Samsung Health Data SDK가 통합되어 있지 않다. Health Connect가 Android 플랫폼 표준으로 채택되어 Samsung Health를 포함한 대부분의 건강 앱과 상호 운용이 가능하다. Samsung Health Data SDK는 Galaxy 기기 전용 심화 데이터(심박수 센서 직접 접근, 수면 단계, 체성분 분석 등)가 필요할 경우 추가 통합을 검토할 수 있다.
+Samsung Health Data SDK는 **도입하지 않는다**. 갤럭시 워치/삼성헬스 데이터는 `워치/폰 → 삼성헬스 앱 → Health Connect` 경로로 이미 수신되며(앱이 `ExerciseSessionRecord` 등을 HC에서 read), Health Connect가 벤더 중립 표준 브릿지 역할을 한다. SDK 직접 연동은 **프로덕션 배포 시 Samsung 파트너 승인 필수 + Samsung 기기 한정 + 벤더 종속**이라 비용·리드타임 대비 이득이 낮다.
 
 | 항목 | 상세 |
 |------|------|
-| 현재 상태 | 미통합 |
-| 통합 시기 | 추후 검토 (Galaxy 기기 전용 심화 데이터 필요 시) |
-| 참고 | Health Connect가 Samsung Health 데이터 브릿지 역할 수행 |
+| 도입 여부 | 도입 안 함 (decided against) |
+| 데이터 경로 | 삼성헬스 → Health Connect 동기화 → 앱이 HC에서 read |
+| 미수신 데이터 | 골격근량(HC에 레코드 타입 없음) → 수동 입력 유지. 실시간 심박/상세 센서가 추후 필수가 되면 그때 한해 재검토 |
 
 ### 2.5. 외부 API
 
