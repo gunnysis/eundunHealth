@@ -6,12 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
 import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.reportToSentry
 import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.GetOrCreateWeeklyPlanUseCase
+import com.gunnys.eundunhealth.domain.usecase.GetTodayActivityUseCase
 import com.gunnys.eundunhealth.domain.usecase.HealthSyncResult
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,6 +39,8 @@ sealed class HomeUiState {
         val hasHealthPermission: Boolean = false,
         val completedCount: Int = 0,
         val totalWorkoutDays: Int = 0,
+        val todayActivity: DailyActivity? = null,
+        val hasActivityPermission: Boolean = false,
     ) : HomeUiState() {
         val completionRate: Float get() = if (totalWorkoutDays > 0) completedCount.toFloat() / totalWorkoutDays else 0f
     }
@@ -57,6 +61,7 @@ class HomeViewModel @Inject constructor(
     private val checkBadges: CheckAndAwardBadgesUseCase,
     private val workoutRepo: WorkoutRepository,
     private val themePreferences: ThemePreferences,
+    private val getTodayActivity: GetTodayActivityUseCase,
 ) : ViewModel() {
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeMode
@@ -99,6 +104,7 @@ class HomeViewModel @Inject constructor(
 
                 // 렌더 먼저 — 서버 푸시/배지 적립을 기다리지 않고 즉시 화면을 그린다.
                 _uiState.value = successWithStats(sync.plan, sync.isAvailable, sync.hasPermission)
+                loadTodayActivity()
 
                 // Health Connect 가 새로 감지한 완료만 서버에 반영 (백그라운드, 실패는 다음 사이클 재시도).
                 sync.newlyCompletedDates.forEach { date ->
@@ -112,6 +118,19 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = HomeUiState.Error(appErr)
             }
     }
+
+    private fun loadTodayActivity() = viewModelScope.launch {
+        val result = getTodayActivity().getOrNull() ?: return@launch
+        val current = _uiState.value
+        if (current is HomeUiState.Success) {
+            _uiState.value = current.copy(
+                todayActivity = result.activity,
+                hasActivityPermission = result.hasPermission,
+            )
+        }
+    }
+
+    fun refreshActivity() = loadTodayActivity()
 
     fun toggleDayCompletion(date: LocalDate) = viewModelScope.launch {
         val current = _uiState.value
