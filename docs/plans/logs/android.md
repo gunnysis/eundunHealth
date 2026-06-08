@@ -4,6 +4,17 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-08 — 홈 "오늘의 활동" 요약 (#2, 걸음·칼로리·심박)
+
+- **PR**: [#85](https://github.com/gunnysis/eundunHealth/pull/85) (merged, squash `1ff03fb`)
+- **Why**: 갤럭시워치/폰이 측정한 오늘 활동량(HC 동기화됨 — 로드맵 R2 해소)을 홈에 glanceable 표시 → engagement. 로드맵 #2.
+- **What**: `DailyActivity` 모델 + `HealthConnectDataSource.readTodayActivity()`(**aggregate 1 IPC**: Steps.COUNT_TOTAL / TotalCalories.ENERGY_TOTAL / HeartRate.BPM_AVG) + `DAILY_ACTIVITY_PERMISSIONS` + `HealthRepository.getTodayActivity()`/`hasDailyActivityPermissions()` + `GetTodayActivityUseCase`(TDD 5, `TodayActivityResult(activity, hasPermission)`) + HomeViewModel render-first 백그라운드 로드 + HomeScreen `TodayActivityCard`(무권한→연동 / 빈→안내 / 데이터→👟🔥❤) + in-Composable 권한 launcher. **표시 전용(백엔드 무변경)**.
+- **Outcome**: 4 게이트 green(use-case 테스트 16: GetTodayActivity 5 + Import 5 + Sync 6). 최종 독립 리뷰 머지 가능(Critical/Important 0). v0.2.0. Subagent-Driven(데이터→UI 2그룹).
+- **Lessons**: (1) `Success` data class 에 새 필드 추가 시 **재생성 헬퍼(`successWithStats`)를 쓰는 모든 경로**가 새 필드를 기본값으로 리셋함 → `toggleDayCompletion` 에서 활동 카드 사라지는 회귀를 controller 리뷰로 발견·수정(`current.copy`). 새 상태 필드 추가 시 모든 Success 생성부 점검 필수. (2) 그 줄 변경이 `toggleDayCompletion` 의 detekt UnreachableCode false-positive baseline 시그니처를 깨 #83 drift 재발 → 재생성 diff 로 새 위반 0 확인 후 시그니처 정정(억제 아님). [[detekt-baseline-drift]]
+- **Files touched**: AndroidManifest.xml, domain/model/DailyActivity.kt, data/healthconnect/HealthConnectDataSource.kt, domain/repository/HealthRepository.kt, data/repository/HealthRepositoryImpl.kt, domain/usecase/GetTodayActivityUseCase.kt(+Test), ui/home/HomeViewModel.kt, ui/home/HomeScreen.kt, SyncHealthDataUseCaseTest.kt, ImportBodyCompositionUseCaseTest.kt, config/detekt/baseline.xml
+
+---
+
 ### 2026-06-08 — 체성분(체중·체지방) Health Connect 가져오기 (#1) + 골격근량 표기
 
 - **PR**: [#84](https://github.com/gunnysis/eundunHealth/pull/84) (merged, squash `0315a84`)
