@@ -5,12 +5,13 @@
 > 컨벤션: 본 README 의 "워크플로" 섹션 + memory `plans-folder-archive-preference.md` + `design-plan-docs-convention.md`.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
-## 활성 작업 (페어 파일, 1)
+## 활성 작업 (페어 파일, 2)
 
-### 대기 (proposed / approved) (1)
+### 대기 (proposed / approved) (2)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
+| 2026-06-08 | health-daily-activity | design + plan | proposed | health-connect, daily-activity, steps, calories, heart-rate, home |
 | 2026-06-08 | health-data-roadmap | design | proposed | health-connect, galaxy-watch, roadmap, architecture, governance |
 
 ## Topic Ledgers (완료 작업 history)

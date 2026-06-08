@@ -1,6 +1,7 @@
 package com.gunnys.eundunhealth.domain.repository
 
 import com.gunnys.eundunhealth.domain.model.BodyComposition
+import com.gunnys.eundunhealth.domain.model.DailyActivity
 import java.time.LocalDate
 
 interface HealthRepository {
@@ -14,4 +15,8 @@ interface HealthRepository {
     suspend fun hasBodyCompositionPermissions(): Boolean
 
     suspend fun getLatestBodyComposition(): Result<BodyComposition>
+
+    suspend fun hasDailyActivityPermissions(): Boolean
+
+    suspend fun getTodayActivity(): Result<DailyActivity>
 }

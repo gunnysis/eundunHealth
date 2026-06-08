@@ -1,6 +1,7 @@
 package com.gunnys.eundunhealth.domain.usecase
 
 import com.gunnys.eundunhealth.domain.model.BodyComposition
+import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -22,6 +23,8 @@ class ImportBodyCompositionUseCaseTest {
         override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> = Result.success(emptyList())
         override suspend fun hasBodyCompositionPermissions(): Boolean = hasBodyPerms
         override suspend fun getLatestBodyComposition(): Result<BodyComposition> = latest
+        override suspend fun hasDailyActivityPermissions(): Boolean = false
+        override suspend fun getTodayActivity(): Result<DailyActivity> = Result.success(DailyActivity(null, null, null))
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.gunnys.eundunhealth.data.repository
 
 import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
 import com.gunnys.eundunhealth.domain.model.BodyComposition
+import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import java.time.LocalDate
 import javax.inject.Inject
@@ -32,5 +33,15 @@ class HealthRepositoryImpl @Inject constructor(
 
     override suspend fun getLatestBodyComposition(): Result<BodyComposition> = runCatching {
         healthConnect.readLatestBodyComposition()
+    }
+
+    override suspend fun hasDailyActivityPermissions(): Boolean = try {
+        healthConnect.hasDailyActivityPermissions()
+    } catch (_: Exception) {
+        false
+    }
+
+    override suspend fun getTodayActivity(): Result<DailyActivity> = runCatching {
+        healthConnect.readTodayActivity()
     }
 }
