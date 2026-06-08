@@ -8,7 +8,9 @@ import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.reportToSentry
 import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
+import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
+import com.gunnys.eundunhealth.domain.usecase.ImportBodyCompositionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,7 @@ sealed class ProfileUiState {
         val profile: UserProfile,
         val isSaving: Boolean = false,
         val isDeleting: Boolean = false,
+        val canImportBodyComposition: Boolean = false,
     ) : ProfileUiState()
 
     @Immutable data object Empty : ProfileUiState()
@@ -38,12 +41,15 @@ sealed class ProfileSideEffect {
     data class ShowSnackbar(val message: String) : ProfileSideEffect()
     data object SavedAndNavigateBack : ProfileSideEffect()
     data object NavigateToLogin : ProfileSideEffect()
+    data class PrefillBodyComposition(val weightKg: Float?, val bodyFatPct: Float?) : ProfileSideEffect()
 }
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepo: UserRepository,
     private val authRepo: AuthRepository,
+    private val healthRepo: HealthRepository,
+    private val importBodyCompositionUseCase: ImportBodyCompositionUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
@@ -60,7 +66,9 @@ class ProfileViewModel @Inject constructor(
         _uiState.value = ProfileUiState.Loading
         userRepo.getProfile()
             .onSuccess { profile ->
-                _uiState.value = profile?.let { ProfileUiState.Loaded(it) } ?: ProfileUiState.Empty
+                _uiState.value = profile?.let {
+                    ProfileUiState.Loaded(it, canImportBodyComposition = healthRepo.isAvailable())
+                } ?: ProfileUiState.Empty
             }
             .onFailure {
                 val appErr = it.toAppError()
@@ -105,6 +113,22 @@ class ProfileViewModel @Inject constructor(
         if (current is ProfileUiState.Loaded) {
             _uiState.value = current.copy(isSaving = false)
         }
+    }
+
+    fun importBodyComposition() = viewModelScope.launch {
+        importBodyCompositionUseCase()
+            .onSuccess { bc ->
+                if (bc == null || (bc.weightKg == null && bc.bodyFatPercent == null)) {
+                    _sideEffect.send(ProfileSideEffect.ShowSnackbar("가져올 체중·체지방 기록이 없습니다"))
+                } else {
+                    _sideEffect.send(ProfileSideEffect.PrefillBodyComposition(bc.weightKg, bc.bodyFatPercent))
+                }
+            }
+            .onFailure {
+                val appErr = it.toAppError()
+                appErr.reportToSentry()
+                _sideEffect.send(ProfileSideEffect.ShowSnackbar(appErr.userMessage))
+            }
     }
 
     fun deleteAccount() = viewModelScope.launch {
