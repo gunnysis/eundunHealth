@@ -80,7 +80,7 @@ fun OnboardingScreen(
 
             ProfileSlider("키", height, 140f..210f, "cm", 0) { height = it }
             ProfileSlider("몸무게", weight, 40f..150f, "kg", 1) { weight = it }
-            ProfileSlider("근육량", muscleMass, 10f..60f, "kg", 1) { muscleMass = it }
+            ProfileSlider("골격근량", muscleMass, 10f..60f, "kg", 1) { muscleMass = it }
             ProfileSlider("체지방률", bodyFat, 5f..50f, "%", 1) { bodyFat = it }
 
             Spacer(modifier = Modifier.height(24.dp))

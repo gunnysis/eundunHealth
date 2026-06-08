@@ -31,7 +31,7 @@ fun ProfileSummaryCard(
             Text(title, style = MaterialTheme.typography.labelMedium)
             Spacer(modifier = Modifier.height(4.dp))
             Text("키: ${"%.0f".format(height)}cm | 몸무게: ${"%.1f".format(weight)}kg")
-            Text("체지방: ${"%.1f".format(bodyFat)}% | 근육량: ${"%.1f".format(muscleMass)}kg")
+            Text("체지방: ${"%.1f".format(bodyFat)}% | 골격근량: ${"%.1f".format(muscleMass)}kg")
         }
     }
 }
