@@ -1,14 +1,14 @@
 package com.gunnys.eundunhealth.domain.usecase
 
 import com.gunnys.eundunhealth.domain.model.DayPlan
-import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
-import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 import java.time.LocalDate
 
 class SyncHealthDataUseCaseTest {
@@ -26,43 +26,110 @@ class SyncHealthDataUseCaseTest {
         ),
     )
 
+    /**
+     * 테스트 더블 — [exerciseResult] 로 Health Connect read 의 성공/실패까지 주입한다.
+     */
     class FakeHealthRepo(
-        private val hasPerms: Boolean,
-        private val exerciseDates: List<LocalDate> = emptyList(),
+        private val available: Boolean = true,
+        private val hasPerms: Boolean = true,
+        private val exerciseResult: Result<List<LocalDate>> = Result.success(emptyList()),
     ) : HealthRepository {
+        override suspend fun isAvailable(): Boolean = available
         override suspend fun hasPermissions(): Boolean = hasPerms
-        override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> = Result.success(exerciseDates)
-    }
-
-    class FakeWorkoutRepo : WorkoutRepository {
-        override suspend fun getCurrentWeekPlan(): Result<WeeklyPlan?> = Result.success(null)
-        override suspend fun createWeeklyPlan(profile: UserProfile): Result<WeeklyPlan> = Result.failure(NotImplementedError())
-        override suspend fun savePlanToServer(plan: WeeklyPlan): Result<Unit> = Result.success(Unit)
-        override suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit> = Result.success(Unit)
-        override suspend fun getHistory(page: Int, size: Int): Result<Pair<List<WeeklyPlan>, Int>> = Result.success(emptyList<WeeklyPlan>() to 0)
-        override suspend fun getStatistics(weeks: Int): Result<com.gunnys.eundunhealth.domain.model.Statistics> = Result.success(com.gunnys.eundunhealth.domain.model.Statistics(emptyList(), 0, 0))
+        override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> = exerciseResult
     }
 
     @Test
     fun `syncs health data and marks completed days`() = runTest {
-        val healthRepo = FakeHealthRepo(hasPerms = true, exerciseDates = listOf(weekStart))
-        val useCase = SyncHealthDataUseCase(healthRepo, FakeWorkoutRepo())
+        val healthRepo = FakeHealthRepo(exerciseResult = Result.success(listOf(weekStart)))
+        val useCase = SyncHealthDataUseCase(healthRepo)
 
         val result = useCase(createPlan())
+
         assertTrue(result.isSuccess)
-        val plan = result.getOrThrow()
-        assertTrue(plan.days[0].isCompleted)
-        assertFalse(plan.days[1].isCompleted)
-        assertFalse(plan.days[2].isCompleted)
+        val sync = result.getOrThrow()
+        assertTrue(sync.plan.days[0].isCompleted)
+        assertFalse(sync.plan.days[1].isCompleted)
+        assertFalse(sync.plan.days[2].isCompleted)
+        assertTrue(sync.isAvailable)
+        assertTrue(sync.hasPermission)
+        assertEquals(listOf(weekStart), sync.newlyCompletedDates)
     }
 
     @Test
     fun `no permissions returns plan unchanged`() = runTest {
-        val healthRepo = FakeHealthRepo(hasPerms = false)
-        val useCase = SyncHealthDataUseCase(healthRepo, FakeWorkoutRepo())
+        val healthRepo = FakeHealthRepo(hasPerms = false, exerciseResult = Result.success(listOf(weekStart)))
+        val useCase = SyncHealthDataUseCase(healthRepo)
 
         val result = useCase(createPlan())
+
         assertTrue(result.isSuccess)
-        assertFalse(result.getOrThrow().days[0].isCompleted)
+        val sync = result.getOrThrow()
+        assertFalse(sync.plan.days[0].isCompleted)
+        assertFalse(sync.hasPermission)
+        assertTrue(sync.newlyCompletedDates.isEmpty())
+    }
+
+    @Test
+    fun `health connect unavailable skips sync and reports availability`() = runTest {
+        val healthRepo = FakeHealthRepo(available = false, exerciseResult = Result.success(listOf(weekStart)))
+        val useCase = SyncHealthDataUseCase(healthRepo)
+
+        val result = useCase(createPlan())
+
+        assertTrue(result.isSuccess)
+        val sync = result.getOrThrow()
+        assertFalse(sync.isAvailable)
+        assertFalse(sync.hasPermission)
+        assertFalse(sync.plan.days[0].isCompleted)
+        assertTrue(sync.newlyCompletedDates.isEmpty())
+    }
+
+    @Test
+    fun `already completed day is not reported as newly completed`() = runTest {
+        val plan = WeeklyPlan(
+            "plan1",
+            "user1",
+            weekStart,
+            listOf(DayPlan(weekStart, emptyList(), isRestDay = false, isCompleted = true)),
+        )
+        val healthRepo = FakeHealthRepo(exerciseResult = Result.success(listOf(weekStart)))
+        val useCase = SyncHealthDataUseCase(healthRepo)
+
+        val sync = useCase(plan).getOrThrow()
+
+        assertTrue(sync.plan.days[0].isCompleted)
+        assertTrue(sync.newlyCompletedDates.isEmpty())
+    }
+
+    @Test
+    fun `rest day with exercise record is not marked completed`() = runTest {
+        val plan = WeeklyPlan(
+            "plan1",
+            "user1",
+            weekStart,
+            listOf(DayPlan(weekStart, emptyList(), isRestDay = true, isCompleted = false)),
+        )
+        val healthRepo = FakeHealthRepo(exerciseResult = Result.success(listOf(weekStart)))
+        val useCase = SyncHealthDataUseCase(healthRepo)
+
+        val sync = useCase(plan).getOrThrow()
+
+        assertFalse(sync.plan.days[0].isCompleted)
+        assertTrue(sync.newlyCompletedDates.isEmpty())
+    }
+
+    @Test
+    fun `health read failure falls back to empty without failing the sync`() = runTest {
+        val healthRepo = FakeHealthRepo(exerciseResult = Result.failure(IOException("HC read failed")))
+        val useCase = SyncHealthDataUseCase(healthRepo)
+
+        val result = useCase(createPlan())
+
+        assertTrue(result.isSuccess)
+        val sync = result.getOrThrow()
+        assertFalse(sync.plan.days[0].isCompleted)
+        assertTrue(sync.newlyCompletedDates.isEmpty())
+        assertTrue(sync.hasPermission)
     }
 }

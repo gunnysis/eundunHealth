@@ -16,13 +16,9 @@ class HealthConnectDataSource @Inject constructor(
 ) {
     private val client by lazy { HealthConnectClient.getOrCreate(context) }
 
-    val permissions = setOf(
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
-    )
-
     fun isAvailable(): Boolean = HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
 
-    suspend fun hasPermissions(): Boolean = client.permissionController.getGrantedPermissions().containsAll(permissions)
+    suspend fun hasPermissions(): Boolean = client.permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
 
     suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): List<LocalDate> {
         val zoneId = ZoneId.systemDefault()
@@ -36,5 +32,12 @@ class HealthConnectDataSource @Inject constructor(
         return client.readRecords(request).records
             .map { it.startTime.atZone(zoneId).toLocalDate() }
             .distinct()
+    }
+
+    companion object {
+        /** 권한 set 의 단일 출처 — DataSource(권한 확인)와 MainActivity(권한 요청)가 공유. */
+        val PERMISSIONS = setOf(
+            HealthPermission.getReadPermission(ExerciseSessionRecord::class),
+        )
     }
 }
