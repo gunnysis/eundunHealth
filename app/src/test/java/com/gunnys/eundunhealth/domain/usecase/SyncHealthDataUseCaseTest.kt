@@ -1,6 +1,7 @@
 package com.gunnys.eundunhealth.domain.usecase
 
 import com.gunnys.eundunhealth.domain.model.BodyComposition
+import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
@@ -40,6 +41,8 @@ class SyncHealthDataUseCaseTest {
         override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> = exerciseResult
         override suspend fun hasBodyCompositionPermissions(): Boolean = false
         override suspend fun getLatestBodyComposition(): Result<BodyComposition> = Result.success(BodyComposition(null, null, null))
+        override suspend fun hasDailyActivityPermissions(): Boolean = false
+        override suspend fun getTodayActivity(): Result<DailyActivity> = Result.success(DailyActivity(null, null, null))
     }
 
     @Test
