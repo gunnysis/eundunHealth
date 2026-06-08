@@ -21,7 +21,7 @@ sentryGradle = "6.10.0"
 dataStore = "1.2.1"
 vico = "3.2.2"
 detekt = "1.23.7"
-spotless = "8.5.1"
+spotless = "8.6.0"
 ktlint = "1.5.0"
 openapiGenerator = "7.10.0"
 
