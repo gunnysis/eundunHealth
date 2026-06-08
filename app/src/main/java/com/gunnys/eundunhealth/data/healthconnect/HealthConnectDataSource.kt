@@ -3,10 +3,15 @@ package com.gunnys.eundunhealth.data.healthconnect
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import com.gunnys.eundunhealth.domain.model.BodyComposition
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -34,10 +39,40 @@ class HealthConnectDataSource @Inject constructor(
             .distinct()
     }
 
+    suspend fun hasBodyCompositionPermissions(): Boolean {
+        val granted = client.permissionController.getGrantedPermissions()
+        return granted.containsAll(BODY_COMPOSITION_PERMISSIONS)
+    }
+
+    /** 최근 [daysBack] 일 내 가장 최신(time 기준) 체중·체지방을 채택한다. */
+    suspend fun readLatestBodyComposition(daysBack: Long = 30): BodyComposition {
+        val end = Instant.now()
+        val filter = TimeRangeFilter.between(end.minus(Duration.ofDays(daysBack)), end)
+
+        val latestWeight = client.readRecords(
+            ReadRecordsRequest(WeightRecord::class, timeRangeFilter = filter),
+        ).records.maxByOrNull { it.time }
+
+        val latestBodyFat = client.readRecords(
+            ReadRecordsRequest(BodyFatRecord::class, timeRangeFilter = filter),
+        ).records.maxByOrNull { it.time }
+
+        return BodyComposition(
+            weightKg = latestWeight?.weight?.inKilograms?.toFloat(),
+            bodyFatPercent = latestBodyFat?.percentage?.value?.toFloat(),
+            measuredAt = listOfNotNull(latestWeight?.time, latestBodyFat?.time).maxOrNull(),
+        )
+    }
+
     companion object {
         /** 권한 set 의 단일 출처 — DataSource(권한 확인)와 MainActivity(권한 요청)가 공유. */
         val PERMISSIONS = setOf(
             HealthPermission.getReadPermission(ExerciseSessionRecord::class),
+        )
+
+        val BODY_COMPOSITION_PERMISSIONS = setOf(
+            HealthPermission.getReadPermission(WeightRecord::class),
+            HealthPermission.getReadPermission(BodyFatRecord::class),
         )
     }
 }
