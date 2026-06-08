@@ -271,7 +271,7 @@ private fun BodyMetricsSliders(
 ) {
     ProfileSlider("키", height, 140f..210f, "cm", 0, onHeightChange)
     ProfileSlider("몸무게", weight, 40f..150f, "kg", 1, onWeightChange)
-    ProfileSlider("근육량", muscleMass, 10f..60f, "kg", 1, onMuscleMassChange)
+    ProfileSlider("골격근량", muscleMass, 10f..60f, "kg", 1, onMuscleMassChange)
     ProfileSlider("체지방률", bodyFat, 5f..50f, "%", 1, onBodyFatChange)
 }
 

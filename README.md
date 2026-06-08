@@ -2,7 +2,7 @@
 
 > PT 트레이너 없이 헬스장에서 혼자 운동하는 사용자를 위한 Android 헬스 앱
 
-신체 정보(키·몸무게·근육량·체지방률)를 입력하면 [OSS ExerciseDB](https://oss.exercisedb.dev) 운동 라이브러리를 바탕으로 **맞춤형 주간 운동 계획**을 자동 생성하고, **Health Connect** 와 연동해 완료를 추적하며, **목표(체중·체지방)** 와 **배지**로 동기를 유지합니다.
+신체 정보(키·몸무게·골격근량·체지방률)를 입력하면 [OSS ExerciseDB](https://oss.exercisedb.dev) 운동 라이브러리를 바탕으로 **맞춤형 주간 운동 계획**을 자동 생성하고, **Health Connect** 와 연동해 완료를 추적하며, **목표(체중·체지방)** 와 **배지**로 동기를 유지합니다.
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
@@ -47,7 +47,7 @@
 
 ## 주요 기능
 
-- **자동 주간 운동 계획** — 신체 정보(키·몸무게·근육량·체지방률)와 휴식일 설정 기반으로 OSS ExerciseDB 에서 매주 자동 생성
+- **자동 주간 운동 계획** — 신체 정보(키·몸무게·골격근량·체지방률)와 휴식일 설정 기반으로 OSS ExerciseDB 에서 매주 자동 생성
 - **Health Connect 연동** — 운동 세션 자동 감지 및 완료 추적
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
 - **목표 설정 및 진행 시각화** (v0.3) — 체중 / 체지방률 목표 + 프로필 변화 이력 차트
