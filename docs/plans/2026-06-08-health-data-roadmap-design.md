@@ -64,7 +64,8 @@ tags: [health-connect, galaxy-watch, roadmap, architecture, governance]
 
 ### #1c. 골격근량 가져오기 (Samsung Health Data SDK) — 보류(파트너 승인 전제)
 - **목표**: 골격근량(skeletal muscle mass)을 Samsung Health Data SDK로 읽어 프로필에 가져오기. #1의 import UX 패턴 재사용.
-- **제약**: HC 경로 불가(D5). 배포에 **Samsung 파트너 승인 필수**(미승인 `2003` 에러), **Samsung 기기 한정**(비-Samsung은 버튼 비노출 + 수동 fallback), Android 10+/삼성헬스 6.30.2+/새 의존성.
+- **Google HC 재검증 (2026-06-08, 공식 문서)**: Health Connect 신체 계측 레코드 = Weight/Height/BodyFat/**LeanBodyMass**/BoneMass/BodyWaterMass/BasalMetabolicRate. **골격근량 레코드 타입 없음**(HC v1.1.0 포함 — 공식 재확인). InBody/체중계도 골격근량을 HC에 안 씀(써도 LeanBodyMass=제지방량). ⇒ **Google HC API 로는 골격근량 불가** 확정. 골격근량 자동화는 Samsung SDK 만, 그 외엔 **수동 입력**. (제지방량 LeanBodyMass 는 별개 지표 — #2 에서만 검토)
+- **제약**: HC 경로 불가(D5, 위 재검증). 배포에 **Samsung 파트너 승인 필수**(미승인 `2003` 에러), **Samsung 기기 한정**(비-Samsung은 버튼 비노출 + 수동 fallback), Android 10+/삼성헬스 6.30.2+/새 의존성.
 - **구성(점검)**: `SamsungHealthDataSource`(HealthDataStore connect+permission+read) / HealthRepository 확장 / `ImportSkeletalMuscleMassUseCase` / ProfileScreen 버튼(graceful degradation).
 - **의존성**: #1 완료 + 파트너 승인 절차. **후순위**(승인 리드타임).
 - **상태**: 설계 점검만 완료(2026-06-08), 구현 미착수.
