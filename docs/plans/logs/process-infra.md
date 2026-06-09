@@ -4,6 +4,17 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-09 — Cold start 제거 + Key Vault full IaC (warm baseline + health probes)
+
+- **PR**: [#92](https://github.com/gunnysis/eundunHealth/pull/92) scale fix · [#93](https://github.com/gunnysis/eundunHealth/pull/93) /health/ready · [#94](https://github.com/gunnysis/eundunHealth/pull/94) Task3 plan 하드닝 · [#95](https://github.com/gunnysis/eundunHealth/pull/95) plan sync · [#96](https://github.com/gunnysis/eundunHealth/pull/96) full IaC 컷오버 · [#97](https://github.com/gunnysis/eundunHealth/pull/97) deploy path hotfix — 모두 머지+배포완료
+- **Design/Plan**: `docs/plans/2026-06-09-coldstart-warm-baseline-{design,plan}.md` (본 entry 로 아카이브)
+- **Why**: 사용자 "로그인 느림" 반복 신고. 측정으로 근본원인 규명 — Supabase Auth 아님(warm 28ms), **백엔드 Container App scale-to-zero cold start 21,506ms**(로그인 직후 첫 백엔드 호출이 컨테이너 깨움). Entra External ID 전환 평가(수백 MAU 절감 $0 + 마이그레이션 큼) → **보류, A안(현행 유지 + cold start 해결)** 채택.
+- **What**: Phase 1 = `min 1 / max 3` + http-concurrency scale rule(cold start 즉시 제거). `/health/ready` readiness probe(DB SELECT 1→200/503, overridable dependency 로 ASGITransport 테스트 가능성). Phase 2 = secret→Key Vault 참조(`kv-eundunhealth` + system MI + RBAC) · registries→MI pull · HTTP probe 3종 · committed `backend/containerapp.yaml`(라이브 spec 기반 단일 출처) · `backend.yml` `--yaml` 배포 전환 + KeyVault precheck. staging throwaway 앱으로 clobber/resolve 실증 후 정리. dep bump 5건 머지·2건 close.
+- **Decisions**: A안(Entra 보류 — 트리거: 엔터프라이즈 SSO/Supabase 유료화/MFA·소셜 요구/출시 전) / KV = Standard·RBAC·90d·purge-protection / secret = **Key Vault 참조**(직접값/name-only gamble 회피) / YAML = **라이브 export 기반**(손YAML 의 CORS_ORIGINS·identity clobber 회피) / staging dry-run 게이트(`--yaml` what-if 부재) / **Task 8 Replicas 알림 미채택** — Replicas metric 이 scale-to-zero 시 미emit → min=0 회귀 감지 불가(false confidence). 회귀 가드 = IaC self-heal(매 배포 min=1 재적용) + 월간 점검.
+- **Outcome**: prod 검증 — `/health`·`/health/ready` 200, secrets 4 KeyVault, registries identity=system, probes 3종, min1/max3, CORS_ORIGINS 등 env 보존(no clobber). 비용 ~37,700→~43,700원(budget 70,000 내). 로그인 느림 해소.
+- **Lessons**: (1) **deploy path 버그**: staging 을 로컬(cwd=repo root)에서 테스트해 `backend/containerapp.yaml` 통과했으나 CI deploy job 은 `working-directory: backend` → `backend/backend/...` 로 실패(#96). → **CI invocation 경로까지 테스트**(아티팩트만 X). (2) **cp949 인코딩**: `az --yaml` 가 파일을 OS locale codec 으로 읽어 한글 주석에서 실패(Windows). CI(Ubuntu UTF-8) 무관하나 YAML 주석 ASCII 화. (3) **RBAC vault**: control-plane Owner ≠ data-plane → `secret set` 전에 self-grant Secrets Officer 필수(없으면 403). (4) **Git Bash MSYS**: resource-ID(`/subscriptions/...`) 인자가 망가짐 + `az keyvault show --query id` bash 에서 빈값 → resource-ID 명령은 PowerShell.
+- **Files touched**: `backend/containerapp.yaml`(신규), `.github/workflows/backend.yml`, `backend/app/routers/health.py`, `backend/tests/test_health.py`, `backend/openapi.json`, `docs/ops/operations-snapshot.md`, `docs/ops/migration-runbook.md`(§7), design+plan 페어(아카이브)
+
 ### 2026-06-03 — Azure Monitor Alerts (P1+P2) 프로비저닝
 
 - **PR**: 없음 (main 직접 커밋 4건: `6e607c8` ~ `fa30d22`)
