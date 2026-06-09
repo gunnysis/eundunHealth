@@ -1,0 +1,98 @@
+# Container App full spec - input for `az containerapp update --yaml` (single source of truth).
+# Derived from live export (`az containerapp show -o yaml`): read-only stripped + 3 deltas:
+#   1) probes x3 (startup/liveness=/health, readiness=/health/ready)
+#   2) secrets -> Key Vault references (identity: system, no secret values committed)
+#   3) registries -> managed identity pull (admin password method removed)
+# CI substitutes `__IMAGE__` -> ${ACR}/eundunhealth-api:${SHA::7}.
+# IMPORTANT: keep comments ASCII-only. `az ... --yaml` reads this file with the OS
+# locale codec (cp949 on Korean Windows) and fails on non-ASCII bytes; CI (Ubuntu UTF-8) is fine.
+identity:
+  type: SystemAssigned
+location: Korea Central
+name: eundunhealth-api
+properties:
+  managedEnvironmentId: /subscriptions/6890144c-c79e-46fc-a830-33335e8b4165/resourceGroups/apps/providers/Microsoft.App/managedEnvironments/eundunhealth-env
+  workloadProfileName: Consumption
+  configuration:
+    activeRevisionsMode: Single
+    maxInactiveRevisions: 100
+    ingress:
+      external: true
+      targetPort: 8080
+      transport: Auto
+      allowInsecure: false
+      traffic:
+      - latestRevision: true
+        weight: 100
+    registries:
+    - server: eundunhealthacr.azurecr.io
+      identity: system
+    secrets:
+    - name: database-url
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/database-url
+      identity: system
+    - name: supabase-url
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/supabase-url
+      identity: system
+    - name: supabase-service-role-key
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/supabase-service-role-key
+      identity: system
+    - name: sentry-dsn-backend
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/sentry-dsn-backend
+      identity: system
+  template:
+    containers:
+    - name: eundunhealth-api
+      image: __IMAGE__
+      resources:
+        cpu: 0.25
+        memory: 0.5Gi
+        ephemeralStorage: 1Gi
+      env:
+      - name: DATABASE_URL
+        secretRef: database-url
+      - name: SUPABASE_URL
+        secretRef: supabase-url
+      - name: SUPABASE_SERVICE_ROLE_KEY
+        secretRef: supabase-service-role-key
+      - name: SENTRY_DSN
+        secretRef: sentry-dsn-backend
+      - name: ENVIRONMENT
+        value: production
+      - name: CORS_ORIGINS
+        value: '["*"]'
+      probes:
+      - type: Startup
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 12
+      - type: Liveness
+        httpGet:
+          path: /health
+          port: 8080
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3
+      - type: Readiness
+        httpGet:
+          path: /health/ready
+          port: 8080
+        initialDelaySeconds: 3
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 6
+    scale:
+      minReplicas: 1
+      maxReplicas: 3
+      cooldownPeriod: 300
+      pollingInterval: 30
+      rules:
+      - name: http-concurrency
+        http:
+          metadata:
+            concurrentRequests: '50'
+type: Microsoft.App/containerApps

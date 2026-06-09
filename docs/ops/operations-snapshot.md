@@ -37,9 +37,11 @@
 | Resource Group | `apps` |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
-| 활성 revision | `eundunhealth-api--0000007` (100% traffic, ScaledToZero) |
-| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:38ca830` (PR #17 SHA, latest auto-deploy) |
-| Min / Max replicas | 0 / 1 (KEDA scale-to-zero) |
+| 활성 revision | latest auto-deploy (100% traffic, **warm — min=1**) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:<SHA>` (latest auto-deploy, **MI pull**) |
+| Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
+| Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
+| Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
 
 ### env vars
 
@@ -52,15 +54,29 @@
 | `ENVIRONMENT` | value | `production` |
 | `CORS_ORIGINS` | value | `["*"]` |
 
-### Secrets (총 5 — backend.yml deploy step의 secretref 4개 + ACR pull 1개)
+### Secrets (4 앱 secret — **Key Vault 참조**, `identity: system`)
 
-- `database-url` — `postgresql+asyncpg://gunny:****@healthapp.postgres.database.azure.com:5432/postgres?ssl=require`
-- `supabase-url` — `https://ttzzbfoksncqazvcsfiu.supabase.co` (INC-18 후 추가)
-- `supabase-service-role-key` — Supabase Admin API 키 (한국 리전 발급)
-- `sentry-dsn-backend` — Sentry `eundunhealth-backend` 프로젝트 DSN
-- `eundunhealthacrazurecrio-eundunhealthacr` — ACR pull (Azure 자동 관리)
+Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에만, 직접값 아님). ACR pull secret 은 **MI 전환으로 제거**.
 
-> backend.yml deploy job 직전 "Verify required Container App secrets exist" step이 위 4개(ACR pull 제외)를 사전 점검. 누락 시 fast-fail로 회귀 차단 (INC-18 재발 방지).
+- `database-url` → KeyVault `database-url` (`postgresql+asyncpg://…healthapp…`)
+- `supabase-url` → KeyVault `supabase-url`
+- `supabase-service-role-key` → KeyVault `supabase-service-role-key`
+- `sentry-dsn-backend` → KeyVault `sentry-dsn-backend`
+- ~~`eundunhealthacrazurecrio-eundunhealthacr`~~ (ACR pull) — **제거**: registries 가 MI(`identity: system`) pull 로 전환.
+
+> backend.yml deploy job 직전 "Verify required **Key Vault** secrets exist" step 이 4개 KeyVault secret 존재를 사전 점검(CI SP = Key Vault Secrets User). 누락 시 fast-fail (INC-18 재발 방지 — 룰 6 KeyVault 적응).
+
+### Key Vault (`kv-eundunhealth`)
+
+| 항목 | 값 |
+|------|---|
+| Vault | `kv-eundunhealth` (RG `apps`, Korea Central) |
+| SKU / 권한 모델 | Standard / **Azure RBAC** (legacy access policy 미사용) |
+| Soft-delete / Purge protection | 90일 / **활성**(생성 후 불변) |
+| Network | public + RBAC/MI 가 실질 차단막 (Container Apps Consumption 동적 IP → VNet 미통합) |
+| Secrets (4) | database-url, supabase-url, supabase-service-role-key, sentry-dsn-backend |
+| RBAC | 운영자=Secrets Officer · Container App MI=Secrets User · CI SP=Secrets User · MI=AcrPull(ACR) |
+| Audit | `kv-audit` 진단설정 → Log Analytics `workspace-appsDOlM` (AuditEvent) |
 
 ---
 
@@ -175,13 +191,14 @@ GitHub Actions:
 
 | 서비스 | 월 예상 | 비고 |
 |--------|--------|------|
-| Container Apps (Min 0) | ~0원 | scale-to-zero, 무료 할당량 |
+| Container Apps (Min 1 warm) | ~6,000원 | warm baseline (cold start 제거) — idle 단가, free grant 차감 |
+| Key Vault Standard | ~0원 | secret 4 + 저빈도 read(revision 기동 시) — 거래 무료한도 내 |
 | Container Registry Basic | ~7,000원 | 10GB 한도 |
 | PostgreSQL Flexible B1ms + 32GB | ~30,000원 | |
 | Azure Monitor Alerts (metric 4) | ~550-700원 | Activity Log 4개 무료 |
 | Sentry | 0원 | 무료 plan (10K events/mo) |
 | Supabase | 0원 | 무료 plan |
-| **합계** | **~37,700원** | budget 70,000원(1.9배 buffer) 설정 |
+| **합계** | **~43,700원** | budget 70,000원(1.6배 buffer) |
 
 ---
 
@@ -193,14 +210,18 @@ GitHub Actions:
 # /health
 curl -sf https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/health
 
-# revision 상태
+# revision 상태 + warm baseline 회귀 감지 (minReplicas 가 1 이어야 — cold start 방지)
 az containerapp revision list --name eundunhealth-api --resource-group apps -o table
+az containerapp show -n eundunhealth-api -g apps --query "properties.template.scale.minReplicas" -o tsv  # 1 이어야
+
+# readiness (DB 연결까지 확인)
+curl -sf https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/health/ready
 
 # ACR 태그 (timestamp 태그가 redeploy.sh 후크로 최근 5개만 유지되는지)
 az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api --orderby time_desc -o tsv
 
-# Container App secret 목록 (5개 + ACR pull 1개 = 6개여야 함. INC-18 재발 감지)
-az containerapp secret list --name eundunhealth-api --resource-group apps --query "[].name" -o tsv
+# Key Vault secret 목록 (4개여야 함 — KeyVault 참조 전환 후)
+az keyvault secret list --vault-name kv-eundunhealth --query "[].name" -o tsv
 
 # 비용 actual vs budget
 az consumption usage list --start-date $(date -d '-30 days' +%Y-%m-%d) --end-date $(date +%Y-%m-%d) -o table
@@ -294,3 +315,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-06-03 | Azure Monitor Alerts 프로비저닝. Action Group `ag-eundunhealth-prod` + Activity Log alert 4개 (ServiceHealth/ResourceHealth/Deletion/PG Firewall) + Metric alert 4개 (PG CPU/Storage/Connections + CA 5xx). §12 신설. `scripts/setup-azure-alerts.sh` 신규 |
 | 2026-06-06 | 프론트엔드 UDF-Enhanced 마이그레이션 (12 VM + 11 Screen). `@Immutable` 45건, `collectAsStateWithLifecycle` 33건, SideEffect Channel 7건. AuthVM 분리 → Login/Signup/ForgotPasswordVM 신규. OkHttp 4→5, Coil 2→3 의존성 메이저 업그레이드. CLAUDE.md 룰 11 + CI collectAsState 가드 + pre-commit collectAsState 검사 추가 |
 | 2026-06-06 | GitHub Actions Node.js 20→24 런타임 업그레이드 (checkout v6, gitleaks v3, trivy v0.36.0 pin). Dependabot PR 7건 일괄 정리: merged 4건 (foojay-resolver 1.0, sentry-gradle 6.10, vico 3.2.2, mypy 2.1), 수동 적용 1건 (starlette 1.2.1, uvicorn 0.49.0, sentry-sdk 2.61.1, pytest-asyncio 1.4.0, ruff 0.15.16 — fastapi 0.136.3 MAL-2026-4750 제외), closed 2건 (kotlin 2.4.0 / openapi-generator 7.22 — CI 실패) |
+| 2026-06-09 | **Cold start 제거 + Key Vault full IaC**. 로그인 느림 원인 = 백엔드 cold start 21.5s(scale-to-zero) 규명 → `min 1 / max 3` + http scale rule(PR #92). `/health/ready` readiness probe(PR #93). secret → Key Vault 참조(`kv-eundunhealth` + system MI + RBAC) · registries MI pull · HTTP probe 3종 · `--yaml` 배포 전환(PR2, `backend/containerapp.yaml` 단일 출처). staging dry-run 으로 clobber/resolve 실증 후 정리. Dependabot 5건 머지(sentry 8.43.1/spotless 8.6.0/detekt 1.23.8/androidx core-ktx 1.19.0/codecov 7) + 2건 close(kotlin CI fail, fastapi MAL). 비용 ~37,700 → ~43,700원 |

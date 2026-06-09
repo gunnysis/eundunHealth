@@ -213,43 +213,33 @@ jobs:
           docker push "$IMAGE_TAG"
           docker push "$IMAGE_LATEST"
 
-      # deploy step의 --set-env-vars가 참조하는 모든 secretref가 실제 Container App에
-      # 등록되어 있는지 사전 점검. 누락된 secret이 있으면 fast-fail해서 deploy step의
-      # ContainerAppSecretRefNotFound 에러를 PR 단계로 앞당긴다.
-      # 참조 인시던트: docs/ops/incident-log.md INC-2026-05-25-18.
-      - name: Verify required Container App secrets exist
+      # containerapp.yaml 의 secrets(KeyVault 참조)가 가리키는 Key Vault secret 이 실제
+      # 존재하는지 사전 점검(룰 6 적응 — Container App secret → Key Vault precheck).
+      # 누락 시 fast-fail 해서 --yaml 배포의 KeyVault resolve 실패를 PR 단계로 앞당긴다.
+      # CI SP 는 Key Vault Secrets User 보유(Task 3). 참조: docs/ops/incident-log.md INC-2026-05-25-18.
+      - name: Verify required Key Vault secrets exist
         run: |
           REQUIRED="database-url supabase-url supabase-service-role-key sentry-dsn-backend"
-          EXISTING=$(az containerapp secret list \
-            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --query "[].name" -o tsv)
+          EXISTING=$(az keyvault secret list --vault-name kv-eundunhealth --query "[].name" -o tsv)
           MISSING=""
           for s in $REQUIRED; do
             echo "$EXISTING" | grep -qx "$s" || MISSING="$MISSING $s"
           done
           if [ -n "$MISSING" ]; then
-            echo "::error::Missing Container App secrets:$MISSING"
-            echo "Run: az containerapp secret set --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP --secrets <name>=<value>"
+            echo "::error::Missing Key Vault secrets:$MISSING"
+            echo "Run: az keyvault secret set --vault-name kv-eundunhealth --name <name> --value <value>"
             exit 1
           fi
-          echo "All required secrets present: $REQUIRED"
+          echo "All required Key Vault secrets present: $REQUIRED"
 
+      # backend/containerapp.yaml 이 scale/probes/secrets(KeyVault)/registries(MI) 단일 출처.
+      # 이미지 태그만 주입 후 --yaml 적용 (--image/--set-env-vars 흡수).
       - name: Deploy to Container App
         run: |
+          sed "s|__IMAGE__|${IMAGE_TAG}|" backend/containerapp.yaml > /tmp/containerapp.rendered.yaml
           az containerapp update \
-            --name "$CONTAINER_APP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
-            --image "$IMAGE_TAG" \
-            --set-env-vars \
-              "DATABASE_URL=secretref:database-url" \
-              "SUPABASE_URL=secretref:supabase-url" \
-              "SUPABASE_SERVICE_ROLE_KEY=secretref:supabase-service-role-key" \
-              "SENTRY_DSN=secretref:sentry-dsn-backend" \
-              "ENVIRONMENT=production" \
-            --min-replicas 1 \
-            --max-replicas 3 \
-            --scale-rule-name http-concurrency \
-            --scale-rule-http-concurrency 50
+            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --yaml /tmp/containerapp.rendered.yaml
 
       - name: Health check
         run: |
