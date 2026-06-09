@@ -89,6 +89,21 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
+**Live Edit (Compose UI 반복 개발 — IDE 전용, 저장소 산출물 없음)**
+> 출처: [developer.android.com/develop/ui/compose/tooling/iterative-development](https://developer.android.com/develop/ui/compose/tooling/iterative-development) (Last updated 2026-06-02). per-developer IDE 설정이라 repo/`.idea` 커밋 대상 아님.
+
+켜기: `File > Settings > Editor > Live Edit` → 활성화. 모드는 **Manual on Save (`Ctrl+S`)** 권장 — Automatic 은 spotless/detekt 가 무거운 본 프로젝트에서 의도치 않은 빈번 push 유발. Running Devices 창 우측 상단 **초록 체크 = up-to-date**, **"Out Of Date" 클릭 → 컴파일 에러 표시**.
+
+호환성 (MEASURED 2026-06-08, 블로커 0):
+- 디바이스 **API 30+ 필수** — 본 앱 `minSdk=26` 이므로 **API 30+ 에뮬레이터/기기로 배포**해야 Live Edit 활성 (API 26~29 기기는 비활성).
+- `kotlinOptions.moduleName` 커스텀 금지 → `app/build.gradle.kts:132-134` 는 `jvmTarget` 만 설정 (위반 없음). AGP 9.2.1 / Compose BOM 2026.05.01 모두 요구치 상회. `android.builtInKotlin=false` 는 Live Edit 가 Gradle 미경유라 무관.
+
+적용 범위 — **Composable 함수 *바디* 만** 핫스왑:
+- ✅ `Modifier`(padding/spacing), `Color`/`dp` 상수, 애니메이션 튜닝, 레이아웃 미세조정 → `ui/theme/`·`ui/components/` 시각 마감 작업의 inner-loop 가속.
+- ❌ 함수 시그니처/추가·삭제, import 추가·삭제, 클래스 계층, 비-Composable 필드 변경 → **ViewModel/UDF 상태(룰 11)·Hilt/DI·네비·로직 변경은 대상 아님** (전체 Run 재배포 필요). 개별 Composable + 다크모드/locale 변형 검증은 `@Preview`(이미 6파일 사용) 병행이 더 적합.
+
+주의: Live Edit 가 적용된 프로세스는 약간의 오버헤드가 있어 **성능 측정 금지** → clean release build(룰 2 preflight 경로)로만 벤치. debugger 사용 시 수정 클래스는 전체 재실행 필요.
+
 ## Architecture
 
 ### Multi-Project Structure
