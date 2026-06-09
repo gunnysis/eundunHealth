@@ -314,10 +314,47 @@ PR #15 머지로 GitHub Actions `Build, Scan & Deploy` job이 처음 실제 동�
 
 ---
 
-## 7. 변경 이력
+## 7. Key Vault full IaC 셋업 (2026-06-09)
+
+> Cold start 제거 + secret→Key Vault 전환의 1회 운영자 셋업 + 검증 절차 요약. 전체 design/plan 은 git 이력 `docs/plans/2026-06-09-coldstart-warm-baseline-{design,plan}.md` (ledger `logs/process-infra.md` 2026-06-09 entry 로 아카이브). 현재 운영 상태: `operations-snapshot.md §2`.
+
+### 7.1 Key Vault + MI + RBAC (운영자 1회 — Owner/User Access Administrator 필요)
+```bash
+az keyvault create -n kv-eundunhealth -g apps -l koreacentral --sku standard \
+  --retention-days 90 --enable-purge-protection true --enable-rbac-authorization true \
+  --enabled-for-deployment false --enabled-for-template-deployment false --enabled-for-disk-encryption false
+KV_ID=$(az keyvault show -n kv-eundunhealth -g apps --query id -o tsv)
+# RBAC vault 는 Owner 라도 data-plane 자동 부여 X → self-grant Secrets Officer (없으면 secret set 403). 전파 수 분.
+az role assignment create --assignee-object-id $(az ad signed-in-user show --query id -o tsv) \
+  --assignee-principal-type User --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 --scope "$KV_ID"
+# 4 secret 저장 (기존 Container App secret 값에서, -o none 으로 값 출력 차단)
+for s in database-url supabase-url supabase-service-role-key sentry-dsn-backend; do
+  az keyvault secret set --vault-name kv-eundunhealth --name "$s" \
+    --value "$(az containerapp secret show -n eundunhealth-api -g apps --secret-name "$s" --query value -o tsv)" -o none
+done
+# Container App system MI + 역할 (MI=Secrets User@KV + AcrPull@ACR · CI SP=Secrets User@KV)
+az containerapp identity assign -n eundunhealth-api -g apps --system-assigned
+PID=$(az containerapp show -n eundunhealth-api -g apps --query identity.principalId -o tsv)
+ACR_ID=$(az acr show -n eundunhealthacr --query id -o tsv)
+az role assignment create --assignee-object-id "$PID" --assignee-principal-type ServicePrincipal --role 4633458b-17de-408a-b874-0445c86b69e6 --scope "$KV_ID"
+az role assignment create --assignee-object-id "$PID" --assignee-principal-type ServicePrincipal --role AcrPull --scope "$ACR_ID"
+SP=$(az ad sp list --display-name eundunhealth-github-deploy --query "[0].id" -o tsv)
+az role assignment create --assignee-object-id "$SP" --assignee-principal-type ServicePrincipal --role 4633458b-17de-408a-b874-0445c86b69e6 --scope "$KV_ID"
+```
+
+### 7.2 실측 함정 (재현 시 주의)
+- **PowerShell 필수**: resource-ID(`/subscriptions/...`) 인자는 Git Bash MSYS 가 Windows 경로로 망가뜨림(`MissingSubscription`) → resource-ID 명령은 PowerShell.
+- **RBAC 전파**: 역할 할당 후 data-plane(secret set/list) 반영까지 수 분 — 403 이면 대기 후 재시도.
+- **`backend/containerapp.yaml`**: 라이브 spec(`az containerapp show -o yaml`) 기반 단일 출처. `az --yaml` 가 OS locale codec 으로 읽어 **주석은 ASCII** 유지(한글 → Windows cp949 실패; CI Ubuntu 무관). CI deploy 는 `working-directory: backend` → 경로 `containerapp.yaml`(backend-relative).
+- **staging dry-run**(`--yaml` what-if 부재): throwaway `eundunhealth-api-staging`(public placeholder 로 create → MI 역할 부여 → `--yaml` 적용 → `/health/ready` 200 + secrets/registries 무손상 확인 → 역할·앱 삭제). 상세: git 이력 plan Task 10.
+
+---
+
+## 8. 변경 이력
 
 | 날짜 | 작성자 | 변경 |
 |------|--------|------|
 | 2026-05-24 | gunny | 초안 작성 (Task 20) |
 | 2026-05-24 | gunny | cutover 실행 완료 및 §6 사후 정리 반영 |
 | 2026-05-25 | gunny | 자동 배포(`backend.yml`) 첫 정상 동작 + INC-17·18 후속 발견 사항 §6에 추가. 본 문서는 historical reference로 전환 |
+| 2026-06-09 | gunny | §7 Key Vault full IaC 셋업 절차 추가 (cold start 제거 + secret→KeyVault 전환. ledger `logs/process-infra.md` 2026-06-09) |
