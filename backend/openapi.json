@@ -684,7 +684,7 @@
     },
     "/health": {
       "get": {
-        "description": "서버 가동 상태를 확인한다. JWT 불필요 — probe 전용.",
+        "description": "프로세스 가동 상태. JWT 불필요 — startup/liveness probe 전용 (DB 비검사).",
         "operationId": "healthCheck",
         "responses": {
           "200": {
@@ -703,6 +703,26 @@
           }
         },
         "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Readiness probe — DB 연결 가능 시에만 200, 아니면 503 → 트래픽 차단.\n\n5초 주기 probe 라 글로벌 500 핸들러(Sentry 포착)를 안 타도록 여기서 직접 503.\n두 분기 모두 JSONResponse — union 반환의 OpenAPI/mypy 잡음 회피.",
+        "operationId": "healthReady",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Ready",
         "tags": [
           "health"
         ]
