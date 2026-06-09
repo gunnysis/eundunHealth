@@ -245,7 +245,11 @@ jobs:
               "SUPABASE_URL=secretref:supabase-url" \
               "SUPABASE_SERVICE_ROLE_KEY=secretref:supabase-service-role-key" \
               "SENTRY_DSN=secretref:sentry-dsn-backend" \
-              "ENVIRONMENT=production"
+              "ENVIRONMENT=production" \
+            --min-replicas 1 \
+            --max-replicas 3 \
+            --scale-rule-name http-concurrency \
+            --scale-rule-http-concurrency 50
 
       - name: Health check
         run: |
