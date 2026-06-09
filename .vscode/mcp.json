@@ -1,0 +1,36 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "context7-api-key",
+      "description": "Context7 API Key (mcp.context7.com) — VS Code 가 OS 키체인에 암호화 저장. 최초 1회 입력.",
+      "password": true
+    }
+  ],
+  "servers": {
+    "ado-remote-mcp": {
+      "url": "https://dev.azure.com/qkr133456/eundunHealth/_apis/mcp/remote/ado-remote-mcp",
+      "type": "http"
+    },
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "type": "http"
+    },
+    "azure": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@latest", "server", "start"]
+    },
+    "sentry": {
+      "url": "https://mcp.sentry.dev/mcp",
+      "type": "http"
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${input:context7-api-key}"
+      }
+    }
+  }
+}
