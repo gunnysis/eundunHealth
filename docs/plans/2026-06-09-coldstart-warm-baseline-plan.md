@@ -139,42 +139,64 @@ git switch -c feat/containerapp-iac-keyvault
 > destructive 5문항(`monitoring-and-cost.md §6.8`) 통과 후 진행.
 > **secret 의 Container App→KeyVault 전환(secretref 재정의)은 Task 11 의 `--yaml` 배포가 원자적으로 일괄 수행** — 여기선 KeyVault/MI/RBAC 토대만 만든다(중복 imperative flip 제거 + staging 선검증).
 
-- [ ] **Step 1:** Key Vault 생성 (Korea Central, RG apps, RBAC 권한 모델)
+- [v] **Step 1:** Key Vault 생성. **불변 옵션(retention-days/purge-protection)은 생성 시 확정** — 공식 문서 기반 추천값(secret 전용·MI RBAC·VNet 미통합 전제):
 ```bash
-az keyvault create --name kv-eundunhealth --resource-group apps --location koreacentral \
-  --enable-rbac-authorization true
+az keyvault create \
+  --name kv-eundunhealth --resource-group apps --location koreacentral \
+  --sku standard \                         # secret 전용 → HSM(Premium) 불필요
+  --retention-days 90 \                     # soft-delete 최대 복구창 (생성 후 변경 불가)
+  --enable-purge-protection true \          # 영구삭제 방지 (한 번 켜면 끌 수 없음)
+  --enable-rbac-authorization true \        # Azure RBAC (legacy access policy 금지)
+  --enabled-for-deployment false \          # Resource access: VM/ARM/ADE 전부 미사용
+  --enabled-for-template-deployment false \
+  --enabled-for-disk-encryption false \
+  --public-network-access Enabled \         # Container Apps Consumption 동적 IP → public + RBAC/MI 가 차단막
+  --tags app=eundunhealth environment=production component=backend-secrets
 ```
-- [ ] **Step 2:** 4개 앱 secret 을 KeyVault 에 저장 (값은 기존 Container App secret 에서 추출)
+> caveat: soft-delete 로 vault 복구해도 **RBAC 역할 할당은 복원 안 됨**(공식 문서 확인) → 복구 시 Step 5·6 재실행. 네트워크 하드닝(private endpoint)은 Container Apps 환경 VNet 통합 선행(별도 과제).
+
+> **선행 권한**: Step 2·5·6 의 역할 할당은 `Microsoft.Authorization/roleAssignments/write` 필요 → 운영자가 **Owner 또는 User Access Administrator**(RG `apps`/구독)여야 함. Contributor 만으로는 불가(공식 RBAC 가이드).
+> **역할 전파 지연**: 역할 할당 후 data-plane 반영까지 **수 분**(공식: "Allow several minutes for role assignments to refresh") → 직후 `secret set`/`list` 가 403 이면 2–5분 대기 후 재시도.
+
+- [ ] **Step 2 (신규 — RBAC vault 필수):** 운영자 자신에게 **Key Vault Secrets Officer**(secret 쓰기) 부여. **이게 없으면 Step 3 의 `secret set` 이 403** — RBAC vault 는 control-plane Owner 라도 data-plane 권한이 자동 부여되지 않음(공식: "Key Vault Contributor... does not allow access to keys, secrets and certificates").
+```bash
+KV_ID=$(az keyvault show -n kv-eundunhealth -g apps --query id -o tsv)
+ME=$(az ad signed-in-user show --query id -o tsv)
+# role ID = Key Vault Secrets Officer (이름 대신 ID 사용 — 공식 권장: rename 내성)
+az role assignment create --assignee-object-id "$ME" --assignee-principal-type User \
+  --role "b86a8fe4-44ce-4948-aee5-eccb2c155cd7" --scope "$KV_ID"
+# ↑ 부여 후 전파 수 분 대기 (Step 3 전)
+```
+- [ ] **Step 3:** 4개 앱 secret 을 KeyVault 에 저장 (값은 기존 Container App secret 에서 추출. **Step 2 전파 완료 후** 실행)
 ```bash
 for s in database-url supabase-url supabase-service-role-key sentry-dsn-backend; do
   V=$(az containerapp secret show -n eundunhealth-api -g apps --secret-name "$s" --query value -o tsv)
-  az keyvault secret set --vault-name kv-eundunhealth --name "$s" --value "$V"
+  az keyvault secret set --vault-name kv-eundunhealth --name "$s" --value "$V" --content-type "text/plain"
 done
 ```
-- [ ] **Step 3:** Container App system-assigned MI 활성 + principalId 확보
+- [ ] **Step 4:** Container App system-assigned MI 활성 + principalId 확보
 ```bash
 az containerapp identity assign -n eundunhealth-api -g apps --system-assigned
 PID=$(az containerapp show -n eundunhealth-api -g apps --query identity.principalId -o tsv)
 ```
-- [ ] **Step 4:** MI 에 RBAC — KeyVault Secrets User + ACR AcrPull. **MI/SP 는 Graph 전파 지연 대비 `--assignee-object-id` + `--assignee-principal-type ServicePrincipal`** (`PrincipalNotFound` 회피)
+- [ ] **Step 5:** MI 에 RBAC — **Key Vault Secrets User**(secret 읽기) + ACR **AcrPull**. MI 는 Graph 전파 지연 대비 `--assignee-object-id` + `--assignee-principal-type ServicePrincipal`(`PrincipalNotFound` 회피)
 ```bash
-KV_ID=$(az keyvault show -n kv-eundunhealth -g apps --query id -o tsv)
 ACR_ID=$(az acr show -n eundunhealthacr --query id -o tsv)
 az role assignment create --assignee-object-id "$PID" --assignee-principal-type ServicePrincipal \
-  --role "Key Vault Secrets User" --scope "$KV_ID"
+  --role "4633458b-17de-408a-b874-0445c86b69e6" --scope "$KV_ID"   # Key Vault Secrets User
 az role assignment create --assignee-object-id "$PID" --assignee-principal-type ServicePrincipal \
   --role "AcrPull" --scope "$ACR_ID"
 ```
-- [ ] **Step 5:** CI service principal 에 KeyVault 읽기 부여 (Task 7 precheck `az keyvault secret list` 용)
+- [ ] **Step 6:** CI service principal 에 **Key Vault Secrets User** 부여 (Task 7 precheck `az keyvault secret list` 용. list 전용 data-plane 역할은 없어 Secrets User 사용 — CI 는 이미 앱 배포 권한 보유라 실질 권한 확대 아님)
 ```bash
 SP_ID=$(az ad sp list --display-name eundunhealth-github-deploy --query "[0].id" -o tsv)
 az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
-  --role "Key Vault Secrets User" --scope "$KV_ID"
+  --role "4633458b-17de-408a-b874-0445c86b69e6" --scope "$KV_ID"   # Key Vault Secrets User
 ```
-- [ ] **Step 6:** 검증 — KeyVault secret 4개 + MI + RBAC 존재 (앱의 실제 KeyVault resolve 는 Task 10 staging 에서 `--yaml` 적용으로 검증)
+- [ ] **Step 7:** 검증 — KeyVault secret 4개 + 역할 3건(전파 후). 앱 실제 resolve 는 Task 10 staging 에서 검증
 ```bash
-az keyvault secret list --vault-name kv-eundunhealth --query "[].name" -o tsv          # 4개
-az role assignment list --assignee "$PID" --query "[].roleDefinitionName" -o tsv       # Key Vault Secrets User, AcrPull
+az keyvault secret list --vault-name kv-eundunhealth --query "[].name" -o tsv    # database-url, supabase-url, supabase-service-role-key, sentry-dsn-backend
+az role assignment list --scope "$KV_ID" --query "[].roleDefinitionName" -o tsv  # Secrets Officer(운영자) + Secrets User(MI, CI SP)
 ```
 
 ### Task 4: `/health/ready` 엔드포인트 + overridable dependency (TDD)
@@ -312,7 +334,7 @@ git commit -m "feat(infra): containerapp.yaml (라이브 spec 기반, KeyVault r
 
 **Files:** Modify `.github/workflows/backend.yml` (deploy job: secret precheck + deploy step)
 
-- [ ] **Step 1 (Edit):** "Verify required Container App secrets exist" step 을 **KeyVault secret 존재 확인**으로 교체 (CI SP 가 Task 3 Step 5 로 KeyVault 읽기 권한 보유)
+- [ ] **Step 1 (Edit):** "Verify required Container App secrets exist" step 을 **KeyVault secret 존재 확인**으로 교체 (CI SP 가 Task 3 Step 6 으로 KeyVault 읽기 권한 보유)
 ```yaml
       - name: Verify required Key Vault secrets exist
         run: |
