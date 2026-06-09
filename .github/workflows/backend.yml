@@ -236,7 +236,8 @@ jobs:
       # 이미지 태그만 주입 후 --yaml 적용 (--image/--set-env-vars 흡수).
       - name: Deploy to Container App
         run: |
-          sed "s|__IMAGE__|${IMAGE_TAG}|" backend/containerapp.yaml > /tmp/containerapp.rendered.yaml
+          # deploy job 의 working-directory 가 backend/ 이므로 경로는 backend-relative.
+          sed "s|__IMAGE__|${IMAGE_TAG}|" containerapp.yaml > /tmp/containerapp.rendered.yaml
           az containerapp update \
             --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --yaml /tmp/containerapp.rendered.yaml
