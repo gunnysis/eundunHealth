@@ -20,10 +20,10 @@
 | 운동 API | RapidAPI ExerciseDB | **OSS** `oss.exercisedb.dev` (인증 불필요) |
 | Supabase 리전 | (US) | **Korea (project `ttzzbfoksncqazvcsfiu`)** |
 | Sentry 프로젝트 | 단일 `eundunhealth` | **두 프로젝트 분리** — Android `eundunhealth`, Backend `eundunhealth-backend` |
-| Android 정적 분석 | 미적용 | **Detekt 1.23.7 + Spotless 8.5.1 + ktlint 1.5.0** |
-| 차트 라이브러리 | 미사용 | **Vico 3.1.0** (compose-m3) — 통계 + 목표 진행 차트 |
+| Android 정적 분석 | 미적용 | **Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0** |
+| 차트 라이브러리 | 미사용 | **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
-| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.1.0** (PYSEC-2026-161 fix 포함, v0.1.5 #54) |
+| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.2.1** (PYSEC-2026-161 fix 포함 — v0.1.5 #54 에서 1.1.0 도입 후 1.2.x bump) |
 | versionCode / versionName | (미정) | **21 / 0.1.7** (이력: 14=v0.1.0 / 15=v0.1.1 / 16=v0.1.2 / 17=v0.1.3 / 18=v0.1.4 / 19=v0.1.5 / 20=v0.1.6 / 21=v0.1.7) |
 | Alembic head | (미정) | `fa3915deab2f` (v0.3 history + goals + rest_day 컬럼, INC-2026-05-27-01 fix 포함) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |

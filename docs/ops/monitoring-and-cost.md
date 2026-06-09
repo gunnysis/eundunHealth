@@ -128,13 +128,14 @@ az consumption budget create \
 
 | 서비스 | 월 예상 |
 |--------|---------|
-| Container Apps (Min replicas 0, Scale to Zero) | ~0원 (무료 할당량) |
+| Container Apps (Min 1 warm — cold start 제거) | ~6,000원 |
+| Key Vault Standard | ~0원 (저빈도 read, 무료한도 내) |
 | Container Registry Basic | ~7,000원 |
 | PostgreSQL Flexible B1ms + 32GB | ~30,000원 |
 | Azure Monitor Alerts (metric 4개) | ~550-700원 |
-| **합계** | **~37,700원** |
+| **합계** | **~43,700원** |
 
-70,000원 budget 알림은 약 1.9배 buffer. Monitor Alert 비용 = metric alert 4개 × ~$0.10/월. Activity Log alert 4개는 무료.
+70,000원 budget 알림은 약 1.6배 buffer (cold start 제거로 Container Apps warm 단가 ~6,000원 반영). Monitor Alert 비용 = metric alert 4개 × ~$0.10/월. Activity Log alert 4개는 무료.
 
 ## 5. 운영 점검 체크리스트 (월 1회)
 
@@ -314,4 +315,4 @@ az monitor activity-log alert list -g apps --query "[?starts_with(name,'alert-')
 
 ### 7.4 비용
 
-Metric alert 4개 × ~$0.10/월 = ~$0.40/월 (~550-700원). Activity Log alert 4개는 무료. 현 37,000원 대비 1.9% 증가.
+Metric alert 4개 × ~$0.10/월 = ~$0.40/월 (~550-700원). Activity Log alert 4개는 무료. 현 ~43,700원 대비 ~1.6% 증가.

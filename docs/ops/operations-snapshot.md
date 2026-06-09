@@ -17,9 +17,9 @@
 | Compose BOM | 2026.05.01 |
 | 차트 | Vico 3.2.2 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
-| 정적 분석 | Detekt 1.23.7 (baseline.xml — generated 포함) + Spotless 8.5.1 + ktlint 1.5.0 |
+| 정적 분석 | Detekt 1.23.8 (baseline.xml — generated 포함) + Spotless 8.6.0 + ktlint 1.5.0 |
 | API client | openapi-generator 7.10.0 (jvm-retrofit2 + gson + coroutines) — preBuild 자동 |
-| Sentry SDK | Android 8.42.0 / Gradle plugin 6.10.0 |
+| Sentry SDK | Android 8.43.1 / Gradle plugin 6.10.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
 산출물 경로 (v0.1.5 빌드 시점 기준):

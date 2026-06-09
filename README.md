@@ -70,31 +70,32 @@
 | 비동기 | kotlinx-coroutines + Flow | |
 | 네트워크 | Retrofit + OkHttp + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 |
 | 로컬 DB | Room (version=2) | `EundunDatabase` |
-| 차트 | Vico 3.1.0 (compose-m3) | 통계 + 목표 진행 |
+| 차트 | Vico 3.2.2 (compose-m3) | 통계 + 목표 진행 |
 | Auth | Supabase Kotlin SDK 3.6.0 | ES256 JWT |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | |
-| 모니터링 | Sentry Android 8.42.0 | 16KB page-aligned native libs |
+| 모니터링 | Sentry Android 8.43.1 | 16KB page-aligned native libs |
 | API 클라이언트 | OpenAPI Generator 7.10.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동 |
-| 품질 도구 | Detekt 1.23.7 + Spotless 8.5.1 + ktlint 1.5.0 | pre-commit hook 자동화 |
+| 품질 도구 | Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0 | pre-commit hook 자동화 |
 
 ### Backend (`backend/`)
 
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Python 3.12 | |
-| 프레임워크 | FastAPI 0.136.1 + uvicorn 0.48.0 | |
+| 프레임워크 | FastAPI 0.136.1 + uvicorn 0.49.0 | |
 | ORM | SQLAlchemy 2.0.50 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
 | 마이그레이션 | Alembic 1.18.4 (head: `fa3915deab2f`) | async 엔진 연동 |
-| HTTP 코어 | starlette 1.1.0 | PYSEC-2026-161 pin |
+| HTTP 코어 | starlette 1.2.1 | PYSEC-2026-161 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
-| 모니터링 | Sentry SDK 2.60.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 41/41 PASS, coverage 82% |
+| 모니터링 | Sentry SDK 2.61.1 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 46/46 PASS, coverage ~82% |
 
 ### 인프라
 
 | 구성 요소 | 값 |
 |-----------|---|
-| Container App | `eundunhealth-api` (RG `apps`, Korea Central, ScaledToZero) |
+| Container App | `eundunhealth-api` (RG `apps`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종) |
+| Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret 4 |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU) |
 | Database | Azure PostgreSQL Flexible Server `healthapp` (B1ms, 32GB) |
 | Auth | Supabase (Korea 리전, project `ttzzbfoksncqazvcsfiu`) |
