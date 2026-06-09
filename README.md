@@ -6,8 +6,8 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.1.7-blue)
-![versionCode](https://img.shields.io/badge/versionCode-21-blue)
+![versionName](https://img.shields.io/badge/versionName-0.1.8-blue)
+![versionCode](https://img.shields.io/badge/versionCode-22-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB)
@@ -354,7 +354,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 | 문서 | 내용 |
 |------|------|
-| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.7) |
+| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.8) |
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
 | [SPEC](docs/SPEC.md) | 기능 명세 |
@@ -366,13 +366,13 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | [모니터링 및 비용](docs/ops/monitoring-and-cost.md) | Sentry / ACR / Budget + 안전 패턴 |
 | [Play Store 출시](docs/ops/play-store-release.md) | 첫 출시 8 단계 + 데이터 안전 답변 |
 | [의존성 보류](docs/ops/dependency-deferred.md) | 출시 후 재검토 항목 |
-| [CLAUDE.md](CLAUDE.md) | AI 협업 컨벤션 + 운영 안전 룰 8 |
+| [CLAUDE.md](CLAUDE.md) | AI 협업 컨벤션 + 운영 안전 룰 11 |
 
 ---
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.7` (versionCode `21`) / Play Store **Internal Testing 활성**
+**현재 버전** — `0.1.8` (versionCode `22`) / Play Store **Internal Testing 활성**
 
 ### 마일스톤 진행
 
@@ -391,6 +391,8 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.5** — Vico 2.1 → 3.1 + Health Connect 1.1.0 stable + starlette 1.1.0
 - [x] **v0.1.6** — Signup Failed UX inline error banner (INC-2026-05-26-01)
 - [x] **v0.1.7** — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote
+- [x] **v0.1.8** — UDF-Enhanced 12 VM 리팩토링 + OkHttp5/Coil3 + 의존성 bump (정식 출시)
+- [x] **백엔드 인프라 (2026-06-09)** — cold start 제거(min-replicas=1) + Key Vault full IaC (health probe 3종 · system MI · `--yaml` 배포)
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시

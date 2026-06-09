@@ -4,6 +4,23 @@
 
 ---
 
+## [main] — 2026-06-09 — Cold start 제거 + Key Vault full IaC
+
+### 🎯 요약
+"로그인 느림" 반복 신고 → 측정으로 근본원인 규명(백엔드 scale-to-zero **cold start 21.5s**, Supabase Auth 아님 warm 28ms) → Entra External ID 전환 평가(수백 MAU 절감 $0) 후 보류, **A안(현행 유지 + cold start 해결)** 채택.
+
+### 변경 (PR #92~#99)
+- **Phase 1** (#92): Container App `min/max 1/3` + http-concurrency scale rule → cold start 제거(warm baseline).
+- **`/health/ready`** (#93): readiness probe (DB `SELECT 1` → 200/503) + overridable dependency 단위테스트 2건 (44→46 PASS).
+- **Phase 2 full IaC** (#96, #97): secret → **Key Vault 참조**(`kv-eundunhealth` + system MI + RBAC) · registries **MI pull**(admin password 제거) · **HTTP probe 3종** · committed `backend/containerapp.yaml` `--yaml` 배포 + KeyVault precheck. throwaway staging dry-run 으로 clobber/resolve 실증 후 정리. prod 검증 통과.
+- **Dependabot** 정리: 5건 머지(sentry 8.43.1 / spotless 8.6.0 / detekt 1.23.8 / androidx core-ktx 1.19.0 / codecov-action 7), 2건 close(kotlin 2.4 CI fail, fastapi 0.136.3 MAL).
+- **보존 편집** (#99): HomeScreen 중복 `contentPadding` 제거 · CLAUDE.md Live Edit 섹션 · `.vscode/mcp.json` Context7 키 `${input:}`(VS Code secret storage) 외부화 — 평문 제거.
+
+### Lessons (→ `docs/plans/logs/process-infra.md` 2026-06-09)
+deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az --yaml` cp949 인코딩(주석 ASCII 화) · RBAC vault control-plane Owner ≠ data-plane(self-grant Secrets Officer) · Git Bash MSYS resource-ID 손상 → PowerShell.
+
+---
+
 ## [main] — 2026-06-08 — Sentry ProGuard 매핑 게이팅 (로컬 release 빌드 결정성 회복)
 
 ### 🎯 Prompts

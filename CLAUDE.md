@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
-**Current state**: versionName `0.1.7` (versionCode `21` — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote to `ui/components/`). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. Play Store **Internal Testing** track 활성. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+**Current state**: versionName `0.1.8` (versionCode `22` — UDF-Enhanced 12 VM 리팩토링 + OkHttp5/Coil3 + 의존성 bump 누적 출시). v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포). Play Store **Internal Testing** track 활성. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
 > Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
@@ -172,11 +172,11 @@ DELETE /account
 - **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
 - **Gradle 9.5.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
-- **App version**: versionName **`0.1.7`**, versionCode **`21`** (이력: 14=v0.1.0 출시 / 15=v0.1.1 가입 이메일 확인 / 16=v0.1.2 supabase encoding hotfix / 17=v0.1.3 App Links / 18=v0.1.4 redirectUrl 명시 / 19=v0.1.5 vico 3.1 + healthConnect stable / 20=v0.1.6 signup error banner / 21=v0.1.7 login+forgot 룰 8 + Banner promote. 다음 빌드부터 22, 23, ...)
-- **Sentry Android 8.42.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
+- **App version**: versionName **`0.1.8`**, versionCode **`22`** (이력: 14=v0.1.0 출시 / 15=v0.1.1 가입 이메일 확인 / 16=v0.1.2 supabase encoding hotfix / 17=v0.1.3 App Links / 18=v0.1.4 redirectUrl 명시 / 19=v0.1.5 vico 3.1 + healthConnect stable / 20=v0.1.6 signup error banner / 21=v0.1.7 login+forgot 룰 8 + Banner promote / 22=v0.1.8 UDF-Enhanced 12 VM + OkHttp5/Coil3 + 의존성 bump. 다음 빌드부터 23, 24, ...)
+- **Sentry Android 8.43.1** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.3.2** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
-- **Detekt 1.23.7 + Spotless 8.5.1 + ktlint 1.5.0**
+- **Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0**
 - Supabase JWT algorithm: **ES256 (ECDSA)** — backend uses JWKS public key verification
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)
@@ -186,11 +186,13 @@ DELETE /account
 - **Python 3.12**, FastAPI 0.136.1, SQLAlchemy 2.0.50 async + asyncpg 0.31.0, Alembic 1.18.4
 - **starlette 1.2.1** (PYSEC-2026-161 fix 포함), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
 - **Sentry SDK 2.61.1** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy strict 통과, ruff/bandit clean, pytest 44/44 PASS, coverage 82%
+- mypy strict 통과, ruff/bandit clean, pytest 46/46 PASS (`/health/ready` 단위 2건 추가), coverage ~82%
 - Alembic head `fa3915deab2f` (rest_day 컬럼 추가, INC-2026-05-27-01)
+- `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure
-- **Container App** `eundunhealth-api` (RG `apps`, Korea Central, Min replicas 0 → ScaledToZero)
+- **Container App** `eundunhealth-api` (RG `apps`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포)
+- **Key Vault** `kv-eundunhealth` (RG `apps`, Standard, **Azure RBAC**, 90d soft-delete + purge protection) — 백엔드 secret 4개(KV 참조, 직접값 아님). Container App **system MI** = Secrets User(KV) + AcrPull(ACR), CI SP = Secrets User(KV). audit → Log Analytics `workspace-appsDOlM`
 - **ACR** `eundunhealthacr` (Basic SKU — retention 정책 미지원, redeploy.sh가 timestamp 태그 최근 5개만 보존)
 - **Azure PostgreSQL** Flexible Server `healthapp` (B1ms, 32GB, Korea Central). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
 - **Supabase** Korea 리전, project `ttzzbfoksncqazvcsfiu`
