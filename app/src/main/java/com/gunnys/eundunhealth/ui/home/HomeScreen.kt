@@ -137,7 +137,7 @@ fun HomeScreen(
                     )
                 }
                 is HomeUiState.Success -> {
-                    LazyColumn(contentPadding = padding) {
+                    LazyColumn {
                         item {
                             WeeklyProgressCard(
                                 completedCount = state.completedCount,
