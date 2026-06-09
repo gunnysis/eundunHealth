@@ -158,46 +158,64 @@ az keyvault create \
 > **선행 권한**: Step 2·5·6 의 역할 할당은 `Microsoft.Authorization/roleAssignments/write` 필요 → 운영자가 **Owner 또는 User Access Administrator**(RG `apps`/구독)여야 함. Contributor 만으로는 불가(공식 RBAC 가이드).
 > **역할 전파 지연**: 역할 할당 후 data-plane 반영까지 **수 분**(공식: "Allow several minutes for role assignments to refresh") → 직후 `secret set`/`list` 가 403 이면 2–5분 대기 후 재시도.
 
-- [ ] **Step 2 (신규 — RBAC vault 필수):** 운영자 자신에게 **Key Vault Secrets Officer**(secret 쓰기) 부여. **이게 없으면 Step 3 의 `secret set` 이 403** — RBAC vault 는 control-plane Owner 라도 data-plane 권한이 자동 부여되지 않음(공식: "Key Vault Contributor... does not allow access to keys, secrets and certificates").
+> **idempotency**: Step 2~8 은 재실행 안전 — role assignment 는 중복 시 기존 반환(무해), `secret set` 은 새 버전 생성, `identity assign` 은 no-op. 중간 실패는 KV 삭제 없이 해당 step 부터 재개.
+
+- [ ] **Step 2 (신규 — RBAC vault 필수):** 운영자 자신에게 **Key Vault Secrets Officer**(secret 쓰기) 부여 + **전파 확인 루프**. **이게 없으면 Step 3 `secret set` 403** — RBAC vault 는 control-plane Owner 라도 data-plane 권한 자동 부여 X(공식: "Key Vault Contributor... does not allow access to keys, secrets and certificates").
 ```bash
 KV_ID=$(az keyvault show -n kv-eundunhealth -g apps --query id -o tsv)
 ME=$(az ad signed-in-user show --query id -o tsv)
-# role ID = Key Vault Secrets Officer (이름 대신 ID 사용 — 공식 권장: rename 내성)
+# role ID = Key Vault Secrets Officer (공식 권장: 이름 대신 ID — rename 내성)
 az role assignment create --assignee-object-id "$ME" --assignee-principal-type User \
-  --role "b86a8fe4-44ce-4948-aee5-eccb2c155cd7" --scope "$KV_ID"
-# ↑ 부여 후 전파 수 분 대기 (Step 3 전)
+  --role "b86a8fe4-44ce-4948-aee5-eccb2c155cd7" --scope "$KV_ID" -o none
+# 고정 대기 대신 data-plane 동작까지 폴링 (전파 ~수 분)
+for i in $(seq 1 20); do
+  az keyvault secret list --vault-name kv-eundunhealth -o none 2>/dev/null && { echo "RBAC 전파 완료"; break; }
+  echo "  전파 대기... ($i/20)"; sleep 15
+done
 ```
-- [ ] **Step 3:** 4개 앱 secret 을 KeyVault 에 저장 (값은 기존 Container App secret 에서 추출. **Step 2 전파 완료 후** 실행)
+- [ ] **Step 3:** 4개 앱 secret 을 KeyVault 에 저장. **`-o none` 으로 secret 값 출력 차단**(`secret set` 기본 출력은 value 노출) + 빈 값 가드. **`set -x` 디버그 금지**(값 누출).
 ```bash
 for s in database-url supabase-url supabase-service-role-key sentry-dsn-backend; do
   V=$(az containerapp secret show -n eundunhealth-api -g apps --secret-name "$s" --query value -o tsv)
-  az keyvault secret set --vault-name kv-eundunhealth --name "$s" --value "$V" --content-type "text/plain"
+  [ -n "$V" ] || { echo "ERROR: '$s' 값 비어있음 — 중단(잘못 저장 방지)"; break; }
+  az keyvault secret set --vault-name kv-eundunhealth --name "$s" --value "$V" --content-type "text/plain" -o none
+  echo "stored: $s"
 done
 ```
-- [ ] **Step 4:** Container App system-assigned MI 활성 + principalId 확보
+- [ ] **Step 4:** Container App system-assigned MI 활성 + principalId 확보 (+가드)
 ```bash
-az containerapp identity assign -n eundunhealth-api -g apps --system-assigned
+az containerapp identity assign -n eundunhealth-api -g apps --system-assigned -o none
 PID=$(az containerapp show -n eundunhealth-api -g apps --query identity.principalId -o tsv)
+[ -n "$PID" ] || echo "ERROR: principalId 없음 — MI 활성 실패, 중단"
 ```
-- [ ] **Step 5:** MI 에 RBAC — **Key Vault Secrets User**(secret 읽기) + ACR **AcrPull**. MI 는 Graph 전파 지연 대비 `--assignee-object-id` + `--assignee-principal-type ServicePrincipal`(`PrincipalNotFound` 회피)
+- [ ] **Step 5:** MI 에 RBAC — **Key Vault Secrets User**(secret 읽기) + ACR **AcrPull**. MI 는 Graph 전파 지연 대비 `--assignee-object-id`+`--assignee-principal-type ServicePrincipal`(`PrincipalNotFound` 회피). **주의: AcrPull 부여만으론 MI pull 이 켜지지 않음** — registries `passwordSecretRef`→`identity:system` 전환은 **Task 6·7 `--yaml` 배포**에서 발생(그 전까진 admin password pull 유지).
 ```bash
 ACR_ID=$(az acr show -n eundunhealthacr --query id -o tsv)
 az role assignment create --assignee-object-id "$PID" --assignee-principal-type ServicePrincipal \
-  --role "4633458b-17de-408a-b874-0445c86b69e6" --scope "$KV_ID"   # Key Vault Secrets User
+  --role "4633458b-17de-408a-b874-0445c86b69e6" --scope "$KV_ID" -o none   # Key Vault Secrets User
 az role assignment create --assignee-object-id "$PID" --assignee-principal-type ServicePrincipal \
-  --role "AcrPull" --scope "$ACR_ID"
+  --role "AcrPull" --scope "$ACR_ID" -o none
 ```
-- [ ] **Step 6:** CI service principal 에 **Key Vault Secrets User** 부여 (Task 7 precheck `az keyvault secret list` 용. list 전용 data-plane 역할은 없어 Secrets User 사용 — CI 는 이미 앱 배포 권한 보유라 실질 권한 확대 아님)
+- [ ] **Step 6:** CI service principal 에 **Key Vault Secrets User** 부여 (Task 7 precheck `az keyvault secret list` 용. list 전용 data-plane 역할은 없어 Secrets User — CI 는 이미 앱 배포 권한 보유라 실질 확대 아님)
 ```bash
 SP_ID=$(az ad sp list --display-name eundunhealth-github-deploy --query "[0].id" -o tsv)
 az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
-  --role "4633458b-17de-408a-b874-0445c86b69e6" --scope "$KV_ID"   # Key Vault Secrets User
+  --role "4633458b-17de-408a-b874-0445c86b69e6" --scope "$KV_ID" -o none   # Key Vault Secrets User
 ```
-- [ ] **Step 7:** 검증 — KeyVault secret 4개 + 역할 3건(전파 후). 앱 실제 resolve 는 Task 10 staging 에서 검증
+- [ ] **Step 7:** 검증 — secret 4개 + data-plane read(전파 확인) + 역할 3건. 앱 실제 resolve 는 Task 10 staging 에서.
 ```bash
-az keyvault secret list --vault-name kv-eundunhealth --query "[].name" -o tsv    # database-url, supabase-url, supabase-service-role-key, sentry-dsn-backend
-az role assignment list --scope "$KV_ID" --query "[].roleDefinitionName" -o tsv  # Secrets Officer(운영자) + Secrets User(MI, CI SP)
+az keyvault secret list --vault-name kv-eundunhealth --query "[].name" -o tsv               # 4개 이름
+az keyvault secret show --vault-name kv-eundunhealth --name database-url --query id -o tsv   # data-plane read OK = 전파 확인 (값 미출력)
+az role assignment list --scope "$KV_ID" --query "[].roleDefinitionName" -o tsv             # Secrets Officer(운영자) + Secrets User(MI, CI SP)
 ```
+- [ ] **Step 8 (옵션 — 관측성, best-practices):** KV audit 로그를 Log Analytics 로(공식 secure-key-vault "Enable audit logging"). workspace ID 는 환경에 맞게 확인 후 연결.
+```bash
+WS_ID=$(az monitor log-analytics workspace list -g apps --query "[0].id" -o tsv)   # 프로젝트 workspace (RG/이름 확인)
+az monitor diagnostic-settings create --name kv-audit --resource "$KV_ID" \
+  --workspace "$WS_ID" --logs '[{"category":"AuditEvent","enabled":true}]' -o none
+```
+
+> **복구 caveat**: KV 삭제 시 purge-protection 으로 90일간 같은 이름 재생성 불가(soft-delete). 중간 실패는 KV 삭제 없이 해당 step 재개(전부 idempotent). 다중 운영자 환경이면 PIM/JIT + MFA 권장(현 단독 운영자엔 옵션 — 공식 secure-key-vault).
 
 ### Task 4: `/health/ready` 엔드포인트 + overridable dependency (TDD)
 
