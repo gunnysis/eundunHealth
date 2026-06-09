@@ -15,7 +15,9 @@ def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
     `request.app.state.session_factory` 직접 참조는 pytest ASGITransport(lifespan 우회)에서
     unset 이라, dependency 로 감싸 테스트 가능성을 확보한다.
     """
-    return request.app.state.session_factory
+    # app.state 는 Any → 명시 타입 로컬로 받아 no-any-return(mypy strict) 회피
+    factory: async_sessionmaker[AsyncSession] = request.app.state.session_factory
+    return factory
 
 
 @router.get("/health", operation_id="healthCheck")
