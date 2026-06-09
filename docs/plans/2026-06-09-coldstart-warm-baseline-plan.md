@@ -15,7 +15,7 @@ tags: [container-apps, cold-start, health-probes, scale, key-vault, iac]
 
 **Goal:** 백엔드 Container App 의 scale-to-zero cold start(측정 21,506ms)를 제거해 "로그인 느림"을 해소하고, 안전한 full IaC(Key Vault) + 앱-인지 health probe 로 견고화한다.
 
-**Architecture:** 2 PR. **Phase 1** = `backend.yml` deploy 에 imperative scale 플래그(`--min-replicas 1 --max-replicas 3 --scale-rule-http-concurrency 50`) 추가 → registries/secrets 무손상으로 cold start 즉시 제거(PR1, 위험 0). **Phase 2** = secret 을 Key Vault 참조로 전환(system MI + RBAC) + committed `backend/containerapp.yaml`(완전 spec, 값 미커밋) + HTTP 프로브 3종 + `/health/ready` + `--yaml` 배포 전환(PR2).
+**Architecture:** 단계적 (3 PR 진행됨 + 남은 1 PR). **Phase 1**(✅ PR #92 배포완료) = `backend.yml` deploy 에 imperative scale 플래그(`--min-replicas 1 --max-replicas 3 --scale-rule-http-concurrency 50`) → cold start 제거. **`/health/ready`+테스트**(✅ PR #93 배포완료) + Task 3 plan 하드닝(✅ PR #94) = readiness 엔드포인트를 기존 imperative 배포 경로로 선반영. **Phase 2 (남음)** = secret 을 Key Vault 참조로 전환(system MI + RBAC) + committed `backend/containerapp.yaml`(완전 spec, 값 미커밋) + HTTP 프로브 3종(이미 떠 있는 `/health/ready` 연결) + `--yaml` 배포 전환(PR2). **운영자 Key Vault 셋업(Task 3) 선행.**
 
 **Tech Stack:** Azure Container Apps, Azure CLI(`az containerapp`), Azure Key Vault + system-assigned managed identity, GitHub Actions, FastAPI / Python 3.12 (SQLAlchemy async), pytest, bash.
 
@@ -31,20 +31,20 @@ tags: [container-apps, cold-start, health-probes, scale, key-vault, iac]
 
 **Task 순서:**
 ```
-Phase 1 (PR1 — 즉시 fix)
-  Task 0  branch + design/plan 페어 커밋 + index
-  Task 1  backend.yml scale 플래그 추가
-  Task 2  push + PR1 + 머지 후 검증
+Phase 1  ✅ PR #92 배포완료
+  Task 0~2  branch + scale 플래그(min=1/max=3/http-rule) + 머지/프로덕션 검증
 
-Phase 2 (PR2 — 안전한 full IaC, PR1 머지 후)
-  Task 3.0  PR1 머지 확인 + Phase 2 branch
-  Task 3    [운영자 수동] Key Vault + MI + RBAC 셋업
-  Task 4    /health/ready + overridable dependency + 단위테스트 (TDD)
-  Task 5    sync-openapi
-  Task 6    backend/containerapp.yaml (완전 spec)
+선반영  ✅ PR #93 배포완료
+  Task 4    /health/ready + 단위테스트(200/503)
+  Task 5    sync-openapi (healthReady)
+
+Phase 2 (남음 — PR2, 운영자 Task 3 선행)
+  Task 3.0  ✅ Phase 2 branch feat/containerapp-iac-keyvault (최신 main 기준)
+  Task 3    ← [운영자 수동] Key Vault + MI + RBAC 셋업 (진행 중)
+  Task 6    backend/containerapp.yaml (라이브 spec 기반 — delta = probes+secrets+registries)
   Task 7    backend.yml → --yaml 전환 + precheck KeyVault 화
   Task 8    (옵션) Replicas 회귀 알림
-  Task 9    operations-snapshot 갱신
+  Task 9    operations-snapshot 갱신 (+ 머지된 dep bump 반영)
   Task 10   [게이트] staging 앱 true dry-run (--yaml clobber/resolve 실증)
   Task 11   push + PR2 + 머지 후 검증
 ```
@@ -125,13 +125,9 @@ az containerapp show -n eundunhealth-api -g apps --query "properties.template.sc
 
 ## Phase 2 — 안전한 full IaC (Key Vault) + 견고화 (PR2)
 
-### Task 3.0: PR1 머지 확인 + Phase 2 브랜치
+### Task 3.0: Phase 2 브랜치  ✅ 완료
 
-- [ ] **Step 1 (pwsh):** main 최신화 + 브랜치
-```powershell
-git switch main; git pull
-git switch -c feat/containerapp-iac-keyvault
-```
+- [v] **Step 1:** `feat/containerapp-iac-keyvault` 브랜치 생성 완료 — **최신 `main` 기준**(Phase 1 + `/health/ready`(PR #93) + Task 3 하드닝(PR #94) + 머지된 dep bump 포함). 남은 Task 6·7·9 는 이 브랜치에서.
 
 ### Task 3: [운영자 수동 — Claude 실행 금지] Key Vault + MI + RBAC 토대
 
@@ -217,7 +213,9 @@ az monitor diagnostic-settings create --name kv-audit --resource "$KV_ID" \
 
 > **복구 caveat**: KV 삭제 시 purge-protection 으로 90일간 같은 이름 재생성 불가(soft-delete). 중간 실패는 KV 삭제 없이 해당 step 재개(전부 idempotent). 다중 운영자 환경이면 PIM/JIT + MFA 권장(현 단독 운영자엔 옵션 — 공식 secure-key-vault).
 
-### Task 4: `/health/ready` 엔드포인트 + overridable dependency (TDD)
+### Task 4: `/health/ready` 엔드포인트 + overridable dependency (TDD)  ✅ 완료 (PR #93)
+
+> **배포·검증 완료** — `/health/ready` 프로덕션 200(DB reachable). 단위테스트 2건(200/503) + ruff/mypy clean + 전체 46 passed. CI 가 `no-any-return` 1건 잡아 명시 타입 로컬로 수정(`5f6ad2f`). 아래 Step 은 **구현 기록**(이미 `main` 반영).
 
 **Files:** Modify `backend/app/routers/health.py`, Modify `backend/tests/test_health.py`
 
@@ -310,7 +308,9 @@ git add backend/app/routers/health.py backend/tests/test_health.py
 git commit -m "feat(health): /health/ready readiness probe (DB SELECT 1 → 200/503)"
 ```
 
-### Task 5: OpenAPI 스펙 동기화
+### Task 5: OpenAPI 스펙 동기화  ✅ 완료 (PR #93)
+
+> `backend/openapi.json` 에 `healthReady` operation 반영·커밋 완료(15 paths). 아래는 기록.
 
 **Files:** Modify `backend/openapi.json`
 
@@ -327,6 +327,8 @@ git commit -m "chore(openapi): /health/ready 반영"
 **Files:** Create `backend/containerapp.yaml`
 
 > **핵심(점검 발견 #1)**: 손으로 부분 YAML 을 쓰면 `--yaml` full-replace 가 `identity`(system MI)·`ingress.traffic`·`ephemeralStorage` 등 미기재 블록을 reset 할 수 있다. **특히 system MI 가 꺼지면 KeyVault resolve 가 붕괴**한다. 따라서 **라이브 spec 을 export → read-only 제거 → 의도분만 수정**한다.
+
+> **현 상태 반영(변경 사항)**: Phase 1 이 이미 scale(min1/max3 + http-rule)을 적용했고 `/health/ready` 도 배포됨(PR #93) → 라이브 export 에 **scale·이미지(/health/ready 포함)는 이미 반영**되어 있다. 따라서 Task 6 의 실제 delta 는 **① probes 3종(신규) + ② secrets→KeyVault refs + ③ registries→`identity:system`** 3가지뿐. readiness 프로브 대상(`/health/ready`)은 이미 프로덕션에 존재 — 프로브에서 연결만 하면 됨.
 
 - [ ] **Step 1 (bash):** 라이브 spec export (CLI 가 수용하는 완전한 입력 스키마 확보. show 는 secret 값을 반환 안 함 → 안전)
 ```bash
@@ -407,7 +409,7 @@ git commit -m "feat(ops): replica 회귀 감지 알림 (옵션)"
 
 **Files:** Modify `docs/ops/operations-snapshot.md`
 
-- [ ] **Step 1 (Edit):** §2(Min/Max 1/3 + probes 3종 + registries=MI + secrets=KeyVault), §5(신규 Key Vault `kv-eundunhealth`), §9(Container Apps ~6,000원/월 + KV ~$0, 합계 갱신), §10(월간 `minReplicas==1` 확인 + idle-후 `/health` 측정), §12(옵션 채택 시 알림 8→9), §13(변경 이력 1줄). **추가**: `docs/ops/migration-runbook.md` 에 Task 3 KeyVault/MI 1회 셋업 절차 + Task 10 staging dry-run 절차 기록.
+- [ ] **Step 1 (Edit):** §2(Min/Max 1/3 + probes 3종 + registries=MI + secrets=KeyVault), §5(신규 Key Vault `kv-eundunhealth`), §9(Container Apps ~6,000원/월 + KV ~$0, 합계 갱신), §10(월간 `minReplicas==1` 확인 + idle-후 `/health` 측정), §12(옵션 채택 시 알림 8→9), §13(변경 이력 1줄 + **머지된 dep bump 반영**: sentry 8.43.1 · spotless 8.6.0 · detekt 1.23.8 · androidx core-ktx 1.19.0 · codecov-action 7). **추가**: `docs/ops/migration-runbook.md` 에 Task 3 KeyVault/MI 1회 셋업 절차 + Task 10 staging dry-run 절차 기록.
 - [ ] **Step 2 (bash): commit**
 ```bash
 git add docs/ops/operations-snapshot.md
@@ -486,6 +488,6 @@ az containerapp show -n eundunhealth-api -g apps --query "properties.template.co
 ---
 
 ## PR 머지 후 (수동, 컨벤션 — plans-ledger-restructure)
-PR1 + PR2 머지 후 본 페어(design+plan)의 핵심 결정 + outcome 을 압축 entry(15-30줄)로
+Phase 1(#92) + /health/ready(#93) + Task 3 하드닝(#94) + Phase 2(PR2) 모두 머지 후 본 페어(design+plan)의 핵심 결정 + outcome 을 압축 entry(15-30줄)로
 `docs/plans/logs/process-infra.md` 의 `## Recent (last 90 days)` 맨 위에 추가 → 페어 2 파일 `git rm`.
-`bash scripts/gen-plans-index.sh` 재실행. Entry: Why(cold start 21.5s) / What(min=1 + KeyVault IaC + probes) / Outcome(검증 결과) / Files touched.
+`bash scripts/gen-plans-index.sh` 재실행. Entry: Why(cold start 21.5s) / What(min=1 + /health/ready + KeyVault IaC + probes) / Outcome(검증 결과) / Files touched + PR 목록(#92/#93/#94/PR2).
