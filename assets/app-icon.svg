@@ -1,0 +1,11 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="은둔헬스 앱 아이콘">
+  
+  <rect width="96" height="96" rx="22" fill="#006D3C"></rect>
+  <g fill="#FFFFFF">
+    <rect x="26" y="45" width="44" height="6" rx="3"></rect>
+    <rect x="21" y="38" width="6.5" height="20" rx="3"></rect>
+    <rect x="28.5" y="42" width="5" height="12" rx="2.2"></rect>
+    <rect x="68.5" y="38" width="6.5" height="20" rx="3"></rect>
+    <rect x="62.5" y="42" width="5" height="12" rx="2.2"></rect>
+  </g>
+</svg>

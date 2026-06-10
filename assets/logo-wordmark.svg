@@ -1,0 +1,13 @@
+<svg width="220" height="56" viewBox="0 0 220 56" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="은둔헬스">
+  
+  <rect x="0" y="4" width="48" height="48" rx="14" fill="#006D3C"></rect>
+  <g fill="#FFFFFF">
+    
+    <rect x="11" y="25.5" width="26" height="5" rx="2.5"></rect>
+    <rect x="8.5" y="21" width="5" height="14" rx="2"></rect>
+    <rect x="13.5" y="23.5" width="4" height="9" rx="1.6"></rect>
+    <rect x="34.5" y="21" width="5" height="14" rx="2"></rect>
+    <rect x="30.5" y="23.5" width="4" height="9" rx="1.6"></rect>
+  </g>
+  <text x="62" y="37" font-family="&#39;Noto Sans KR&#39;,&#39;Roboto&#39;,sans-serif" font-size="28" font-weight="700" fill="#006D3C" letter-spacing="-0.5">은둔헬스</text>
+</svg>
