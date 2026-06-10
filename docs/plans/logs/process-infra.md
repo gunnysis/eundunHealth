@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-10 — 앱 버전 명시 방식 종합 (version.properties SSoT + 백엔드 독립 버전 + 프론트 표시 + bump 자동화)
+
+- **PR**: [#102](https://github.com/gunnysis/eundunHealth/pull/102) (merged, squash `1b3a06c`)
+- **Design/Plan**: `docs/plans/2026-06-10-app-version-spec-{design,plan}.md` (본 entry 로 아카이브)
+- **Why**: 버전 명시가 명문 정책 없이 수동 관리 → 마찰: `build.gradle.kts` 이력 주석블록(11줄)이 CHANGELOG 와 중복·drift / versionCode 수동 증가(과거 13/14 혼선) / 현재버전이 current-state 4문서에 산재(stale 정정 `e591877`) / 백엔드 `FastAPI()` version 미지정 → `openapi.json` info.version 이 기본값 `0.1.0` / 앱 UI 에 버전 표시 전무. 사용자 명시: "외부·공식 문서(kotlin, android) 참고하여 앱 버전 명시 방식 연구·설계" + 프론트 표시 포함.
+- **What**: 루트 `version.properties` 앱 버전 SSoT(0.1.9/23 불변, `build.gradle.kts` 가 읽음, 주석블록 제거) / `backend/app/__version__="1.0.0"` 독립 API semver → `FastAPI(version=...)` + openapi 재싱크(info.version 0.1.0→1.0.0) / `ProfileScreen` 하단 `AppVersionLabel`(BuildConfig) / `scripts/bump-version.sh`(semver·단조 가드 + 문서 동기화 + `--dry-run`) / `docs/conventions/versioning.md` 정책 SSoT + CLAUDE.md 링크.
+- **Decisions**: versionCode = **명시 정수 + 가드**(versionName 도출 공식 reject — 같은 versionName 재업로드 충돌, 과거 13→14) / 백엔드 = **독립 버전 1.0.0**(prod 운영 중, semver "in production → 1.0.0") / SSoT = `version.properties`(libs.versions.toml/buildSrc 대신 — 언어중립·스크립트친화) / 프론트 source = BuildConfig(컴파일 상수, `PackageInfoCompat` 는 대안) / 이력 SSoT = `docs/CHANGELOG.md` 단일.
+- **Outcome**: CI 전부 green (android Lint/Detekt/Test/Build · backend Lint/Type/Test · Security · compose smoke · check-index). 게이트: 앱 spotless/detekt/test, 백엔드 pytest 48(+2)/cov 84%/ruff/mypy/bandit clean. BuildConfig 값 불변(0.1.9/23). 머지 → 백엔드 prod 배포(버전 메타데이터, 저위험).
+- **Lessons**: (1) **팩트체크가 과장 교정**: 백엔드 버전→generated client "흘러들어감" 은 과장(openapi-generator 가 info.version 을 기능코드로 안 씀 = cosmetic) — 진짜 비용은 bump 시 openapi 재싱크(`backend.yml` drift 가드). (2) semver 1.0.0 은 강제 아닌 권고 — prod 인 백엔드가 1.0.0 의 더 강한 후보, 앱은 미-GA 라 0.x 정당. (3) **`.venv/Scripts/mypy.exe` 가 이 환경에서 0 bytes·exit 1 로 깨짐** → `python -m mypy` 사용(CLAUDE.md 명령 보강 후보). (4) drift 대상 = current-state 4문서(README/PRD/operations-snapshot/CLAUDE)뿐, append-only 이력문서는 보존.
+- **Files touched**: `version.properties`(신규), `app/build.gradle.kts`, `app/.../ui/profile/ProfileScreen.kt`, `backend/app/__init__.py`, `backend/app/main.py`, `backend/openapi.json`, `backend/tests/test_app_version.py`(신규), `scripts/bump-version.sh`(신규), `docs/conventions/versioning.md`(신규), `CLAUDE.md`, design+plan 페어(아카이브)
+- **Postmortem**: (머지 + 7일 후 작성. 특이사항 없으면 1줄.)
+
 ### 2026-06-09 — Cold start 제거 + Key Vault full IaC (warm baseline + health probes)
 
 - **PR**: [#92](https://github.com/gunnysis/eundunHealth/pull/92) scale fix · [#93](https://github.com/gunnysis/eundunHealth/pull/93) /health/ready · [#94](https://github.com/gunnysis/eundunHealth/pull/94) Task3 plan 하드닝 · [#95](https://github.com/gunnysis/eundunHealth/pull/95) plan sync · [#96](https://github.com/gunnysis/eundunHealth/pull/96) full IaC 컷오버 · [#97](https://github.com/gunnysis/eundunHealth/pull/97) deploy path hotfix — 모두 머지+배포완료
