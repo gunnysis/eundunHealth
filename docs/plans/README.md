@@ -7,11 +7,11 @@
 
 ## 활성 작업 (페어 파일, 1)
 
-### 대기 (proposed / approved) (1)
+### 진행 중 (1)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-06-10 | body-composition-data | design + plan | approved | health-connect, body-composition, profile, permissions, ux |
+| 2026-06-10 | body-composition-data | design + plan | in-progress | health-connect, body-composition, profile, permissions, ux |
 
 ## Topic Ledgers (완료 작업 history)
 
