@@ -6,6 +6,12 @@ val localProperties =
         if (file.exists()) load(file.inputStream())
     }
 
+// 앱 버전 SSoT — 루트 version.properties (이력은 docs/CHANGELOG.md).
+val versionProps =
+    Properties().apply {
+        rootProject.file("version.properties").inputStream().use { load(it) }
+    }
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -68,19 +74,9 @@ android {
         applicationId = "com.gunnys.eundunhealth"
         minSdk = 26
         targetSdk = 37
-        // v0.1.0 출시 빌드는 versionCode 14였음 (13은 첫 internal testing 시도, 14는 출시 직전 안정화 후 재빌드).
-        // 15: v0.1.1 — 가입 이메일 확인 흐름(AwaitingEmailConfirmation + 60초 재전송) + 인증 상태 모델 리팩터.
-        // 16: v0.1.2 — supabase-kt 3.6.0 SupabaseEncodingException 처리 (가입 무반응 hotfix).
-        // 17: v0.1.3 — Android App Links 도입 (메일 클릭 1회로 자동 로그인).
-        // 18: v0.1.4 — Supabase signUp/resendEmail redirectUrl 명시 (Site URL 의 path 누락 hotfix).
-        // 19: v0.1.5 — vico 2.1 → 3.1 chart migration + healthConnect 1.1.0-rc01 → 1.1.0 stable.
-        // 20: v0.1.6 — Signup Failed UX inline error banner (INC-2026-05-26-01 해소).
-        // 21: v0.1.7 — LoginScreen / ForgotPasswordScreen 룰 8 적용 + AuthErrorBanner promote (ui/components/).
-        // 22: v0.1.8 — 12 ViewModel UDF-Enhanced 리팩토링(룰 11) + Sentry Gradle 6.10.0 + 의존성 일괄 bump.
-        // 23: v0.1.9 — Health Connect 체중·체지방 가져오기(#84) + 홈 오늘의 활동 요약 걸음·칼로리·심박(#85) + HC 동기화 경로 정리·갤럭시 워치 온보딩(#83) + 백엔드 cold start 제거·Key Vault IaC + 의존성 bump.
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 24, 25, ...
-        versionCode = 23
-        versionName = "0.1.9"
+        // 버전 SSoT = 루트 version.properties. 이력은 docs/CHANGELOG.md.
+        versionCode = versionProps.getProperty("versionCode").trim().toInt()
+        versionName = versionProps.getProperty("versionName").trim()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
