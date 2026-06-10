@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
-**Current state**: versionName `0.1.9` (versionCode `23` — Health Connect 체성분/오늘의 활동 + 갤럭시 워치 온보딩). 버전 SSoT = 루트 `version.properties`(앱) + `backend/app/__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포). Play Store **Internal Testing** track 활성. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+**Current state**: versionName `0.1.11` (versionCode `25` — Play Store 계정 삭제 페이지 + 계정 삭제 완전성(목표·신체이력 purge) 수정 + Health Connect 권한 rationale intent(Android 14+ 연동 버튼 무반응) 수정; 직전 v0.1.9 = HC 체성분/오늘의 활동 + 갤럭시 워치 온보딩). 버전 SSoT = 루트 `version.properties`(앱) + `backend/app/__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포). Play Store **Internal Testing** track 활성. Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
 > Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
@@ -173,7 +173,7 @@ DELETE /account
 - **Gradle 9.5.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
 - **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
-- **App version**: versionName **`0.1.9`**, versionCode **`23`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000). 정책 전문: `docs/conventions/versioning.md`
+- **App version**: versionName **`0.1.11`**, versionCode **`25`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000). 정책 전문: `docs/conventions/versioning.md`
 - **Sentry Android 8.43.1** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.3.2** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
@@ -377,7 +377,8 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 - `@docs/PRD.md` — Product Requirements
 - `@docs/TRD.md` — Technical Requirements
 - `@docs/SPEC.md` — 기능 명세
-- `@docs/privacy-policy.md` — 개인정보 처리방침 (Play Store URL 호스팅 대상)
+- `@docs/store/privacy-policy.md` — 개인정보 처리방침 (Play Store URL 호스팅 대상)
+- `@docs/store/account-deletion.md` — 계정 및 데이터 삭제 안내 (Play Store 계정 삭제 요청 URL 호스팅 대상)
 - `@docs/plans/README.md` — design+plan 페어 인덱스 (frontmatter 기반 자동 생성, status/PR/인시던트 추적 컬럼 포함)
 - `@docs/ops/operations-snapshot.md` — **현재 운영 상태 단일 출처**
 - `@docs/ops/incident-log.md` — 16건 인시던트 + root cause + 재발 방지 패턴

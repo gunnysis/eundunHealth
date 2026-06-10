@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v1.7 (2026-06-10 — v0.1.9 Health Connect 체성분/오늘의 활동 + 갤럭시 워치 온보딩 반영)
-**제품 버전:** v0.1.9 (versionCode 23) — Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩. 이전 누적: v0.1.1~v0.1.4 (signup 흐름 + App Links + redirect hotfix + 422 observability) / v0.1.5 (vico 3.1 + healthConnect stable) / v0.1.6 (Signup Failed UX inline banner — INC-2026-05-26-01) / v0.1.7 (login+forgot 룰 8 + `AuthErrorBanner` promote) / v0.1.8 (UDF-Enhanced 12 VM + OkHttp5/Coil3 + 의존성 bump). v0.1·v0.2·v0.3 spec 전체 구현 완료. 백엔드 인프라(2026-06-09): warm baseline + Key Vault IaC. Play Store **Internal Testing** 활성
+**문서 버전:** v1.8 (2026-06-10 — v0.1.11 계정 삭제 페이지·완전성 수정 + Health Connect 권한 rationale(Android 14+ 무반응) 수정 반영)
+**제품 버전:** v0.1.11 (versionCode 25) — Play Store 계정 삭제 페이지 + 계정 삭제 완전성(목표·신체이력 purge) 수정 + Health Connect 권한 rationale intent(Android 14+ 연동 버튼 무반응) 수정. 이전(v0.1.9): Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩. 이전 누적: v0.1.1~v0.1.4 (signup 흐름 + App Links + redirect hotfix + 422 observability) / v0.1.5 (vico 3.1 + healthConnect stable) / v0.1.6 (Signup Failed UX inline banner — INC-2026-05-26-01) / v0.1.7 (login+forgot 룰 8 + `AuthErrorBanner` promote) / v0.1.8 (UDF-Enhanced 12 VM + OkHttp5/Coil3 + 의존성 bump). v0.1·v0.2·v0.3 spec 전체 구현 완료. 백엔드 인프라(2026-06-09): warm baseline + Key Vault IaC. Play Store **Internal Testing** 활성
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

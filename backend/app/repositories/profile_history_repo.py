@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user_profile_history import UserProfileHistory
@@ -38,3 +38,7 @@ class ProfileHistoryRepository:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def delete_all_by_user(self, user_id: str) -> None:
+        """회원 탈퇴 시 사용자의 전체 신체 계측 이력 삭제."""
+        await self.db.execute(delete(UserProfileHistory).where(UserProfileHistory.user_id == user_id))

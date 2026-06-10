@@ -6,7 +6,7 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.1.9-blue)
+![versionName](https://img.shields.io/badge/versionName-0.1.11-blue)
 ![versionCode](https://img.shields.io/badge/versionCode-23-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF)
@@ -182,7 +182,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── docs/                     # 모든 비코드 문서
 │   ├── PRD.md / TRD.md / SPEC.md
 │   ├── CHANGELOG.md
-│   ├── privacy-policy.md
+│   ├── store/                # Play Store 호스팅 대상 (개인정보 처리방침·계정 삭제 안내)
 │   ├── plans/                # design + plan 페어 / 토픽 ledger
 │   └── ops/                  # 운영 스냅샷·런북·인시던트
 ├── scripts/                  # 자동화 (preflight / alembic / openapi-sync / hooks)
@@ -356,12 +356,13 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 | 문서 | 내용 |
 |------|------|
-| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.9) |
+| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.11) |
 | [버전 관리](docs/conventions/versioning.md) | 앱/백엔드 버전 SSoT · semver 정책 · bump 절차 |
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
 | [SPEC](docs/SPEC.md) | 기능 명세 |
-| [개인정보 처리방침](docs/privacy-policy.md) | Play Store 게시 대상 |
+| [개인정보 처리방침](docs/store/privacy-policy.md) | Play Store 게시 대상 |
+| [계정 및 데이터 삭제](docs/store/account-deletion.md) | Play Store 계정 삭제 요청 URL 대상 |
 | [Plans 인덱스](docs/plans/README.md) | design+plan 페어 + 토픽 ledger (자동 생성) |
 | [운영 스냅샷](docs/ops/operations-snapshot.md) | 현재 운영 상태 단일 출처 |
 | [인시던트 로그](docs/ops/incident-log.md) | 16 건 인시던트 + root cause + 재발 방지 |
@@ -375,7 +376,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.9` (versionCode `23`) / Play Store **Internal Testing 활성**
+**현재 버전** — `0.1.11` (versionCode `25`) / Play Store **Internal Testing 활성**
 
 ### 마일스톤 진행
 
@@ -397,6 +398,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.8** — UDF-Enhanced 12 VM 리팩토링 + OkHttp5/Coil3 + 의존성 bump (정식 출시)
 - [x] **백엔드 인프라 (2026-06-09)** — cold start 제거(min-replicas=1) + Key Vault full IaC (health probe 3종 · system MI · `--yaml` 배포)
 - [x] **v0.1.9** — Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩 (정식 출시)
+- [x] **v0.1.11** — Play Store 계정 삭제 페이지 + 계정 삭제 완전성(목표·신체이력 purge) 수정 + Health Connect 권한 rationale intent(Android 14+ 연동 버튼 무반응) 수정
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시
@@ -443,7 +445,8 @@ PR 작성 시 [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.m
 ## 라이선스 및 개인정보 처리
 
 - **라이선스** — **Proprietary / All Rights Reserved**. 저장소·앱 소스·아트워크의 무단 복제·재배포·수정·상업적 이용을 금지합니다.
-- **개인정보 처리방침** — [docs/privacy-policy.md](docs/privacy-policy.md) (Play Store 등재 URL 호스팅 대상).
+- **개인정보 처리방침** — [docs/store/privacy-policy.md](docs/store/privacy-policy.md) (Play Store 등재 URL 호스팅 대상).
+- **계정 및 데이터 삭제** — [docs/store/account-deletion.md](docs/store/account-deletion.md) (Play Store 계정 삭제 요청 URL 호스팅 대상).
 - **외부 의존성 라이선스** — 각 의존성은 자체 라이선스를 따릅니다(예: OSS ExerciseDB, Supabase SDK, Sentry SDK, FastAPI 등).
 
 ---

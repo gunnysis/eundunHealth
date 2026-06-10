@@ -1,4 +1,4 @@
-from sqlalchemy import and_, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.goal import Goal
@@ -29,3 +29,7 @@ class GoalRepository:
         goal = Goal(user_id=user_id, goal_type=goal_type, target_value=target_value)
         self.db.add(goal)
         return goal
+
+    async def delete_all_by_user(self, user_id: str) -> None:
+        """회원 탈퇴 시 사용자의 전체 목표 삭제."""
+        await self.db.execute(delete(Goal).where(Goal.user_id == user_id))

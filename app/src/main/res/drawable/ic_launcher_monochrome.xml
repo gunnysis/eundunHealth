@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 은둔헬스 덤벨 아이콘. assets/app-icon.svg(96x96) 의 rounded-rect 5개를 변환.
+     108dp foreground 캔버스(viewport 96) — 덤벨은 안전영역 중앙에 위치.
+     INC 2026-06-10: 색상-only 아이콘은 AdaptiveIconDrawable intrinsic -1 →
+     Android 14+ Health Connect access-log 비트맵화 실패 → HC 읽기 throw.
+     실제 벡터 foreground 로 intrinsic 크기를 확보해 해소. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M29,45h38a3,3 0 0 1 3,3v0a3,3 0 0 1 -3,3h-38a3,3 0 0 1 -3,-3v0a3,3 0 0 1 3,-3z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,38h0.5a3,3 0 0 1 3,3v14a3,3 0 0 1 -3,3h-0.5a3,3 0 0 1 -3,-3v-14a3,3 0 0 1 3,-3z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30.7,42h0.6a2.2,2.2 0 0 1 2.2,2.2v7.6a2.2,2.2 0 0 1 -2.2,2.2h-0.6a2.2,2.2 0 0 1 -2.2,-2.2v-7.6a2.2,2.2 0 0 1 2.2,-2.2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M71.5,38h0.5a3,3 0 0 1 3,3v14a3,3 0 0 1 -3,3h-0.5a3,3 0 0 1 -3,-3v-14a3,3 0 0 1 3,-3z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M64.7,42h0.6a2.2,2.2 0 0 1 2.2,2.2v7.6a2.2,2.2 0 0 1 -2.2,2.2h-0.6a2.2,2.2 0 0 1 -2.2,-2.2v-7.6a2.2,2.2 0 0 1 2.2,-2.2z" />
+</vector>
