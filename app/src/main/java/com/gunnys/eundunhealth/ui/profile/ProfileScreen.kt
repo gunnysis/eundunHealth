@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.PermissionController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
 import com.gunnys.eundunhealth.ui.components.ProfileSlider
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
@@ -255,7 +256,20 @@ private fun ProfileEditContent(
             onSave = { onSave(height, weight, bodyFat, muscleMass, restDay) },
             onDeleteClick = onDeleteClick,
         )
+
+        Spacer(modifier = Modifier.height(24.dp))
+        AppVersionLabel(modifier = Modifier.align(Alignment.CenterHorizontally))
     }
+}
+
+@Composable
+private fun AppVersionLabel(modifier: Modifier = Modifier) {
+    Text(
+        text = "버전 ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
 }
 
 @Composable
