@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app import __version__
 from app.config import get_settings
 from app.exceptions import AppException
 from app.routers import account, auth, badge, goal, health, profile, weekly_plan
@@ -38,7 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await engine.dispose()
 
 
-app = FastAPI(title="eundunHealth API", lifespan=lifespan)
+app = FastAPI(title="eundunHealth API", version=__version__, lifespan=lifespan)
 
 # CORS — starlette 0.49+에서 lifespan 내부 add_middleware가 금지되어 모듈 레벨에서 등록.
 # get_settings()는 @lru_cache이므로 환경변수만 1회 읽으며, 테스트는 dependency_override로
