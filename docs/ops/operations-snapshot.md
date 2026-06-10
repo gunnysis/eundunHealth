@@ -1,6 +1,6 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-06-10 v0.1.9 릴리즈 (버전 bump + 사전점검 수정)
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-10 v0.1.9 릴리즈 + 버전 명시 방식 종합(version.properties SSoT · 백엔드 API 1.0.0 · bump-version.sh · PR #102)
 > 작성 기준: v0.1.9 (versionCode 23) — Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩 (이전: v0.1.8 UDF-Enhanced 12 VM + OkHttp 5 / Coil 3)
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.9` / `23`** (14=v0.1.0 출시 / 15=v0.1.1 / 16=v0.1.2 / 17=v0.1.3 / 18=v0.1.4 / 19=v0.1.5 / 20=v0.1.6 / 21=v0.1.7 / 22=v0.1.8 / 23=v0.1.9) |
+| versionName / versionCode | **`0.1.9` / `23`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
@@ -22,9 +22,9 @@
 | Sentry SDK | Android 8.43.1 / Gradle plugin 6.10.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
-산출물 경로 (v0.1.5 빌드 시점 기준):
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (7.96 MB)
-- APK: `app/build/outputs/apk/release/app-release.apk` (5.76 MB)
+산출물 경로 (v0.1.9 빌드 시점 기준):
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (7.79 MB)
+- APK: `app/build/outputs/apk/release/app-release.apk` (5.56 MB)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 자동 업로드)
 
 ---
@@ -42,6 +42,8 @@
 | Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
+| API version | `1.0.0` (`backend/app/__version__` → OpenAPI `info.version`, 앱과 독립 — bump 시 `sync-openapi.sh` 재싱크) |
+| Dockerfile | `python:3.12-slim` + `apt-get upgrade` 레이어(base-image OS CVE 자가치유, Trivy HIGH 차단 회피) |
 
 ### env vars
 
@@ -181,6 +183,7 @@ GitHub Actions:
 
 로컬 자동화:
 - **`scripts/preflight-release.sh`** — Spotless + Detekt + Tests + `releaseArtifacts`(AAB+APK 동시) 일괄 (INC-04 차단)
+- **`scripts/bump-version.sh`** — 앱 버전 bump (versionName + versionCode +1 + semver/단조 가드 + 문서 동기화, `--dry-run`). 정책: `docs/conventions/versioning.md`
 - **`scripts/alembic-autogen.sh`** — postgres:16-alpine 컨테이너에 autogen 실행 (INC-07 차단)
 - **`scripts/register-azure-credentials.ps1`** — SP 생성/패치 + AcrPush role + GitHub secret 등록 (INC-17 운영자 1회/만료 갱신용)
 - **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11)
@@ -316,3 +319,5 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-06-06 | 프론트엔드 UDF-Enhanced 마이그레이션 (12 VM + 11 Screen). `@Immutable` 45건, `collectAsStateWithLifecycle` 33건, SideEffect Channel 7건. AuthVM 분리 → Login/Signup/ForgotPasswordVM 신규. OkHttp 4→5, Coil 2→3 의존성 메이저 업그레이드. CLAUDE.md 룰 11 + CI collectAsState 가드 + pre-commit collectAsState 검사 추가 |
 | 2026-06-06 | GitHub Actions Node.js 20→24 런타임 업그레이드 (checkout v6, gitleaks v3, trivy v0.36.0 pin). Dependabot PR 7건 일괄 정리: merged 4건 (foojay-resolver 1.0, sentry-gradle 6.10, vico 3.2.2, mypy 2.1), 수동 적용 1건 (starlette 1.2.1, uvicorn 0.49.0, sentry-sdk 2.61.1, pytest-asyncio 1.4.0, ruff 0.15.16 — fastapi 0.136.3 MAL-2026-4750 제외), closed 2건 (kotlin 2.4.0 / openapi-generator 7.22 — CI 실패) |
 | 2026-06-09 | **Cold start 제거 + Key Vault full IaC**. 로그인 느림 원인 = 백엔드 cold start 21.5s(scale-to-zero) 규명 → `min 1 / max 3` + http scale rule(PR #92). `/health/ready` readiness probe(PR #93). secret → Key Vault 참조(`kv-eundunhealth` + system MI + RBAC) · registries MI pull · HTTP probe 3종 · `--yaml` 배포 전환(PR2, `backend/containerapp.yaml` 단일 출처). staging dry-run 으로 clobber/resolve 실증 후 정리. Dependabot 5건 머지(sentry 8.43.1/spotless 8.6.0/detekt 1.23.8/androidx core-ktx 1.19.0/codecov 7) + 2건 close(kotlin CI fail, fastapi MAL). 비용 ~37,700 → ~43,700원 |
+| 2026-06-10 | **v0.1.9 릴리즈**. Health Connect 체중·체지방 가져오기(#84) + 홈 "오늘의 활동" 요약(#85) + HC 동기화 경로 정리·갤럭시 워치 온보딩(#83) + 사전점검 수정. versionCode 22→23 (산출물 AAB 7.79 MB / APK 5.56 MB, Sentry 매핑 `ab61f3a3`) |
+| 2026-06-10 | **앱 버전 명시 방식 종합 (PR #102)**. 앱 버전 SSoT = `version.properties`(`build.gradle.kts` 가 읽음, 이력 주석블록 제거) · 백엔드 독립 API 버전 `1.0.0`(`__version__` → FastAPI `version` → openapi 재싱크) · `ProfileScreen` 버전 라벨(BuildConfig) · `scripts/bump-version.sh`(semver/단조 가드) · `docs/conventions/versioning.md`. 배포 시 무관한 base-image openssl `CVE-2026-45447`(HIGH)로 Trivy 1차 차단 → Dockerfile `apt-get upgrade` 핫픽스(`5a78c69`) 자가치유. 라이브 검증 `info.version=1.0.0` |

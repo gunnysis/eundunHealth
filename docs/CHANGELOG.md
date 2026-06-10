@@ -4,6 +4,29 @@
 
 ---
 
+## [main] — 2026-06-10 — 앱 버전 명시 방식 종합 (PR #102)
+
+### 🎯 Prompts
+1. "외부 문서 및 공식 문서(kotlin, android) 참고하여 앱 버전 명시 방식 연구 및 설계"
+2. (브레인스토밍) "종합 설계 + 앱 프론트엔드 버전 표시" → "펙트체크" → "설계 확정으로 진행"
+3. "순차적으로 모두 진행해줘. 디버깅도 작업하면서."
+
+### ✅ Changes
+- **App 버전 SSoT** — 루트 `version.properties`(versionName/versionCode) 도입, `app/build.gradle.kts` 가 읽음. 이력 주석블록(11줄) 제거 → 이력 SSoT 는 `docs/CHANGELOG.md`. 값은 0.1.9/23 불변.
+- **Backend 독립 API 버전** — `backend/app/__version__="1.0.0"` → `FastAPI(version=)` → OpenAPI `info.version`(기본 `0.1.0` 누수 해소). 앱과 독립 진화. openapi 재싱크.
+- **Frontend** — `ProfileScreen` 하단 `AppVersionLabel`(BuildConfig) "버전 0.1.9 (23)".
+- **Automation** — `scripts/bump-version.sh`(semver/단조 가드 + current-state 문서 동기화 + `--dry-run`).
+- **Docs** — `docs/conventions/versioning.md` 정책 SSoT + CLAUDE.md 링크.
+- **fix(deploy)** — 머지 후 배포가 base `python:3.12-slim` 의 openssl `CVE-2026-45447`(HIGH)로 Trivy 1차 차단(PR 과 무관한 base-image CVE) → `backend/Dockerfile` 에 `apt-get upgrade` 레이어 핫픽스(자가치유, `5a78c69`). 라이브 검증 `info.version=1.0.0` · `/health` 200.
+
+### 📁 주요 Files
+- `version.properties`(신규), `app/build.gradle.kts`, `ui/profile/ProfileScreen.kt`, `backend/app/__init__.py`, `backend/app/main.py`, `backend/openapi.json`, `backend/tests/test_app_version.py`(신규), `backend/Dockerfile`, `scripts/bump-version.sh`(신규), `docs/conventions/versioning.md`(신규), `CLAUDE.md`
+
+### 근거
+공식 문서 라이브 fact-check — [Android Versioning](https://developer.android.com/studio/publish/versioning) · [Semantic Versioning 2.0.0](https://semver.org/) · [FastAPI version](https://fastapi.tiangolo.com/reference/fastapi/). 상세: `docs/plans/logs/process-infra.md` 2026-06-10 entry.
+
+---
+
 ## [v0.1.9] — 2026-06-10 — Health Connect 체성분/오늘의 활동 + 갤럭시 워치 온보딩 + 사전점검 수정
 
 ### 🎯 Prompts
