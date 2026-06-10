@@ -182,7 +182,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── docs/                     # 모든 비코드 문서
 │   ├── PRD.md / TRD.md / SPEC.md
 │   ├── CHANGELOG.md
-│   ├── privacy-policy.md
+│   ├── store/                # Play Store 호스팅 대상 (개인정보 처리방침·계정 삭제 안내)
 │   ├── plans/                # design + plan 페어 / 토픽 ledger
 │   └── ops/                  # 운영 스냅샷·런북·인시던트
 ├── scripts/                  # 자동화 (preflight / alembic / openapi-sync / hooks)
@@ -361,7 +361,8 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
 | [SPEC](docs/SPEC.md) | 기능 명세 |
-| [개인정보 처리방침](docs/privacy-policy.md) | Play Store 게시 대상 |
+| [개인정보 처리방침](docs/store/privacy-policy.md) | Play Store 게시 대상 |
+| [계정 및 데이터 삭제](docs/store/account-deletion.md) | Play Store 계정 삭제 요청 URL 대상 |
 | [Plans 인덱스](docs/plans/README.md) | design+plan 페어 + 토픽 ledger (자동 생성) |
 | [운영 스냅샷](docs/ops/operations-snapshot.md) | 현재 운영 상태 단일 출처 |
 | [인시던트 로그](docs/ops/incident-log.md) | 16 건 인시던트 + root cause + 재발 방지 |
@@ -443,7 +444,8 @@ PR 작성 시 [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.m
 ## 라이선스 및 개인정보 처리
 
 - **라이선스** — **Proprietary / All Rights Reserved**. 저장소·앱 소스·아트워크의 무단 복제·재배포·수정·상업적 이용을 금지합니다.
-- **개인정보 처리방침** — [docs/privacy-policy.md](docs/privacy-policy.md) (Play Store 등재 URL 호스팅 대상).
+- **개인정보 처리방침** — [docs/store/privacy-policy.md](docs/store/privacy-policy.md) (Play Store 등재 URL 호스팅 대상).
+- **계정 및 데이터 삭제** — [docs/store/account-deletion.md](docs/store/account-deletion.md) (Play Store 계정 삭제 요청 URL 호스팅 대상).
 - **외부 의존성 라이선스** — 각 의존성은 자체 라이선스를 따릅니다(예: OSS ExerciseDB, Supabase SDK, Sentry SDK, FastAPI 등).
 
 ---

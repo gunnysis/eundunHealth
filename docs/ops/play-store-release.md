@@ -53,7 +53,7 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 | **이메일 주소** | ✅ | ❌ | Supabase Auth (저장됨) | 로그인 식별 |
 | **사용자 ID** | ✅ | ❌ | 백엔드 DB(Azure PostgreSQL) | 운동 기록 연결 |
 | **신체 활동(키/몸무게/체지방률/근육량)** | ✅ | ❌ | 백엔드 DB | 운동 계획 생성 입력 |
-| **건강·피트니스(Health Connect 운동 세션)** | ✅ | ❌ | 단말 로컬에서만 읽음 | 완료 자동 추적용. 외부 서버 전송 안 함 |
+| **건강·피트니스(Health Connect 읽기)** | ✅ | ❌ | 운동 세션·체중·체지방률·걸음 수·소모 칼로리·심박수 **읽기**(쓰기 권한 없음) | 걸음·칼로리·심박수는 단말 표시 전용(미전송). 운동 세션→완료 날짜만, 체중·체지방→사용자가 프로필 저장 시 신체 정보로 백엔드 전송. 상세는 privacy-policy.md §1 |
 | **앱 충돌/성능 진단 (Sentry)** | ✅ | ❌ (3rd party 처리) | 익명 crash + transaction | 사용자 PII 자동 스크럽됨 |
 | **광고 ID / IDFA / 위치** | ❌ | ❌ | 미사용 | |
 
@@ -62,72 +62,36 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 - 분석 (Sentry — 충돌 진단, 성능 모니터링)
 
 **“저장 위치”**: Supabase (Korea 리전) + Azure PostgreSQL (Korea Central)
-**“삭제 요청 방법”**: 앱 내 **계정 삭제** 버튼 (이미 구현, ProfileScreen). Supabase Admin API + 앱 DB 일괄 삭제.
+**“삭제 요청 방법”**: 앱 내 **계정 삭제** 버튼(ProfileScreen) — Supabase Admin API 로 Auth 삭제 + 앱 DB 의 user_id 전 테이블(프로필·계측 이력·운동 계획·목표·배지) 일괄 삭제. 앱 미사용자는 이메일 요청 경로 제공. **Play Console 데이터 안전/스토어 등록정보의 "계정 삭제 요청 URL" 에 `account-deletion` 페이지 URL 등록 필수** (§4 참조).
 
 ---
 
-## 4. Privacy Policy
+## 4. Privacy Policy + 계정 삭제 URL
 
-Play Store는 Privacy Policy **URL**이 필수입니다. 다음 옵션 중 하나:
+Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한 앱은 **계정·데이터 삭제 요청 URL**도 별도로 요구합니다(데이터 안전 양식 + 스토어 등록정보 노출). 두 페이지 모두 `docs/store/` 에 있습니다.
 
 ### 옵션 A: GitHub Pages로 호스팅 (Recommended)
 
-이 리포 또는 별도 리포에 다음 파일 추가:
 ```
-docs/privacy-policy.md
+docs/store/privacy-policy.md     # 개인정보 처리방침 (SSoT)
+docs/store/account-deletion.md   # 계정 및 데이터 삭제 (SSoT)
 ```
 
 GitHub Pages 활성화: 리포 Settings → Pages → Branch: main / `/docs`.
 
-생성 URL 예: `https://gunnysis.github.io/eundunHealth/privacy-policy.html`
+생성 URL 예:
+- 개인정보: `https://gunnysis.github.io/eundunHealth/store/privacy-policy.html`
+- 계정 삭제: `https://gunnysis.github.io/eundunHealth/store/account-deletion.html`
 
 ### 옵션 B: 정적 호스팅 (Vercel/Netlify 무료)
 
 도메인 직접 보유 시 더 신뢰감 있는 URL. 작업 추가 비용 발생.
 
-### Privacy Policy 초안 (한국어)
+### 본문 (SSoT)
 
-다음을 `docs/privacy-policy.md`로 저장하고 위 옵션으로 호스팅:
+전문은 **`docs/store/privacy-policy.md`** + **`docs/store/account-deletion.md`** 가 단일 출처. 위 옵션 중 하나로 호스팅하고 생성된 URL 을 Play Console 에 등록한다(개인정보 URL + 계정 삭제 URL 각각). 내용 변경 시 이 두 파일만 갱신하면 된다.
 
-```markdown
-# 개인정보 처리방침 — 은둔헬스
-
-최종 업데이트: 2026-05-24
-
-은둔헬스(이하 "본 앱")는 사용자의 개인정보를 다음과 같이 처리합니다.
-
-## 1. 수집하는 정보
-- **이메일 주소**: Supabase 인증을 위한 식별자
-- **신체 정보**: 키, 몸무게, 체지방률, 근육량 — 운동 계획 생성 입력
-- **운동 기록**: 주간 운동 계획, 완료 여부, 배지 획득 이력
-- **Health Connect 데이터**: 사용자가 명시 허용한 운동 세션. 단말에서만 읽고 외부 전송하지 않음
-- **충돌·성능 진단**: Sentry SDK가 자동 수집하는 익명화된 crash report
-
-## 2. 처리 목적
-- 회원 인증 및 계정 관리
-- 맞춤형 주간 운동 계획 생성
-- 운동 완료 추적 및 통계·배지 표시
-- 서비스 안정성 모니터링 및 버그 수정
-
-## 3. 보관 및 처리 위치
-- Supabase: 인증 서비스 (Korea 리전)
-- Azure PostgreSQL: 신체·운동 데이터 (Korea Central)
-- Sentry: 익명 진단 데이터 (US 리전)
-
-## 4. 보관 기간
-계정 유지 기간 동안 보관하며, 사용자가 앱 내 **계정 삭제**를 실행하면 모든 데이터를 즉시 영구 삭제합니다.
-
-## 5. 사용자 권리
-- 데이터 열람 / 수정: 앱 내 프로필 화면
-- 삭제: 앱 내 **계정 삭제** 버튼 (영구·복구 불가)
-- 문의: qkr133456@gmail.com
-
-## 6. 광고 / 추적
-본 앱은 광고를 표시하지 않으며 광고 식별자(AAID/IDFA)·위치 정보를 수집하지 않습니다.
-
-## 7. 정책 변경
-변경 시 본 페이지 상단의 "최종 업데이트" 일자를 갱신합니다.
-```
+> 과거 이 자리에 있던 인라인 정책 초안(2026-05-24)은 SSoT 와의 드리프트를 막기 위해 제거됨 — 2026-06-10. 본문은 항상 `docs/store/` 의 두 파일을 참조할 것. 계정 삭제 완전성(goals·user_profile_history 포함)은 `backend tests/test_account.py::test_delete_account_purges_all_user_data` 가 회귀 가드.
 
 ---
 

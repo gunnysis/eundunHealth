@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.exceptions import AppException
 from app.repositories.badge_repo import BadgeRepository
+from app.repositories.goal_repo import GoalRepository
+from app.repositories.profile_history_repo import ProfileHistoryRepository
 from app.repositories.profile_repo import ProfileRepository
 from app.repositories.weekly_plan_repo import WeeklyPlanRepository
 
@@ -21,6 +23,8 @@ class AccountService:
         self.profile_repo = ProfileRepository(db)
         self.plan_repo = WeeklyPlanRepository(db)
         self.badge_repo = BadgeRepository(db)
+        self.goal_repo = GoalRepository(db)
+        self.history_repo = ProfileHistoryRepository(db)
 
     async def delete_account(self, user_id: str) -> None:
         """Supabase Auth 삭제 후 앱 DB 데이터를 순서대로 제거한다.
@@ -33,9 +37,13 @@ class AccountService:
         # Step 1: Supabase Admin API로 Auth 사용자 삭제 (실패 시 예외 → DB 보존)
         await self._delete_supabase_user(user_id)
 
-        # Step 2: Auth 삭제 성공 후 앱 데이터 삭제
+        # Step 2: Auth 삭제 성공 후 앱 데이터 삭제 — user_id 를 가진 *모든* 테이블을 비운다.
+        # 새 per-user 테이블 추가 시 여기에도 삭제를 추가할 것. 누락은
+        # tests/test_account.py::test_delete_account_purges_all_user_data 가 자동 탐지(회귀 가드).
         await self.badge_repo.delete_all_by_user(user_id)
         await self.plan_repo.delete_all_by_user(user_id)
+        await self.goal_repo.delete_all_by_user(user_id)
+        await self.history_repo.delete_all_by_user(user_id)
         await self.profile_repo.delete_by_user_id(user_id)
 
     async def _delete_supabase_user(self, user_id: str) -> None:

@@ -377,7 +377,8 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 - `@docs/PRD.md` — Product Requirements
 - `@docs/TRD.md` — Technical Requirements
 - `@docs/SPEC.md` — 기능 명세
-- `@docs/privacy-policy.md` — 개인정보 처리방침 (Play Store URL 호스팅 대상)
+- `@docs/store/privacy-policy.md` — 개인정보 처리방침 (Play Store URL 호스팅 대상)
+- `@docs/store/account-deletion.md` — 계정 및 데이터 삭제 안내 (Play Store 계정 삭제 요청 URL 호스팅 대상)
 - `@docs/plans/README.md` — design+plan 페어 인덱스 (frontmatter 기반 자동 생성, status/PR/인시던트 추적 컬럼 포함)
 - `@docs/ops/operations-snapshot.md` — **현재 운영 상태 단일 출처**
 - `@docs/ops/incident-log.md` — 16건 인시던트 + root cause + 재발 방지 패턴
