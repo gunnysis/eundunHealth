@@ -172,6 +172,7 @@ DELETE /account
 - **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
 - **Gradle 9.5.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
+- **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
 - **App version**: versionName **`0.1.8`**, versionCode **`22`** (이력: 14=v0.1.0 출시 / 15=v0.1.1 가입 이메일 확인 / 16=v0.1.2 supabase encoding hotfix / 17=v0.1.3 App Links / 18=v0.1.4 redirectUrl 명시 / 19=v0.1.5 vico 3.1 + healthConnect stable / 20=v0.1.6 signup error banner / 21=v0.1.7 login+forgot 룰 8 + Banner promote / 22=v0.1.8 UDF-Enhanced 12 VM + OkHttp5/Coil3 + 의존성 bump. 다음 빌드부터 23, 24, ...)
 - **Sentry Android 8.43.1** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트
