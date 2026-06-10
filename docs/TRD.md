@@ -44,6 +44,8 @@ v0.1.1~v0.1.9 누적 (Android UI + Auth + Backend 안정화):
 - 백엔드 인프라 (2026-06-09) cold start 제거(`min 1 / max 3` warm baseline) + Key Vault full IaC (secret→KV 참조 · system MI · HTTP probe 3종 · `--yaml` 배포)
 - v0.1.9 (#83/#84/#85) Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리·갤럭시 워치 온보딩 + 사전점검 수정
 - 버전 명시 방식 종합 (PR #102) 앱 버전 SSoT `version.properties` + 백엔드 독립 API 버전 `1.0.0` + `ProfileScreen` 버전 라벨 + `scripts/bump-version.sh` + `docs/conventions/versioning.md`
+- v0.1.11 (#104) Health Connect Android 14+ 수정 — rationale intent 선언(연동 버튼 무반응) + 런처 아이콘 정상화(access-log 읽기 실패) + 계정 삭제 완전성(goals·신체이력 purge, backend) + Play store 자산
+- v0.1.12 (#106) Health Connect 체성분(체중·체지방) 가져오기 제거 + `READ_WEIGHT`/`READ_BODY_FAT` 권한 회수(6→4) + 신체 4지표 수동 단일화
 
 ---
 

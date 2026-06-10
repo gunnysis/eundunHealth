@@ -22,7 +22,7 @@
 | Sentry SDK | Android 8.43.1 / Gradle plugin 6.10.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
-산출물 경로 (v0.1.9 빌드 시점 기준 — v0.1.11 산출물은 출시 빌드 시 갱신):
+산출물 경로 (v0.1.9 빌드 시점 기준 — v0.1.12 산출물은 출시 빌드 시 갱신):
 - AAB: `app/build/outputs/bundle/release/app-release.aab` (7.79 MB)
 - APK: `app/build/outputs/apk/release/app-release.apk` (5.56 MB)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 자동 업로드)
