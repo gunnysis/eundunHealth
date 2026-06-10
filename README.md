@@ -83,12 +83,13 @@
 |------|------|------|
 | 언어 / 런타임 | Python 3.12 | |
 | 프레임워크 | FastAPI 0.136.1 + uvicorn 0.49.0 | |
+| API 버전 | `1.0.0` (`backend/app/__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.50 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
 | 마이그레이션 | Alembic 1.18.4 (head: `fa3915deab2f`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.2.1 | PYSEC-2026-161 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.61.1 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 46/46 PASS, coverage ~82% |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 48/48 PASS, coverage ~84% |
 
 ### 인프라
 
@@ -355,7 +356,8 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 | 문서 | 내용 |
 |------|------|
-| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.8) |
+| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.9) |
+| [버전 관리](docs/conventions/versioning.md) | 앱/백엔드 버전 SSoT · semver 정책 · bump 절차 |
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
 | [SPEC](docs/SPEC.md) | 기능 명세 |
