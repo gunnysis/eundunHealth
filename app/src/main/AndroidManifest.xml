@@ -10,6 +10,12 @@
     <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" />
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
 
+    <!-- Android 11+(API 30) package visibility: HC 미설치 안내 카드의 Play Store(market://) 딥링크가
+         resolve 되도록 스토어 패키지를 명시. 미선언 시 ActivityNotFoundException → web fallback 으로만 동작. -->
+    <queries>
+        <package android:name="com.android.vending" />
+    </queries>
+
     <application
         android:name=".EundunHealthApplication"
         android:allowBackup="true"

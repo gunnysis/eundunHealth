@@ -54,13 +54,9 @@ class HealthConnectDataSource @Inject constructor(
         return granted.containsAll(DAILY_ACTIVITY_PERMISSIONS)
     }
 
-    /** 오늘 0시~현재 걸음·칼로리·평균심박 집계 (aggregate 1회). */
+    /** 오늘 0시~현재 걸음·칼로리·평균심박 집계 (aggregate 1회). 변환/경계는 순수 매퍼에 위임. */
     suspend fun readTodayActivity(): DailyActivity {
-        val zone = ZoneId.systemDefault()
-        val filter = TimeRangeFilter.between(
-            LocalDate.now(zone).atStartOfDay(zone).toInstant(),
-            Instant.now(),
-        )
+        val (start, end) = todayRange(Instant.now(), ZoneId.systemDefault())
         val res = client.aggregate(
             AggregateRequest(
                 metrics = setOf(
@@ -68,34 +64,30 @@ class HealthConnectDataSource @Inject constructor(
                     TotalCaloriesBurnedRecord.ENERGY_TOTAL,
                     HeartRateRecord.BPM_AVG,
                 ),
-                timeRangeFilter = filter,
+                timeRangeFilter = TimeRangeFilter.between(start, end),
             ),
         )
         return DailyActivity(
             steps = res[StepsRecord.COUNT_TOTAL],
-            totalCaloriesKcal = res[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.toInt(),
+            totalCaloriesKcal = kcalToInt(res[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories),
             avgHeartRateBpm = res[HeartRateRecord.BPM_AVG],
         )
     }
 
-    /** 최근 [daysBack] 일 내 가장 최신(time 기준) 체중·체지방을 채택한다. */
+    /** 최근 [daysBack] 일 내 가장 최신(time 기준) 체중·체지방을 채택한다. 선택 로직은 순수 매퍼에 위임. */
     suspend fun readLatestBodyComposition(daysBack: Long = 30): BodyComposition {
         val end = Instant.now()
         val filter = TimeRangeFilter.between(end.minus(Duration.ofDays(daysBack)), end)
 
-        val latestWeight = client.readRecords(
+        val weights = client.readRecords(
             ReadRecordsRequest(WeightRecord::class, timeRangeFilter = filter),
-        ).records.maxByOrNull { it.time }
+        ).records.map { it.time to it.weight.inKilograms.toFloat() }
 
-        val latestBodyFat = client.readRecords(
+        val bodyFats = client.readRecords(
             ReadRecordsRequest(BodyFatRecord::class, timeRangeFilter = filter),
-        ).records.maxByOrNull { it.time }
+        ).records.map { it.time to it.percentage.value.toFloat() }
 
-        return BodyComposition(
-            weightKg = latestWeight?.weight?.inKilograms?.toFloat(),
-            bodyFatPercent = latestBodyFat?.percentage?.value?.toFloat(),
-            measuredAt = listOfNotNull(latestWeight?.time, latestBodyFat?.time).maxOrNull(),
-        )
+        return reduceBodyComposition(weights, bodyFats)
     }
 
     companion object {

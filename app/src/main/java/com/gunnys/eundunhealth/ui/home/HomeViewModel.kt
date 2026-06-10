@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 
+@Immutable
 sealed class HomeUiState {
     @Immutable
     data object Loading : HomeUiState()
@@ -51,6 +52,7 @@ sealed class HomeUiState {
 
 @Immutable
 sealed class HomeSideEffect {
+    @Immutable
     data class ShowSnackbar(val message: String) : HomeSideEffect()
 }
 
@@ -106,9 +108,12 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = successWithStats(sync.plan, sync.isAvailable, sync.hasPermission)
                 loadTodayActivity()
 
-                // Health Connect 가 새로 감지한 완료만 서버에 반영 (백그라운드, 실패는 다음 사이클 재시도).
+                // Health Connect 가 새로 감지한 완료만 서버에 반영 (백그라운드).
+                // 미반영 날은 다음 sync 시 HC 재감지로 재시도되지만, silent drop 방지를 위해
+                // 실패는 Sentry 로 보고해 관측 가능하게 둔다.
                 sync.newlyCompletedDates.forEach { date ->
                     workoutRepo.updateDayCompletion(sync.plan.id, date, true)
+                        .onFailure { it.toAppError().reportToSentry() }
                 }
                 checkBadges(sync.plan)
             }
@@ -132,6 +137,11 @@ class HomeViewModel @Inject constructor(
 
     fun refreshActivity() = loadTodayActivity()
 
+    // detekt UnreachableCode 는 `viewModelScope.launch { }` + `?: return@launch` 조합의 제어흐름을
+    // 오판해 본문 전체를 unreachable 로 잘못 표시하는 알려진 false positive. 기존엔 baseline 에 문장별로
+    // 박제했으나 baseline signature 가 코드 내용을 포함해 본문 수정 시 drift(재노출)된다 → 함수 단위
+    // suppress 로 고정해 drift 를 차단한다. (Kotlin 컴파일러는 unreachable 로 보지 않음 — 정상 동작 코드)
+    @Suppress("UnreachableCode")
     fun toggleDayCompletion(date: LocalDate) = viewModelScope.launch {
         val current = _uiState.value
         if (current !is HomeUiState.Success) return@launch
@@ -155,8 +165,17 @@ class HomeViewModel @Inject constructor(
         // Server sync
         workoutRepo.updateDayCompletion(current.plan.id, date, newCompleted)
             .onFailure {
-                // Revert on failure
-                _uiState.value = current
+                // 실패 시 토글만 되돌린다. current(토글 직전 스냅샷) 전체로 덮으면 그 사이
+                // loadTodayActivity 가 채운 todayActivity 가 사라지므로, 활동 필드는 live 상태에서
+                // 보존하고 plan/완료 카운트만 revert.
+                val live = _uiState.value
+                if (live is HomeUiState.Success) {
+                    _uiState.value = live.copy(
+                        plan = current.plan,
+                        completedCount = current.completedCount,
+                        totalWorkoutDays = current.totalWorkoutDays,
+                    )
+                }
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
                 _sideEffect.trySend(HomeSideEffect.ShowSnackbar(appErr.userMessage))

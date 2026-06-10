@@ -48,13 +48,12 @@ class ImportBodyCompositionUseCaseTest {
     }
 
     @Test
-    fun `read failure falls back to null without failing`() = runTest {
+    fun `read failure propagates as Result_failure distinct from no-records`() = runTest {
         val useCase = ImportBodyCompositionUseCase(
             FakeHealthRepo(latest = Result.failure(IOException("HC read failed"))),
         )
         val result = useCase()
-        assertTrue(result.isSuccess)
-        assertNull(result.getOrThrow())
+        assertTrue(result.isFailure)
     }
 
     @Test

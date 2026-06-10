@@ -38,10 +38,13 @@ sealed class ProfileUiState {
 
 @Immutable
 sealed class ProfileSideEffect {
-    data class ShowSnackbar(val message: String) : ProfileSideEffect()
-    data object SavedAndNavigateBack : ProfileSideEffect()
-    data object NavigateToLogin : ProfileSideEffect()
-    data class PrefillBodyComposition(val weightKg: Float?, val bodyFatPct: Float?) : ProfileSideEffect()
+    @Immutable data class ShowSnackbar(val message: String) : ProfileSideEffect()
+
+    @Immutable data object SavedAndNavigateBack : ProfileSideEffect()
+
+    @Immutable data object NavigateToLogin : ProfileSideEffect()
+
+    @Immutable data class PrefillBodyComposition(val weightKg: Float?, val bodyFatPct: Float?) : ProfileSideEffect()
 }
 
 @HiltViewModel
@@ -125,9 +128,13 @@ class ProfileViewModel @Inject constructor(
                 }
             }
             .onFailure {
+                // read 실패는 "기록 없음" 과 구분해 별도 메시지로 안내 (거짓 "기록 없음" 방지).
+                // HC 권한/연동 오류면 actionable 메시지, 그 외엔 일반 재시도 안내.
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
-                _sideEffect.send(ProfileSideEffect.ShowSnackbar(appErr.userMessage))
+                val msg = (appErr as? AppError.HealthConnect)?.userMessage
+                    ?: "체성분을 가져오지 못했습니다. 잠시 후 다시 시도해주세요"
+                _sideEffect.send(ProfileSideEffect.ShowSnackbar(msg))
             }
     }
 

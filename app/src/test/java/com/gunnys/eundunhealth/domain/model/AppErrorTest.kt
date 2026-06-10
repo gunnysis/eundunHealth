@@ -68,6 +68,13 @@ class AppErrorTest {
     }
 
     @Test
+    fun `SecurityException maps to HealthConnect with actionable message`() {
+        val err = SecurityException("permission revoked").toAppError()
+        assertTrue(err is AppError.HealthConnect)
+        assertEquals("Health Connect 권한이 필요합니다. 권한을 다시 허용해주세요", err.userMessage)
+    }
+
+    @Test
     fun `Generic exception maps to Unknown with throwable preserved`() {
         val cause = IOException("read failed")
         val err = cause.toAppError()

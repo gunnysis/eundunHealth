@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-06-08 v0.1.8 릴리즈 (버전 bump)
-> 작성 기준: v0.1.8 (versionCode 22) — UDF-Enhanced 마이그레이션 완료 + OkHttp 5 / Coil 3 + dependabot 배치 머지 (vico 3.2.2, sentry-gradle 6.10, mypy 2.1 등)
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-10 v0.1.9 릴리즈 (버전 bump + 사전점검 수정)
+> 작성 기준: v0.1.9 (versionCode 23) — Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩 (이전: v0.1.8 UDF-Enhanced 12 VM + OkHttp 5 / Coil 3)
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.8` / `22`** (14=v0.1.0 출시 / 15=v0.1.1 / 16=v0.1.2 / 17=v0.1.3 / 18=v0.1.4 / 19=v0.1.5 / 20=v0.1.6 / 21=v0.1.7 / 22=v0.1.8) |
+| versionName / versionCode | **`0.1.9` / `23`** (14=v0.1.0 출시 / 15=v0.1.1 / 16=v0.1.2 / 17=v0.1.3 / 18=v0.1.4 / 19=v0.1.5 / 20=v0.1.6 / 21=v0.1.7 / 22=v0.1.8 / 23=v0.1.9) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |

@@ -4,6 +4,36 @@
 
 ---
 
+## [v0.1.9] — 2026-06-10 — Health Connect 체성분/오늘의 활동 + 갤럭시 워치 온보딩 + 사전점검 수정
+
+### 🎯 Prompts
+1. "release 버전 빌드 작업."
+2. "펙트 체크 및 점검과 개선 사항 검토하고 빌드 전에 개선 및 수정 작업하고나서 빌드 하기전에 물어봐줘"
+
+### ✅ Changes
+
+#### Health Connect 기능 (PR #83/#84/#85 — v0.1.8 태그 이후 누적, 본 릴리스로 정식 출시)
+- **체중·체지방 가져오기** (#84): `ImportBodyCompositionUseCase` + `ProfileScreen` "Health Connect에서 체중·체지방 가져오기" 버튼 → 최근 30일 최신 기록을 슬라이더에 prefill. 골격근량은 Google HC 미제공으로 수동 입력 유지(#1c reject).
+- **홈 "오늘의 활동" 요약** (#85): `GetTodayActivityUseCase` + `HomeScreen` 카드 — 오늘 0시~현재 걸음·소모 칼로리·평균 심박 aggregate 1회. 무권한 시 연동 CTA, 무데이터 시 안내 표시.
+- **HC 동기화 경로 정리 + 갤럭시 워치 온보딩** (#83): `HealthConnectDataSource`/`HealthRepository` 권한 set 단일화(체성분·활동·운동 분리), `isAvailable()` 가드 + HC 미설치 시 설치 유도 카드(Play Store 딥링크 + web fallback). 신규 HC 권한 5종 manifest 선언.
+
+#### 사전 출시 점검 수정 (다관점 리뷰 — 버그/규약/silent-failure)
+- **fix(health)**: 체성분 import read 실패를 `Result.failure` 로 전파 — 기존 degrade-to-null 은 transient HC read 실패를 "가져올 기록이 없습니다" 로 **오표시**했음. 이제 실패 시 "체성분을 가져오지 못했습니다…" 별도 안내 + Sentry 보고 (`ImportBodyCompositionUseCase`/`ProfileViewModel` + 테스트 갱신).
+- **fix(home)**: `toggleDayCompletion` 서버 실패 revert 시 토글 직전 스냅샷 전체로 덮어 그 사이 로드된 `todayActivity` 가 사라지던 문제 → plan/완료 카운트만 revert, 활동 필드는 live 보존.
+- **fix(home)**: HC 신규 감지 완료의 백그라운드 서버 푸시 실패를 silent drop 하지 않고 Sentry 보고 추가.
+- **chore(룰 11)**: `HomeUiState`/`HomeSideEffect.ShowSnackbar`/`ProfileSideEffect` 하위타입 `@Immutable` 누락 보완(v0.1.8 부터 잔존).
+
+#### 릴리스 (버전 bump + 문서)
+- **Modified** `app/build.gradle.kts` — versionCode 22→**23**, versionName 0.1.8→**0.1.9** + 버전 주석.
+- **Modified** `operations-snapshot.md` / `PRD.md` / `README.md` — 버전 표기 0.1.8/22 → 0.1.9/23 + 로드맵 v0.1.9 라인.
+- 백엔드 cold start 제거 + Key Vault full IaC 는 아래 `[main] — 2026-06-09` 섹션 참조(이미 prod 배포 완료, 본 앱 릴리스와 독립).
+
+### 📁 주요 Files Modified
+- `app/build.gradle.kts`, `domain/usecase/ImportBodyCompositionUseCase.kt`, `ui/profile/ProfileViewModel.kt`, `ui/home/HomeViewModel.kt`, `app/src/test/.../ImportBodyCompositionUseCaseTest.kt`
+- `docs/ops/operations-snapshot.md`, `docs/PRD.md`, `README.md`, `docs/CHANGELOG.md`
+
+---
+
 ## [main] — 2026-06-09 — Cold start 제거 + Key Vault full IaC
 
 ### 🎯 요약

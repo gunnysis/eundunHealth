@@ -6,8 +6,8 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.1.8-blue)
-![versionCode](https://img.shields.io/badge/versionCode-22-blue)
+![versionName](https://img.shields.io/badge/versionName-0.1.9-blue)
+![versionCode](https://img.shields.io/badge/versionCode-23-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB)
@@ -373,7 +373,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.8` (versionCode `22`) / Play Store **Internal Testing 활성**
+**현재 버전** — `0.1.9` (versionCode `23`) / Play Store **Internal Testing 활성**
 
 ### 마일스톤 진행
 
@@ -394,6 +394,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.7** — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote
 - [x] **v0.1.8** — UDF-Enhanced 12 VM 리팩토링 + OkHttp5/Coil3 + 의존성 bump (정식 출시)
 - [x] **백엔드 인프라 (2026-06-09)** — cold start 제거(min-replicas=1) + Key Vault full IaC (health probe 3종 · system MI · `--yaml` 배포)
+- [x] **v0.1.9** — Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩 (정식 출시)
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시

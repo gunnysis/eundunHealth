@@ -77,9 +77,10 @@ android {
         // 20: v0.1.6 — Signup Failed UX inline error banner (INC-2026-05-26-01 해소).
         // 21: v0.1.7 — LoginScreen / ForgotPasswordScreen 룰 8 적용 + AuthErrorBanner promote (ui/components/).
         // 22: v0.1.8 — 12 ViewModel UDF-Enhanced 리팩토링(룰 11) + Sentry Gradle 6.10.0 + 의존성 일괄 bump.
-        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 23, 24, ...
-        versionCode = 22
-        versionName = "0.1.8"
+        // 23: v0.1.9 — Health Connect 체중·체지방 가져오기(#84) + 홈 오늘의 활동 요약 걸음·칼로리·심박(#85) + HC 동기화 경로 정리·갤럭시 워치 온보딩(#83) + 백엔드 cold start 제거·Key Vault IaC + 의존성 bump.
+        // Play Store versionCode는 단조 증가 — 다음 빌드부터는 24, 25, ...
+        versionCode = 23
+        versionName = "0.1.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

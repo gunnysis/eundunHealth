@@ -34,6 +34,10 @@ sealed class AppError(open val userMessage: String) {
         override val userMessage: String = "알 수 없는 오류가 발생했습니다",
     ) : AppError(userMessage)
 
+    data class HealthConnect(
+        override val userMessage: String = "Health Connect 연동 중 문제가 발생했습니다. 권한을 확인 후 다시 시도해주세요",
+    ) : AppError(userMessage)
+
     data class EmailNotConfirmed(
         val email: String,
         override val userMessage: String = "이메일 인증이 완료되지 않았습니다",
@@ -50,6 +54,8 @@ fun Throwable.toAppError(): AppError = when (this) {
         in 500..599 -> AppError.Server(code())
         else -> AppError.Server(code())
     }
+    // Health Connect 읽기/권한 실패는 대부분 SecurityException(권한 미허용/철회) — actionable 메시지로.
+    is SecurityException -> AppError.HealthConnect("Health Connect 권한이 필요합니다. 권한을 다시 허용해주세요")
     else -> AppError.Unknown(this)
 }
 
