@@ -1,6 +1,5 @@
 package com.gunnys.eundunhealth.ui.profile
 
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,11 +45,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.health.connect.client.PermissionController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.BuildConfig
-import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
 import com.gunnys.eundunhealth.ui.components.ProfileSlider
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 
@@ -64,7 +61,6 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var prefill by remember { mutableStateOf<Pair<Float?, Float?>?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.sideEffect.collect { effect ->
@@ -72,8 +68,6 @@ fun ProfileScreen(
                 is ProfileSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                 is ProfileSideEffect.SavedAndNavigateBack -> onBack()
                 is ProfileSideEffect.NavigateToLogin -> onAccountDeleted()
-                is ProfileSideEffect.PrefillBodyComposition ->
-                    prefill = effect.weightKg to effect.bodyFatPct
             }
         }
     }
@@ -121,10 +115,6 @@ fun ProfileScreen(
                     initialRestDay = state.profile.restDay,
                     isSaving = state.isSaving,
                     isDeleting = state.isDeleting,
-                    canImport = state.canImportBodyComposition,
-                    prefill = prefill,
-                    onPrefillConsumed = { prefill = null },
-                    onImport = { viewModel.importBodyComposition() },
                     onSave = viewModel::saveProfile,
                     onDeleteClick = { showDeleteDialog = true },
                     modifier = Modifier.padding(padding),
@@ -171,10 +161,6 @@ private fun ProfileEditContent(
     initialRestDay: Int,
     isSaving: Boolean,
     isDeleting: Boolean,
-    canImport: Boolean,
-    prefill: Pair<Float?, Float?>?,
-    onPrefillConsumed: () -> Unit,
-    onImport: () -> Unit,
     onSave: (Float, Float, Float, Float, Int) -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -184,20 +170,6 @@ private fun ProfileEditContent(
     var bodyFat by rememberSaveable { mutableFloatStateOf(initialBodyFat) }
     var muscleMass by rememberSaveable { mutableFloatStateOf(initialMuscleMass) }
     var restDay by rememberSaveable { mutableIntStateOf(initialRestDay.coerceIn(1, 7)) }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        PermissionController.createRequestPermissionResultContract(),
-    ) { granted ->
-        if (granted.containsAll(HealthConnectDataSource.BODY_COMPOSITION_PERMISSIONS)) onImport()
-    }
-
-    LaunchedEffect(prefill) {
-        prefill?.let { (w, bf) ->
-            w?.let { weight = it }
-            bf?.let { bodyFat = it }
-            onPrefillConsumed()
-        }
-    }
 
     Column(
         modifier = modifier
@@ -213,16 +185,6 @@ private fun ProfileEditContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(24.dp))
-
-        if (canImport) {
-            OutlinedButton(
-                onClick = { permissionLauncher.launch(HealthConnectDataSource.BODY_COMPOSITION_PERMISSIONS) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Health Connect에서 체중·체지방 가져오기")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
 
         BodyMetricsSliders(
             height = height,

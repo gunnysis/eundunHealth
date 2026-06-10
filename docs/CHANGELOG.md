@@ -4,6 +4,32 @@
 
 ---
 
+## [v0.1.12] — 2026-06-11 — Health Connect 체성분 가져오기 제거 (수동 단일화)
+
+### 🎯 Prompts
+1. "'HC 가져오기'는 무소용이니까 제거하는 게 좋을 것 같은데 너 생각은 어때?" → A안(보조 편의)에서 B안(제거)로 전환 승인
+2. "권장 방식(subagent-driven) 연구해서 구현 + 리뷰/승인 없이 끝까지"
+
+### ✅ Changes
+- **HC 체성분 가져오기 완전 제거** — 프로필 "Health Connect에서 체중·체지방 가져오기" 버튼 + `ImportBodyCompositionUseCase` + `BodyComposition` 모델 + `readLatestBodyComposition`/`hasBodyCompositionPermissions`/`BODY_COMPOSITION_PERMISSIONS` + `reduceBodyComposition` 매퍼 + `PrefillBodyComposition` SideEffect + `canImportBodyComposition`.
+- **권한 회수** — 매니페스트 `READ_WEIGHT`·`READ_BODY_FAT` 제거 → 건강권한 **6→4**(EXERCISE/STEPS/TOTAL_CALORIES_BURNED/HEART_RATE). 건강권한 표면·Play 심사·프라이버시 축소.
+- **문서 정합성** — `PermissionsRationaleActivity`·`docs/store/privacy-policy.md`·`docs/store/health-connect-permissions.md`(Play Console 권한 선언서)에서 체성분 읽기 문구 제거 → 4권한.
+- **신체 4지표(키·몸무게·골격근량·체지방률) 수동 슬라이더 단일화.**
+- **불변** — 활동 HC(걸음·칼로리·심박·운동), 목표 "체중 추이"/체지방 차트(백엔드 이력), `bmi`/`fitnessLevel` 알고리즘, 백엔드.
+
+### 근거 / 연구
+HC 체성분 가져오기는 **구조적으로 무용**: HC에 골격근량 타입 부재(공식), 체지방 삼성헬스→HC 동기화 flaky, 스마트체중계 없는 대다수 무데이터 → 영구 "기록 없음". 공식·외부 문서 분석([HC 데이터타입](https://developer.android.com/health-and-fitness/health-connect/data-types) · [Samsung Developer HC 동기화](https://developer.samsung.com/health/blog/en/accessing-samsung-health-data-through-health-connect) · [Google Health Help](https://support.google.com/android/answer/13770320)) 후 제거 결론. 삼성헬스 Data SDK 직접 연동은 파트너 부재로 기각, HC-only 유지. design+plan: `docs/plans/2026-06-10-body-composition-data-{design,plan}.md` (B안).
+
+### 📁 주요 Files
+- 삭제: `domain/usecase/ImportBodyCompositionUseCase.kt`(+테스트), `domain/model/BodyComposition.kt`
+- 수정: `ui/profile/ProfileViewModel.kt`·`ProfileScreen.kt`, `domain/repository/HealthRepository.kt`+`data/repository/HealthRepositoryImpl.kt`, `data/healthconnect/HealthConnectDataSource.kt`·`HealthConnectMappers.kt`(+테스트), `AndroidManifest.xml`, `PermissionsRationaleActivity.kt`, `docs/store/privacy-policy.md`·`health-connect-permissions.md`
+- 릴리스: `version.properties`(0.1.11→**0.1.12**/26), `README.md`, `docs/PRD.md`, `docs/ops/operations-snapshot.md`, `CLAUDE.md`
+
+### 검증 / 프로세스
+spotlessCheck·detektDebug·testDebugUnitTest·assembleRelease green + grep 무참조 + 최종 코드리뷰(subagent) CLEAN. **subagent-driven 자율 실행**(구현 subagent + controller fact-check + 리뷰 subagent). PR #105 — 처음 #104 위 stacked 로 생성됐다가 #104 squash 머지 시 base 삭제로 CLOSE → main rebase(`--onto main`) 후 재개. **Lesson**: stacked PR base 를 `--delete-branch` 로 머지하면 의존 PR 이 자동 CLOSE 된다(retarget 아님) → 의존 PR 먼저 retarget 후 머지하거나 base 미삭제.
+
+---
+
 ## [v0.1.11] — 2026-06-10 — Health Connect Android 14+ 수정(연동 버튼 무반응 + 읽기 실패) + Play Store 계정 삭제
 
 ### 🎯 Prompts

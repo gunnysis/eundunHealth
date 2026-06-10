@@ -1,6 +1,5 @@
 package com.gunnys.eundunhealth.data.healthconnect
 
-import com.gunnys.eundunhealth.domain.model.BodyComposition
 import java.time.Instant
 import java.time.ZoneId
 
@@ -20,23 +19,3 @@ internal fun todayRange(now: Instant, zone: ZoneId): Pair<Instant, Instant> {
 
 /** aggregate 결과의 칼로리(kcal, Double) → Int 절사(0 방향). null 은 보존. */
 internal fun kcalToInt(kcal: Double?): Int? = kcal?.toInt()
-
-/**
- * 최근 기록들에서 시간 기준 최신 체중·체지방을 각각 독립적으로 채택한다.
- * measuredAt 은 채택된 둘 중 더 최근 시각. 둘 다 비면 모든 필드 null.
- *
- * @param weights (측정시각, kg) 목록
- * @param bodyFats (측정시각, %) 목록
- */
-internal fun reduceBodyComposition(
-    weights: List<Pair<Instant, Float>>,
-    bodyFats: List<Pair<Instant, Float>>,
-): BodyComposition {
-    val latestWeight = weights.maxByOrNull { it.first }
-    val latestBodyFat = bodyFats.maxByOrNull { it.first }
-    return BodyComposition(
-        weightKg = latestWeight?.second,
-        bodyFatPercent = latestBodyFat?.second,
-        measuredAt = listOfNotNull(latestWeight?.first, latestBodyFat?.first).maxOrNull(),
-    )
-}

@@ -8,9 +8,7 @@ import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.reportToSentry
 import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
-import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
-import com.gunnys.eundunhealth.domain.usecase.ImportBodyCompositionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +26,6 @@ sealed class ProfileUiState {
         val profile: UserProfile,
         val isSaving: Boolean = false,
         val isDeleting: Boolean = false,
-        val canImportBodyComposition: Boolean = false,
     ) : ProfileUiState()
 
     @Immutable data object Empty : ProfileUiState()
@@ -43,16 +40,12 @@ sealed class ProfileSideEffect {
     @Immutable data object SavedAndNavigateBack : ProfileSideEffect()
 
     @Immutable data object NavigateToLogin : ProfileSideEffect()
-
-    @Immutable data class PrefillBodyComposition(val weightKg: Float?, val bodyFatPct: Float?) : ProfileSideEffect()
 }
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepo: UserRepository,
     private val authRepo: AuthRepository,
-    private val healthRepo: HealthRepository,
-    private val importBodyCompositionUseCase: ImportBodyCompositionUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
@@ -70,7 +63,7 @@ class ProfileViewModel @Inject constructor(
         userRepo.getProfile()
             .onSuccess { profile ->
                 _uiState.value = profile?.let {
-                    ProfileUiState.Loaded(it, canImportBodyComposition = healthRepo.isAvailable())
+                    ProfileUiState.Loaded(it)
                 } ?: ProfileUiState.Empty
             }
             .onFailure {
@@ -116,26 +109,6 @@ class ProfileViewModel @Inject constructor(
         if (current is ProfileUiState.Loaded) {
             _uiState.value = current.copy(isSaving = false)
         }
-    }
-
-    fun importBodyComposition() = viewModelScope.launch {
-        importBodyCompositionUseCase()
-            .onSuccess { bc ->
-                if (bc == null || (bc.weightKg == null && bc.bodyFatPercent == null)) {
-                    _sideEffect.send(ProfileSideEffect.ShowSnackbar("가져올 체중·체지방 기록이 없습니다"))
-                } else {
-                    _sideEffect.send(ProfileSideEffect.PrefillBodyComposition(bc.weightKg, bc.bodyFatPercent))
-                }
-            }
-            .onFailure {
-                // read 실패는 "기록 없음" 과 구분해 별도 메시지로 안내 (거짓 "기록 없음" 방지).
-                // HC 권한/연동 오류면 actionable 메시지, 그 외엔 일반 재시도 안내.
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
-                val msg = (appErr as? AppError.HealthConnect)?.userMessage
-                    ?: "체성분을 가져오지 못했습니다. 잠시 후 다시 시도해주세요"
-                _sideEffect.send(ProfileSideEffect.ShowSnackbar(msg))
-            }
     }
 
     fun deleteAccount() = viewModelScope.launch {
