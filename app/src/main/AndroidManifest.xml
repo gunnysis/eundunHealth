@@ -54,13 +54,30 @@
             </intent-filter>
         </activity>
 
+        <!-- Health Connect 권한 rationale(개인정보 처리방침) 화면.
+             Android 14+(API 34+) 통합 HC 는 grant 화면을 띄우기 전 이 intent 의 resolve 가능
+             여부를 검사하며, 없으면 grant 화면을 거부하고 즉시 finish 한다 → "연동 버튼 무반응"
+             (INC 2026-06-10, Android 15 실측). minSdk=26 이므로 14+/≤13 두 경로 모두 선언.
+             회귀 가드: app/src/test/.../ManifestHealthConnectRationaleTest.kt -->
+        <activity
+            android:name=".PermissionsRationaleActivity"
+            android:exported="true">
+            <!-- Android 13 이하: Health Connect APK 가 사용하는 레거시 rationale 액션 -->
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+
+        <!-- Android 14+(API 34+): 통합 Health Connect 가 요구하는 rationale 액션 + 카테고리.
+             START_VIEW_PERMISSION_USAGE 권한으로 시스템(HC)만 호출 가능하도록 보호. -->
         <activity-alias
             android:name="ViewPermissionUsageActivity"
             android:exported="true"
-            android:targetActivity=".MainActivity"
+            android:targetActivity=".PermissionsRationaleActivity"
             android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
             <intent-filter>
-                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
     </application>
