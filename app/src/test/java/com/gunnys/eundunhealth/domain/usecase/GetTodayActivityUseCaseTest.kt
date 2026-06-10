@@ -1,6 +1,5 @@
 package com.gunnys.eundunhealth.domain.usecase
 
-import com.gunnys.eundunhealth.domain.model.BodyComposition
 import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import kotlinx.coroutines.test.runTest
@@ -22,8 +21,6 @@ class GetTodayActivityUseCaseTest {
         override suspend fun isAvailable(): Boolean = available
         override suspend fun hasPermissions(): Boolean = true
         override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> = Result.success(emptyList())
-        override suspend fun hasBodyCompositionPermissions(): Boolean = false
-        override suspend fun getLatestBodyComposition(): Result<BodyComposition> = Result.success(BodyComposition(null, null, null))
         override suspend fun hasDailyActivityPermissions(): Boolean = hasActivityPerms
         override suspend fun getTodayActivity(): Result<DailyActivity> = activity
     }
