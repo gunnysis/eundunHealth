@@ -11,7 +11,7 @@
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-06-10 | body-composition-data | design | approved | health-connect, body-composition, profile, permissions, ux |
+| 2026-06-10 | body-composition-data | design + plan | approved | health-connect, body-composition, profile, permissions, ux |
 
 ## Topic Ledgers (완료 작업 history)
 
