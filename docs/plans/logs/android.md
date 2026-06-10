@@ -4,6 +4,28 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-11 — Health Connect 체성분 가져오기 제거 (수동 단일화, v0.1.12)
+
+- **PR**: [#106](https://github.com/gunnysis/eundunHealth/pull/106) (merged, squash `bf260e9`) — 원래 #105였으나 #104 머지 시 base `--delete-branch` 삭제로 #105 자동 CLOSE → main rebase 후 #106 재생성
+- **Why**: #84에서 도입한 HC 체성분 가져오기가 **구조적으로 무용** — HC에 골격근량 타입 부재(공식), 체지방 삼성헬스→HC 동기화 flaky, 스마트체중계 없는 대다수 무데이터 → 영구 "기록 없음" 혼란. 사용자 확인 후 제거(B안). design+plan: `docs/plans/2026-06-10-body-composition-data-{design,plan}.md`.
+- **What**: 가져오기 버튼 + `ImportBodyCompositionUseCase` + `BodyComposition` + `readLatestBodyComposition`/`hasBodyCompositionPermissions`/`BODY_COMPOSITION_PERMISSIONS` + `reduceBodyComposition` + `PrefillBodyComposition` + `canImportBodyComposition` 제거. `READ_WEIGHT`/`READ_BODY_FAT` 권한 회수(**6→4**). rationale/privacy/Play권한선언서(`health-connect-permissions.md`) 정합 정정. 신체 4지표 수동 슬라이더 단일화. **활동 HC·목표·알고리즘·백엔드 불변.**
+- **Outcome**: 4 게이트 green + grep 무참조 + 최종 코드리뷰(subagent) CLEAN. v0.1.12/26. subagent-driven 자율 실행(구현 subagent + controller fact-check + 리뷰 subagent). HC=활동 자동추적 전용, 신체수치=직접입력 제품 단순화.
+- **Lessons**: (1) HC는 저장소/중개자(직접입력 불가)·골격근량 타입 없음·삼성헬스 체성분 동기화 불안정 → 공식·외부 문서로 확정. [[healthconnect-rationale-android14-bug]] (2) **stacked PR의 base를 `gh pr merge --delete-branch`로 머지하면 의존 PR이 retarget 아니라 자동 CLOSE + base 삭제로 reopen 불가 → 의존 PR 먼저 main retarget 후 머지하거나 `--delete-branch` 생략. 복구: `git rebase --onto main <old-base>` + 새 PR.** (3) `bump-version.sh`는 doc 설명문의 옛 버전번호도 치환(설명 오염) → 연속/stacked bump 시 수동 정정 필요.
+- **Files touched**: ui/profile/ProfileViewModel.kt·ProfileScreen.kt, domain/repository/HealthRepository.kt+data/repository/HealthRepositoryImpl.kt, data/healthconnect/HealthConnectDataSource.kt·HealthConnectMappers.kt(+Test), AndroidManifest.xml, PermissionsRationaleActivity.kt, docs/store/privacy-policy.md·health-connect-permissions.md, version.properties, README/PRD/operations-snapshot/CLAUDE/CHANGELOG
+
+---
+
+### 2026-06-10 — Health Connect Android 14+ 수정: 연동 버튼 무반응 + 읽기 실패 (v0.1.11)
+
+- **PR**: [#104](https://github.com/gunnysis/eundunHealth/pull/104) (merged, squash `7381007`) — design/plan 페어 없음(디버깅 발 기능 수정)
+- **Why**: 내부테스트 실기기(Galaxy Flip3/Android 15)에서 "연동" 버튼 무반응 + 체성분/오늘의활동 읽기 실패. 개발기기(S9+/Android 10)에선 정상 → **Android 버전 게이트 버그**(사용자 확인 단계에서 첫 발현).
+- **What**: ① **rationale intent** — 매니페스트 `ViewPermissionUsageActivity` 가 14+ 액션(`VIEW_PERMISSION_USAGE`+`HEALTH_PERMISSIONS`) 대신 레거시만 선언 → controller 가 grant 화면 거부(`App should support rationale intent, finishing!`). 14+/≤13 둘 다 선언 + `PermissionsRationaleActivity` 신설 + `ManifestHealthConnectRationaleTest`. ② **런처 아이콘** 색상-only 어댑티브(intrinsic -1) → HC access-log 비트맵화 실패(`width and height must be > 0`) → 모든 HC 읽기 throw. `app-icon.svg`→어댑티브 벡터 foreground+monochrome(테마)+density PNG 로 intrinsic 확보. ③ **account-deletion 완전성**(`goals`·`user_profile_history` purge, backend) + Play store 자산.
+- **Outcome**: 실기기(Android 15) 실측 검증(grant 화면 렌더링 + bitmap 예외 0건 + 읽기 성공) + backend.yml 배포 success + 4 게이트 green. v0.1.11. systematic-debugging(logcat ground truth)으로 진단.
+- **Lessons**: 색상-only/placeholder 어댑티브 아이콘은 Android 14+ HC 읽기를 깬다. HC rationale 은 14+/≤13 별개 선언 필요. 버전 게이트 버그는 개발기기(구버전)에서 안 잡힘 → 타깃 버전 실기기 검증 필수. [[healthconnect-rationale-android14-bug]]
+- **Files touched**: AndroidManifest.xml, PermissionsRationaleActivity.kt(+Test), res/mipmap-*·drawable 아이콘, backend/app/services/account_service.py·repositories(+test), docs/store/*, version.properties, README/PRD/operations-snapshot/CLAUDE/CHANGELOG
+
+---
+
 ### 2026-06-08 — 홈 "오늘의 활동" 요약 (#2, 걸음·칼로리·심박)
 
 - **PR**: [#85](https://github.com/gunnysis/eundunHealth/pull/85) (merged, squash `1ff03fb`)
