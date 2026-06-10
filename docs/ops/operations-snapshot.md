@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-06-10 v0.1.9 릴리즈 + 버전 명시 방식 종합(version.properties SSoT · 백엔드 API 1.0.0 · bump-version.sh · PR #102)
-> 작성 기준: v0.1.9 (versionCode 23) — Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩 (이전: v0.1.8 UDF-Enhanced 12 VM + OkHttp 5 / Coil 3)
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-10 v0.1.11 — Play Store 계정 삭제 페이지 + 계정 삭제 완전성 수정 + Health Connect 권한 rationale intent(Android 14+ 연동 버튼 무반응) 수정
+> 작성 기준: v0.1.11 (versionCode 25) — Play Store 계정 삭제 페이지·완전성(목표·신체이력 purge) + HC 권한 rationale intent(Android 14+ 무반응) 수정 (이전: v0.1.9 Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약 + HC 동기화 경로 정리/갤럭시 워치 온보딩)
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.9` / `23`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
+| versionName / versionCode | **`0.1.11` / `25`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
@@ -22,7 +22,7 @@
 | Sentry SDK | Android 8.43.1 / Gradle plugin 6.10.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
-산출물 경로 (v0.1.9 빌드 시점 기준):
+산출물 경로 (v0.1.9 빌드 시점 기준 — v0.1.11 산출물은 출시 빌드 시 갱신):
 - AAB: `app/build/outputs/bundle/release/app-release.aab` (7.79 MB)
 - APK: `app/build/outputs/apk/release/app-release.apk` (5.56 MB)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 자동 업로드)

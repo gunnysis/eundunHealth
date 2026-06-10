@@ -4,6 +4,44 @@
 
 ---
 
+## [v0.1.11] — 2026-06-10 — Health Connect 권한 rationale(Android 14+ 연동 버튼 무반응) 수정 + Play Store 계정 삭제
+
+### 🎯 Prompts
+1. "내부 테스트로 최신 aab 파일로 설치된 실기기에서 앱의 연동 버튼 무반응 현상 발생 점검 작업. 현재 안드로이드 스튜디오에 해당 실기기 연결되어 있어."
+2. "작업할 때 리팩토링/성능/디자인/테스트와 디버깅(근본 원인 해결)/팩트체크/연구/공식 문서 검색 등 다양한 관점에서 작업해줘."
+
+### ✅ Changes
+
+#### fix(android): Health Connect 권한 rationale intent — Android 14+ "연동 버튼 무반응" (실측 Android 15)
+- **근본 원인**: Android 14+(API 34+) 통합 Health Connect 는 권한 grant 화면을 띄우기 전 요청 앱이 rationale(개인정보 처리방침) intent 를 resolve 할 수 있는지 검사한다. 매니페스트의 `ViewPermissionUsageActivity` alias 가 14+ 액션(`android.intent.action.VIEW_PERMISSION_USAGE` + category `android.intent.category.HEALTH_PERMISSIONS`) 대신 레거시 액션(`androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE`)만 선언 → controller 가 `E PermissionsActivity: App should support rationale intent, finishing!` 로 grant 화면을 그리기 직전 finish → 사용자에겐 깜빡임/무반응. (개발 테스트 기기 Galaxy S9+/Android 10 은 레거시 경로라 통과 → 14+ 실사용 기기에서만 발현.)
+- **수정**: 14+ alias 를 올바른 액션+카테고리로 정정 + ≤13 레거시 경로(`PermissionsRationaleActivity` 의 `ACTION_SHOW_PERMISSIONS_RATIONALE` intent-filter) 별도 유지(minSdk=26). 전용 `PermissionsRationaleActivity`(앱 내 개인정보 안내 화면, `docs/store/privacy-policy.md` §1 동기화) 신설 — alias 의 targetActivity.
+- **회귀 가드**: `ManifestHealthConnectRationaleTest` — 소스 매니페스트를 파싱해 14+/≤13 두 intent-filter 존재를 검증(Robolectric 불요). 수정 전 14+ 케이스 FAIL → 수정 후 PASS.
+- **검증**: 실사용 타깃 Android 15(Galaxy Flip3)에서 fixed release APK 설치 후 권한 화면 정상 렌더링(`Displayed …PermissionsActivity`) + 이전 에러 로그 0건 실측 확인.
+- 공식 문서 fact-check: [Health Connect get-started](https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started) 의 14+/≤13 manifest 선언과 일치.
+
+#### feat: Play Store 계정 삭제 페이지 + 계정 삭제 완전성 수정 (`af6b99e`)
+- `docs/store/account-deletion.md` 신규 — Google 요구 3요소(앱/개발자명·삭제 단계·삭제/보관 데이터 유형·보관기간) + 앱 미사용자용 이메일 요청 경로.
+- **fix(backend)**: 계정 삭제가 `goals`·`user_profile_history` 를 삭제하지 않아 목표·신체 계측 이력(민감 건강데이터)이 영구 잔존하던 결함 수정. `account_service` 가 user_id 보유 전 테이블을 비우도록 `goal_repo`/`profile_history_repo` 에 삭제 메서드 추가.
+- **test**: user_id 컬럼 보유 모델을 동적 수집해 삭제 후 0건 검증(`test_delete_account_purges_all_user_data`) — pytest 49 passed.
+- privacy-policy 를 `docs/store/` 로 이동 + §4/§5 Sentry 보존 정정.
+
+#### 릴리스 (버전 bump + 문서)
+- versionName 0.1.9 → **0.1.11**, versionCode 23 → **25** (`version.properties` SSoT). 0.1.10/24 는 미출시 로컬 bump 으로 건너뜀.
+- current-state 문서 동기화 — `README.md`, `docs/PRD.md`, `docs/ops/operations-snapshot.md`, `CLAUDE.md`.
+
+### 📁 주요 Files
+- `app/src/main/AndroidManifest.xml`, `PermissionsRationaleActivity.kt`(신규), `ManifestHealthConnectRationaleTest.kt`(신규, 테스트)
+- `backend/app/services/account_service.py`, `backend/app/repositories/{goal_repo,profile_history_repo}.py`, `backend/tests/test_account.py`, `docs/store/account-deletion.md`(신규), `docs/store/privacy-policy.md`
+- `version.properties`, `README.md`, `docs/PRD.md`, `docs/ops/operations-snapshot.md`, `CLAUDE.md`
+
+### 근거 / 진단
+연동 버튼 무반응을 systematic-debugging 으로 진단: 디바이스 logcat 캡처 → `E PermissionsActivity: App should support rationale intent, finishing!` 가 매 탭마다 발화 + `healthconnect.controller/PermissionsActivity` 가 `Displayed` 에 한 번도 도달 안 함(렌더 직전 finish) 을 ground truth 로 근본 원인 확정. 공식 문서로 fix 검증 후 동일 기기에서 무재현 확인.
+
+### ⚠️ 알려진 후속 (별개 — 추적 중)
+- Android 15 에서 HC 활동 집계 시 플랫폼(`com.android.server.healthconnect`) access-log 버그 `IllegalArgumentException: width and height must be > 0`(AppInfoHelper.getBitmapFromDrawable) 관측 — 우리 코드 아님. "오늘의 활동" 읽기 영향 여부는 기기 데이터 존재 확인 후 판단 예정(앱은 이미 Sentry 보고 + degrade 처리 — PR #83 패턴).
+
+---
+
 ## [main] — 2026-06-10 — 앱 버전 명시 방식 종합 (PR #102)
 
 ### 🎯 Prompts
