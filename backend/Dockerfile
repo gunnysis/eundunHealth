@@ -1,5 +1,12 @@
 FROM python:3.12-slim
 
+# OS 보안 패치 — base 이미지에 미반영된 fixed-available OS CVE 해소(예: openssl CVE-2026-45447,
+# libssl3t64 3.5.6-1~deb13u1 → deb13u2). Trivy(CRITICAL/HIGH 차단)가 fixed CVE 를 막으므로
+# 빌드 시점에 Debian security 업그레이드를 당겨 base 재빌드 지연으로 인한 deploy 차단을 자가치유한다.
+RUN apt-get update \
+ && apt-get upgrade -y \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 WORKDIR /app
