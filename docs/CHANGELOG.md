@@ -4,7 +4,7 @@
 
 ---
 
-## [v0.1.11] — 2026-06-10 — Health Connect 권한 rationale(Android 14+ 연동 버튼 무반응) 수정 + Play Store 계정 삭제
+## [v0.1.11] — 2026-06-10 — Health Connect Android 14+ 수정(연동 버튼 무반응 + 읽기 실패) + Play Store 계정 삭제
 
 ### 🎯 Prompts
 1. "내부 테스트로 최신 aab 파일로 설치된 실기기에서 앱의 연동 버튼 무반응 현상 발생 점검 작업. 현재 안드로이드 스튜디오에 해당 실기기 연결되어 있어."
@@ -19,6 +19,11 @@
 - **검증**: 실사용 타깃 Android 15(Galaxy Flip3)에서 fixed release APK 설치 후 권한 화면 정상 렌더링(`Displayed …PermissionsActivity`) + 이전 에러 로그 0건 실측 확인.
 - 공식 문서 fact-check: [Health Connect get-started](https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started) 의 14+/≤13 manifest 선언과 일치.
 
+#### fix(android): 런처 아이콘 정상화 — Android 14+ Health Connect "읽기 실패" 해소 (실측 Android 15)
+- **근본 원인**: 런처 아이콘이 색상-only 어댑티브(`<foreground>`=`@color`, density PNG 0개) → `AdaptiveIconDrawable` intrinsic 크기 **-1**. Android 14+ HC 는 읽기마다 access-log 에 호출 앱 아이콘을 저장하려 `AppInfoHelper.getBitmapFromDrawable(getApplicationIcon())` → `createBitmap(-1,-1)` → `IllegalArgumentException: width and height must be > 0` → `readRecords`/`aggregate` throw. 결과: "오늘의 활동" 빈값 + 체성분 가져오기가 "체성분을 가져오지 못했습니다". (HC 가 별도 APK 인 ≤13 기기엔 이 access-log 경로가 없어 정상.)
+- **수정**: `assets/app-icon.svg`(덤벨)를 실제 어댑티브 아이콘으로 적용 — `drawable/ic_launcher_foreground.xml`(VectorDrawable 108dp → intrinsic 크기 확보) + `ic_launcher_monochrome.xml`(테마 아이콘) + `@color` 녹색 배경 + density mipmap PNG(mdpi~xxxhdpi, `ic_launcher`/`ic_launcher_round`, master 512px 다운스케일). 단색 placeholder → 실제 브랜드 아이콘 + 버그 해소를 동시 달성.
+- **검증**: fixed release APK 재설치(권한 보존) 후 HC 읽기 실행 시 `width and height must be > 0` / `AppInfoHelper.getBitmapFromDrawable` / HealthConnectService 예외 **모두 0건**, `HealthConnectRecordHelper` 읽기 정상 실행 실측. 잔여 `HCReadAccessLogsHelper: invalid package name` 로그는 감사 엔트리 skip 일 뿐 비치명적(읽기 성공).
+
 #### feat: Play Store 계정 삭제 페이지 + 계정 삭제 완전성 수정 (`af6b99e`)
 - `docs/store/account-deletion.md` 신규 — Google 요구 3요소(앱/개발자명·삭제 단계·삭제/보관 데이터 유형·보관기간) + 앱 미사용자용 이메일 요청 경로.
 - **fix(backend)**: 계정 삭제가 `goals`·`user_profile_history` 를 삭제하지 않아 목표·신체 계측 이력(민감 건강데이터)이 영구 잔존하던 결함 수정. `account_service` 가 user_id 보유 전 테이블을 비우도록 `goal_repo`/`profile_history_repo` 에 삭제 메서드 추가.
@@ -31,14 +36,15 @@
 
 ### 📁 주요 Files
 - `app/src/main/AndroidManifest.xml`, `PermissionsRationaleActivity.kt`(신규), `ManifestHealthConnectRationaleTest.kt`(신규, 테스트)
+- 아이콘: `res/drawable/ic_launcher_foreground.xml`·`ic_launcher_monochrome.xml`(신규 벡터), `res/mipmap-anydpi-v26/ic_launcher{,_round}.xml`(수정), `res/mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher{,_round}.png`(신규 10개)
 - `backend/app/services/account_service.py`, `backend/app/repositories/{goal_repo,profile_history_repo}.py`, `backend/tests/test_account.py`, `docs/store/account-deletion.md`(신규), `docs/store/privacy-policy.md`
 - `version.properties`, `README.md`, `docs/PRD.md`, `docs/ops/operations-snapshot.md`, `CLAUDE.md`
 
 ### 근거 / 진단
 연동 버튼 무반응을 systematic-debugging 으로 진단: 디바이스 logcat 캡처 → `E PermissionsActivity: App should support rationale intent, finishing!` 가 매 탭마다 발화 + `healthconnect.controller/PermissionsActivity` 가 `Displayed` 에 한 번도 도달 안 함(렌더 직전 finish) 을 ground truth 로 근본 원인 확정. 공식 문서로 fix 검증 후 동일 기기에서 무재현 확인.
 
-### ⚠️ 알려진 후속 (별개 — 추적 중)
-- Android 15 에서 HC 활동 집계 시 플랫폼(`com.android.server.healthconnect`) access-log 버그 `IllegalArgumentException: width and height must be > 0`(AppInfoHelper.getBitmapFromDrawable) 관측 — 우리 코드 아님. "오늘의 활동" 읽기 영향 여부는 기기 데이터 존재 확인 후 판단 예정(앱은 이미 Sentry 보고 + degrade 처리 — PR #83 패턴).
+### 후속 (해소)
+- ~~Android 15 HC access-log `width and height must be > 0` 버그로 읽기 실패~~ → **해소**. 근본은 우리 placeholder 아이콘의 intrinsic -1 이었고, 위 "런처 아이콘 정상화" 로 수정. 체성분 가져오기 실패("체성분을 가져오지 못했습니다")가 이 경로였음이 logcat 으로 확인됨(readRecords access-log → 동일 bitmap 예외).
 
 ---
 
