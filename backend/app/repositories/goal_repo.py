@@ -21,13 +21,16 @@ class GoalRepository:
         return result.scalar_one_or_none()
 
     async def upsert(self, user_id: str, goal_type: str, target_value: float) -> Goal:
-        """목표 upsert. 기존 레코드가 있으면 target_value 만 갱신, 없으면 신규 삽입."""
+        """목표 upsert. 기존 레코드가 있으면 target_value 만 갱신, 없으면 신규 삽입 후 flush+refresh."""
         existing = await self.get_by_type(user_id, goal_type)
         if existing:
             existing.target_value = target_value
             return existing
         goal = Goal(user_id=user_id, goal_type=goal_type, target_value=target_value)
         self.db.add(goal)
+        # created_at은 server_default라 flush 후에야 채워짐 — 응답 노출 위해 refresh 필수
+        await self.db.flush()
+        await self.db.refresh(goal)
         return goal
 
     async def delete_all_by_user(self, user_id: str) -> None:
