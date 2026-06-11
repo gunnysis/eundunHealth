@@ -30,7 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.gunnys.eundunhealth.ui.components.ProfileSlider
+import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 
 @Composable
@@ -78,10 +78,16 @@ fun OnboardingScreen(
             )
             Spacer(modifier = Modifier.height(32.dp))
 
-            ProfileSlider("키", height, 140f..210f, "cm", 0) { height = it }
-            ProfileSlider("몸무게", weight, 40f..150f, "kg", 1) { weight = it }
-            ProfileSlider("골격근량", muscleMass, 10f..60f, "kg", 1) { muscleMass = it }
-            ProfileSlider("체지방률", bodyFat, 5f..50f, "%", 1) { bodyFat = it }
+            BodyMetricsSliders(
+                height = height,
+                onHeightChange = { height = it },
+                weight = weight,
+                onWeightChange = { weight = it },
+                muscleMass = muscleMass,
+                onMuscleMassChange = { muscleMass = it },
+                bodyFat = bodyFat,
+                onBodyFatChange = { bodyFat = it },
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
