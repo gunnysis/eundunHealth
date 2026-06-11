@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-06-11 v0.1.12 — Health Connect 체성분(체중·체지방) 가져오기 제거 + READ_WEIGHT/READ_BODY_FAT 권한 회수(6→4) + 신체 4지표 수동 단일화
-> 작성 기준: v0.1.12 (versionCode 26) — HC 체성분 가져오기 제거·권한 회수·수동 단일화 (이전: v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응) / v0.1.9 HC 체중·체지방 가져오기 + 오늘의 활동 + 갤럭시 워치 온보딩)
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-11 v0.1.13 — 코드베이스 리팩토링(내부 품질, 사용자 영향 없음)
+> 작성 기준: v0.1.13 (versionCode 27) — 코드베이스 리팩토링(알고리즘 테스트화·백엔드 실버그·detekt baseline·중복/죽은코드 정리, #107~#112) (이전: v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응) / v0.1.9 HC 체중·체지방 가져오기 + 오늘의 활동 + 갤럭시 워치 온보딩)
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.12` / `26`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
+| versionName / versionCode | **`0.1.13` / `27`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
