@@ -40,11 +40,17 @@ run "Unit Tests" "$GRADLEW" :app:testDebugUnitTest --quiet
 # 로컬 실험용 release 빌드는 이 플래그 없이 결정적 + 업로드 없음.
 run "Release artifacts (AAB + APK)" "$GRADLEW" :app:releaseArtifacts -PsentryRelease=true --quiet
 
-# versionCode/versionName 추출 — aapt 의존을 피하기 위해 apkanalyzer 대신 build.gradle.kts에서 직접 파싱.
-# (release signing 끝난 AAB/APK 메타 비교는 환경 따라 깨지기 쉬워 보수적으로 간다.)
-BUILD_GRADLE="app/build.gradle.kts"
-VC=$(grep -E "^\s*versionCode\s*=" "$BUILD_GRADLE" | head -1 | grep -oE '[0-9]+')
-VN=$(grep -E "^\s*versionName\s*=" "$BUILD_GRADLE" | head -1 | grep -oE '"[^"]+"' | tr -d '"')
+# versionCode/versionName 추출 — SSoT 인 version.properties 에서 직접 읽는다.
+# (PR #102 에서 버전이 build.gradle.kts 리터럴 → version.properties 로 이동: build.gradle.kts 는
+#  이제 `versionProps.getProperty(...)` 라 숫자 리터럴이 없어 옛 grep 은 빈값/오표시였다.)
+VERSION_PROPS="version.properties"
+VC=$(grep -E "^versionCode=" "$VERSION_PROPS" | head -1 | cut -d= -f2 | tr -d ' \r')
+VN=$(grep -E "^versionName=" "$VERSION_PROPS" | head -1 | cut -d= -f2 | tr -d ' \r')
+
+if [ -z "$VC" ] || [ -z "$VN" ]; then
+    echo "ERROR: version.properties 에서 versionCode/versionName 을 읽지 못했습니다."
+    exit 1
+fi
 
 AAB="app/build/outputs/bundle/release/app-release.aab"
 APK="app/build/outputs/apk/release/app-release.apk"

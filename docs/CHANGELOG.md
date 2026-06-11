@@ -4,6 +4,24 @@
 
 ---
 
+## [v0.1.13] — 2026-06-11 — 코드베이스 리팩토링 (내부 품질, 사용자 영향 없음)
+
+> 진단(4-영역 병렬 감사) → 다관점 설계(공식문서 fact-check) → subagent-driven 자율 실행 → 5 번들 6 PR(#107~#112) 머지. 사용자 기능/동작 변화 없음. versionCode 27. 첫 프로덕션 트랙 출시 빌드.
+
+### ✨ 변경 (번들별 PR)
+- **A (#110)** 핵심 알고리즘 분리: `WorkoutRepositoryImpl.createWeeklyPlan` 의 주간계획 생성 로직을 순수 `WeeklyPlanGenerator` 로 추출(line-for-line 동일·JVM 단위테스트 5건) + 죽은코드 4건 제거(savePlanToServer·deleteOldPlans·inert 404·미사용 default).
+- **B (#108)** 백엔드 실버그: JWT 검증 `except` 좁히기(JWKS/인프라 장애를 401로 은폐 방지 — `PyJWKClientError`→503) + goal `createdAt` flush/refresh(조작된 `datetime.utcnow()` 제거) + stale 라우터 docstring 정정 + openapi 재싱크. pytest 54.
+- **D (#107)** 위생: detekt baseline 단일화(이중 baseline footgun 해소) + `bodyOrNull404` 헬퍼 + NetworkModule 상수화 + `hiltViewModel` deprecation(androidx hilt 1.3.0) 마이그레이션 12파일.
+- **E (#109)** 도메인 정합: `UserProfile` body metrics `Float?`(백엔드 nullable 계약·`Goal`/`ProfileHistoryPoint` 일치) + 0f fabrication 제거.
+- **C (#111)** UI 중복 제거: 공유 `LineChart`(composition `runBlocking` 제거 — Vico 공식 LaunchedEffect 패턴) + `ResendConfirmationController`(합성) + `toAppErrorReporting()` + `BodyMetricsSliders` promote.
+
+### ✅ 검증
+- 통합 main 게이트 green (Android `BUILD SUCCESSFUL` + Backend `54 passed`). 신규 테스트 15건(generator 5·dependencies 4·goal_repo 1·UserProfile 3·ResendController 2).
+- 번들별 spec 검수 + 룰 10 게이트 독립 재확인. 상세 ledger: `docs/plans/logs/{android,backend,process-infra}.md`.
+- 릴리즈 인프라: `preflight-release.sh` 버전 출처 정정(build.gradle.kts 리터럴 → `version.properties`, PR #102 이후 stale).
+
+---
+
 ## [v0.1.12] — 2026-06-11 — Health Connect 체성분 가져오기 제거 (수동 단일화)
 
 ### 🎯 Prompts

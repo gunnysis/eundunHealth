@@ -6,7 +6,7 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.1.12-blue)
+![versionName](https://img.shields.io/badge/versionName-0.1.13-blue)
 ![versionCode](https://img.shields.io/badge/versionCode-26-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF)
@@ -356,7 +356,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 | 문서 | 내용 |
 |------|------|
-| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.12) |
+| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.13) |
 | [버전 관리](docs/conventions/versioning.md) | 앱/백엔드 버전 SSoT · semver 정책 · bump 절차 |
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
@@ -376,7 +376,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.12` (versionCode `26`) / Play Store **Internal Testing 활성**
+**현재 버전** — `0.1.13` (versionCode `27`) / Play Store **첫 프로덕션 출시 준비** (직전 Internal Testing). 0.1.13 = 코드베이스 리팩토링(내부 품질 — 알고리즘 테스트화·백엔드 실버그·중복/죽은코드 정리, 사용자 영향 없음)
 
 ### 마일스톤 진행
 
@@ -400,6 +400,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.9** — Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩 (정식 출시)
 - [x] **v0.1.11** — Play Store 계정 삭제 페이지 + 계정 삭제 완전성(목표·신체이력 purge) 수정 + Health Connect 권한 rationale intent(Android 14+ 연동 버튼 무반응) 수정
 - [x] **v0.1.12** — Health Connect 체성분(체중·체지방) 가져오기 제거 + `READ_WEIGHT`/`READ_BODY_FAT` 권한 회수(6→4) + 신체 4지표 수동 단일화
+- [x] **v0.1.13** — 코드베이스 리팩토링 (내부 품질, 사용자 영향 없음) — WeeklyPlanGenerator 추출·테스트화 + 백엔드 실버그(JWT except·goal createdAt) + detekt baseline 단일화 + 중복·죽은코드 정리 (#107~#112)
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시
