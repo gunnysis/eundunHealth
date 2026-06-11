@@ -44,13 +44,6 @@ tags: [refactoring, tech-debt, audit, testing, health]
 
 > 멀티 ledger 흡수: 머지 후 각 PR 의 압축 entry 를 해당 ledger(`logs/{android,backend,process-infra,dependencies}.md`)에 추가하고 본 design 은 마지막 번들 머지 시 `git rm`. frontmatter `ledger_topic: android` 는 인덱스 분류용 대표값이며, 실제 흡수는 위 표 기준.
 
-### Out-of-scope (검토 후 의도적 제외 — 근거 명시)
-
-- **Vico producer → ViewModel 이전**: 공식 권장이나 VM 이 UI 차트 라이브러리 타입(`CartesianChartModelProducer`)을 알게 되는 레이어링 결합 유발. 본 앱 차트는 UiState 에서 로드당 1회 파생되는 정적 데이터(스트리밍 아님) → `remember`+`LaunchedEffect`(C 의 공유 `LineChart`)로 충분. **유지.**
-- **백엔드 in-Python 집계 / history 2쿼리**: `get_statistics._completion_rate` 는 ≤52행 bounded·pytest 커버·깔끔. 근본 원인은 completion 이 JSON blob `Text` 컬럼에 저장된 구조 — 정규화는 대규모 스키마 변경 대비 이득 한계. `get_history` 의 page+count 2쿼리도 ≤52행 규모에서 `count(*) over()` 단일화 이득 미미. **수용 + 문서화.** (구조 변경은 별도 RFC.)
-- **온보딩 체지방 "선택 입력화"**: 현재 슬라이더는 항상 값 전송. E 는 모델/표시의 nullable 정합만 다루고, "모름/건너뛰기" 어포던스 추가는 별도 제품 UX 결정.
-- 기존 deferred: 백엔드 N+1 외 성능 최적화, 신규 기능.
-
 ## 3. 의사결정 요약
 
 | # | 결정 | 채택안 | 근거 (ground truth) |
@@ -58,23 +51,23 @@ tags: [refactoring, tech-debt, audit, testing, health]
 | D1 | 차트 초기화에서 `runBlocking` 제거 | `LaunchedEffect { runTransaction {} }` 단독 | Vico 공식 가이드: 정규 패턴은 LaunchedEffect, runBlocking 없음. composition 스레드 블로킹 = 비공인 |
 | D2 | JWT 검증 except 좁히기 | `InvalidTokenError`→401 / `PyJWKClientError`→503 / 나머지→500+Sentry | PyJWT 2.13.0 `jwt/exceptions.py`: `InvalidTokenError`=토큰검증 base, `PyJWKClientError(PyJWTError)`=JWKS/네트워크 별도 계열 |
 | D3 | goal 신규 row `createdAt` 조작 제거 | `goal_repo.upsert` 에 `flush()`+`refresh()` 추가, service fallback 삭제 | `badge_repo.award`(`badge_repo.py:38-39`)가 동일 server_default 문제를 flush+refresh 로 이미 정답 처리. `datetime.utcnow()` 는 3.12 deprecated |
-| D4 | detekt baseline 단일화 | 단일 tracked baseline + gitignore/tracked 모순 해소 (메커니즘 DEFERRED) | CI·preflight 가 실행하는 `detektDebug`(=baseline-debug.xml)와 vestigial `baseline.xml` 이중화 = chronic CI 실패 history(메모리 `detekt-baseline-drift`) |
+| D4 | detekt baseline 단일화 | Option B(§4.1·§8.2): 실사용 `baseline-debug.xml` 추적 + vestigial `baseline.xml` 삭제 (wiring·scope 무변경) | CI·preflight 가 실행하는 `detektDebug`(=baseline-debug.xml)와 vestigial `baseline.xml` 이중화 + gitignore 모순 = chronic CI 실패 history(메모리 `detekt-baseline-drift`) |
 | D5 | `hiltViewModel` 신 패키지 이전 | import 12곳 교체 + `hilt-lifecycle-viewmodel-compose` 아티팩트 추가 | androidx hilt 1.3.0(사용 버전): 양쪽 오버로드 `@Deprecated("Moved to package: androidx.hilt.lifecycle.viewmodel.compose")` |
 | D6 | body metrics 도메인 nullable 정합 | `UserProfile.bodyFatPercent/muscleMassKg → Float?` + `fitnessLevel` null→BMI 폴백 | 백엔드 response nullable + `Goal.bodyFatPct: Float?`·`ProfileHistoryPoint` 이미 nullable. `?: 0f` 가 fitnessLevel 을 ADVANCED 로 오분류 |
 | D7 | 알고리즘 테스트 가능화 | 순수 `WeeklyPlanGenerator` 추출(I/O 와 분리) | `createWeeklyPlan` 84줄에 핵심 제품 로직(seeded shuffle·슬롯·rest-day) 묻힘, 단위테스트 0 |
 
 ## 4. 옵션 비교
 
-### 4.1 detekt baseline 단일화 메커니즘 (D4 — DEFERRED, plan 에서 확정)
+### 4.1 detekt baseline 단일화 메커니즘 (D4 — §8.2 연구 반영)
 
-| 옵션 | A. 변형 태스크 baseline 재지정 | B. baseline-debug.xml 만 tracked 단일화 | C. 현행 유지 + 동기화 체크 |
+| 옵션 | A. 단일 base `baseline.xml` | **B. 단일 variant `baseline-debug.xml`** | C. 현행 유지 + 동기화 체크 |
 |---|---|---|---|
-| 방식 | `detektDebug` 가 `baseline.xml` 사용하도록 설정 → `baseline-debug.xml` 제거 | `baseline.xml` 제거, `baseline-debug.xml` 정식 추적 | 둘 유지 + CI 가 일치 검증 |
-| 장점 | 의도(SoT=baseline.xml) 명확 | CI 실사용 파일을 정식화 | 변경 최소 |
-| 위험 | detekt 1.23.8 AGP variant 가 extension baseline 무시할 수 있음 → **plan 에서 동작 확인 필수** | gitignore 정리 필요 | 이중 관리 footgun 잔존 |
-| 비고 | 가능하면 1순위 | A 불가 시 fallback | 비채택 |
+| 방식 | `baseline-debug.xml` 삭제 → `detektDebug` 가 base 폴백, 재생성 `detektBaseline`(non-variant) | `baseline.xml` 삭제 + `baseline-debug.xml` 정식 추적, 재생성 `detektBaselineDebug` 유지 | 둘 유지 + CI 가 일치 검증 |
+| 장점 | 파일명이 base 의미 | **task wiring 무변경 → 분석 scope(generated 포함) 보존** | 변경 최소 |
+| 위험 | **non-variant 재생성이 generated srcDir 미포함 → 위반 박제 누락 → detektDebug fail 위험** | config `baseline=` 가 삭제된 base 참조(파생용·무해) | 이중 관리 footgun 잔존 |
+| 비고 | 대안(폴백은 성립하나 scope 불일치 리스크) | **채택** | 비채택 |
 
-채택: **A 우선, 불가 시 B** (detekt 1.23.8 변형 baseline 동작 확인 후 plan 확정).
+채택: **B** — CI·preflight 가 실행하는 `detektDebug`(소비)와 `detektBaselineDebug`(재생성)가 모두 variant scope(AGP source set = generated srcDir 포함)를 쓰므로, 그 scope 를 보존하는 `baseline-debug.xml` 을 단일 SoT 로 정식 추적하고 vestigial `baseline.xml` 을 삭제한다. task wiring 무변경 → 최소·최저위험. Bundle D 에서 `detektDebug` green 1회 실증.
 
 ### 4.2 resend 중복 제거 — 상속 vs 합성
 
@@ -111,7 +104,7 @@ tags: [refactoring, tech-debt, audit, testing, health]
   `payload["sub"]` → `payload.get("sub")` 가드 후 없으면 `InvalidTokenError` 취급.
 - **MODIFY `backend/app/repositories/goal_repo.py:upsert`**: 신규 row `add` 후 `await self.db.flush(); await self.db.refresh(goal)` (badge_repo 패턴). **MODIFY `goal_service.py:25-37`**: lazy `from datetime import datetime` + `datetime.utcnow()` fallback 삭제, `goal.created_at` 직접 사용.
 - **MODIFY `backend/app/routers/weekly_plan.py:47`**: stale docstring("배지 자동 부여") 정정 — 실제 코드에 없음(클라이언트 주도 `POST /badges/{key}`).
-- **MODIFY 매핑 통일 (조건부 — DEFERRED, §6 verify)**: `goal_service`·`profile_service` 의 field-by-field DTO 생성을 `model_validate` 로. **단 날짜 직렬화 포맷 변경 위험**(`str(datetime)` " " 구분 → ISO `T`) → Android generated 모델의 date 어댑터(`OffsetDateTimeAdapter`) 호환 확인 후 진행. 미확인 시 **이 항목만 보류**(나머지 B 는 진행).
+- **MODIFY 매핑 통일**: `goal_service`·`profile_service` 의 field-by-field DTO 생성을 `model_validate` 로 — **단 date 필드(`created_at`/`recorded_at`)는 현 `str(...)` 산출을 명시 보존**(연구 결과 §8.1: 필드가 `str` 타입이고 Android 미파싱·미표시라 wire 포맷 무변경이 안전·충분). non-date 필드만 `model_validate` 로 단순화. 별도 wire 검증 불요.
 
 ### 5.C Bundle C — UI 중복 제거
 
@@ -126,7 +119,7 @@ tags: [refactoring, tech-debt, audit, testing, health]
 
 ### 5.D Bundle D — 위생 정리
 
-- **detekt baseline 단일화** (§4.1 옵션 A/B) + stale `UnreachableCode:HomeViewModel` 6 entries 제거(함수단위 `@Suppress` 로 이미 대체) + baseline-debug.xml gitignore/tracked 모순 해소.
+- **detekt baseline 단일화** (§4.1 옵션 B 채택 · §8.2): vestigial `baseline.xml` 삭제 + 실사용 `baseline-debug.xml` 정식 추적(`.gitignore:64` 제거, task wiring·scope 무변경) + 재생성으로 stale `UnreachableCode:HomeViewModel` 6 entries 정리.
 - **NEW `data/remote/util/ResponseExt.kt` `bodyOrNull404()`**: "404→null, else bodyOrThrow" 헬퍼. **MODIFY `UserRepositoryImpl.getProfile`**: 손수 `when` 사다리 → 헬퍼 사용(나머지 repo 패턴과 통일).
 - **MODIFY `di/NetworkModule.kt`**: OkHttp 타임아웃(15s ×2 복붙)·ExerciseDB base URL 상수 추출.
 - **MODIFY `gradle/libs.versions.toml` + `app/build.gradle.kts` + 12 Screen import**: `androidx.hilt:hilt-lifecycle-viewmodel-compose` 추가, import `androidx.hilt.navigation.compose.hiltViewModel` → `androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel`. 호출부 무인자 그대로. (nav-scoped VM 미사용 확인 후 `hilt-navigation-compose` 유지 여부 결정.)
@@ -144,7 +137,7 @@ tags: [refactoring, tech-debt, audit, testing, health]
   즉 체지방 null 이면 **BMI 단독**으로 판정(null 을 0 으로 보지만 `>20`/`>30` 조건이라 사실상 BMI 폴백 — "ADVANCED 강제 분류" 제거가 아니라 BMI 기준으로 정상 평가). null-safe 명시.
 - **MODIFY `data/repository/UserRepositoryImpl.kt:27-28`**: `?: 0f` 제거(`dto.bodyFatPct?.toFloat()` 그대로). `saveProfile` 는 null 을 그대로 전송(조작 중단).
 - **MODIFY `ui/components/ProfileSummaryCard.kt`** + 호출부: `bodyFat/muscleMass: Float?` → null 시 "—" 표시.
-- **검증**: `UserProfile` non-null 가정 호출부 전수(Goal/Statistics/Profile/Onboarding) 컴파일 확인.
+- **검증**: `UserProfile.bodyFatPercent`/`muscleMassKg` **읽기 3곳**(MEASURED §8.3 — `fitnessLevel`·`UserRepositoryImpl.kt:43-44`·`ProfileScreen.kt:113-114`) 컴파일 확인. 생성부(`OnboardingViewModel`·`ProfileViewModel`)는 슬라이더 Float 주입이라 무영향. (GoalScreen 의 `it.bodyFatPct` 는 별개 모델 `ProfileHistoryPoint` — 본 변경 비대상.)
 
 ## 6. 검증 계획
 
@@ -159,8 +152,8 @@ tags: [refactoring, tech-debt, audit, testing, health]
 | detekt baseline entries | MEASURED | `grep -c '<ID>' config/detekt/baseline.xml` = 67 (debug 동일·내용일치·줄바꿈만 상이) |
 | hiltViewModel 사용 | MEASURED | `grep -rln hiltViewModel app/src/main/java` = 12 파일(import 12 + 호출부 12) |
 | body_fat nullable | MEASURED | 백엔드 `schemas/profile.py:20` `float \| None` · Android `UserRepositoryImpl.kt:27` `?: 0f` |
-| detekt 단일화 메커니즘(§4.1) | DEFERRED — verify at Bundle D | detekt 1.23.8 변형 baseline 이 extension `baseline` 따르는지 plan 에서 확인 |
-| B 매핑통일 날짜포맷 | DEFERRED — verify at Bundle B | Android `OffsetDateTimeAdapter` 가 `model_validate` 산출 ISO-T 파싱 가능한지 확인 |
+| detekt 단일화 메커니즘(§4.1·§8.2) | MEASURED(문서) + verify at Bundle D | variant scope(generated 포함) 보존 위해 Option B 채택(`baseline-debug.xml` 추적·`baseline.xml` 삭제·wiring 무변경). Bundle D 에서 `detektDebug` green 1회 실증 |
+| B 매핑통일 날짜포맷(§8.1) | 해소(MEASURED) | date 필드 `str` 타입·Android 미파싱(`Instant.parse`→null)·미표시 → wire 보존, 검증 불요 |
 
 ### 6.2 동작변경 회귀 포인트
 - **B**: JWT 정상 토큰 401 무회귀(pytest auth) + 만료/위조 토큰 여전히 401 + goal upsert `createdAt` 실제 DB 값.
@@ -171,16 +164,35 @@ tags: [refactoring, tech-debt, audit, testing, health]
 
 번들별 독립 PR → revert 단위 분리. A·C·E 는 순수 리팩토링/표시라 revert 안전. B 는 dependencies.py revert 시 이전 except 동작 복귀(단 그게 버그). D detekt 변경은 baseline 파일 git revert. 인프라/배포 영향 없음(백엔드 B 는 코드만, 스키마 변경 없음 → entrypoint alembic 무관).
 
-## 8. 잔여 리스크
+## 8. 잔여 리스크 → 완화책 (연구 기반, 2026-06-11)
 
-- **B 매핑통일**: 날짜 wire 포맷 변경이 Android 파싱 깨면 회원 데이터 표시 오류 → DEFERRED 검증으로 차단, 미확인 시 보류.
-- **E nullable**: `UserProfile` non-null 가정 호출부 누락 시 컴파일 에러(런타임 아님 — 안전). 온보딩 슬라이더가 여전히 값 전송하므로 런타임 동작변화 제한적.
-- **D detekt 옵션 A 실패 가능**: variant baseline 재지정 불가 시 옵션 B fallback.
-- **A generator 위치**: domain vs data 배치 — 순수성 위해 domain 선호하나 `Exercise`/`DayPlan` 도메인 모델 의존만 있어 안전.
+각 리스크의 ground truth 를 확정한 뒤 구체 완화책으로 전환했다. 라벨: **[해소]** = 연구로 리스크 소멸 / **[완화]** = 잔여 최소화 + 검증 지점 명시. 연구로 비용 대비 효과가 가장 큰 경로를 선택(불필요한 wire 변경·조율·스키마 변경 회피).
+
+### 8.1 [해소] Bundle B — 날짜 wire 포맷 변경 위험
+- **연구**: 백엔드 date 필드(`GoalResponse.created_at`·`ProfileHistoryEntry.recorded_at`·`WeeklyRateDto.week_start`)는 모두 **`str` 타입**(`schemas/goal.py`·`statistics.py`) → `openapi.json` `"type": "string"`(format `date-time` 아님) → Android generated 모델은 **`String`**(날짜 파싱 타입 아님). Android 소비처는 `GoalRepositoryImpl.kt:46,55` 의 `runCatching { Instant.parse(...) }.getOrNull()` 뿐이며, 현 공백구분 형식(`"…00:00:00+00:00"`)은 `Instant.parse`(ISO_INSTANT, `T`/`Z` 요구)가 거부 → **이미 null**. 차트는 index 축이라 날짜 미사용, `recordedAt` 은 어느 `ui/` 파일에서도 미표시(MEASURED: `grep -rn recordedAt app/src/main/.../ui` = 0).
+- **완화책**: B 의 `model_validate` 통일을 **non-date 필드에만** 적용하고 date 필드는 현 `str(...)` 산출을 그대로 보존(명시 유지) → **wire 포맷 무변경 · Android 조율 0**. §6 의 DEFERRED 검증이 불필요해짐.
+- **부수 발견(별도 후속, 현 범위 밖)**: `Goal.createdAt`/`recordedAt` 이 Android 에서 항상 null 인 **무해한 latent 버그**(미표시·미사용·index 축). 향후 날짜 표시/축이 필요해지면 백엔드 필드를 `datetime` 타입화 → ISO-8601(`T`) 송출 + Android `OffsetDateTime.parse` 전환을 **별도 작업**으로 처리.
+
+### 8.2 [완화 — Option B 채택] Bundle D — detekt baseline 단일화
+- **연구**: detekt 공식 — variant 태스크 `detektDebug`(CI·preflight 실사용)는 `baseline-debug.xml` 우선, 부재 시 base `baseline.xml` 폴백. 재생성 `detektBaselineDebug`(variant)는 **AGP source set = `build/generated/openapi` srcDir 포함**을 분석해 박제(현 67 entries 중 ~40 이 generated/`@Preview`). 즉 **generated 위반을 박제하는 working scope 가 variant 태스크에 묶임** — base `baseline.xml` 은 CI/preflight 어느 태스크도 소비하지 않는 vestigial(이중 footgun·gitignore 모순의 근원).
+- **완화책(Option B — task wiring 무변경, 최소·최저위험)**: ① vestigial `baseline.xml` 삭제. ② 실사용 `baseline-debug.xml` 정식 추적(`.gitignore:64` 제거). ③ `detekt {} baseline = file(".../baseline.xml")` config 는 variant 경로 파생용으로 유지(파일 부재해도 `baseline-debug.xml` 파생). ④ 재생성으로 stale `UnreachableCode:HomeViewModel` 6 entries 정리. → 단일 SoT + 모순 해소 + **분석 scope 무변경**.
+- **대안 비채택(Option A)**: base `baseline.xml` 단일화는 재생성을 non-variant `detektBaseline` 로 바꿔야 하는데, 그 태스크가 generated srcDir 미포함 시 generated 위반 미박제 → `detektDebug` fail 위험(공식 폴백은 성립하나 scope 불일치). §4.1 참조.
+- **검증(Bundle D)**: 변경 후 `./gradlew :app:detektDebug` green **1회 실증**.
+
+### 8.3 [완화] Bundle E — nullable 전환 blast radius
+- **연구(MEASURED)**: `UserProfile.bodyFatPercent`/`muscleMassKg` **읽기 3곳** — `UserProfile.fitnessLevel`(내부), `UserRepositoryImpl.kt:43-44`(`saveProfile`, BigDecimal), `ProfileScreen.kt:113-114`(슬라이더 초기값). 생성부(`OnboardingViewModel.kt:53`·`ProfileViewModel.kt:97`)는 로컬 Float 슬라이더에서 항상 non-null 주입. 누락은 **컴파일러가 전수 검출**(런타임 NPE 아님).
+- **완화책**: ① `fitnessLevel` null→BMI 폴백(§5.E). ② `saveProfile` 는 null 그대로 전송(조작 중단). ③ `ProfileScreen` 슬라이더는 null→기본값 표시(placeholder; 저장 시 사용자가 만진 값만 전송). 슬라이더 편집이 여전히 concrete 값을 강제하므로 **본 번들 가치 = 런타임 동작변경이 아니라 도메인 정합(백엔드·`Goal`·`ProfileHistoryPoint` 와 일치) + null 유입 시 fitnessLevel 정확성 하드닝**.
+- **잔여**: 슬라이더 null 표시 UX 미세결정(placeholder vs 기본값) → Bundle E 구현 시 확정. 온보딩 "선택 입력화"는 범위 밖(제품 UX).
+
+### 8.4 [해소] Bundle A — generator 배치
+- **연구(MEASURED)**: generator 의존 = `Exercise`/`DayPlan`/`ExerciseType` 도메인 모델 + `kotlin.random.Random` + `java.time`. 도메인 모델은 `@Immutable`(compose 어노테이션 = JVM 메타데이터, Android 런타임/계측 불요) 외 의존 없음(`grep -nE 'androidx|android\.|\.data' Exercise.kt` = `@Immutable` 1건뿐).
+- **완화책**: `domain/usecase/WeeklyPlanGenerator.kt` 확정 — 순수 함수라 `testDebugUnitTest`(JVM, Robolectric/계측 불요)로 단위테스트 가능. 배치 리스크 없음.
 
 ## 9. 참고 자료
 
 - Vico 공식 가이드(stable) — CartesianChartModelProducer/runTransaction: `LaunchedEffect` 패턴, runBlocking 없음. (context7 `/websites/patrykandpatrick_vico_guide_stable`)
 - PyJWT 2.13.0 예외 계층: 설치 소스 `backend/.venv/Lib/site-packages/jwt/exceptions.py` — `InvalidTokenError`/`PyJWKClientError`/`PyJWKClientConnectionError`.
 - Hilt deprecation: [Android Developers — Hilt releases](https://developer.android.com/jetpack/androidx/releases/hilt) + [androidx HiltViewModel.kt `@Deprecated`](https://github.com/androidx/androidx/blob/androidx-main/hilt/hilt-navigation-compose/src/main/java/androidx/hilt/navigation/compose/HiltViewModel.kt).
+- detekt baseline precedence(variant→base 폴백): [detekt — Run with Gradle Plugin](https://detekt.dev/docs/gettingstarted/gradle/) + [Finding Baseline](https://detekt.dev/docs/introduction/baseline/).
+- 날짜 wire 포맷 ground truth: `backend/app/schemas/{goal,statistics}.py`(필드 `str`), `backend/openapi.json`(`type: string`), `app/.../data/repository/GoalRepositoryImpl.kt:46,55`(`Instant.parse().getOrNull()`).
 - 메모리: `detekt-baseline-drift`, `thorough-design-work-preference`, `git-workflow`, `galaxy-watch-samsung-health-integration`(골격근량 수동 영구).
