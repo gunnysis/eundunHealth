@@ -11,7 +11,7 @@
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-06-11 | codebase-refactoring | design | approved | refactoring, tech-debt, audit, testing, health |
+| 2026-06-11 | codebase-refactoring | design + plan | approved | refactoring, tech-debt, audit, testing, health |
 
 ## Topic Ledgers (완료 작업 history)
 
