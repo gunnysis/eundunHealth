@@ -29,6 +29,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    private const val TIMEOUT_SECONDS = 15L
+    private const val EXERCISEDB_BASE_URL = "https://oss.exercisedb.dev/api/v1/"
+
     @Provides
     @Singleton
     fun provideTokenHolder(supabaseClient: SupabaseClient): AtomicReference<String?> {
@@ -71,8 +74,8 @@ object NetworkModule {
                 }
             },
         )
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
 
     // Backend Retrofit은 generated API 5개가 공유한다. baseUrl/converter는 한 곳에서 관리.
@@ -111,14 +114,14 @@ object NetworkModule {
     fun provideExerciseDbOkHttpClient(): OkHttpClient = // OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 헤더 불필요한 공개 API.
         OkHttpClient.Builder()
             .addInterceptor(RetryInterceptor())
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
 
     @Provides
     @Singleton
     fun provideExerciseDbApi(@Named("exercisedb") client: OkHttpClient): ExerciseDbApi = Retrofit.Builder()
-        .baseUrl("https://oss.exercisedb.dev/api/v1/")
+        .baseUrl(EXERCISEDB_BASE_URL)
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
