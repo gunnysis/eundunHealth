@@ -22,9 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
@@ -35,18 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.ui.components.EmptyContent
 import com.gunnys.eundunhealth.ui.components.ErrorContent
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.BaseAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
-import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
-import kotlinx.coroutines.runBlocking
+import com.gunnys.eundunhealth.ui.components.LineChart
 import java.time.format.DateTimeFormatter
 
 private val WEEK_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d")
@@ -161,46 +148,7 @@ private fun StreakCard(label: String, value: Int, modifier: Modifier = Modifier)
 
 @Composable
 private fun CompletionRateChart(stats: Statistics, modifier: Modifier = Modifier) {
-    // Vico 모델: y = 완료율(%), x 인덱스 = 주차 순서
-    val producer = remember { CartesianChartModelProducer() }
     val yValues = stats.weeklyRates.map { (it.completionRate * 100).toDouble() }
     val labels = stats.weeklyRates.map { it.weekStart.format(WEEK_FORMATTER) }
-
-    LaunchedEffect(stats) {
-        if (yValues.isNotEmpty()) {
-            producer.runTransaction {
-                lineSeries { series(yValues) }
-            }
-        }
-    }
-    // remember-then-run: 초기 1프레임도 데이터를 채우기 위해 동기 1회 — Vico는 빈 모델에 그리지 않음
-    remember(stats) {
-        if (yValues.isNotEmpty()) {
-            runBlocking { producer.runTransaction { lineSeries { series(yValues) } } }
-        }
-        Unit
-    }
-
-    CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberLineCartesianLayer(
-                lineProvider = LineCartesianLayer.LineProvider.series(
-                    LineCartesianLayer.rememberLine(
-                        interpolator = LineCartesianLayer.Interpolator.catmullRom(),
-                    ),
-                ),
-            ),
-            startAxis = VerticalAxis.rememberStart(
-                tickPosition = BaseAxis.TickPosition.Inside,
-            ),
-            bottomAxis = HorizontalAxis.rememberBottom(
-                valueFormatter = { _, value, _ ->
-                    labels.getOrNull(value.toInt()) ?: ""
-                },
-            ),
-        ),
-        modelProducer = producer,
-        modifier = modifier,
-        scrollState = rememberVicoScrollState(scrollEnabled = false),
-    )
+    LineChart(yValues = yValues, modifier = modifier, xLabels = labels)
 }

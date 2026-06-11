@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.BuildConfig
-import com.gunnys.eundunhealth.ui.components.ProfileSlider
+import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,23 +232,6 @@ private fun AppVersionLabel(modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,
     )
-}
-
-@Composable
-private fun BodyMetricsSliders(
-    height: Float,
-    onHeightChange: (Float) -> Unit,
-    weight: Float,
-    onWeightChange: (Float) -> Unit,
-    muscleMass: Float,
-    onMuscleMassChange: (Float) -> Unit,
-    bodyFat: Float,
-    onBodyFatChange: (Float) -> Unit,
-) {
-    ProfileSlider("키", height, 140f..210f, "cm", 0, onHeightChange)
-    ProfileSlider("몸무게", weight, 40f..150f, "kg", 1, onWeightChange)
-    ProfileSlider("골격근량", muscleMass, 10f..60f, "kg", 1, onMuscleMassChange)
-    ProfileSlider("체지방률", bodyFat, 5f..50f, "%", 1, onBodyFatChange)
 }
 
 @Composable

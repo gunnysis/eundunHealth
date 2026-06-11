@@ -4,13 +4,10 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,11 +39,9 @@ class LoginViewModel @Inject constructor(
     private val _sideEffect = Channel<LoginSideEffect>(Channel.BUFFERED)
     val sideEffect = _sideEffect.receiveAsFlow()
 
-    private val _resendCooldownSec = MutableStateFlow(0)
-    val resendCooldownSec: StateFlow<Int> = _resendCooldownSec.asStateFlow()
-
-    private val _resendError = MutableStateFlow<AppError?>(null)
-    val resendError: StateFlow<AppError?> = _resendError.asStateFlow()
+    private val resend = ResendConfirmationController(authRepo, viewModelScope)
+    val resendCooldownSec: StateFlow<Int> get() = resend.cooldownSec
+    val resendError: StateFlow<AppError?> get() = resend.error
 
     fun setExternalError(error: AppError) {
         _uiState.value = LoginUiState.Failed(error)
@@ -58,9 +53,7 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun clearResendError() {
-        _resendError.value = null
-    }
+    fun clearResendError() = resend.clearError()
 
     fun login(email: String, password: String) = viewModelScope.launch {
         _uiState.value = LoginUiState.Loading
@@ -71,26 +64,10 @@ class LoginViewModel @Inject constructor(
                 _sideEffect.send(LoginSideEffect.LoginSuccess(userId, needsOnboarding = !hasProfile))
             }
             .onFailure { e ->
-                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
-                    ?: e.toAppError().also { it.reportToSentry() }
+                val appErr = e.toAppErrorReporting()
                 _uiState.value = LoginUiState.Failed(appErr)
             }
     }
 
-    fun resendConfirmation(email: String) = viewModelScope.launch {
-        if (_resendCooldownSec.value > 0) return@launch
-        authRepo.resendConfirmation(email)
-            .onSuccess {
-                _resendCooldownSec.value = 60
-                while (_resendCooldownSec.value > 0) {
-                    delay(1_000)
-                    _resendCooldownSec.value = (_resendCooldownSec.value - 1).coerceAtLeast(0)
-                }
-            }
-            .onFailure { e ->
-                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
-                    ?: e.toAppError().also { it.reportToSentry() }
-                _resendError.value = appErr
-            }
-    }
+    fun resendConfirmation(email: String) = resend.resend(email)
 }
