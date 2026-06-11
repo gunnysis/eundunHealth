@@ -15,6 +15,18 @@
 
 ---
 
+### 2026-06-11 — 코드베이스 리팩토링 Bundle E·A·C (도메인 정합·알고리즘 분리·UI 중복)
+
+- **PR**: E [#109](https://github.com/gunnysis/eundunHealth/pull/109)(`bb4a0ed`) · A [#110](https://github.com/gunnysis/eundunHealth/pull/110)(`efdaf56`) · C [#111](https://github.com/gunnysis/eundunHealth/pull/111)(`16909ad`) (모두 merged)
+- **Design/Plan**: `docs/plans/2026-06-11-codebase-refactoring-{design,plan}.md` (5-번들 이니셔티브 공통 페어 — process-infra/backend ledger 와 함께 아카이브)
+- **Why**: Android 감사 — (E) `UserProfile.bodyFat/muscleMass` 가 백엔드 nullable 계약·`Goal`/`ProfileHistoryPoint` 와 불일치(0f fabrication). (A) `WorkoutRepositoryImpl.createWeeklyPlan` 84줄에 핵심 제품 로직(seeded shuffle·슬롯·rest-day)이 I/O 와 묶여 무테스트. (C) Vico 차트 중복 + composition 스레드 `runBlocking`(ANR/jank) + Auth VM resend 로직 byte-identical 복붙 + 에러 idiom 5곳.
+- **What**: (E) body metrics `Float?` + `fitnessLevel` null-safe `(?:0f)` + 0f 마스킹 제거 + 슬라이더 기본값 0%→20%. (A) 순수 `WeeklyPlanGenerator` 추출(line-for-line 동일·JVM 테스트) + 죽은코드 4건(savePlanToServer·deleteOldPlans·inert 404·미사용 default). (C) 공유 `LineChart`(runBlocking 제거·Vico 공식 LaunchedEffect 패턴) + `ResendConfirmationController`(합성) + `toAppErrorReporting()` 확장 + `BodyMetricsSliders` promote.
+- **Decisions**: E 는 **정합·데이터충실성** 리팩토링 — `fitnessLevel` 이 `(bodyFat ?:0f)` coalesce 라 null/0f 동일 → "ADVANCED 오분류" 는 실버그 아님(점검 정정), `ProfileSummaryCard` "—" 은 YAGNI 로 제거(카드는 슬라이더 Float 만 수신). 온보딩 체지방 "선택 입력화" 는 **거부**(#106 수동 단일화 유지). resend 는 합성>상속. A generator 는 도메인 순수(`@Immutable` 만)라 JVM 테스트.
+- **Outcome**: 통합 main 게이트 green(BUILD SUCCESSFUL) + backend 54 passed. 신규 테스트 10: WeeklyPlanGenerator 5·UserProfile 3·ResendController 2. A 알고리즘 회귀 0·C ViewModel 공개 API 보존(Screen 무변경) 검증.
+- **Lessons**: (1) **stacked PR + squash 머지**: Screen 파일이 겹쳐 E(base D)←C(base E) stack. squash 는 자식이 부모 커밋을 잃으므로 **부모 머지 후 자식을 `git rebase --onto origin/main <old-base>` 로 재배치·force-push** 해야 clean(안 하면 자식 diff 가 B/A revert 로 오염). A 는 무겹침이라 독립(main). [[git-workflow]] (2) controller 가 매 번들 diff 직접 검수 + 게이트 독립 재실행(룰 10)으로 subagent 보고 fact-check. (3) `runBlocking` 잔여 grep 시 KDoc 주석("runBlocking 없음")이 false positive — 호출/주석 구분 필요.
+- **Files touched**: (E) domain/model/UserProfile.kt(+Test), data/repository/UserRepositoryImpl.kt, ui/profile/ProfileScreen.kt / (A) domain/usecase/WeeklyPlanGenerator.kt(+Test 신규), domain/repository/WorkoutRepository.kt, data/repository/WorkoutRepositoryImpl.kt, data/local/dao/WeeklyPlanDao.kt / (C) ui/components/{LineChart,BodyMetricsSliders}.kt(신규), ui/auth/{AuthErrorReporting,ResendConfirmationController}.kt(+Test 신규), ui/auth/{Login,Signup,Auth}ViewModel.kt, ui/goal/GoalScreen.kt, ui/statistics/StatisticsScreen.kt, ui/onboarding/OnboardingScreen.kt
+- **Postmortem**: (머지 + 7일 후.)
+
 ### 2026-06-10 — Health Connect Android 14+ 수정: 연동 버튼 무반응 + 읽기 실패 (v0.1.11)
 
 - **PR**: [#104](https://github.com/gunnysis/eundunHealth/pull/104) (merged, squash `7381007`) — design/plan 페어 없음(디버깅 발 기능 수정)

@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-11 — 코드베이스 리팩토링 Bundle B (백엔드 실버그/정리)
+
+- **PR**: [#108](https://github.com/gunnysis/eundunHealth/pull/108) (merged, squash `3b1d2e5`)
+- **Design/Plan**: `docs/plans/2026-06-11-codebase-refactoring-{design,plan}.md` (5-번들 이니셔티브 공통 페어 — process-infra/android ledger 와 함께 아카이브)
+- **Why**: 백엔드 감사에서 실버그 2건 + stale 문서 식별 — (1) `dependencies.py` JWT 검증의 `except (InvalidTokenError, Exception)` 가 JWKS 장애·코드버그까지 401로 은폐 → 운영 장애 디버깅 불가. (2) `goal_repo.upsert` 가 신규 row flush/refresh 안 해 `created_at`(server_default) None → service 가 deprecated `datetime.utcnow()` 로 조작된 클라이언트 시각 반환. (3) `complete` 라우터 docstring 의 "배지 자동 부여"(코드에 없음).
+- **What**: ① except 분리 — `InvalidTokenError`→401 / `PyJWKClientError`→503 / 나머지 전역핸들러(500+Sentry), `payload.get("sub")` None 가드(PyJWT 2.13.0 예외계층 기반). ② `goal_repo.upsert` flush+refresh(badge_repo 패턴), service fabrication 제거. ③ docstring 정정 + 라우터 docstring→OpenAPI description 이므로 `openapi.json` 재싱크 동봉.
+- **Decisions**: 매핑 통일(model_validate)은 **비적용** — GoalResponse/ProfileHistoryEntry 의 date 필드가 `str` 타입이라 `model_validate(orm)` 시 datetime→str 검증 실패(Pydantic v2 미강제) → 수동 `str()` 유지가 정답.
+- **Outcome**: ruff/mypy/bandit clean, pytest **54 passed**(49+신규 5: dependencies 4·goal_repo 1). CI(Lint/Type/Test·compose smoke·security) green. main 독립 머지(병렬).
+- **Lessons**: 점검에서 **CI 차단 결함 사전 포착** — 라우터 docstring 변경이 OpenAPI description 을 바꾸므로 `sync-openapi.sh` + openapi.json 커밋 없으면 `backend.yml` drift 가드가 fail(plan 초안 누락 → 수정). date wire 포맷 위험은 연구로 해소(필드 `str`·Android `Instant.parse`→null·미표시).
+- **Files touched**: backend/app/dependencies.py, backend/app/repositories/goal_repo.py, backend/app/services/goal_service.py, backend/app/routers/weekly_plan.py, backend/openapi.json, backend/tests/test_dependencies.py(신규), backend/tests/test_goal_repo.py(신규)
+- **Postmortem**: (머지 + 7일 후.)
+
 ### 2026-05-28 — Schema drift 복구 + Alembic 마이그레이션 자동화 (INC-2026-05-27-01)
 
 - **PR**: [#47](https://github.com/gunnysis/eundunHealth/pull/47) (shipped, v0.1.4 → v0.1.5 사이 main hotfix)
