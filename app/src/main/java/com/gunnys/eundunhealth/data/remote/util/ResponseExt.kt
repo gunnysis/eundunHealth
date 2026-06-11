@@ -14,3 +14,12 @@ fun <T> Response<T>.bodyOrThrow(): T {
     if (!isSuccessful) throw HttpException(this)
     return body() ?: error("Empty response body for ${raw().request.url}")
 }
+
+/**
+ * "리소스 없으면 404 → null, 그 외 2xx body, 4xx/5xx → HttpException" 의미를 한 곳에 모은다.
+ * nullable 리소스 엔드포인트(GET /profile, GET /weekly-plan)에서 사용.
+ */
+fun <T> Response<T>.bodyOrNull404(): T? {
+    if (code() == 404) return null
+    return bodyOrThrow()
+}
