@@ -71,8 +71,7 @@ class LoginViewModel @Inject constructor(
                 _sideEffect.send(LoginSideEffect.LoginSuccess(userId, needsOnboarding = !hasProfile))
             }
             .onFailure { e ->
-                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
-                    ?: e.toAppError().also { it.reportToSentry() }
+                val appErr = e.toAppErrorReporting()
                 _uiState.value = LoginUiState.Failed(appErr)
             }
     }

@@ -77,8 +77,7 @@ class SignupViewModel @Inject constructor(
                 }
             }
             .onFailure { e ->
-                val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
-                    ?: e.toAppError().also { it.reportToSentry() }
+                val appErr = e.toAppErrorReporting()
                 _uiState.value = SignupUiState.Failed(appErr)
             }
     }

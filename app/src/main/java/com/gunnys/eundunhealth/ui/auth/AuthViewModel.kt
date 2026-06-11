@@ -4,8 +4,6 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -106,8 +104,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun onDeepLinkError(e: Throwable) {
-        val appErr = (e as? com.gunnys.eundunhealth.data.auth.AppErrorException)?.appError
-            ?: e.toAppError().also { it.reportToSentry() }
+        val appErr = e.toAppErrorReporting()
         _deepLinkError.value = appErr
         _sessionState.value = SessionState.Unauthenticated
     }
