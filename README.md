@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — Google Play Store **Internal Testing 트랙 활성**
+- **현재 단계** — Google Play Store **프로덕션 심사 신청 (검토 중, 2026-06-11)** — 직전 Internal Testing
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -376,7 +376,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.13` (versionCode `27`) / Play Store **첫 프로덕션 출시 준비** (직전 Internal Testing). 0.1.13 = 코드베이스 리팩토링(내부 품질 — 알고리즘 테스트화·백엔드 실버그·중복/죽은코드 정리, 사용자 영향 없음)
+**현재 버전** — `0.1.13` (versionCode `27`) / Play Store **프로덕션 심사 신청 — 검토 중** (2026-06-11 게시 신청; 직전 Internal Testing). 0.1.13 = 코드베이스 리팩토링(내부 품질 — 알고리즘 테스트화·백엔드 실버그·중복/죽은코드 정리, 사용자 영향 없음)
 
 ### 마일스톤 진행
 

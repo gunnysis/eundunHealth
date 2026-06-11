@@ -2,7 +2,8 @@
 #custom
 .dev.md
 .key
-app/release
+app/release/
+docs/store/health-connect-permissions.md
 
 # Claude Code 로컬 설정 — settings.local.json + 캐시만 ignore.
 # 프로젝트 공유: settings.json (hooks), commands/ (슬래시 명령), skills/ (스킬) 은 tracked.
