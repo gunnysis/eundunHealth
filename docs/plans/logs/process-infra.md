@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-11 — 코드베이스 리팩토링 Bundle D (위생 정리)
+
+- **PR**: [#107](https://github.com/gunnysis/eundunHealth/pull/107) (merged, squash `707d97f`)
+- **Design/Plan**: `docs/plans/2026-06-11-codebase-refactoring-{design,plan}.md` (5-번들 이니셔티브 공통 페어 — 본 entry + backend/android ledger entry 로 아카이브)
+- **Why**: "프로젝트 리팩토링" 진단(4-영역 병렬 감사) 결과 — 코드베이스는 건강(TODO 0·mypy strict·룰11 위반 0)하나 detekt 이중 baseline footgun(chronic CI 실패 history)·손수 404 처리·상수 미분리·hiltViewModel deprecation(1.3.0) 등 위생 항목 식별.
+- **What**: ① detekt baseline 단일화(Option B) — CI 가 실제 쓰는 variant `baseline-debug.xml` 정식 추적 + vestigial `baseline.xml` 삭제 + gitignore 모순 해소(task wiring·분석 scope 무변경). ② `bodyOrNull404()` 헬퍼로 `UserRepositoryImpl.getProfile` 손수 404 when 사다리 통일. ③ NetworkModule 타임아웃·ExerciseDB URL 상수화. ④ `hiltViewModel` 신 패키지(`androidx.hilt.lifecycle.viewmodel.compose`) 이전 12파일 + `hilt-navigation-compose` 의존성 제거(잔여 0).
+- **Decisions**: detekt = Option B(variant scope=generated srcDir 보존; A는 non-variant 재생성이 generated 미포함→`detektDebug` fail 위험으로 reject, 공식 precedence 폴백은 성립). hiltViewModel deprecation 은 메모리 주장을 공식 소스(androidx HiltViewModel.kt `@Deprecated`)로 fact-check 후 확정.
+- **Outcome**: 게이트 green(spotlessCheck+detektDebug+testDebugUnitTest BUILD SUCCESSFUL) + CI Lint/Detekt/Test/Build·check-index pass. 동작 변화 0. design+plan 페어 동봉 머지.
+- **Lessons**: subagent 측정 1건(baseline "52 entries·byte-identical")이 controller fact-check 에서 오류 판명(실제 67·줄바꿈만 상이·gitignore 모순) → 룰 10 적중. detekt AGP variant 는 base 에서 `baseline-<variant>.xml` 파생, 부재 시 base 폴백.
+- **Files touched**: config/detekt/baseline-debug.xml(+baseline.xml 삭제), .gitignore, app/build.gradle.kts, gradle/libs.versions.toml, data/remote/util/ResponseExt.kt, data/repository/UserRepositoryImpl.kt, di/NetworkModule.kt, 12 ui Screen import
+- **Postmortem**: (머지 + 7일 후. 특이사항 없으면 1줄.)
+
 ### 2026-06-10 — 앱 버전 명시 방식 종합 (version.properties SSoT + 백엔드 독립 버전 + 프론트 표시 + bump 자동화)
 
 - **PR**: [#102](https://github.com/gunnysis/eundunHealth/pull/102) (merged, squash `1b3a06c`)
