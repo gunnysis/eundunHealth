@@ -1309,8 +1309,8 @@ gh pr create --base main --title "refactor(C): UI 중복 제거 — LineChart + 
 - **온보딩 체지방 "선택 입력화"**: 신체 4지표는 #106 에서 의도적으로 **수동 단일화**한 제품 결정 → 슬라이더가 항상 concrete 값을 입력하는 현 흐름을 유지한다. 체지방을 "모름/건너뛰기" 가능하게 만드는 onboarding UX 변경은 **하지 않는다**(추가 null UX·검증 분기 비용 > 효용). Bundle E 의 nullable 정합은 *백엔드 계약 일치 + 0f fabrication 제거* 목적이며 본 거부와 **독립**(E 의 task 불변 — 슬라이더는 여전히 기본값 20%/30% 로 concrete 값 전송). design §2·§8.3 동기화.
 
 ### D. 운영 리스크 — 멀티 번들 실행 (실행자 필독)
-- **Stacked PR 머지 순서**: Android 번들은 파일 의존성 때문에 **stack** 한다 — D(base main) → **E**(base D: E2 가 D2 의 `getProfile` 재작성 위에서 `?:0f` 제거) → **A**(base E) → **C**(base A: GoalScreen/StatisticsScreen/ProfileScreen/OnboardingScreen 이 D·E 와 겹쳐 충돌 회피). **B(백엔드)는 main 독립**(병렬 가능).
-  - **권장 머지 순서: B(언제든) → D → E → A → C.**
+- **PR 구조 (실제 실행 결과, 2026-06-11)**: 5 PR 생성됨 — **독립(base main)**: D([#107](https://github.com/gunnysis/eundunHealth/pull/107)) · B([#108](https://github.com/gunnysis/eundunHealth/pull/108)) · A([#110](https://github.com/gunnysis/eundunHealth/pull/110)). **Stacked**: E([#109](https://github.com/gunnysis/eundunHealth/pull/109), base D — E2 가 D2 의 `getProfile` 위에서 `?:0f` 제거) ← C([#111](https://github.com/gunnysis/eundunHealth/pull/111), base E — Screen 파일이 D·E 와 겹쳐 충돌 회피). A 는 `WorkoutRepositoryImpl`/`WeeklyPlanDao` 만 건드려 D·E 와 무겹침이라 **독립으로 정정**(plan 초안의 base E → 실제 base main).
+  - **권장 머지 순서: B·A·D(언제든, 독립) → 그 후 stacked chain은 반드시 D → E → C 순서.**
   - ⚠️ **베이스 PR 을 `gh pr merge --delete-branch` 로 머지하면 의존 PR 이 retarget 이 아니라 자동 CLOSE** 된다(메모리 교훈, #104→#105 사례). → 순서대로 빠르게 머지(머지 시 GitHub 가 자식 PR base 를 자동 retarget)하거나, base 머지 시 `--delete-branch` **생략**. 사고 시 복구: `git rebase --onto main <old-base-tip> <child>` + 새 PR.
 - **CI 게이트**: 각 PR 의 `android.yml`(spotless/detekt/test)·`backend.yml`(ruff/mypy/bandit/pytest + OpenAPI drift)·`docs-plans-index.yml`(README drift) 통과 필요. 모든 번들 로컬 게이트 green 확인 후 push.
 
