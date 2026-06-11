@@ -30,7 +30,8 @@ detekt {
     buildUponDefaultConfig = true
     parallel = true
     autoCorrect = false
-    // baseline은 점진적 정리용 — 첫 실행 시 ./gradlew :app:detektBaselineDebug로 생성한다.
+    // baseline은 점진적 정리용 — CI·preflight가 실행하는 detektDebug가 baseline-debug.xml(추적)을 소비.
+    // 재생성: ./gradlew :app:detektBaselineDebug. baseline.xml(base)은 미사용이라 제거됨(design 2026-06-11 §8.2).
     baseline = file("$rootDir/config/detekt/baseline.xml")
 }
 
