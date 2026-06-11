@@ -1295,10 +1295,24 @@ gh pr create --base main --title "refactor(C): UI 중복 제거 — LineChart + 
 
 ## 잔여 리스크 / 후속 작업
 
-- **detekt Option B 폴백 미작동**(D1 Step 5): 발생 시 design §8.2 Option A 전환. 가능성 낮음(공식 precedence).
-- **하모니 latent 버그(별도)**: `Goal.createdAt`/`recordedAt` Android 항상 null(design §8.1). 날짜 표시 필요 시 백엔드 `datetime` 타입화 + ISO-8601 송출로 별도 처리.
-- **온보딩 체지방 "선택 입력화"**: 제품 UX 결정(범위 밖). E 는 모델/표시 정합만.
-- **hilt-navigation-compose 의존성**: D4 Step 5 에서 잔여 사용 0 이면 제거, 아니면 유지.
+### A. 실행 중 해소됨 (Bundle D, 검증 완료)
+- **detekt Option B 폴백**: D1 Step 5 에서 `detektDebug` green 실증(OPTION B OK) — `baseline-debug.xml` 부재 시 base 폴백 정상, Option A 불요. baseline 단일화 + gitignore 모순 해소 완료.
+- **hilt-navigation-compose 의존성**: D4 에서 잔여 사용 0 확인 후 `implementation` 제거 완료. 신 아티팩트가 `hiltNavigationCompose` 버전 ref 공유(toml entry 는 무해하게 잔존).
+
+### B. 후속 작업 (별도 PR — 본 이니셔티브 범위 밖)
+- **`Goal.createdAt`/`recordedAt` Android 상시 null (무해 latent 버그)** — design §8.1.
+  - **현상**: 백엔드 date 필드가 `str` 타입(공백구분 `"…00:00:00+00:00"`)이라 Android `GoalRepositoryImpl` 의 `Instant.parse().getOrNull()` 가 항상 null. 현재 어느 화면에도 미표시·차트는 index 축이라 **무해**.
+  - **착수 조건**: 목표 진행/이력 화면에 **날짜 축·라벨**이 필요해질 때만.
+  - **설계(1 PR, S–M)**: ① 백엔드 `GoalResponse.created_at`·`ProfileHistoryEntry.recorded_at` 를 `str`→`datetime` 타입화(Pydantic ISO-8601 `T` 직렬화) ② `bash scripts/sync-openapi.sh` + `openapi.json` 커밋(drift 가드) ③ Android generated 모델이 `OffsetDateTime` 으로 생성되는지 확인 + `GoalRepositoryImpl` 의 `Instant.parse`→`OffsetDateTime.parse` 전환 ④ 차트 x축 날짜 포맷터. **주의**: wire 포맷 변경이므로 구버전 Android 클라이언트 호환(공백→`T`) 영향 검토 필수.
+
+### C. 거부됨 — 작업 안 함 (2026-06-11 결정)
+- **온보딩 체지방 "선택 입력화"**: 신체 4지표는 #106 에서 의도적으로 **수동 단일화**한 제품 결정 → 슬라이더가 항상 concrete 값을 입력하는 현 흐름을 유지한다. 체지방을 "모름/건너뛰기" 가능하게 만드는 onboarding UX 변경은 **하지 않는다**(추가 null UX·검증 분기 비용 > 효용). Bundle E 의 nullable 정합은 *백엔드 계약 일치 + 0f fabrication 제거* 목적이며 본 거부와 **독립**(E 의 task 불변 — 슬라이더는 여전히 기본값 20%/30% 로 concrete 값 전송). design §2·§8.3 동기화.
+
+### D. 운영 리스크 — 멀티 번들 실행 (실행자 필독)
+- **Stacked PR 머지 순서**: Android 번들은 파일 의존성 때문에 **stack** 한다 — D(base main) → **E**(base D: E2 가 D2 의 `getProfile` 재작성 위에서 `?:0f` 제거) → **A**(base E) → **C**(base A: GoalScreen/StatisticsScreen/ProfileScreen/OnboardingScreen 이 D·E 와 겹쳐 충돌 회피). **B(백엔드)는 main 독립**(병렬 가능).
+  - **권장 머지 순서: B(언제든) → D → E → A → C.**
+  - ⚠️ **베이스 PR 을 `gh pr merge --delete-branch` 로 머지하면 의존 PR 이 retarget 이 아니라 자동 CLOSE** 된다(메모리 교훈, #104→#105 사례). → 순서대로 빠르게 머지(머지 시 GitHub 가 자식 PR base 를 자동 retarget)하거나, base 머지 시 `--delete-branch` **생략**. 사고 시 복구: `git rebase --onto main <old-base-tip> <child>` + 새 PR.
+- **CI 게이트**: 각 PR 의 `android.yml`(spotless/detekt/test)·`backend.yml`(ruff/mypy/bandit/pytest + OpenAPI drift)·`docs-plans-index.yml`(README drift) 통과 필요. 모든 번들 로컬 게이트 green 확인 후 push.
 
 ## Postmortem
 

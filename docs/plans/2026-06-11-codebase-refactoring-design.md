@@ -183,7 +183,7 @@ tags: [refactoring, tech-debt, audit, testing, health]
 ### 8.3 [완화] Bundle E — nullable 전환 blast radius
 - **연구(MEASURED)**: `UserProfile.bodyFatPercent`/`muscleMassKg` **읽기 3곳** — `UserProfile.fitnessLevel`(내부), `UserRepositoryImpl.kt:43-44`(`saveProfile`, BigDecimal), `ProfileScreen.kt:113-114`(슬라이더 초기값). 생성부(`OnboardingViewModel.kt:53`·`ProfileViewModel.kt:97`)는 로컬 Float 슬라이더에서 항상 non-null 주입. 누락은 **컴파일러가 전수 검출**(런타임 NPE 아님).
 - **완화책**: ① `fitnessLevel` 은 `(bodyFat ?: 0f)` 유지 — null/0f 결과 동일(동작 불변, "ADVANCED 오분류"는 실제 버그 아님; plan 점검 정정). ② `saveProfile` null-safe(0f fabrication 중단). ③ `ProfileScreen` 슬라이더 초기값 null→중립 기본값 20%/30%. **`ProfileSummaryCard` 는 미변경(YAGNI)** — 카드는 로컬 슬라이더 Float 만 받아 raw nullable 미도달. **본 번들 가치 = 런타임 거의 불변, 도메인 정합(백엔드·`Goal`·`ProfileHistoryPoint` 와 일치) + 0f fabrication 제거 + 슬라이더 기본값 0%→20%**.
-- **잔여**: 거의 없음(컴파일러 강제). 온보딩 "선택 입력화"는 범위 밖(제품 UX). 본 번들은 저위험·저영향 정합 작업이라 우선순위 가장 낮음(D→B→E→A→C 중 E).
+- **잔여**: 거의 없음(컴파일러 강제). 온보딩 "선택 입력화"는 **거부됨(2026-06-11 — 작업 안 함)**: 신체 4지표는 #106 의도적 수동 단일화라 슬라이더 concrete 값 흐름 유지(plan §C 참조). 본 거부와 E 는 독립(E task 불변). 본 번들은 저위험·저영향 정합 작업이라 우선순위 가장 낮음(D→B→E→A→C 중 E).
 
 ### 8.4 [해소] Bundle A — generator 배치
 - **연구(MEASURED)**: generator 의존 = `Exercise`/`DayPlan`/`ExerciseType` 도메인 모델 + `kotlin.random.Random` + `java.time`. 도메인 모델은 `@Immutable`(compose 어노테이션 = JVM 메타데이터, Android 런타임/계측 불요) 외 의존 없음(`grep -nE 'androidx|android\.|\.data' Exercise.kt` = `@Immutable` 1건뿐).
