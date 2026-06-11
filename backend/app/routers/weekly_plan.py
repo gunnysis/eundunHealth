@@ -44,7 +44,7 @@ async def complete(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
-    """특정 요일의 운동 완료 여부를 갱신한다. 모든 항목 완료 시 배지를 자동 부여한다."""
+    """특정 요일의 운동 완료 여부를 갱신한다. 배지는 클라이언트가 POST /badges/{key}로 직접 부여한다."""
     await WeeklyPlanService(db).update_completion(user_id, req)
     return {"status": "ok"}
 
