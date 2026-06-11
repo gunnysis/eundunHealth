@@ -1,7 +1,7 @@
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt import InvalidTokenError, PyJWKClient
+from jwt import InvalidTokenError, PyJWKClient, PyJWKClientError
 
 from app.config import Settings, get_settings
 
@@ -36,6 +36,12 @@ async def get_current_user_id(
             algorithms=["ES256"],
             audience="authenticated",
         )
-        return str(payload["sub"])
-    except (InvalidTokenError, Exception):
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise InvalidTokenError("missing sub claim")
+        return str(user_id)
+    except InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증 실패")
+    except PyJWKClientError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="인증 서버 일시 오류") from e
+    # 그 외(코드버그 등)는 전역 핸들러로 전파 → 500 + Sentry
