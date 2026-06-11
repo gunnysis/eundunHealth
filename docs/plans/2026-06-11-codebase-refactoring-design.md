@@ -28,7 +28,7 @@ tags: [refactoring, tech-debt, audit, testing, health]
 - 메인스레드 블로킹: `grep -rn runBlocking app/src/main` = UI 2곳(`GoalScreen.kt:206`, `StatisticsScreen.kt:179`) + `TokenAuthenticator.kt`(불가피, 정당).
 - detekt baseline: `grep -c '<ID>' baseline.xml` = **67** (baseline-debug.xml 도 67, 내용 동일). `git ls-files` 상 baseline-debug.xml **tracked**(.gitignore:64 와 모순).
 - `hiltViewModel()` 사용: 12 파일(import 12 + 호출부 12, `grep -rln hiltViewModel app/src/main/java` = 12) 전부 무인자.
-- 체지방 nullable 경로: 백엔드 `UserProfileResponse.body_fat_pct: float | None`(`schemas/profile.py:20`) → Android `UserRepositoryImpl.kt:27` `?: 0f` 마스킹 → `UserProfile.fitnessLevel` 분기 입력 오염.
+- 체지방 nullable 경로: 백엔드 `UserProfileResponse.body_fat_pct: float | None`(`schemas/profile.py:20`) → Android `UserRepositoryImpl.kt:27` `?: 0f` 마스킹 → `UserProfile` 가 백엔드 nullable 계약과 불일치(0f fabrication). ※ `fitnessLevel` 은 `(bodyFat ?: 0f)` coalesce 라 결과는 null/0f 동일 — 동작 버그 아님, 정합·데이터충실성 이슈(plan 점검 §8.3 정정).
 
 ## 2. Scope
 
@@ -53,7 +53,7 @@ tags: [refactoring, tech-debt, audit, testing, health]
 | D3 | goal 신규 row `createdAt` 조작 제거 | `goal_repo.upsert` 에 `flush()`+`refresh()` 추가, service fallback 삭제 | `badge_repo.award`(`badge_repo.py:38-39`)가 동일 server_default 문제를 flush+refresh 로 이미 정답 처리. `datetime.utcnow()` 는 3.12 deprecated |
 | D4 | detekt baseline 단일화 | Option B(§4.1·§8.2): 실사용 `baseline-debug.xml` 추적 + vestigial `baseline.xml` 삭제 (wiring·scope 무변경) | CI·preflight 가 실행하는 `detektDebug`(=baseline-debug.xml)와 vestigial `baseline.xml` 이중화 + gitignore 모순 = chronic CI 실패 history(메모리 `detekt-baseline-drift`) |
 | D5 | `hiltViewModel` 신 패키지 이전 | import 12곳 교체 + `hilt-lifecycle-viewmodel-compose` 아티팩트 추가 | androidx hilt 1.3.0(사용 버전): 양쪽 오버로드 `@Deprecated("Moved to package: androidx.hilt.lifecycle.viewmodel.compose")` |
-| D6 | body metrics 도메인 nullable 정합 | `UserProfile.bodyFatPercent/muscleMassKg → Float?` + `fitnessLevel` null→BMI 폴백 | 백엔드 response nullable + `Goal.bodyFatPct: Float?`·`ProfileHistoryPoint` 이미 nullable. `?: 0f` 가 fitnessLevel 을 ADVANCED 로 오분류 |
+| D6 | body metrics 도메인 nullable 정합 | `UserProfile.bodyFatPercent/muscleMassKg → Float?` + 0f fabrication 제거 | 백엔드 response nullable + `Goal.bodyFatPct: Float?`·`ProfileHistoryPoint` 이미 nullable. 동작 불변(fitnessLevel null/0f 동일) — 정합·데이터충실성 목적 |
 | D7 | 알고리즘 테스트 가능화 | 순수 `WeeklyPlanGenerator` 추출(I/O 와 분리) | `createWeeklyPlan` 84줄에 핵심 제품 로직(seeded shuffle·슬롯·rest-day) 묻힘, 단위테스트 0 |
 
 ## 4. 옵션 비교
@@ -103,8 +103,8 @@ tags: [refactoring, tech-debt, audit, testing, health]
   ```
   `payload["sub"]` → `payload.get("sub")` 가드 후 없으면 `InvalidTokenError` 취급.
 - **MODIFY `backend/app/repositories/goal_repo.py:upsert`**: 신규 row `add` 후 `await self.db.flush(); await self.db.refresh(goal)` (badge_repo 패턴). **MODIFY `goal_service.py:25-37`**: lazy `from datetime import datetime` + `datetime.utcnow()` fallback 삭제, `goal.created_at` 직접 사용.
-- **MODIFY `backend/app/routers/weekly_plan.py:47`**: stale docstring("배지 자동 부여") 정정 — 실제 코드에 없음(클라이언트 주도 `POST /badges/{key}`).
-- **MODIFY 매핑 통일**: `goal_service`·`profile_service` 의 field-by-field DTO 생성을 `model_validate` 로 — **단 date 필드(`created_at`/`recorded_at`)는 현 `str(...)` 산출을 명시 보존**(연구 결과 §8.1: 필드가 `str` 타입이고 Android 미파싱·미표시라 wire 포맷 무변경이 안전·충분). non-date 필드만 `model_validate` 로 단순화. 별도 wire 검증 불요.
+- **MODIFY `backend/app/routers/weekly_plan.py:47`**: stale **라우터 docstring**("배지 자동 부여") 정정 — 실제 코드에 없음(클라이언트 주도 `POST /badges/{key}`). 라우터 docstring → OpenAPI `description` 이므로 **`bash scripts/sync-openapi.sh` + `backend/openapi.json` 커밋 동봉 필수**(drift 가드).
+- **매핑 통일 — 비적용(점검 확정)**: `goal_service`/`profile_service` 의 응답 DTO(GoalResponse·ProfileHistoryEntry)는 모두 date 필드(`created_at`/`recorded_at`)를 포함하는데 이 필드가 스키마상 `str` 타입이라 `model_validate(orm)` 시 datetime 속성→`str` 검증이 실패(Pydantic v2 미강제). 순수 non-date 응답이 없어 부분 적용 실익도 없음 → 수동 `str(...)` 생성 유지가 정답(§8.1). B 실질 변경 = JWT·goal·docstring 3건.
 
 ### 5.C Bundle C — UI 중복 제거
 
@@ -134,9 +134,10 @@ tags: [refactoring, tech-debt, audit, testing, health]
       else -> ADVANCED
   }
   ```
-  즉 체지방 null 이면 **BMI 단독**으로 판정(null 을 0 으로 보지만 `>20`/`>30` 조건이라 사실상 BMI 폴백 — "ADVANCED 강제 분류" 제거가 아니라 BMI 기준으로 정상 평가). null-safe 명시.
-- **MODIFY `data/repository/UserRepositoryImpl.kt:27-28`**: `?: 0f` 제거(`dto.bodyFatPct?.toFloat()` 그대로). `saveProfile` 는 null 을 그대로 전송(조작 중단).
-- **MODIFY `ui/components/ProfileSummaryCard.kt`** + 호출부: `bodyFat/muscleMass: Float?` → null 시 "—" 표시.
+  체지방 null 이면 `(null ?: 0f)` → 0f 라 BMI 단독 판정. **이는 기존 0f 마스킹과 결과 동일** — 동작 변화가 아니라 null-safe 타입 명시(점검 정정 §8.3).
+- **MODIFY `data/repository/UserRepositoryImpl.kt:27-28`**: `?: 0f` 제거(`dto.bodyFatPct?.toFloat()` 그대로). `saveProfile` 는 null-safe(`?.let { BigDecimal.valueOf(...) }`) — 0f fabrication 중단.
+- **MODIFY `ui/profile/ProfileScreen.kt:113-114`**: 슬라이더 초기값 `?: 20f`/`?: 30f`(미입력 사용자 중립 기본값).
+- **`ProfileSummaryCard` 미변경(YAGNI, §8.3)** — 카드는 로컬 슬라이더 Float 만 받아 raw nullable 미도달, "—" 분기 도달 불가.
 - **검증**: `UserProfile.bodyFatPercent`/`muscleMassKg` **읽기 3곳**(MEASURED §8.3 — `fitnessLevel`·`UserRepositoryImpl.kt:43-44`·`ProfileScreen.kt:113-114`) 컴파일 확인. 생성부(`OnboardingViewModel`·`ProfileViewModel`)는 슬라이더 Float 주입이라 무영향. (GoalScreen 의 `it.bodyFatPct` 는 별개 모델 `ProfileHistoryPoint` — 본 변경 비대상.)
 
 ## 6. 검증 계획
@@ -181,8 +182,8 @@ tags: [refactoring, tech-debt, audit, testing, health]
 
 ### 8.3 [완화] Bundle E — nullable 전환 blast radius
 - **연구(MEASURED)**: `UserProfile.bodyFatPercent`/`muscleMassKg` **읽기 3곳** — `UserProfile.fitnessLevel`(내부), `UserRepositoryImpl.kt:43-44`(`saveProfile`, BigDecimal), `ProfileScreen.kt:113-114`(슬라이더 초기값). 생성부(`OnboardingViewModel.kt:53`·`ProfileViewModel.kt:97`)는 로컬 Float 슬라이더에서 항상 non-null 주입. 누락은 **컴파일러가 전수 검출**(런타임 NPE 아님).
-- **완화책**: ① `fitnessLevel` null→BMI 폴백(§5.E). ② `saveProfile` 는 null 그대로 전송(조작 중단). ③ `ProfileScreen` 슬라이더는 null→기본값 표시(placeholder; 저장 시 사용자가 만진 값만 전송). 슬라이더 편집이 여전히 concrete 값을 강제하므로 **본 번들 가치 = 런타임 동작변경이 아니라 도메인 정합(백엔드·`Goal`·`ProfileHistoryPoint` 와 일치) + null 유입 시 fitnessLevel 정확성 하드닝**.
-- **잔여**: 슬라이더 null 표시 UX 미세결정(placeholder vs 기본값) → Bundle E 구현 시 확정. 온보딩 "선택 입력화"는 범위 밖(제품 UX).
+- **완화책**: ① `fitnessLevel` 은 `(bodyFat ?: 0f)` 유지 — null/0f 결과 동일(동작 불변, "ADVANCED 오분류"는 실제 버그 아님; plan 점검 정정). ② `saveProfile` null-safe(0f fabrication 중단). ③ `ProfileScreen` 슬라이더 초기값 null→중립 기본값 20%/30%. **`ProfileSummaryCard` 는 미변경(YAGNI)** — 카드는 로컬 슬라이더 Float 만 받아 raw nullable 미도달. **본 번들 가치 = 런타임 거의 불변, 도메인 정합(백엔드·`Goal`·`ProfileHistoryPoint` 와 일치) + 0f fabrication 제거 + 슬라이더 기본값 0%→20%**.
+- **잔여**: 거의 없음(컴파일러 강제). 온보딩 "선택 입력화"는 범위 밖(제품 UX). 본 번들은 저위험·저영향 정합 작업이라 우선순위 가장 낮음(D→B→E→A→C 중 E).
 
 ### 8.4 [해소] Bundle A — generator 배치
 - **연구(MEASURED)**: generator 의존 = `Exercise`/`DayPlan`/`ExerciseType` 도메인 모델 + `kotlin.random.Random` + `java.time`. 도메인 모델은 `@Immutable`(compose 어노테이션 = JVM 메타데이터, Android 런타임/계측 불요) 외 의존 없음(`grep -nE 'androidx|android\.|\.data' Exercise.kt` = `@Immutable` 1건뿐).

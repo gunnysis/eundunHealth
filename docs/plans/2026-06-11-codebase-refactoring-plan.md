@@ -302,6 +302,10 @@ def _creds() -> HTTPAuthorizationCredentials:
     return HTTPAuthorizationCredentials(scheme="Bearer", credentials="dummy.jwt.token")
 
 
+def _raise(exc: Exception):
+    raise exc
+
+
 class _FakeJwk:
     def __init__(self, exc: Exception | None = None):
         self._exc = exc
@@ -315,7 +319,7 @@ class _FakeJwk:
 @pytest.mark.asyncio
 async def test_invalid_token_returns_401(monkeypatch):
     monkeypatch.setattr(dependencies, "_get_jwk_client", lambda url: _FakeJwk())
-    monkeypatch.setattr(dependencies.jwt, "decode", lambda *a, **k: (_ for _ in ()).throw(InvalidTokenError()))
+    monkeypatch.setattr(dependencies.jwt, "decode", lambda *a, **k: _raise(InvalidTokenError()))
     with pytest.raises(HTTPException) as ei:
         await dependencies.get_current_user_id(_creds(), _settings())
     assert ei.value.status_code == 401
@@ -477,27 +481,32 @@ git add backend/app/repositories/goal_repo.py backend/app/services/goal_service.
 git commit -m "fix(goal): upsert flush+refresh로 createdAt 실제 DB값 사용 (조작된 utcnow fallback 제거)"
 ```
 
-### Task B3: stale docstring + 매핑 통일(non-date)
+### Task B3: stale 라우터 docstring 정정 + OpenAPI 재싱크
 
-**Files:** Modify `backend/app/routers/weekly_plan.py:47`, `backend/app/services/profile_service.py`, `backend/app/services/goal_service.py`
+> **주의(점검 발견)**: `complete` 는 **라우터 함수 docstring** → FastAPI 가 OpenAPI `description` 으로 방출. 변경 시 `backend/openapi.json` 재싱크 + 커밋 필수 — 안 하면 `backend.yml` 의 OpenAPI drift 가드가 CI 를 fast-fail 시킴(CLAUDE.md: 라우터 변경 시 같은 PR 에 openapi.json 동봉). 매핑 통일은 design §8.1 결론대로 **비적용**(추가 확인: GoalResponse/ProfileHistoryEntry 의 date 필드가 `str` 타입이라 `model_validate(orm)` 시 datetime 속성→`str` 검증 실패 — Pydantic v2 는 datetime→str 자동 강제 안 함 → 수동 `str(...)` 유지가 정답). B 실질 변경 = B1·B2·B3.
 
-- [ ] **Step 1: stale docstring 정정**
+**Files:** Modify `backend/app/routers/weekly_plan.py:47`, `backend/openapi.json`
 
-`weekly_plan.py` 의 `complete` 라우터 docstring 에서 "모든 항목 완료 시 배지를 자동 부여한다" 류 문장을 실제 동작으로 교체:
+- [ ] **Step 1: docstring 정정**
+
+`weekly_plan.py:47`(PATCH `/weekly-plan/complete`, `complete` 함수)의 docstring 교체:
 ```python
-    """주간 plan 의 특정 일자 완료 상태를 토글한다. (배지는 클라이언트가 POST /badges/{key}로 부여)"""
+    """특정 요일의 운동 완료 여부를 갱신한다. (배지는 클라이언트가 POST /badges/{key}로 부여)"""
 ```
+(기존: `"""특정 요일의 운동 완료 여부를 갱신한다. 모든 항목 완료 시 배지를 자동 부여한다."""` — "자동 부여" 는 코드에 없음. `update_completion` 은 완료 플래그만 토글.)
 
-- [ ] **Step 2: 매핑 통일 — non-date 필드만 `model_validate`**
-
-`profile_service.get_history` 의 `ProfileHistoryEntry(...)` 수동 생성(§design 5.B): date(`recorded_at`)는 `str(...)` 보존이 필요하므로 **현 수동 생성을 유지**(design §8.1 — model_validate 전환은 date 필드 때문에 이득 없음). 대신 `goal_service.list_goals`/`upsert_goal` 의 `created_at=str(...)` 도 동일하게 유지. **→ 본 task 는 docstring 만 변경**(매핑 통일은 date 필드 결합으로 순효과 0 이라 design §8.1 결론대로 비적용). 
-
-> 결정 기록: 연구(§8.1) 결과 date 필드가 `str` 타입이라 `model_validate` 전환의 실익이 없고 수동 생성이 명시적이라 가독성도 충분 → 매핑 통일은 **비적용**. B 의 실질 변경은 B1(JWT)·B2(goal)·B3(docstring).
+- [ ] **Step 2: OpenAPI 재싱크 + drift 확인** (bash)
+```bash
+cd /c/programming/apps/eundunHealth
+bash scripts/sync-openapi.sh
+git diff --stat backend/openapi.json
+```
+Expected: `backend/openapi.json` 변경 = `updateDayCompletion` operation 의 `description` 1곳만.
 
 - [ ] **Step 3: Commit** (bash)
 ```bash
-git add backend/app/routers/weekly_plan.py
-git commit -m "docs(weekly-plan): complete 라우터 docstring 정정 (배지 자동부여 아님)"
+git add backend/app/routers/weekly_plan.py backend/openapi.json
+git commit -m "docs(weekly-plan): complete docstring 정정(배지 자동부여 아님) + openapi 재싱크"
 ```
 
 ### Task B4: 전체 게이트 + push + PR
@@ -510,23 +519,23 @@ cd backend
 .venv/Scripts/bandit -r app -ll
 .venv/Scripts/pytest tests/ -v --cov=app
 ```
-Expected: 전부 green, pytest 신규 8건 포함 PASS.
+Expected: 전부 green, pytest 신규 5건(B1 dependencies 4 + B2 goal_repo 1) 포함 PASS.
 
 - [ ] **Step 2: push + PR** (bash)
 ```bash
 cd /c/programming/apps/eundunHealth
 git push -u origin refactor/b-backend-fixes
 gh pr create --base main --title "fix(B): 백엔드 실버그 — JWT except 좁히기 + goal createdAt flush/refresh + docstring" \
-  --body "design Bundle B. 실버그 2건(401 은폐·조작 timestamp) + stale docstring. 매핑통일은 §8.1 연구로 비적용. pytest 신규 8건."
+  --body "design Bundle B. 실버그 2건(401 은폐·조작 timestamp) + stale docstring(+openapi 재싱크). 매핑통일은 §8.1 연구로 비적용. pytest 신규 5건."
 ```
 
 - [ ] **Step 3: 머지 후 ledger** — `docs/plans/logs/backend.md` Recent 에 entry.
 
 ---
 
-## Phase 3 — Bundle E: 도메인 정확성 (body metrics nullable, android)
+## Phase 3 — Bundle E: 도메인 정합 (body metrics nullable, android)
 
-브랜치: `refactor/e-body-metrics-nullable`. 동작변경 포함(null 처리).
+브랜치: `refactor/e-body-metrics-nullable`. **도메인 정합 리팩토링 — 런타임 거의 불변**(점검 정정): `fitnessLevel` 은 `(bodyFatPercent ?: 0f)` 로 coalesce 하므로 null/0f 결과가 **동일**(BMI-only 폴백은 기존 0f 마스킹도 이미 달성 — "ADVANCED 오분류" 는 실제 버그 아님). 가치 = ① `UserProfile` 을 백엔드·`Goal`·`ProfileHistoryPoint` 의 nullable 계약과 일치 ② 데이터 조작(0f fabrication) 제거 ③ 미입력 사용자 수정화면 슬라이더 기본값 0%→20%(유일한 가시 효과). E1 의 테스트는 null→BMI 기준 동작을 회귀 고정하는 용도.
 
 ### Task E0: 브랜치 + blast radius 재확인
 
@@ -617,67 +626,47 @@ git add app/src/main/java/com/gunnys/eundunhealth/domain/model/UserProfile.kt ap
 git commit -m "refactor(domain): UserProfile body metrics nullable + fitnessLevel null-safe (BMI 폴백)"
 ```
 
-### Task E2: UserRepositoryImpl + ProfileSummaryCard + 슬라이더 초기값
+### Task E2: UserRepositoryImpl 마스킹 제거 + ProfileScreen 슬라이더 기본값
 
 **Files:**
-- Modify: `UserRepositoryImpl.kt` (getProfile `?: 0f` 제거 + saveProfile null 전송)
-- Modify: `ProfileSummaryCard.kt` (nullable + "—")
-- Modify: `ProfileScreen.kt:113-114` 슬라이더 초기값 null 처리
+- Modify: `UserRepositoryImpl.kt` (getProfile `?: 0f` 제거 + saveProfile null-safe)
+- Modify: `ProfileScreen.kt:113-114` (슬라이더 초기값 null→기본값)
 
-- [ ] **Step 1: UserRepositoryImpl — 마스킹 제거 + null 전송**
+> **점검 정정 — `ProfileSummaryCard` 는 변경 안 함(YAGNI)**: 호출부(Onboarding/Profile)가 카드에 넘기는 건 **로컬 슬라이더 Float**(Step 2 기본값으로 항상 concrete)이지 raw nullable profile 값이 아님 → "—" 분기는 도달 불가. 카드는 `Float` 유지.
 
-getProfile(D2 에서 bodyOrNull404 적용된 버전)의 `?: 0f` 2줄을 제거:
+- [ ] **Step 1: UserRepositoryImpl — 마스킹 제거 + null-safe 전송**
+
+getProfile(D2 의 bodyOrNull404 버전)의 `?: 0f` 2줄 제거:
 ```kotlin
             bodyFatPercent = dto.bodyFatPct?.toFloat(),
             muscleMassKg = dto.muscleMassKg?.toFloat(),
 ```
-saveProfile(line 43-44)의 BigDecimal 변환을 null-safe 로:
+saveProfile(line 43-44)을 null-safe 로(generated `UserProfileRequest.bodyFatPct` = `BigDecimal?` — openapi `anyOf[number,null]` 확인됨):
 ```kotlin
                 bodyFatPct = profile.bodyFatPercent?.let { BigDecimal.valueOf(it.toDouble()) },
                 muscleMassKg = profile.muscleMassKg?.let { BigDecimal.valueOf(it.toDouble()) },
 ```
-(generated `UserProfileRequest` 의 bodyFatPct/muscleMassKg 는 nullable `BigDecimal?` — openapi `= None`. 컴파일 확인.)
 
-- [ ] **Step 2: ProfileSummaryCard nullable + "—"**
+- [ ] **Step 2: ProfileScreen 슬라이더 초기값 null→기본값**
 
-`ProfileSummaryCard.kt` 시그니처/표시를:
-```kotlin
-fun ProfileSummaryCard(
-    height: Float,
-    weight: Float,
-    bodyFat: Float?,
-    muscleMass: Float?,
-    title: String = "입력 요약",
-    modifier: Modifier = Modifier,
-) {
-    ...
-            val bf = bodyFat?.let { "%.1f".format(it) + "%" } ?: "—"
-            val mm = muscleMass?.let { "%.1f".format(it) + "kg" } ?: "—"
-            Text("체지방: $bf | 골격근량: $mm")
-```
-(Preview 인자도 nullable 허용 — 기존 `bodyFat = 18.2f` 그대로 OK.)
-
-- [ ] **Step 3: ProfileScreen 슬라이더 초기값 null→기본값**
-
-`ProfileScreen.kt:113-114` 의 `initialBodyFat`/`initialMuscleMass` 가 이제 `Float?` 이므로, `ProfileEditContent` 진입 시 기본값 부여(슬라이더는 concrete Float 필요):
+`ProfileScreen.kt:113-114` 의 `initialBodyFat`/`initialMuscleMass`(이제 `Float?`)를 슬라이더용 concrete 기본값으로:
 ```kotlin
                     initialBodyFat = state.profile.bodyFatPercent ?: 20f,
                     initialMuscleMass = state.profile.muscleMassKg ?: 30f,
 ```
-(온보딩 기본값과 일치 — `20f`/`30f`. 미입력 사용자가 수정 화면 진입 시 슬라이더 기본 위치. ProfileSummaryCard 의 "—" 표시는 이 화면이 아닌 요약 카드용이며, 편집 화면은 슬라이더 특성상 concrete 값. design §8.3 의 "슬라이더는 기본값 표시" 결정.)
+(온보딩 기본값과 일치 — `20f`/`30f`. **이 변경의 유일한 사용자 가시 효과** = 미입력 사용자가 수정화면 진입 시 슬라이더가 0%가 아닌 중립 기본값 20%/30%로 표시.)
 
-- [ ] **Step 4: 컴파일 + 전체 테스트** (bash)
+- [ ] **Step 3: 컴파일 + 전체 테스트** (bash)
 ```bash
 ./gradlew :app:spotlessApply :app:assembleDebug :app:testDebugUnitTest --quiet && echo OK
 ```
 Expected: `OK`. 컴파일러가 누락 호출부 전수 검출(없으면 통과).
 
-- [ ] **Step 5: Commit** (bash)
+- [ ] **Step 4: Commit** (bash)
 ```bash
 git add app/src/main/java/com/gunnys/eundunhealth/data/repository/UserRepositoryImpl.kt \
-        app/src/main/java/com/gunnys/eundunhealth/ui/components/ProfileSummaryCard.kt \
         app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileScreen.kt
-git commit -m "refactor(profile): body metrics 미입력을 0f로 마스킹하지 않음 — null 보존 + 요약 '—' 표시"
+git commit -m "refactor(profile): body metrics 0f 마스킹 제거 — null 보존 + 수정화면 슬라이더 중립 기본값"
 ```
 
 ### Task E3: 게이트 + push + PR
@@ -690,8 +679,8 @@ git commit -m "refactor(profile): body metrics 미입력을 0f로 마스킹하�
 - [ ] **Step 2: push + PR** (bash)
 ```bash
 git push -u origin refactor/e-body-metrics-nullable
-gh pr create --base main --title "refactor(E): body metrics 도메인 nullable 정합 — 미입력을 0%로 오인 방지" \
-  --body "design Bundle E. UserProfile bodyFat/muscleMass → Float?(백엔드·Goal·History 와 일치), fitnessLevel null→BMI 폴백, 요약 '—'. 읽기 3곳(MEASURED §8.3)."
+gh pr create --base main --title "refactor(E): UserProfile body metrics nullable 정합 (0f fabrication 제거)" \
+  --body "design Bundle E. UserProfile bodyFat/muscleMass → Float?(백엔드·Goal·History 와 일치), 0f 마스킹 제거, 수정화면 슬라이더 기본값 0%→20%. 런타임 거의 불변(fitnessLevel null/0f 동일). 외부 읽기 2곳 + fitnessLevel 내부(MEASURED §8.3)."
 ```
 
 - [ ] **Step 3: 머지 후 ledger** — `docs/plans/logs/android.md` Recent.
@@ -886,7 +875,7 @@ git commit -m "refactor(workout): 주간계획 생성 알고리즘을 순수 Wee
 
 - [ ] **Step 1: savePlanToServer 제거**
 
-`WorkoutRepository.kt:11` 의 `suspend fun savePlanToServer(plan: WeeklyPlan): Result<Unit>` 라인 삭제 + `WorkoutRepositoryImpl.kt:148-154` 의 `override ... savePlanToServer { ... }` 블록 삭제. (호출 0 — MEASURED.) `HttpException` import 가 savePlanToServer 에서만 쓰였으면 spotless 가 정리.
+`WorkoutRepository.kt:11` 의 `suspend fun savePlanToServer(plan: WeeklyPlan): Result<Unit>` 라인 삭제 + `WorkoutRepositoryImpl.kt:148-154` 의 `override ... savePlanToServer { ... }` 블록 삭제. (호출 0 — MEASURED.) `HttpException` import 는 `updateDayCompletion`(line 165)에서 계속 사용되므로 **유지**(spotless 무관).
 
 - [ ] **Step 2: getStatistics 미사용 default 제거**
 
@@ -1003,6 +992,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -1016,20 +1006,23 @@ class ResendConfirmationControllerTest {
         val c = ResendConfirmationController(repo, this)
 
         c.resend("a@b.com")
-        advanceTimeBy(1)
+        runCurrent() // 첫 delay 전까지 실행 → 쿨다운 60 설정
         assertEquals(60, c.cooldownSec.value)
-        advanceTimeBy(2_000)
+        advanceTimeBy(2_500) // 1s·2s delay 2회 발화(3s 전) → 58
         assertEquals(58, c.cooldownSec.value)
     }
 
     @Test
     fun `쿨다운 중이면 재요청 무시`() = runTest {
-        val repo = mockk<AuthRepository>(relaxed = true)
+        val repo = mockk<AuthRepository>()
         coEvery { repo.resendConfirmation(any()) } returns Result.success(Unit)
         val c = ResendConfirmationController(repo, this)
+
         c.resend("a@b.com")
-        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(60, c.cooldownSec.value)
         c.resend("a@b.com") // cooldown>0 → no-op
+        runCurrent()
         assertEquals(60, c.cooldownSec.value)
     }
 }
