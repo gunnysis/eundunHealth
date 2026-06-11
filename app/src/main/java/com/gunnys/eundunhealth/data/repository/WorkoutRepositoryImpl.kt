@@ -68,7 +68,6 @@ class WorkoutRepositoryImpl @Inject constructor(
         val excludeIds: Set<String> = runCatching {
             val prevResp = api.getPreviousWeeklyPlan(weekStart.toString())
             // 404나 null body → 빈 집합
-            if (prevResp.code() == 404) emptySet<String>()
             val prev = prevResp.body()
             prev?.dayPlans?.let { parseDayPlans(it) }
                 ?.flatMap { it.exercises }
@@ -121,14 +120,6 @@ class WorkoutRepositoryImpl @Inject constructor(
             WeeklyPlanEntity(savedPlan.id, savedPlan.userId, weekStart.toString(), dayPlansJson),
         )
         savedPlan
-    }
-
-    override suspend fun savePlanToServer(plan: WeeklyPlan): Result<Unit> = runCatching {
-        val dayPlansJson = gson.toJson(plan.days.map { DayPlanJson(it) })
-        val response = api.createWeeklyPlan(
-            WeeklyPlanRequest(weekStart = plan.weekStart.toString(), dayPlans = dayPlansJson),
-        )
-        if (!response.isSuccessful) throw HttpException(response)
     }
 
     override suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit> = runCatching {
