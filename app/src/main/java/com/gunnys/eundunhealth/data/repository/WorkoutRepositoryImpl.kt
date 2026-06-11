@@ -21,11 +21,11 @@ import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.WeeklyRate
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
+import com.gunnys.eundunhealth.domain.usecase.WeeklyPlanGenerator
 import retrofit2.HttpException
 import java.time.DayOfWeek
 import java.time.LocalDate
 import javax.inject.Inject
-import kotlin.random.Random
 
 class WorkoutRepositoryImpl @Inject constructor(
     private val api: WeeklyPlanApi,
@@ -68,7 +68,6 @@ class WorkoutRepositoryImpl @Inject constructor(
         val excludeIds: Set<String> = runCatching {
             val prevResp = api.getPreviousWeeklyPlan(weekStart.toString())
             // 404나 null body → 빈 집합
-            if (prevResp.code() == 404) emptySet<String>()
             val prev = prevResp.body()
             prev?.dayPlans?.let { parseDayPlans(it) }
                 ?.flatMap { it.exercises }
@@ -96,37 +95,15 @@ class WorkoutRepositoryImpl @Inject constructor(
             (fresh + seen).map { it.toDomain(1, 30, ExerciseType.CARDIO) }
         }.getOrDefault(emptyList())
 
-        // 3) 요일별 배치 — 결정론적 셔플(weekStart seed)로 같은 주는 같은 결과
-        val seed = Random(weekStart.toEpochDay())
-        val pushShuffled = push.shuffled(seed)
-        val pullShuffled = pull.shuffled(seed)
-        val legsShuffled = legs.shuffled(seed)
-        val cardioShuffled = cardioPool.shuffled(seed)
-        val tueCardio = cardioShuffled.take(2)
-        val thuCardio = cardioShuffled.drop(2).take(2)
-        val satCardio = cardioShuffled.drop(4).take(1)
-
-        val restDayOfWeek = DayOfWeek.of(profile.restDay.coerceIn(1, 7))
-        val mixedStrength = (pushShuffled + pullShuffled + legsShuffled).shuffled(seed).take(2)
-        val workoutSlots: List<List<Exercise>> = listOf(
-            pushShuffled.take(4),
-            tueCardio,
-            pullShuffled.take(4),
-            thuCardio,
-            legsShuffled.take(4),
-            mixedStrength + satCardio,
+        // 3) 요일별 배치 — 순수 generator 위임(결정론적, 단위테스트는 WeeklyPlanGeneratorTest)
+        val days = WeeklyPlanGenerator.generate(
+            weekStart = weekStart,
+            restDay = profile.restDay,
+            push = push,
+            pull = pull,
+            legs = legs,
+            cardio = cardioPool,
         )
-        var slotIdx = 0
-        val days = (0L..6L).map { offset ->
-            val date = weekStart.plusDays(offset)
-            if (date.dayOfWeek == restDayOfWeek) {
-                DayPlan(date, emptyList(), isRestDay = true, isCompleted = false)
-            } else {
-                val slot = workoutSlots.getOrElse(slotIdx) { emptyList() }
-                slotIdx++
-                DayPlan(date, slot, isRestDay = false, isCompleted = false)
-            }
-        }
 
         val dayPlansJson = gson.toJson(days.map { DayPlanJson(it) })
         val response = api.createWeeklyPlan(
@@ -143,14 +120,6 @@ class WorkoutRepositoryImpl @Inject constructor(
             WeeklyPlanEntity(savedPlan.id, savedPlan.userId, weekStart.toString(), dayPlansJson),
         )
         savedPlan
-    }
-
-    override suspend fun savePlanToServer(plan: WeeklyPlan): Result<Unit> = runCatching {
-        val dayPlansJson = gson.toJson(plan.days.map { DayPlanJson(it) })
-        val response = api.createWeeklyPlan(
-            WeeklyPlanRequest(weekStart = plan.weekStart.toString(), dayPlans = dayPlansJson),
-        )
-        if (!response.isSuccessful) throw HttpException(response)
     }
 
     override suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit> = runCatching {
