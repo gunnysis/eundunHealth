@@ -954,7 +954,7 @@
     },
     "/weekly-plan/complete": {
       "patch": {
-        "description": "특정 요일의 운동 완료 여부를 갱신한다. 모든 항목 완료 시 배지를 자동 부여한다.",
+        "description": "특정 요일의 운동 완료 여부를 갱신한다. 배지는 클라이언트가 POST /badges/{key}로 직접 부여한다.",
         "operationId": "updateDayCompletion",
         "requestBody": {
           "content": {
