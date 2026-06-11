@@ -19,8 +19,8 @@ class UserRepositoryImpl @Inject constructor(
             userId = dto.userId,
             heightCm = dto.heightCm.toFloat(),
             weightKg = dto.weightKg.toFloat(),
-            bodyFatPercent = dto.bodyFatPct?.toFloat() ?: 0f,
-            muscleMassKg = dto.muscleMassKg?.toFloat() ?: 0f,
+            bodyFatPercent = dto.bodyFatPct?.toFloat(),
+            muscleMassKg = dto.muscleMassKg?.toFloat(),
             restDay = dto.restDay ?: 7,
         )
     }
@@ -30,8 +30,8 @@ class UserRepositoryImpl @Inject constructor(
             UserProfileRequest(
                 heightCm = BigDecimal.valueOf(profile.heightCm.toDouble()),
                 weightKg = BigDecimal.valueOf(profile.weightKg.toDouble()),
-                bodyFatPct = BigDecimal.valueOf(profile.bodyFatPercent.toDouble()),
-                muscleMassKg = BigDecimal.valueOf(profile.muscleMassKg.toDouble()),
+                bodyFatPct = profile.bodyFatPercent?.let { BigDecimal.valueOf(it.toDouble()) },
+                muscleMassKg = profile.muscleMassKg?.let { BigDecimal.valueOf(it.toDouble()) },
                 restDay = profile.restDay,
             ),
         )

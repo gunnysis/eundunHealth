@@ -110,8 +110,8 @@ fun ProfileScreen(
                 ProfileEditContent(
                     initialHeight = state.profile.heightCm,
                     initialWeight = state.profile.weightKg,
-                    initialBodyFat = state.profile.bodyFatPercent,
-                    initialMuscleMass = state.profile.muscleMassKg,
+                    initialBodyFat = state.profile.bodyFatPercent ?: 20f,
+                    initialMuscleMass = state.profile.muscleMassKg ?: 30f,
                     initialRestDay = state.profile.restDay,
                     isSaving = state.isSaving,
                     isDeleting = state.isDeleting,
