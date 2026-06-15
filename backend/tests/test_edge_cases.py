@@ -3,6 +3,45 @@ import pytest
 
 from tests.conftest import set_test_user
 
+# === 입력 검증: 잘못된 클라이언트 입력은 500 이 아니라 400 ===
+
+@pytest.mark.asyncio
+async def test_complete_day_offset_beyond_stored_days_returns_400(client):
+    """저장된 day_plans 길이를 넘는 day 를 PATCH → IndexError(500) 아닌 400."""
+    await client.post(
+        "/weekly-plan",
+        json={
+            "weekStart": "2026-05-25",
+            "dayPlans": '[{"isRestDay": false, "isCompleted": false, "exercises": []}]',
+        },
+    )
+    resp = await client.patch(
+        "/weekly-plan/complete",
+        json={"weekStart": "2026-05-25", "date": "2026-05-29", "completed": True},
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_complete_bad_date_returns_400(client):
+    resp = await client.patch(
+        "/weekly-plan/complete",
+        json={"weekStart": "2026-05-25", "date": "not-a-date", "completed": True},
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_plan_bad_weekstart_returns_400(client):
+    resp = await client.get("/weekly-plan", params={"weekStart": "2026-13-99"})
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_create_plan_invalid_dayplans_returns_400(client):
+    resp = await client.post("/weekly-plan", json={"weekStart": "2026-05-25", "dayPlans": "not json"})
+    assert resp.status_code == 400
+
 # === PATCH /weekly-plan/complete (가장 큰 커버리지 갭) ===
 
 @pytest.mark.asyncio

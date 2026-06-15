@@ -10,10 +10,12 @@ from app.schemas.statistics import StatisticsResponse, WeeklyRateDto
 class StatisticsService:
     """최근 N주 plan을 집계해 완료율·스트릭을 계산한다.
 
-    완료율 계산은 day_plans JSON의 운동 단위 completed 플래그가 아니라
-    day 단위 "운동일 중 완료된 비율"로 정의한다(Home 화면 표시와 동일):
+    완료율은 Home 화면과 동일하게 day 단위 `isCompleted` 로 정의한다(단일 진실 공급원):
       - rest day는 분모/분자 모두에서 제외
-      - workout day는 day의 모든 exercise가 완료되면 1 day 완료로 카운트
+      - workout day(`!isRestDay`)는 exercises 가 비어 있든 말든 분모에 포함
+      - 그 day 의 `isCompleted` 가 True면 1 day 완료로 카운트
+    이전엔 exercises[*].completed + 빈 운동일 skip 으로 정의해 Home 과 어긋났고,
+    R8 keep 갭으로 생긴 빈 운동일 plan 의 이력을 영구 왜곡했다(H1 수정).
     """
 
     DEFAULT_WEEKS = 12
@@ -54,14 +56,16 @@ class StatisticsService:
         except (TypeError, json.JSONDecodeError):
             return 0.0
 
+        if not isinstance(days, list):
+            return 0.0
+
         workout_days = 0
         completed_days = 0
         for day in days:
-            if day.get("isRestDay") or not day.get("exercises"):
+            if not isinstance(day, dict) or day.get("isRestDay"):
                 continue
             workout_days += 1
-            exercises = day["exercises"]
-            if exercises and all(ex.get("completed") for ex in exercises):
+            if day.get("isCompleted"):
                 completed_days += 1
 
         if workout_days == 0:
