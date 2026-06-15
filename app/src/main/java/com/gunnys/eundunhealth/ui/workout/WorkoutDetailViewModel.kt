@@ -42,20 +42,13 @@ class WorkoutDetailViewModel @Inject constructor(
 
     fun load() = viewModelScope.launch {
         _uiState.value = WorkoutDetailUiState.Loading
-        workoutRepo.getCurrentWeekPlan()
-            .onSuccess { plan ->
-                val exercise = plan?.days
-                    ?.flatMap { it.exercises }
-                    ?.find { it.id == exerciseId }
+        workoutRepo.getExerciseById(exerciseId)
+            .onSuccess { exercise ->
                 _uiState.value = if (exercise != null) {
                     WorkoutDetailUiState.Loaded(exercise)
                 } else {
-                    WorkoutDetailUiState.Error(
-                        AppError.Unknown(
-                            Throwable("운동을 찾을 수 없습니다"),
-                            "운동을 찾을 수 없습니다",
-                        ),
-                    )
+                    // 예상된 not-found 는 NotFound 로(Sentry 노이즈 제외). 진짜 실패만 onFailure 가 보고.
+                    WorkoutDetailUiState.Error(AppError.NotFound("운동을 찾을 수 없습니다"))
                 }
             }
             .onFailure {

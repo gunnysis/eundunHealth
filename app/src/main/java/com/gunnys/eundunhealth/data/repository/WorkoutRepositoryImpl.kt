@@ -60,6 +60,22 @@ class WorkoutRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getExerciseById(exerciseId: String): Result<Exercise?> = runCatching {
+        // 1) 로컬 캐시(현재 주) 우선 — 네트워크 없이 즉시. 운동 콘텐츠는 주중 불변이라 캐시로 충분하고,
+        //    상세 진입마다 전체 주간계획을 재 GET 하던 비효율/오프라인 취약을 제거한다.
+        val weekStart = LocalDate.now().with(DayOfWeek.MONDAY)
+        val userId = authRepo.getCurrentUserId()
+        val cached = userId?.let { weeklyPlanDao.getPlan(it, weekStart.toString()) }
+            ?.let { parseDayPlans(it.dayPlansJson) }
+            ?.flatMap { it.exercises }
+            ?.find { it.id == exerciseId }
+        if (cached != null) return@runCatching cached
+
+        // 2) 캐시 미스 → 네트워크 폴백 (현재 주 계획)
+        getCurrentWeekPlan().getOrNull()
+            ?.days?.flatMap { it.exercises }?.find { it.id == exerciseId }
+    }
+
     override suspend fun createWeeklyPlan(profile: UserProfile): Result<WeeklyPlan> = runCatching {
         val weekStart = LocalDate.now().with(DayOfWeek.MONDAY)
         val (sets, reps) = exerciseDb.getSetsAndReps(profile.fitnessLevel)

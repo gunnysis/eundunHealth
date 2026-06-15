@@ -4,7 +4,12 @@ import com.google.gson.Gson
 import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanApi
 import com.gunnys.eundunhealth.api.generated.model.WeeklyPlanResponse
 import com.gunnys.eundunhealth.data.local.dao.WeeklyPlanDao
+import com.gunnys.eundunhealth.data.local.entity.WeeklyPlanEntity
+import com.gunnys.eundunhealth.data.remote.api.dto.DayPlanJson
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbDataSource
+import com.gunnys.eundunhealth.domain.model.DayPlan
+import com.gunnys.eundunhealth.domain.model.Exercise
+import com.gunnys.eundunhealth.domain.model.ExerciseType
 import com.gunnys.eundunhealth.domain.model.FitnessLevel
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
@@ -13,10 +18,12 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Response
+import java.time.LocalDate
 
 class WorkoutRepositoryImplTest {
 
@@ -51,5 +58,21 @@ class WorkoutRepositoryImplTest {
 
         assertTrue("빈 풀이면 실패해야 한다", result.isFailure)
         coVerify(exactly = 0) { api.createWeeklyPlan(any()) }
+    }
+
+    @Test
+    fun `getExerciseById 는 Room 캐시에서 네트워크 없이 운동을 반환한다`() = runTest {
+        val ex = Exercise("e1", "푸시업", "chest", "bw", "", emptyList(), 3, 10, ExerciseType.STRENGTH)
+        val json = Gson().toJson(
+            listOf(DayPlanJson(DayPlan(LocalDate.of(2026, 6, 15), listOf(ex), isRestDay = false, isCompleted = false))),
+        )
+        coEvery { authRepo.getCurrentUserId() } returns "u"
+        coEvery { dao.getPlan(any(), any()) } returns WeeklyPlanEntity("p", "u", "2026-06-15", json)
+
+        val result = repo.getExerciseById("e1")
+
+        assertEquals("e1", result.getOrThrow()?.id)
+        // 캐시 히트면 네트워크(getWeeklyPlan)를 쓰지 않아야 한다 (회귀가드).
+        coVerify(exactly = 0) { api.getWeeklyPlan(any()) }
     }
 }
