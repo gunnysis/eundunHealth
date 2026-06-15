@@ -25,6 +25,7 @@ import com.gunnys.eundunhealth.domain.usecase.WeeklyPlanGenerator
 import retrofit2.HttpException
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 class WorkoutRepositoryImpl @Inject constructor(
@@ -35,12 +36,17 @@ class WorkoutRepositoryImpl @Inject constructor(
     private val authRepo: AuthRepository,
 ) : WorkoutRepository {
 
+    // 주 시작(월요일)은 KST 고정 — 디바이스 타임존과 무관하게 plan/통계 key(weekStart)가 흔들리지 않도록.
+    private fun currentWeekStart(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul")).with(DayOfWeek.MONDAY)
+
     override suspend fun getCurrentWeekPlan(): Result<WeeklyPlan?> = runCatching {
-        val weekStart = LocalDate.now().with(DayOfWeek.MONDAY)
+        val weekStart = currentWeekStart()
         try {
             val response = api.getWeeklyPlan(weekStart.toString())
             if (response.code() == 404) return@runCatching null
             val dto = response.bodyOrThrow()
+            // read 경로에서도 캐시를 갱신 → 오프라인 시 stale(미완료) plan 대신 최신 완료상태를 보인다(F3).
+            weeklyPlanDao.insertPlan(WeeklyPlanEntity(dto.id, dto.userId, weekStart.toString(), dto.dayPlans))
             return@runCatching dto.toDomain()
         } catch (e: Exception) {
             // 네트워크 실패 → 캐시 폴백. Sentry는 ViewModel.reportToSentry()가 처리
@@ -63,7 +69,7 @@ class WorkoutRepositoryImpl @Inject constructor(
     override suspend fun getExerciseById(exerciseId: String): Result<Exercise?> = runCatching {
         // 1) 로컬 캐시(현재 주) 우선 — 네트워크 없이 즉시. 운동 콘텐츠는 주중 불변이라 캐시로 충분하고,
         //    상세 진입마다 전체 주간계획을 재 GET 하던 비효율/오프라인 취약을 제거한다.
-        val weekStart = LocalDate.now().with(DayOfWeek.MONDAY)
+        val weekStart = currentWeekStart()
         val userId = authRepo.getCurrentUserId()
         val cached = userId?.let { weeklyPlanDao.getPlan(it, weekStart.toString()) }
             ?.let { parseDayPlans(it.dayPlansJson) }
@@ -77,7 +83,7 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createWeeklyPlan(profile: UserProfile): Result<WeeklyPlan> = runCatching {
-        val weekStart = LocalDate.now().with(DayOfWeek.MONDAY)
+        val weekStart = currentWeekStart()
         val (sets, reps) = exerciseDb.getSetsAndReps(profile.fitnessLevel)
 
         // 1) 이전 주 plan에서 운동 ID를 추출 (실패해도 빈 집합으로 폴백)

@@ -75,4 +75,21 @@ class WorkoutRepositoryImplTest {
         // 캐시 히트면 네트워크(getWeeklyPlan)를 쓰지 않아야 한다 (회귀가드).
         coVerify(exactly = 0) { api.getWeeklyPlan(any()) }
     }
+
+    @Test
+    fun `getCurrentWeekPlan 성공 시 서버 plan 을 Room 캐시에 기록한다`() = runTest {
+        // 캐시를 read 경로에서 갱신하지 않아 오프라인서 stale(미완료) plan 을 보이던 회귀 방지(F3).
+        val resp = WeeklyPlanResponse(
+            dayPlans = "[]",
+            id = "p",
+            userId = "u",
+            weekStart = "2026-06-15",
+            createdAt = null,
+        )
+        coEvery { api.getWeeklyPlan(any()) } returns Response.success(resp)
+
+        repo.getCurrentWeekPlan()
+
+        coVerify(exactly = 1) { dao.insertPlan(any()) }
+    }
 }

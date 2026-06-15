@@ -52,6 +52,10 @@ data class ExerciseJson(
     fun toExercise() = Exercise(
         id = id, name = name, bodyPart = bodyPart, equipment = equipment,
         gifUrl = gifUrl, instructions = instructions, sets = sets, reps = reps,
-        type = ExerciseType.valueOf(type),
+        type = parseExerciseType(type),
     )
 }
+
+// 알 수 없는/레거시 enum 문자열은 STRENGTH 로 폴백 — 운동 1개의 잘못된 type 이
+// parseDayPlans 의 runCatching 을 터뜨려 주 전체 plan 을 비우던 회귀를 방지한다.
+private fun parseExerciseType(raw: String): ExerciseType = runCatching { ExerciseType.valueOf(raw) }.getOrDefault(ExerciseType.STRENGTH)
