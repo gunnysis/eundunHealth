@@ -27,7 +27,8 @@ class HealthConnectDataSource @Inject constructor(
     suspend fun hasPermissions(): Boolean = client.permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
 
     suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): List<LocalDate> {
-        val zoneId = ZoneId.systemDefault()
+        // KST 고정 — weekStart 계산(WorkoutRepository)과 동일 타임존이어야 날짜 버킷이 어긋나지 않음.
+        val zoneId = ZoneId.of("Asia/Seoul")
         val startTime = weekStart.atStartOfDay(zoneId).toInstant()
         val endTime = weekStart.plusDays(7).atStartOfDay(zoneId).toInstant()
 
@@ -47,7 +48,7 @@ class HealthConnectDataSource @Inject constructor(
 
     /** 오늘 0시~현재 걸음·칼로리·평균심박 집계 (aggregate 1회). 변환/경계는 순수 매퍼에 위임. */
     suspend fun readTodayActivity(): DailyActivity {
-        val (start, end) = todayRange(Instant.now(), ZoneId.systemDefault())
+        val (start, end) = todayRange(Instant.now(), ZoneId.of("Asia/Seoul"))
         val res = client.aggregate(
             AggregateRequest(
                 metrics = setOf(

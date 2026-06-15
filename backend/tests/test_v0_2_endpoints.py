@@ -9,11 +9,16 @@ import pytest
 
 
 def _day(rest: bool = False, completed: bool = False) -> dict:
-    """한 day 객체 — completed=True면 모든 운동이 완료됐다고 본다."""
+    """한 day 객체 — 실제 저장 형태처럼 day 단위 isCompleted 를 포함한다.
+
+    통계는 day.isCompleted 로 완료를 판정하므로(Home 과 동일) 운동 단위 completed 와 함께
+    day.isCompleted 도 일치시켜 둔다.
+    """
     if rest:
-        return {"isRestDay": True, "exercises": []}
+        return {"isRestDay": True, "isCompleted": False, "exercises": []}
     return {
         "isRestDay": False,
+        "isCompleted": completed,
         "exercises": [{"id": "e1", "completed": completed}, {"id": "e2", "completed": completed}],
     }
 
@@ -114,3 +119,22 @@ async def test_statistics_respects_weeks_param(client):
 async def test_statistics_rejects_weeks_above_52(client):
     resp = await client.get("/weekly-plan/statistics", params={"weeks": 53})
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_statistics_uses_day_is_completed_even_with_empty_exercises(client):
+    """통계는 Home 화면과 동일하게 day.isCompleted 로 완료를 판정한다.
+
+    과거 R8 keep 갭으로 운동이 빈(exercises=[]) day 가 저장됐어도, day.isCompleted=True 면
+    완료로 집계되어야 한다(이전엔 빈 운동일을 통째로 skip 해 이력이 영구 왜곡됐음 — H1).
+    """
+    days = [
+        {"isRestDay": False, "isCompleted": True, "exercises": []},
+        {"isRestDay": False, "isCompleted": False, "exercises": []},
+        {"isRestDay": True, "isCompleted": False, "exercises": []},
+    ]
+    await client.post("/weekly-plan", json={"weekStart": "2026-05-25", "dayPlans": json.dumps(days)})
+
+    resp = await client.get("/weekly-plan/statistics")
+    # 운동일 2개(빈 운동 포함) 중 1개 완료 → 0.5
+    assert resp.json()["weeklyRates"][0]["completionRate"] == pytest.approx(0.5)

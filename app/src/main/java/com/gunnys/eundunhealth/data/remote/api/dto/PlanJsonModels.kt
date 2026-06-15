@@ -10,12 +10,16 @@ data class DayPlanJson(
     val exercises: List<ExerciseJson>,
     val isRestDay: Boolean,
     val isCompleted: Boolean,
+    // 백엔드 update_completion 이 수동 토글 시 기록하는 키와 동일(camelCase). 구버전 row(필드 부재)는
+    // Gson 이 false 로 기본 처리 → 하위호환.
+    val manuallySet: Boolean = false,
 ) {
     constructor(dayPlan: DayPlan) : this(
         date = dayPlan.date.toString(),
         exercises = dayPlan.exercises.map { ExerciseJson(it) },
         isRestDay = dayPlan.isRestDay,
         isCompleted = dayPlan.isCompleted,
+        manuallySet = dayPlan.manuallySet,
     )
 
     fun toDayPlan() = DayPlan(
@@ -23,6 +27,7 @@ data class DayPlanJson(
         exercises = exercises.map { it.toExercise() },
         isRestDay = isRestDay,
         isCompleted = isCompleted,
+        manuallySet = manuallySet,
     )
 }
 
@@ -47,6 +52,10 @@ data class ExerciseJson(
     fun toExercise() = Exercise(
         id = id, name = name, bodyPart = bodyPart, equipment = equipment,
         gifUrl = gifUrl, instructions = instructions, sets = sets, reps = reps,
-        type = ExerciseType.valueOf(type),
+        type = parseExerciseType(type),
     )
 }
+
+// 알 수 없는/레거시 enum 문자열은 STRENGTH 로 폴백 — 운동 1개의 잘못된 type 이
+// parseDayPlans 의 runCatching 을 터뜨려 주 전체 plan 을 비우던 회귀를 방지한다.
+private fun parseExerciseType(raw: String): ExerciseType = runCatching { ExerciseType.valueOf(raw) }.getOrDefault(ExerciseType.STRENGTH)

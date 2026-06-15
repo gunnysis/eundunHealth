@@ -12,11 +12,18 @@ class WeeklyPlanRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_user_and_week(self, user_id: str, week_start: datetime.date) -> WeeklyPlan | None:
-        """UserId + weekStart 로 plan 1건 조회. v0.1 INC: userId 필터링 누락 시 다른 사용자 데이터 노출 위험."""
-        result = await self.db.execute(
-            select(WeeklyPlan).where(and_(WeeklyPlan.user_id == user_id, WeeklyPlan.week_start == week_start))
-        )
+    async def get_by_user_and_week(
+        self, user_id: str, week_start: datetime.date, for_update: bool = False
+    ) -> WeeklyPlan | None:
+        """UserId + weekStart 로 plan 1건 조회. v0.1 INC: userId 필터링 누락 시 다른 사용자 데이터 노출 위험.
+
+        for_update=True 면 행 잠금(SELECT ... FOR UPDATE)으로 동시 read-modify-write 를 직렬화한다
+        (완료 토글 PATCH 의 lost-update 방지). SQLite 는 무시하므로 테스트에 무해.
+        """
+        stmt = select(WeeklyPlan).where(and_(WeeklyPlan.user_id == user_id, WeeklyPlan.week_start == week_start))
+        if for_update:
+            stmt = stmt.with_for_update()
+        result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_previous(self, user_id: str, week_start: datetime.date) -> WeeklyPlan | None:

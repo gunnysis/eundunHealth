@@ -25,6 +25,7 @@ import com.gunnys.eundunhealth.domain.usecase.WeeklyPlanGenerator
 import retrofit2.HttpException
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 class WorkoutRepositoryImpl @Inject constructor(
@@ -35,12 +36,17 @@ class WorkoutRepositoryImpl @Inject constructor(
     private val authRepo: AuthRepository,
 ) : WorkoutRepository {
 
+    // 주 시작(월요일)은 KST 고정 — 디바이스 타임존과 무관하게 plan/통계 key(weekStart)가 흔들리지 않도록.
+    private fun currentWeekStart(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul")).with(DayOfWeek.MONDAY)
+
     override suspend fun getCurrentWeekPlan(): Result<WeeklyPlan?> = runCatching {
-        val weekStart = LocalDate.now().with(DayOfWeek.MONDAY)
+        val weekStart = currentWeekStart()
         try {
             val response = api.getWeeklyPlan(weekStart.toString())
             if (response.code() == 404) return@runCatching null
             val dto = response.bodyOrThrow()
+            // read 경로에서도 캐시를 갱신 → 오프라인 시 stale(미완료) plan 대신 최신 완료상태를 보인다(F3).
+            weeklyPlanDao.insertPlan(WeeklyPlanEntity(dto.id, dto.userId, weekStart.toString(), dto.dayPlans))
             return@runCatching dto.toDomain()
         } catch (e: Exception) {
             // 네트워크 실패 → 캐시 폴백. Sentry는 ViewModel.reportToSentry()가 처리
@@ -60,8 +66,24 @@ class WorkoutRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getExerciseById(exerciseId: String): Result<Exercise?> = runCatching {
+        // 1) 로컬 캐시(현재 주) 우선 — 네트워크 없이 즉시. 운동 콘텐츠는 주중 불변이라 캐시로 충분하고,
+        //    상세 진입마다 전체 주간계획을 재 GET 하던 비효율/오프라인 취약을 제거한다.
+        val weekStart = currentWeekStart()
+        val userId = authRepo.getCurrentUserId()
+        val cached = userId?.let { weeklyPlanDao.getPlan(it, weekStart.toString()) }
+            ?.let { parseDayPlans(it.dayPlansJson) }
+            ?.flatMap { it.exercises }
+            ?.find { it.id == exerciseId }
+        if (cached != null) return@runCatching cached
+
+        // 2) 캐시 미스 → 네트워크 폴백 (현재 주 계획)
+        getCurrentWeekPlan().getOrNull()
+            ?.days?.flatMap { it.exercises }?.find { it.id == exerciseId }
+    }
+
     override suspend fun createWeeklyPlan(profile: UserProfile): Result<WeeklyPlan> = runCatching {
-        val weekStart = LocalDate.now().with(DayOfWeek.MONDAY)
+        val weekStart = currentWeekStart()
         val (sets, reps) = exerciseDb.getSetsAndReps(profile.fitnessLevel)
 
         // 1) 이전 주 plan에서 운동 ID를 추출 (실패해도 빈 집합으로 폴백)
@@ -105,6 +127,14 @@ class WorkoutRepositoryImpl @Inject constructor(
             cardio = cardioPool,
         )
 
+        // 모든 풀이 비어 운동 0개짜리 "껍데기" 계획이 나오면 저장하지 않고 실패시킨다 (ExerciseDB
+        // 일시 장애 등). 빈 계획을 백엔드에 저장하면 그 주 내내 고착되므로, 차라리 에러로 표면화해
+        // 사용자가 재시도(ExerciseDB 복구 후 정상 생성)하도록 한다. AppError.Unknown → Sentry 보고로
+        // 빈 풀 빈도도 관측한다.
+        if (days.none { it.exercises.isNotEmpty() }) {
+            error("운동 목록을 불러오지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.")
+        }
+
         val dayPlansJson = gson.toJson(days.map { DayPlanJson(it) })
         val response = api.createWeeklyPlan(
             WeeklyPlanRequest(weekStart = weekStart.toString(), dayPlans = dayPlansJson),
@@ -122,13 +152,19 @@ class WorkoutRepositoryImpl @Inject constructor(
         savedPlan
     }
 
-    override suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit> = runCatching {
+    override suspend fun updateDayCompletion(
+        planId: String,
+        date: LocalDate,
+        completed: Boolean,
+        manual: Boolean,
+    ): Result<Unit> = runCatching {
         val weekStart = date.with(DayOfWeek.MONDAY)
         val response = api.updateDayCompletion(
             CompletionRequest(
                 weekStart = weekStart.toString(),
                 date = date.toString(),
                 completed = completed,
+                manual = manual,
             ),
         )
         if (!response.isSuccessful) throw HttpException(response)

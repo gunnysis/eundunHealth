@@ -135,4 +135,21 @@ class SyncHealthDataUseCaseTest {
         assertTrue(sync.newlyCompletedDates.isEmpty())
         assertTrue(sync.hasPermission)
     }
+
+    @Test
+    fun `수동 설정된 날은 HC 기록이 있어도 자동완료되지 않는다 (수동 우선)`() = runTest {
+        val plan = WeeklyPlan(
+            "plan1",
+            "user1",
+            weekStart,
+            listOf(DayPlan(weekStart, emptyList(), isRestDay = false, isCompleted = false, manuallySet = true)),
+        )
+        val healthRepo = FakeHealthRepo(exerciseResult = Result.success(listOf(weekStart)))
+
+        val sync = SyncHealthDataUseCase(healthRepo)(plan).getOrThrow()
+
+        // manuallySet 인 날은 HC 가 운동을 감지해도 다시 완료로 덮지 않는다.
+        assertFalse(sync.plan.days[0].isCompleted)
+        assertTrue(sync.newlyCompletedDates.isEmpty())
+    }
 }

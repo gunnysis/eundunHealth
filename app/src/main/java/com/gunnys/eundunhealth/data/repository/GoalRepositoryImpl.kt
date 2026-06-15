@@ -10,6 +10,9 @@ import com.gunnys.eundunhealth.domain.model.Goal
 import com.gunnys.eundunhealth.domain.model.GoalType
 import com.gunnys.eundunhealth.domain.model.ProfileHistoryPoint
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import java.math.BigDecimal
 import java.time.Instant
 import javax.inject.Inject
@@ -20,7 +23,19 @@ class GoalRepositoryImpl @Inject constructor(
 ) : GoalRepository {
 
     override suspend fun getGoals(): Result<List<Goal>> = runCatching {
-        goalsApi.getGoals().bodyOrThrow().mapNotNull { it.toDomain() }
+        goalsApi.getGoals().bodyOrThrow().mapNotNull { dto ->
+            dto.toDomain() ?: run {
+                // 알 수 없는 goalType 은 silent 하게 사라지면 데이터 손실처럼 보인다 → 관측 가능하게 보고.
+                Sentry.addBreadcrumb(
+                    Breadcrumb().apply {
+                        category = "goal.unknown_type_dropped"
+                        level = SentryLevel.WARNING
+                        setData("goalType", dto.goalType)
+                    },
+                )
+                null
+            }
+        }
     }
 
     override suspend fun upsertGoal(type: GoalType, targetValue: Float): Result<Goal> = runCatching {

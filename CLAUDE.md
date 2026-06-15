@@ -313,6 +313,14 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 - `collectAsState()` 호출: **0건** (`grep -rn '\.collectAsState(' app/src/main/java/`)
 - `collectAsStateWithLifecycle` 사용: **33건** across 13 files
 
+### 룰 12 — Gson 반사 모델은 R8 keep 전수 + 패키지 단위 (INC 2026-06-15 빈 운동계획 회귀)
+
+Gson 으로 역직렬화되는 모델(Retrofit 응답 타입 + 그 중첩·래퍼 타입 **전부**)은 **필드에 `@SerializedName` 가 있거나 `-keep class … { *; }`** 로 보호돼야 한다. 둘 다 없으면 릴리스 R8 이 필드/클래스를 제거 → Gson 이 못 채워 nullable/default(예: `List<T>` → `emptyList()`)로 **silent** 폴백한다. 디버그/단위테스트는 R8 미적용이라 못 잡는다.
+
+- **단일 클래스 keep 금지 → 패키지 단위 keep**: `ExerciseDto` 만 keep 하고 래퍼 `ExerciseListResponse`/`PageMeta` 를 빠뜨려 릴리스에서 운동 계획이 통째로 빈 채 생성·저장·고착된 사고(2026-06-15). 새 Gson 모델은 keep 된 패키지(`data.remote.exercisedb.**`, `data.remote.api.dto.**`, `api.generated.model.**`) 안에 두면 자동 보호.
+- **자동 가드**: `app/src/test/.../ProguardKeepRulesTest` 가 위 3개 keep 규칙의 존재를 박제(삭제 시 `:app:testDebugUnitTest` 실패). 새 Gson 모델 패키지 추가 시 `proguard-rules.pro` keep + 이 테스트 목록을 함께 갱신.
+- 검증은 단위테스트 불가 → **릴리스 빌드 실기기/계측**으로만 확인.
+
 ### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.8`)
 1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?
 2. `--yes`/`--no-confirm` 플래그가 무엇을 묵시적으로 동의하는가?
