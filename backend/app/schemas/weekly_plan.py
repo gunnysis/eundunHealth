@@ -37,3 +37,6 @@ class CompletionRequest(CamelSchema):
     week_start: str
     date: str  # ISO date (해당 day, weekStart 기준 0~6일 이내)
     completed: bool
+    # 사용자 명시 토글이면 True(기본). Health Connect 자동완료 푸시는 False 로 보내 manuallySet 을
+    # 남기지 않는다 → 수동 우선(사용자가 해제한 날을 HC 가 다시 완료로 덮지 않음).
+    manual: bool = True

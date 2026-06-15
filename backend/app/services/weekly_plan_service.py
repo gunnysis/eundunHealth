@@ -96,6 +96,9 @@ class WeeklyPlanService:
         if not isinstance(days, list) or day_offset >= len(days) or not isinstance(days[day_offset], dict):
             raise BadRequestException("dayPlans 구조가 올바르지 않습니다")
         days[day_offset]["isCompleted"] = req.completed
+        if req.manual:
+            # 사용자 명시 토글은 manuallySet 로 박제 → 이후 HC 자동완료가 덮어쓰지 못함(수동 우선).
+            days[day_offset]["manuallySet"] = True
         for ex in days[day_offset].get("exercises", []):
             ex["completed"] = req.completed
         plan.day_plans = json.dumps(days)

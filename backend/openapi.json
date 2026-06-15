@@ -30,6 +30,11 @@
             "title": "Date",
             "type": "string"
           },
+          "manual": {
+            "default": true,
+            "title": "Manual",
+            "type": "boolean"
+          },
           "weekStart": {
             "title": "Weekstart",
             "type": "string"
