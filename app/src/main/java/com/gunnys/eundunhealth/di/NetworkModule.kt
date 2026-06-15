@@ -8,6 +8,7 @@ import com.gunnys.eundunhealth.api.generated.api.ProfileApi
 import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanApi
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbApi
 import com.gunnys.eundunhealth.data.remote.interceptor.RetryInterceptor
+import com.gunnys.eundunhealth.data.remote.interceptor.SupabaseSessionRefresher
 import com.gunnys.eundunhealth.data.remote.interceptor.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
@@ -63,7 +64,7 @@ object NetworkModule {
             }
             chain.proceed(request)
         }
-        .authenticator(TokenAuthenticator(supabaseClient, tokenHolder))
+        .authenticator(TokenAuthenticator(SupabaseSessionRefresher(supabaseClient), tokenHolder))
         .addInterceptor(SentryOkHttpInterceptor())
         .addInterceptor(
             HttpLoggingInterceptor().apply {
