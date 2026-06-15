@@ -13,6 +13,7 @@ import com.gunnys.eundunhealth.domain.usecase.HealthSyncResult
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import com.gunnys.eundunhealth.domain.usecase.TodayActivityResult
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -74,7 +75,7 @@ class HomeViewModelTest {
         coEvery { getTodayActivity() } returns Result.success(
             TodayActivityResult(activity = activity, hasPermission = true),
         )
-        coEvery { workoutRepo.updateDayCompletion(any(), any(), any()) } returns Result.success(Unit)
+        coEvery { workoutRepo.updateDayCompletion(any(), any(), any(), any()) } returns Result.success(Unit)
     }
 
     @After
@@ -117,7 +118,7 @@ class HomeViewModelTest {
 
     @Test
     fun `toggleDayCompletion 서버 실패 시 완료는 revert 되고 todayActivity 는 보존된다`() = runTest {
-        coEvery { workoutRepo.updateDayCompletion(any(), any(), any()) } returns
+        coEvery { workoutRepo.updateDayCompletion(any(), any(), any(), any()) } returns
             Result.failure(RuntimeException("server down"))
         val vm = createViewModel()
         advanceUntilIdle()
@@ -134,5 +135,19 @@ class HomeViewModelTest {
     fun `completionRate 는 운동일이 0 이면 0`() {
         val restOnly = HomeUiState.Success(plan = plan, completedCount = 0, totalWorkoutDays = 0)
         assertEquals(0f, restOnly.completionRate, 0f)
+    }
+
+    @Test
+    fun `빠른 체크 후 해제는 마지막 의도(해제)만 서버에 전송한다 (레이스 직렬화 가드)`() = runTest {
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.toggleDayCompletion(monday) // 체크 → PATCH(true) 예약
+        vm.toggleDayCompletion(monday) // 해제 → 직전 전송 취소 + PATCH(false)
+        advanceUntilIdle()
+
+        // 직렬화가 없으면 true·false 두 PATCH 가 모두 나가 서버 상태가 어긋난다(회귀가드).
+        coVerify(exactly = 1) { workoutRepo.updateDayCompletion(any(), monday, false, any()) }
+        coVerify(exactly = 0) { workoutRepo.updateDayCompletion(any(), monday, true, any()) }
     }
 }

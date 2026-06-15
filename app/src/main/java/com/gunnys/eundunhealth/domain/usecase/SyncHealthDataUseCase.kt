@@ -42,9 +42,11 @@ class SyncHealthDataUseCase @Inject constructor(
         }
 
         // Health Connect 가 감지했지만 아직 미완료로 기록된 운동일만 추린다.
-        // 이미 완료된 날은 제외 — 중복 서버 푸시 방지.
+        // - 이미 완료된 날 제외 (중복 서버 푸시 방지)
+        // - manuallySet(사용자가 명시적으로 토글한 날) 제외 → 수동 우선. 사용자가 해제한 날을
+        //   HC 가 다시 완료로 덮어쓰던 회귀 차단.
         val newlyCompleted = plan.days
-            .filter { !it.isRestDay && !it.isCompleted && it.date in completedDates }
+            .filter { !it.isRestDay && !it.isCompleted && !it.manuallySet && it.date in completedDates }
             .map { it.date }
 
         val updatedDays = plan.days.map { day ->

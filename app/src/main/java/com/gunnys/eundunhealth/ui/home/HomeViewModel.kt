@@ -17,6 +17,7 @@ import com.gunnys.eundunhealth.domain.usecase.GetTodayActivityUseCase
 import com.gunnys.eundunhealth.domain.usecase.HealthSyncResult
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -84,6 +85,9 @@ class HomeViewModel @Inject constructor(
     private val _sideEffect = Channel<HomeSideEffect>(Channel.BUFFERED)
     val sideEffect = _sideEffect.receiveAsFlow()
 
+    // 같은 날짜의 토글 전송을 직렬화 — 빠른 체크/해제 시 이전 전송을 취소해 최신 의도만 서버에 반영.
+    private val toggleJobs = mutableMapOf<LocalDate, Job>()
+
     init {
         loadPlan()
     }
@@ -112,7 +116,8 @@ class HomeViewModel @Inject constructor(
                 // 미반영 날은 다음 sync 시 HC 재감지로 재시도되지만, silent drop 방지를 위해
                 // 실패는 Sentry 로 보고해 관측 가능하게 둔다.
                 sync.newlyCompletedDates.forEach { date ->
-                    workoutRepo.updateDayCompletion(sync.plan.id, date, true)
+                    // manual=false: HC 자동완료는 manuallySet 을 남기지 않아 이후 사용자 수동 해제가 가능.
+                    workoutRepo.updateDayCompletion(sync.plan.id, date, true, manual = false)
                         .onFailure { it.toAppError().reportToSentry() }
                 }
                 checkBadges(sync.plan)
@@ -137,21 +142,20 @@ class HomeViewModel @Inject constructor(
 
     fun refreshActivity() = loadTodayActivity()
 
-    // detekt UnreachableCode 는 `viewModelScope.launch { }` + `?: return@launch` 조합의 제어흐름을
-    // 오판해 본문 전체를 unreachable 로 잘못 표시하는 알려진 false positive. 기존엔 baseline 에 문장별로
-    // 박제했으나 baseline signature 가 코드 내용을 포함해 본문 수정 시 drift(재노출)된다 → 함수 단위
-    // suppress 로 고정해 drift 를 차단한다. (Kotlin 컴파일러는 unreachable 로 보지 않음 — 정상 동작 코드)
+    // detekt UnreachableCode 는 `?: return` + 람다/`viewModelScope.launch` 조합의 제어흐름을 오판해
+    // 본문을 unreachable 로 잘못 표시하는 알려진 false positive. Kotlin 컴파일러는 정상으로 보며
+    // (단위테스트로 동작 검증됨) 함수 단위 suppress 로 고정한다.
     @Suppress("UnreachableCode")
-    fun toggleDayCompletion(date: LocalDate) = viewModelScope.launch {
+    fun toggleDayCompletion(date: LocalDate) {
         val current = _uiState.value
-        if (current !is HomeUiState.Success) return@launch
+        if (current !is HomeUiState.Success) return
 
-        val day = current.plan.days.find { it.date == date } ?: return@launch
+        val day = current.plan.days.find { it.date == date } ?: return
         val newCompleted = !day.isCompleted
 
-        // Optimistic update
+        // Optimistic update + 수동 표시(manuallySet=true) → 이후 HC 자동완료가 이 날을 덮지 않음.
         val updatedDays = current.plan.days.map {
-            if (it.date == date) it.copy(isCompleted = newCompleted) else it
+            if (it.date == date) it.copy(isCompleted = newCompleted, manuallySet = true) else it
         }
         val updatedPlan = current.plan.copy(days = updatedDays)
         // current.copy 로 todayActivity·hasActivityPermission 등 기존 Success 필드 보존
@@ -162,23 +166,25 @@ class HomeViewModel @Inject constructor(
             totalWorkoutDays = updatedPlan.days.count { !it.isRestDay },
         )
 
-        // Server sync
-        workoutRepo.updateDayCompletion(current.plan.id, date, newCompleted)
-            .onFailure {
-                // 실패 시 토글만 되돌린다. current(토글 직전 스냅샷) 전체로 덮으면 그 사이
-                // loadTodayActivity 가 채운 todayActivity 가 사라지므로, 활동 필드는 live 상태에서
-                // 보존하고 plan/완료 카운트만 revert.
-                val live = _uiState.value
-                if (live is HomeUiState.Success) {
-                    _uiState.value = live.copy(
-                        plan = current.plan,
-                        completedCount = current.completedCount,
-                        totalWorkoutDays = current.totalWorkoutDays,
-                    )
+        // 같은 날짜의 직전 전송을 취소하고 최신 의도만 전송 → 빠른 체크/해제 시 마지막 액션이 서버에 반영.
+        toggleJobs[date]?.cancel()
+        toggleJobs[date] = viewModelScope.launch {
+            workoutRepo.updateDayCompletion(current.plan.id, date, newCompleted)
+                .onFailure {
+                    // 실패 시 plan/완료 카운트만 current(토글 직전 스냅샷)로 revert. 활동 필드는 live 에서
+                    // 보존(그 사이 loadTodayActivity 가 채운 todayActivity 유지).
+                    val live = _uiState.value
+                    if (live is HomeUiState.Success) {
+                        _uiState.value = live.copy(
+                            plan = current.plan,
+                            completedCount = current.completedCount,
+                            totalWorkoutDays = current.totalWorkoutDays,
+                        )
+                    }
+                    val appErr = it.toAppError()
+                    appErr.reportToSentry()
+                    _sideEffect.trySend(HomeSideEffect.ShowSnackbar(appErr.userMessage))
                 }
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
-                _sideEffect.trySend(HomeSideEffect.ShowSnackbar(appErr.userMessage))
-            }
+        }
     }
 }

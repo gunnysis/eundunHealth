@@ -146,13 +146,19 @@ class WorkoutRepositoryImpl @Inject constructor(
         savedPlan
     }
 
-    override suspend fun updateDayCompletion(planId: String, date: LocalDate, completed: Boolean): Result<Unit> = runCatching {
+    override suspend fun updateDayCompletion(
+        planId: String,
+        date: LocalDate,
+        completed: Boolean,
+        manual: Boolean,
+    ): Result<Unit> = runCatching {
         val weekStart = date.with(DayOfWeek.MONDAY)
         val response = api.updateDayCompletion(
             CompletionRequest(
                 weekStart = weekStart.toString(),
                 date = date.toString(),
                 completed = completed,
+                manual = manual,
             ),
         )
         if (!response.isSuccessful) throw HttpException(response)

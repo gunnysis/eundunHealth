@@ -10,12 +10,16 @@ data class DayPlanJson(
     val exercises: List<ExerciseJson>,
     val isRestDay: Boolean,
     val isCompleted: Boolean,
+    // 백엔드 update_completion 이 수동 토글 시 기록하는 키와 동일(camelCase). 구버전 row(필드 부재)는
+    // Gson 이 false 로 기본 처리 → 하위호환.
+    val manuallySet: Boolean = false,
 ) {
     constructor(dayPlan: DayPlan) : this(
         date = dayPlan.date.toString(),
         exercises = dayPlan.exercises.map { ExerciseJson(it) },
         isRestDay = dayPlan.isRestDay,
         isCompleted = dayPlan.isCompleted,
+        manuallySet = dayPlan.manuallySet,
     )
 
     fun toDayPlan() = DayPlan(
@@ -23,6 +27,7 @@ data class DayPlanJson(
         exercises = exercises.map { it.toExercise() },
         isRestDay = isRestDay,
         isCompleted = isCompleted,
+        manuallySet = manuallySet,
     )
 }
 

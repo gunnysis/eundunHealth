@@ -26,4 +26,9 @@ data class DayPlan(
     val exercises: List<Exercise>,
     val isRestDay: Boolean,
     val isCompleted: Boolean,
+    /**
+     * 사용자가 명시적으로 체크/해제한 날이면 true. Health Connect 자동완료([SyncHealthDataUseCase])는
+     * 이 값이 true 인 날을 건너뛴다 → 수동 우선(사용자가 해제한 날을 HC 가 다시 완료로 덮지 않음).
+     */
+    val manuallySet: Boolean = false,
 )
