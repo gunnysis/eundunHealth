@@ -105,6 +105,14 @@ class WorkoutRepositoryImpl @Inject constructor(
             cardio = cardioPool,
         )
 
+        // 모든 풀이 비어 운동 0개짜리 "껍데기" 계획이 나오면 저장하지 않고 실패시킨다 (ExerciseDB
+        // 일시 장애 등). 빈 계획을 백엔드에 저장하면 그 주 내내 고착되므로, 차라리 에러로 표면화해
+        // 사용자가 재시도(ExerciseDB 복구 후 정상 생성)하도록 한다. AppError.Unknown → Sentry 보고로
+        // 빈 풀 빈도도 관측한다.
+        if (days.none { it.exercises.isNotEmpty() }) {
+            error("운동 목록을 불러오지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.")
+        }
+
         val dayPlansJson = gson.toJson(days.map { DayPlanJson(it) })
         val response = api.createWeeklyPlan(
             WeeklyPlanRequest(weekStart = weekStart.toString(), dayPlans = dayPlansJson),
