@@ -23,7 +23,7 @@ vico = "3.2.2"
 detekt = "1.23.8"
 spotless = "8.6.0"
 ktlint = "1.5.0"
-openapiGenerator = "7.10.0"
+openapiGenerator = "7.23.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
