@@ -40,11 +40,17 @@ class AccountService:
         # Step 2: Auth 삭제 성공 후 앱 데이터 삭제 — user_id 를 가진 *모든* 테이블을 비운다.
         # 새 per-user 테이블 추가 시 여기에도 삭제를 추가할 것. 누락은
         # tests/test_account.py::test_delete_account_purges_all_user_data 가 자동 탐지(회귀 가드).
-        await self.badge_repo.delete_all_by_user(user_id)
-        await self.plan_repo.delete_all_by_user(user_id)
-        await self.goal_repo.delete_all_by_user(user_id)
-        await self.history_repo.delete_all_by_user(user_id)
-        await self.profile_repo.delete_by_user_id(user_id)
+        try:
+            await self.badge_repo.delete_all_by_user(user_id)
+            await self.plan_repo.delete_all_by_user(user_id)
+            await self.goal_repo.delete_all_by_user(user_id)
+            await self.history_repo.delete_all_by_user(user_id)
+            await self.profile_repo.delete_by_user_id(user_id)
+        except Exception:
+            # Auth 는 이미 삭제됨(Step 1) → DB 삭제 실패 시 고아 데이터가 남는다(UoW 롤백으로 부분삭제는
+            # 없음). 정리 대상 user_id 를 로깅해 관측·배치정리 가능하게 한다.
+            logger.error("Account DB purge failed after auth deletion — orphaned user_id=%s", user_id)
+            raise
 
     async def _delete_supabase_user(self, user_id: str) -> None:
         async with httpx.AsyncClient() as client:

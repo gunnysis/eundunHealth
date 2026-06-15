@@ -29,7 +29,10 @@ abstract class RepositoryModule {
 
     @Binds abstract fun bindHealthRepo(impl: HealthRepositoryImpl): HealthRepository
 
-    @Binds abstract fun bindBadgeRepo(impl: BadgeRepositoryImpl): BadgeRepository
+    // BadgeRepositoryImpl 은 60s TTL 캐시 상태를 보유하므로 @Singleton 이어야 인스턴스 간 캐시가
+    // 공유된다(없으면 주입 지점마다 별도 인스턴스 → 캐시 무력화 + 적립 무효화 불일치).
+    @Binds @Singleton
+    abstract fun bindBadgeRepo(impl: BadgeRepositoryImpl): BadgeRepository
 
     @Binds abstract fun bindAuthRepo(impl: AuthRepositoryImpl): AuthRepository
 
