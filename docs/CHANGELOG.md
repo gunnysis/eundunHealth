@@ -4,6 +4,37 @@
 
 ---
 
+## [main] — 2026-06-16 — Sentry 알림 스크립트 점검·재발방지 개선
+
+> `scripts/setup-sentry-alerts.ps1` 첫 실행 시 8개 룰 전부 404 실패 → 근본원인 5개 분석·수정·주석화 + 구조 개선. 이후 스크립트 정상 실행 완료, 8개 알림 룰 Sentry UI 활성 확인. 커밋 `d18e335`.
+
+### 🐛 버그 수정 (5건)
+
+- **B1 — PowerShell 대소문자 충돌**: `$org`(API 응답 수신 변수)와 `$ORG`(org 슬러그 상수)가 PowerShell 변수명 case-insensitive 특성으로 충돌 → URI에 PS 객체가 삽입되어 전체 404. 수정: API 응답은 `$orgInfo`로 분리, 모든 상수는 `$script:` 명시 접두어 사용.
+- **B2 — environment="production" 404**: 첫 이벤트 수신 전 Sentry에 "production" 환경이 등록되지 않아 거부. 수정: `environment` 필드 생략(출시 후 UI Edit에서 추가하도록 안내 주석).
+- **B3 — interval="30m" 무효 값**: Sentry API가 비표준 인터벌 거부. 유효값: `1m/5m/10m/1h/4h/24h/1w`. 수정: `"1h"` 사용 + 주석 명시.
+- **B4 — dataset="transactions" deprecated**: Sentry가 spans(`events_analytics_platform`)로 마이그레이션 완료. 수정: `dataset="events_analytics_platform"`, `query="is_transaction:true"`, `p95(span.duration)`.
+- **B5 — targetType="team" 솔로 프로젝트 부적합**: 팀 ID(`targetIdentifier`) 필수인데 팀 없음 → 404. 수정: `targetType="user"` + `targetIdentifier=4265580`(Sentry user.id, 멤버 .id 아님).
+
+### ✅ 구조 개선
+
+- `param([switch]$DryRun)` + `Set-StrictMode -Version Latest` + `$ErrorActionPreference = "Stop"` 적용.
+- GET 기반 idempotency: 에러 응답 메시지 파싱 대신 기존 룰 목록 조회 후 동일 이름 skip — 신뢰성 ↑.
+- `Get-SentryErrorDetail` 공통 헬퍼(null guard 포함) — 에러 메시지 추출 중복 제거.
+- 설정 상수 블록 단일화(`$script:ORG_SLUG` 등), 파일 상단에서 5줄 수정으로 프로젝트 이관 가능.
+- B1~B5 재발방지 주석 블록, 버그 이력 영구 기록.
+
+### 🗑 정리
+
+- Sentry가 B5 디버깅 중 자동 생성한 잘못된 Priority Notification 룰 2개(#3589906, #3589907) UI에서 삭제.
+
+### ✅ 검증
+
+- 8개 알림 룰 전부 Sentry UI 활성 확인: Issue Alert 6개(Android 신규·회귀·빈도급증 / Backend 신규·회귀·빈도급증) + Metric Alert 2개(Backend p95·에러율).
+- `-DryRun` 플래그로 실행 계획 사전 검증 후 실 실행 성공.
+
+---
+
 ## [v0.1.15] — 2026-06-16 — 감사 LOW 후속 (내부 품질, 사용자 가시 동작 변화 없음)
 
 > 출시 준비 감사(PR #122)에서 보류한 LOW 항목 중 권장 3건 구현 + 차단된 의존성 CVE 동반. PR #123 (squash `078a24fb`). versionCode 29. 백엔드 자동배포·CORS live 검증 완료, Android Play 업로드 대기.
