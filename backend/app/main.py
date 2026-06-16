@@ -1,9 +1,11 @@
 import logging
-from collections.abc import AsyncIterator
+import uuid
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 
 import sentry_sdk
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -15,6 +17,30 @@ from app.exceptions import AppException
 from app.routers import account, auth, badge, goal, health, profile, weekly_plan
 
 logger = logging.getLogger(__name__)
+
+# 요청 상관관계 ID — 미들웨어가 요청마다 설정, 로그 포맷(%(request_id)s)에 포함해
+# 다중 replica(min/max 1/3) 환경에서 한 요청의 로그를 추적할 핸들을 제공한다.
+request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
+
+
+class _RequestIdLogFilter(logging.Filter):
+    """모든 LogRecord 에 현재 요청의 request_id 를 주입(요청 밖이면 '-')."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = request_id_ctx.get()
+        return True
+
+
+# 로깅은 모듈 import 시점에 1회 구성한다. 과거엔 lifespan startup 안에서 basicConfig 를
+# 호출해 uvicorn 이 root 로거를 선점한 경우 no-op 이 되던 footgun 이 있었다. force=True 로
+# 기존 root 핸들러를 재설정하고 request_id 필터를 부착한다.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s",
+    force=True,
+)
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(_RequestIdLogFilter())
 
 
 @asynccontextmanager
@@ -31,7 +57,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             traces_sample_rate=1.0 if settings.environment == "development" else 0.2,
             environment=settings.environment,
         )
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     yield
 
@@ -51,6 +76,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# 요청 상관관계 미들웨어 — 모듈 레벨 등록(룰 4: lifespan 내부 add_middleware 금지).
+# CORS 뒤에 등록되어 가장 바깥에서 동작 → 모든 처리 전에 request_id 를 설정한다.
+@app.middleware("http")
+async def request_id_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+    token = request_id_ctx.set(rid)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_ctx.reset(token)
+    response.headers["X-Request-ID"] = rid
+    return response
 
 
 # 글로벌 에러 핸들러

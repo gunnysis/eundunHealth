@@ -77,6 +77,10 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest
 
+      # NOTE: assembleDebug 는 R8 미적용 → 실제 R8 stripping(룰 12, Gson keep 갭/INC-2026-06-15-25)은
+      # CI 에서 실행되지 않는다. Rule 12 가드는 위 Unit tests 의 ProguardKeepRulesTest(keep 규칙 박제) +
+      # 출시 빌드 실기기 계측(룰 2/12, preflight-release.sh)으로 분담한다. 릴리스 빌드는 서명 키가
+      # 필요해 CI 에 포함하지 않는다.
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug
 

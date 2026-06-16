@@ -43,7 +43,7 @@
 | Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
-| API version | `1.0.0` (`backend/app/__version__` → OpenAPI `info.version`, 앱과 독립 — bump 시 `sync-openapi.sh` 재싱크) |
+| API version | `1.0.0` (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — bump 시 `sync-openapi.sh` 재싱크) |
 | Dockerfile | `python:3.12-slim` + `apt-get upgrade` 레이어(base-image OS CVE 자가치유, Trivy HIGH 차단 회피) |
 
 ### env vars

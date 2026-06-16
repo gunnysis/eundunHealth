@@ -83,7 +83,7 @@
 |------|------|------|
 | 언어 / 런타임 | Python 3.12 | |
 | 프레임워크 | FastAPI 0.136.1 + uvicorn 0.49.0 | |
-| API 버전 | `1.0.0` (`backend/app/__version__`) | OpenAPI `info.version`, 앱과 독립 |
+| API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.50 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
 | 마이그레이션 | Alembic 1.18.4 (head: `c849579de6c4`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |

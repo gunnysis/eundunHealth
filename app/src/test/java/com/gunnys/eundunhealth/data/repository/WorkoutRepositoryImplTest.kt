@@ -17,12 +17,18 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import io.mockk.verify
+import io.sentry.Sentry
+import io.sentry.protocol.SentryId
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Response
+import java.io.IOException
 import java.time.LocalDate
 
 class WorkoutRepositoryImplTest {
@@ -91,5 +97,44 @@ class WorkoutRepositoryImplTest {
         repo.getCurrentWeekPlan()
 
         coVerify(exactly = 1) { dao.insertPlan(any()) }
+    }
+
+    @Test
+    fun `손상된 캐시 day_plans 는 Sentry 로 보고하고 빈 계획으로 폴백한다`() = runTest {
+        // R8 keep 갭(INC-25)과 동일한 silent empty-data 클래스 — 폴백 전 관측 가능해야 한다(회귀가드).
+        mockkStatic(Sentry::class)
+        every { Sentry.captureException(any<Throwable>()) } returns SentryId.EMPTY_ID
+        try {
+            coEvery { api.getWeeklyPlan(any()) } throws IOException("offline")
+            coEvery { authRepo.getCurrentUserId() } returns "u"
+            coEvery { dao.getPlan(any(), any()) } returns WeeklyPlanEntity("p", "u", "2026-06-15", "{broken")
+
+            val result = repo.getCurrentWeekPlan()
+
+            assertTrue("손상 JSON 이어도 크래시 없이 success", result.isSuccess)
+            assertEquals(emptyList<DayPlan>(), result.getOrThrow()?.days)
+            verify(exactly = 1) { Sentry.captureException(any<Throwable>()) }
+        } finally {
+            unmockkStatic(Sentry::class)
+        }
+    }
+
+    @Test
+    fun `정상 빈 배열 캐시는 Sentry 로 보고하지 않는다`() = runTest {
+        // 정당하게 비어 있는 plan("[]")은 손상이 아니므로 노이즈를 만들지 않아야 한다.
+        mockkStatic(Sentry::class)
+        every { Sentry.captureException(any<Throwable>()) } returns SentryId.EMPTY_ID
+        try {
+            coEvery { api.getWeeklyPlan(any()) } throws IOException("offline")
+            coEvery { authRepo.getCurrentUserId() } returns "u"
+            coEvery { dao.getPlan(any(), any()) } returns WeeklyPlanEntity("p", "u", "2026-06-15", "[]")
+
+            val result = repo.getCurrentWeekPlan()
+
+            assertTrue(result.isSuccess)
+            verify(exactly = 0) { Sentry.captureException(any<Throwable>()) }
+        } finally {
+            unmockkStatic(Sentry::class)
+        }
     }
 }

@@ -1,10 +1,9 @@
-import json
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.weekly_plan import WeeklyPlan
 from app.repositories.weekly_plan_repo import WeeklyPlanRepository
 from app.schemas.statistics import StatisticsResponse, WeeklyRateDto
+from app.services.day_plans import parse_day_plans_or_none
 
 
 class StatisticsService:
@@ -51,12 +50,8 @@ class StatisticsService:
 
     @staticmethod
     def _completion_rate(plan: WeeklyPlan) -> float:
-        try:
-            days = json.loads(plan.day_plans)
-        except (TypeError, json.JSONDecodeError):
-            return 0.0
-
-        if not isinstance(days, list):
+        days = parse_day_plans_or_none(plan.day_plans)
+        if days is None:
             return 0.0
 
         workout_days = 0

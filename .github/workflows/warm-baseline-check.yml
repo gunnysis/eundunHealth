@@ -1,0 +1,33 @@
+name: Warm baseline check
+
+# Container App minReplicas 가 1 미만(scale-to-zero 회귀)으로 떨어지지 않았는지 주기 확인.
+# scale-to-zero 는 metric 미emit → Azure Monitor alert 사각지대(operations-snapshot §10).
+# 실패 시 GitHub 가 기본적으로 워크플로 실패 알림(이메일)을 저장소 소유자에게 보낸다 = 무료 alert.
+on:
+  schedule:
+    - cron: '17 0 * * *'   # 매일 1회 (UTC 00:17 = KST 09:17)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Container App minReplicas >= 1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Azure login
+        uses: azure/login@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ensure containerapp extension
+        run: az extension add --name containerapp --only-show-errors || true
+
+      - name: Check warm baseline (minReplicas)
+        run: bash scripts/check-warm-baseline.sh
+        env:
+          CONTAINER_APP_NAME: eundunhealth-api
+          RESOURCE_GROUP: apps
