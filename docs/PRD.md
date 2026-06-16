@@ -245,7 +245,10 @@
 
 | Method | Path | 설명 | 도입 |
 |--------|------|------|-----|
-| `GET` | `/health` | 헬스 체크 | v0.1 |
+| `GET` | `/health` | liveness 헬스 체크 (Container App probe) | v0.1 |
+| `GET` | `/health/ready` | readiness probe (DB `SELECT 1` → 200/503) | v0.1 |
+| `GET` | `/.well-known/assetlinks.json` | Android App Links 검증 | v0.1.3 |
+| `GET` | `/auth/confirm` | 이메일 확인 fallback (HTML 응답) | v0.1.3 |
 | `GET` | `/profile` | 프로필 조회 | v0.1 |
 | `PUT` | `/profile` | 프로필 생성/수정 (restDay 포함, 매 호출마다 history 자동 기록) | v0.1 / v0.3 |
 | `GET` | `/profile/history?limit=50` | 프로필 변경 이력 (체형 진행 차트용) | v0.3 |
@@ -261,7 +264,7 @@
 | `PUT` | `/goals` | 목표 upsert | v0.3 |
 | `DELETE` | `/account` | 회원 탈퇴 (Supabase Auth + 앱 DB 일괄 삭제) | v0.1 |
 
-모든 보호 엔드포인트는 Supabase JWT(ES256 / JWKS) 검증. 응답은 camelCase JSON.
+공개 4개(`/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm`)를 제외한 나머지 14개는 Supabase JWT(ES256 / JWKS) 검증 필요. 응답은 camelCase JSON.
 
 ---
 
