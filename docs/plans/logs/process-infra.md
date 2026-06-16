@@ -4,6 +4,22 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-16 — 감사 후속 개선 백로그 구현 (TDD) — 코드·인프라
+
+- **PR**: (branch `feature/audit-followup-backlog`) — 직전 동일자 "전수 점검" entry 의 **후속 개선 백로그 8항목**을 TDD 로 구현.
+- **Why**: 전수 점검에서 발견·기록만 해둔 코드/인프라 개선을 사용자 요청("백로그 전부 TDD로")으로 실제 구현.
+- **What**:
+  - **[Backend][MED→done] day_plans 파싱 단일화**: `app/services/day_plans.py` 신규 — `parse_day_plans`(쓰기=400) + `parse_day_plans_or_none`(읽기=None). weekly_plan_service(`_validate_day_plans`·update_completion)·statistics_service(`_completion_rate`) 3중복 흡수. RED→GREEN(`test_day_plans.py` 7).
+  - **[Backend][done] request-id 상관관계**: 모듈 레벨 `request_id_middleware`(룰 4) — `X-Request-ID` echo/생성 + `ContextVar` + 로그 포맷 `%(request_id)s` 필터. `logging.basicConfig` 를 lifespan→모듈 레벨(force=True) 이동(uvicorn 선점 no-op footgun 제거). RED→GREEN(`test_request_id.py` 2).
+  - **[Android][MED→done] parseDayPlans 관측성**: `getOrDefault(emptyList)` → `getOrElse{ reportToSentry; empty }`. 손상 JSON 은 보고, 정상 `[]` 는 무보고. RED→GREEN(mockkStatic 2 테스트).
+  - **[Android][test→done] PR #122 회귀 단언**: HomeViewModelTest 에 낙관적 토글 `manuallySet=true` + `updateDayCompletion(manual=true)` 직접 단언 2.
+  - **[Android][refactor→done] createWeeklyPlan**: 3중복 fresh/seen 정렬을 `reorderExcludingPrevious` 헬퍼로 + 빈 풀 Sentry breadcrumb(부분 ExerciseDB 저하 관측).
+  - **[Android][refactor→done] HomeScreen 분할**: 491→~230 LOC. `ui/home/components/`(HomeTopBarActions·TodayActivityCard·HealthConnectCards) 분리(`internal`, 동작 보존).
+  - **[Infra][done] warm baseline 회귀 알림**: `scripts/check-warm-baseline.sh` + 스케줄드 `warm-baseline-check.yml`(매일) — `minReplicas<1`(scale-to-zero metric 사각지대) 감지 → 워크플로 실패 알림. operations-snapshot §10 유일 미관측 갭 해소.
+  - **[CI/docs][done]**: backend.yml pip-audit `--strict` 의도 주석(보안 유지·INC-27 배경) / android.yml R8 미적용 갭 명시(룰 12=ProguardKeepRulesTest+실기기) / 버전 파일 표기 `backend/app/__init__.py:__version__` 정렬(glob 혼동 제거).
+- **Outcome**: backend pytest **71 PASS**(62+day_plans 7+request_id 2) · ruff/mypy/bandit clean · openapi in-sync. Android `:app:testDebugUnitTest`+`detektDebug`+`spotlessCheck` 모두 BUILD SUCCESSFUL. TDD RED→GREEN 준수(behavior change), refactor 는 기존 green 하 유지.
+- **Files touched**: backend/app/services/{day_plans(신규),weekly_plan_service,statistics_service}.py, backend/app/main.py, backend/tests/{test_day_plans,test_request_id}(신규), app/.../data/repository/WorkoutRepositoryImpl.kt(+Test), app/.../ui/home/HomeScreen.kt + ui/home/components/{HomeTopBarActions,TodayActivityCard,HealthConnectCards}(신규), app/.../ui/home/HomeViewModelTest.kt, scripts/check-warm-baseline.sh(신규), .github/workflows/{warm-baseline-check(신규),backend,android}.yml, CLAUDE/README/TRD/versioning/operations-snapshot(버전 표기)
+
 ### 2026-06-16 — 전수 점검 + 프로젝트 문서 최신화 (감사·드리프트 정정·bump-version 하드닝)
 
 - **PR**: (docs/process — 본 커밋) · 트리거: 출시 사이클(PR #122/#123) 후 전체 점검 + 문서 최신화 요청

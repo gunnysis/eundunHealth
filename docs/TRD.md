@@ -14,7 +14,7 @@
 | 영역 | TRD v1.0 | 현재 (v0.1.15) |
 |------|----------|------------|
 | Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.136.1 (Python 3.12)** + uvicorn |
-| Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
+| Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0 async + asyncpg** |
 | Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (62 PASS, cov ~84%) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |

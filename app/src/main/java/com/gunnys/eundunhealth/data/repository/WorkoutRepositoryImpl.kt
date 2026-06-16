@@ -10,6 +10,7 @@ import com.gunnys.eundunhealth.data.local.dao.WeeklyPlanDao
 import com.gunnys.eundunhealth.data.local.entity.WeeklyPlanEntity
 import com.gunnys.eundunhealth.data.remote.api.dto.DayPlanJson
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbDataSource
+import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDto
 import com.gunnys.eundunhealth.data.remote.exercisedb.toDomain
 import com.gunnys.eundunhealth.data.remote.util.bodyOrThrow
 import com.gunnys.eundunhealth.domain.model.DayPlan
@@ -19,9 +20,12 @@ import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.WeeklyRate
+import com.gunnys.eundunhealth.domain.model.reportToSentry
+import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.WeeklyPlanGenerator
+import io.sentry.Sentry
 import retrofit2.HttpException
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -98,12 +102,11 @@ class WorkoutRepositoryImpl @Inject constructor(
                 .orEmpty()
         }.getOrDefault(emptySet())
 
-        // 2) 부위·카디오 운동 풀을 한 번씩만 fetch (이전 주 ID는 후순위 정렬)
+        // 2) 부위·카디오 운동 풀을 한 번씩만 fetch (이전 주 ID는 reorderExcludingPrevious 로 후순위 정렬)
         suspend fun pool(bodyPart: String, type: ExerciseType): List<Exercise> = runCatching {
-            val raw = exerciseDb.getStrengthExercises(bodyPart, limit = 6)
-            val fresh = raw.filter { it.id !in excludeIds }
-            val seen = raw.filter { it.id in excludeIds }
-            (fresh + seen).map { it.toDomain(sets, reps, type) }
+            reorderExcludingPrevious(exerciseDb.getStrengthExercises(bodyPart, limit = 6), excludeIds, bodyPart) {
+                it.toDomain(sets, reps, type)
+            }
         }.getOrDefault(emptyList())
 
         val push = pool("chest", ExerciseType.STRENGTH) + pool("shoulders", ExerciseType.STRENGTH)
@@ -111,10 +114,9 @@ class WorkoutRepositoryImpl @Inject constructor(
         val legs = pool("upper legs", ExerciseType.STRENGTH) + pool("lower legs", ExerciseType.STRENGTH)
 
         val cardioPool: List<Exercise> = runCatching {
-            val raw = exerciseDb.getCardioExercises(limit = 10)
-            val fresh = raw.filter { it.id !in excludeIds }
-            val seen = raw.filter { it.id in excludeIds }
-            (fresh + seen).map { it.toDomain(1, 30, ExerciseType.CARDIO) }
+            reorderExcludingPrevious(exerciseDb.getCardioExercises(limit = 10), excludeIds, "cardio") {
+                it.toDomain(1, 30, ExerciseType.CARDIO)
+            }
         }.getOrDefault(emptyList())
 
         // 3) 요일별 배치 — 순수 generator 위임(결정론적, 단위테스트는 WeeklyPlanGeneratorTest)
@@ -187,6 +189,23 @@ class WorkoutRepositoryImpl @Inject constructor(
         )
     }
 
+    // 이전 주에 나온 운동(excludeIds)을 뒤로 미뤄 신선한 운동을 우선 배치한다(주간 다양성).
+    // strength·cardio 3곳에 복붙돼 있던 fresh/seen 정렬을 단일화. raw 가 비면(ExerciseDB 부분 장애)
+    // breadcrumb 로 부분 저하를 남겨, 한 부위만 실패해 thin 한 계획이 나가는 silent degradation 을 추적한다.
+    private fun reorderExcludingPrevious(
+        raw: List<ExerciseDto>,
+        excludeIds: Set<String>,
+        label: String,
+        map: (ExerciseDto) -> Exercise,
+    ): List<Exercise> {
+        if (raw.isEmpty()) {
+            Sentry.addBreadcrumb("exercisedb pool empty: $label")
+        }
+        val fresh = raw.filter { it.id !in excludeIds }
+        val seen = raw.filter { it.id in excludeIds }
+        return (fresh + seen).map(map)
+    }
+
     private fun WeeklyPlanResponse.toDomain(): WeeklyPlan = WeeklyPlan(
         id = id,
         userId = userId,
@@ -198,5 +217,11 @@ class WorkoutRepositoryImpl @Inject constructor(
         val type = object : TypeToken<List<DayPlanJson>>() {}.type
         val dayJsons: List<DayPlanJson> = gson.fromJson(json, type)
         dayJsons.map { it.toDayPlan() }
-    }.getOrDefault(emptyList())
+    }.getOrElse { e ->
+        // 손상된 day_plans JSON 을 silent 하게 빈 계획으로 폴백하면 R8 keep 갭(INC-2026-06-15-25)과
+        // 같은 무관측 데이터 손실이 된다 → 폴백 전에 Sentry 로 보고해 관측 가능하게 둔다.
+        // (정상적으로 빈 "[]" 는 예외가 없어 여기 오지 않으므로 노이즈가 되지 않는다.)
+        e.toAppError().reportToSentry()
+        emptyList()
+    }
 }

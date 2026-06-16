@@ -12,6 +12,7 @@ from app.schemas.weekly_plan import (
     WeeklyPlanRequest,
     WeeklyPlanResponse,
 )
+from app.services.day_plans import parse_day_plans
 
 
 def _parse_date(value: str, field: str) -> datetime.date:
@@ -20,16 +21,6 @@ def _parse_date(value: str, field: str) -> datetime.date:
         return datetime.date.fromisoformat(value)
     except (ValueError, TypeError) as e:
         raise BadRequestException(f"{field} 형식이 올바르지 않습니다 (YYYY-MM-DD)") from e
-
-
-def _validate_day_plans(raw: str) -> None:
-    """저장 전 day_plans 가 JSON 배열인지 검증한다. 깨진 입력이 통계/완료 경로를 오염시키는 것 차단."""
-    try:
-        parsed = json.loads(raw)
-    except (TypeError, json.JSONDecodeError) as e:
-        raise BadRequestException("dayPlans 가 올바른 JSON 이 아닙니다") from e
-    if not isinstance(parsed, list):
-        raise BadRequestException("dayPlans 는 JSON 배열이어야 합니다")
 
 
 def _to_response(plan: WeeklyPlan) -> WeeklyPlanResponse:
@@ -71,7 +62,7 @@ class WeeklyPlanService:
     async def upsert_plan(self, user_id: str, req: WeeklyPlanRequest) -> WeeklyPlanResponse:
         """생성/갱신된 plan을 그대로 반환한다 — Android WorkoutRepository는 response.id로 Room cache에 저장."""
         date = _parse_date(req.week_start, "weekStart")
-        _validate_day_plans(req.day_plans)
+        parse_day_plans(req.day_plans)
         plan = await self.repo.upsert(user_id, date, req.day_plans)
         return _to_response(plan)
 
@@ -92,8 +83,8 @@ class WeeklyPlanService:
         plan = await self.repo.get_by_user_and_week(user_id, week_start_date, for_update=True)
         if not plan:
             raise NotFoundException("주간 운동 계획이 없습니다")
-        days = json.loads(plan.day_plans)
-        if not isinstance(days, list) or day_offset >= len(days) or not isinstance(days[day_offset], dict):
+        days = parse_day_plans(plan.day_plans)
+        if day_offset >= len(days) or not isinstance(days[day_offset], dict):
             raise BadRequestException("dayPlans 구조가 올바르지 않습니다")
         days[day_offset]["isCompleted"] = req.completed
         if req.manual:

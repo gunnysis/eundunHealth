@@ -150,4 +150,30 @@ class HomeViewModelTest {
         coVerify(exactly = 1) { workoutRepo.updateDayCompletion(any(), monday, false, any()) }
         coVerify(exactly = 0) { workoutRepo.updateDayCompletion(any(), monday, true, any()) }
     }
+
+    @Test
+    fun `toggleDayCompletion 은 낙관적 업데이트에서 해당 날을 manuallySet=true 로 표시한다`() = runTest {
+        // PR #122 핵심수정 회귀가드 — 수동 토글이 manuallySet 을 박제해야 이후 HC 자동완료가 덮지 못한다.
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.toggleDayCompletion(monday)
+        advanceUntilIdle()
+
+        val state = vm.uiState.value as HomeUiState.Success
+        val day = state.plan.days.first { it.date == monday }
+        assertTrue("수동 토글은 manuallySet=true", day.manuallySet)
+    }
+
+    @Test
+    fun `toggleDayCompletion 은 updateDayCompletion 을 manual=true 로 전송한다`() = runTest {
+        // 사용자 수동 토글은 manual=true (HC 자동완료 manual=false 와 구분) → 백엔드가 manuallySet 박제.
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.toggleDayCompletion(monday)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { workoutRepo.updateDayCompletion(any(), monday, true, manual = true) }
+    }
 }

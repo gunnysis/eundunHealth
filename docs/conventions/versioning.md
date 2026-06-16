@@ -7,7 +7,7 @@
 | 도메인 | SSoT | 의미 |
 |---|---|---|
 | **Android 앱** | 루트 `version.properties` (`versionName`+`versionCode`) | 모바일 앱 릴리즈 |
-| **백엔드 API** | `backend/app/__version__` | API 표면. 앱과 **독립** 진화·배포 |
+| **백엔드 API** | `backend/app/__init__.py:__version__` | API 표면. 앱과 **독립** 진화·배포 |
 
 이력의 SSoT 는 `docs/CHANGELOG.md` 하나다 — build/문서에 이력을 복제하지 않는다.
 
@@ -40,7 +40,7 @@ bash scripts/bump-version.sh --dry-run 0.1.10  # 변경 미적용, 계획만 출
 
 ## 5. 백엔드 버전 bump
 
-`backend/app/__version__` 수정 → **반드시** `bash scripts/sync-openapi.sh` 재실행 + `backend/openapi.json` 같은 PR 커밋(`backend.yml` drift 가드). info.version 변경분이 누락되면 CI 가 fail 한다.
+`backend/app/__init__.py:__version__` 수정 → **반드시** `bash scripts/sync-openapi.sh` 재실행 + `backend/openapi.json` 같은 PR 커밋(`backend.yml` drift 가드). info.version 변경분이 누락되면 CI 가 fail 한다.
 
 ## 6. 프론트엔드 표시
 
