@@ -4,6 +4,32 @@
 
 ---
 
+## [v0.1.14] — 2026-06-15 — 출시 준비 종합 (제보 2버그 근본수정 + 전수감사 + 재발방지)
+
+> 실기기(Galaxy Z Flip3) 제보 2건에서 시작 → 4-에이전트 병렬 전수감사로 출시 차단 요소 발굴 → 클러스터별 TDD 수정 + 실기기/단위 검증 + 재발방지 가드. PR #122 (squash `e2d7460`). versionCode 28. 백엔드 자동배포 완료(`manual`/`manuallySet` live), Android Play 업로드 대기.
+
+### 🎯 제보 2버그 (근본 수정)
+- **운동 계획에 운동이 안 보임** — 근본원인: proguard 가 `ExerciseDto` 만 keep 하고 Gson 응답 래퍼 `ExerciseListResponse`/`PageMeta` 누락 → 릴리스 R8 이 제거(mapping·usage.txt·타 모델 @SerializedName 삼중 확인) → `data` 가 기본 `emptyList()` 폴백 → 빈 계획이 결정론적으로 생성·저장·고착(릴리스 전용 silent). → 패키지 단위 keep + 빈계획 미저장·자가치유. Flip3 실기기 검증.
+- **체크 해제 후 새로고침하면 다시 체크됨** — `SyncHealthDataUseCase` 가 HC 운동기록 있는 날을 매번 재완료. → 백엔드 `CompletionRequest.manual` + day `manuallySet` 박제 + Android 수동 우선 skip + 토글 전송 직렬화. live 백엔드로 Flip3 e2e 검증(해제→새로고침 유지).
+
+### ✅ 전수감사 클러스터
+- **완료 정합성(HIGH)** — 통계 `isCompleted` 통일(빈 운동일 이력왜곡 해소) + 완료 PATCH 행잠금(lost-update) + 클라 토글 직렬화
+- **입력검증(HIGH)** — 잘못된 day_offset/날짜/dayPlans → 500 대신 400 + write 검증
+- **인증 견고화(HIGH)** — 토큰 갱신 `synchronized` + 이미-갱신 재시도 + 일시실패 토큰보존(간헐 강제 로그아웃 방지). `SessionRefresher` 분리
+- **운동 상세** — GIF 정지프레임 복구(Coil 싱글톤 연결) + 방법 복사/선택 + 데이터흐름 로컬화(`getExerciseById`)
+- **캐시/파싱/KST(MED)** — read 캐시갱신 + 알 수 없는 type 폴백 + weekStart KST 고정
+- **폴리시(LOW)** — BadgeRepo @Singleton / GoalRepo silent-drop 관측화 / 계정삭제 orphan 로깅
+
+### 🛡 재발방지
+`ProguardKeepRulesTest` + CLAUDE.md 룰 12(Gson keep 패키지 단위) · `TokenAuthenticatorTest`(동시401→refresh 1회 등) · `SyncHealthDataUseCaseTest`(수동우선 skip) · `HomeViewModelTest`(토글 직렬화) · `PlanJsonModelsTest`(type 폴백) · 백엔드 통계·검증·manual 테스트
+
+### 검증
+- 백엔드 pytest **61 passed**(ruff/mypy clean) · Android 전체 단위테스트 GREEN(spotless/detekt clean) · CI 전 job pass
+- Flip3 실기기: 운동 표시 / GIF 애니메이션 / 방법 복사 / 토글 해제 보존
+- 보류 LOW(SideEffect 라이프사이클·403 매핑·alembic server_default·CORS)는 PR #122 에 근거 명시
+
+---
+
 ## [v0.1.13] — 2026-06-11 — 코드베이스 리팩토링 (내부 품질, 사용자 영향 없음)
 
 > 진단(4-영역 병렬 감사) → 다관점 설계(공식문서 fact-check) → subagent-driven 자율 실행 → 5 번들 6 PR(#107~#112) 머지. 사용자 기능/동작 변화 없음. versionCode 27. 첫 프로덕션 트랙 출시 빌드.
