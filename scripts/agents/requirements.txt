@@ -1,0 +1,4 @@
+# doc_audit.py 의 auditor(SDK) 경로 의존성. collector(--collect-only)는 stdlib 만 쓰므로 불필요.
+# 설치: backend venv 또는 별도 venv 에서  pip install -r scripts/agents/requirements.txt
+# (첫 설치 후 실제 버전으로 핀 권장.)
+claude-agent-sdk>=0.1.0

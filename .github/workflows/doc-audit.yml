@@ -1,0 +1,95 @@
+name: doc-audit
+
+# 문서 드리프트 감사 — canonical 코드/인프라 값 ↔ 문서 서술 일관성을 점검한다.
+# 도구: scripts/agents/doc_audit.py (collector=결정론적 + auditor=Claude Agent SDK, read-only).
+# 설계 근거: docs/plans/logs/process-infra.md (2026-06-16 Agent SDK 적용 검토 entry).
+#
+# 트리거는 schedule + 수동만(advisory). PR/push 게이트로 만들지 않은 이유:
+#   - auditor 는 토큰을 쓰고 시크릿이 필요 → 모든 PR/포크에서 돌리면 비용·실패 노이즈.
+#   - 결정론적 collector/파서 검증(collector-test job)은 시크릿 없이 항상 돈다.
+# 하드 게이트가 필요해지면 audit job 에 `--strict` 를 주고 PR 트리거를 추가하면 된다.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'  # 매주 월요일 00:00 UTC = 09:00 KST (한 주간 머지 드리프트 점검)
+
+permissions:
+  contents: read
+
+jobs:
+  # 1) 결정론적 collector/파서 — 시크릿 불필요, 항상 실행. (scripts/agents 단위테스트 CI 가드)
+  collector-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest
+        run: pip install 'pytest==9.0.3'
+
+      - name: Unit tests (collector / parsers)
+        run: python -m pytest scripts/agents/test_doc_audit.py -v
+
+      - name: Collector smoke (사실 수집 — SDK·인증 불필요)
+        run: python scripts/agents/doc_audit.py --collect-only
+
+  # 2) SDK auditor — 구독(OAuth token) 또는 API key 시크릿 필요. 미설정이면 GREEN 으로 스킵.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # 시크릿 미설정 시 실패 대신 notice 후 스킵 — 운영자 셋업 전에도 스케줄이 빨갛지 않도록.
+      - name: Detect auth credential
+        id: auth
+        env:
+          OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          APIKEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$OAUTH" ] || [ -n "$APIKEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::auth 시크릿 미설정 — 감사 스킵. 활성화: 로컬 \`claude setup-token\`(구독·추가비용 0) → 출력 토큰을 repo secret CLAUDE_CODE_OAUTH_TOKEN 에 등록(대안: ANTHROPIC_API_KEY=종량)."
+          fi
+
+      - name: Install Agent SDK
+        if: steps.auth.outputs.ready == 'true'
+        run: pip install -r scripts/agents/requirements.txt
+
+      - name: Run documentation drift audit
+        if: steps.auth.outputs.ready == 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -o pipefail
+          # advisory: --strict 미지정 → 드리프트가 있어도 exit 0(리포트만). 게이트화 시 --strict 추가.
+          python scripts/agents/doc_audit.py --quiet | tee audit-report.txt
+          {
+            echo '## 📄 문서 드리프트 감사'
+            echo ''
+            echo '```'
+            cat audit-report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if grep -q '드리프트 [1-9]' audit-report.txt; then
+            echo "::warning::문서 드리프트가 감지되었습니다 — 위 Step Summary 의 리포트를 확인하세요."
+          fi
+
+      - name: Upload report artifact
+        if: steps.auth.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-audit-report
+          path: audit-report.txt
+          if-no-files-found: ignore
