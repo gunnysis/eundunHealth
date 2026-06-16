@@ -12,7 +12,11 @@ v0.1.0 Internal Testing 직전 안정성 우선으로 보류한 dependabot 의�
 
 ## 1. kotlin 2.2.10 → 2.4.0 (+ KSP 2.3.2 → ?)
 
-원본 dependabot PR: `dependabot/gradle/kotlin-25c43d7fa9` (close됨, 2026-05-25), `dependabot/gradle/kotlin-867ab4fa19` (close됨, 2026-06-06 — kotlin 2.4.0 시도)
+원본 dependabot PR:
+- `dependabot/gradle/kotlin-25c43d7fa9` (close됨, 2026-05-25)
+- `dependabot/gradle/kotlin-867ab4fa19` (close됨, 2026-06-06 — kotlin 2.4.0 시도)
+- `dependabot/gradle/kotlin-54d4a77c4b` **#117** (close됨, 2026-06-16 — kotlin 2.4.0 + KSP 2.3.9 + coroutines 1.11.0)
+- `dependabot/gradle/io.coil-kt.coil3-coil-3.5.0` **#118** (close됨, 2026-06-16 — Coil 3.5.0이 Kotlin 2.4.0 사용 → 동일 차단)
 
 ### 보류 사유
 - Kotlin major version bump (2.2 → 2.4)
@@ -65,6 +69,36 @@ git checkout -b verify/kotlin-2.3 origin/dependabot/gradle/kotlin-XXXX
 ### 머지 패턴
 - dependabot PR이 stale에 잘 빠지는 경향 — Phase 1단계처럼 **직접 결합 PR**로 처리 권장
 - 또는 dependabot PR이 깨끗하면 그대로 머지
+
+---
+
+## 2. openapi-generator 7.10.0 → 7.23.0
+
+원본 dependabot PR: `dependabot/gradle/org.openapi.generator-7.23.0` **#119** (close됨, 2026-06-16)
+
+### 보류 사유
+- 7.10.0 → 7.23.0은 13 minor 버전 점프 (2026-06-15 기준)
+- 이 플러그인은 `backend/openapi.json` → `app/build/generated/openapi/` Android Retrofit client를 **전체 자동 생성**(`preBuild` 의존성). 생성 코드 변동 시 Repository 계층 + DI provider 등 영향 범위가 넓음.
+- CI 빌드 실패 확인 (2026-06-16)
+
+### 재개 조건
+1. [openapi-generator CHANGELOG](https://github.com/openapi-api/openapi-generator/blob/master/CHANGELOG.md) 에서 `jvm-retrofit2` 템플릿 breaking change 여부 확인
+2. PR branch checkout 후 `./gradlew :app:openApiGenerate` 실행 → 생성 결과물 diff 검토
+3. `./gradlew :app:testDebugUnitTest` 통과 + 빌드 green 확인
+
+### 검증 절차
+```bash
+git fetch origin
+git checkout -b verify/openapi-7.23 origin/dependabot/gradle/org.openapi.generator-7.23.0
+./gradlew :app:openApiGenerate --no-daemon
+git diff app/build/generated/openapi/   # 생성 코드 변동 확인
+./gradlew :app:testDebugUnitTest --no-daemon
+./gradlew :app:assembleDebug --no-daemon
+```
+
+### 머지 패턴
+- 생성 코드 변동이 없거나 trivial하면 dependabot PR 그대로 머지
+- breaking change가 있으면 Repository/DI 계층 수정 후 별도 PR로 처리
 
 ---
 

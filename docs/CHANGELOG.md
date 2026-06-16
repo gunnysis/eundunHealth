@@ -4,6 +4,24 @@
 
 ---
 
+## [main] — 2026-06-16 — Dependabot PR 6개 triage
+
+> open dependabot PR 6개 일괄 정리 — CI 상태 + 호환성 기준 머지 3 / 닫기 3.
+
+### ✅ 머지 (3개)
+- **Sentry Android 8.43.1 → 8.43.2** (#120, 패치)
+- **MockK 1.14.9 → 1.14.11** (#121, 패치)
+- **Backend minor-patch 6개** (#124): fastapi 0.136.1→0.137.1 · sqlalchemy 2.0.50→2.0.51 · sentry-sdk 2.61.1→2.62.0 · pytest 9.0.3→9.1.0 · ruff + pip-audit 패치
+
+### 🚫 닫기 (3개, 사유 코멘트 후)
+- **Kotlin 2.4.0 + KSP + coroutines** (#117) — Hilt 2.59.3+ 및 build.gradle.kts DSL 마이그레이션 선행 필요
+- **Coil 3.5.0** (#118) — Kotlin 2.4.0 내부 사용으로 동일 차단
+- **openapi-generator 7.23.0** (#119) — 13 minor 점프, Android 생성 클라이언트 코드 변동 별도 검토 필요
+
+`docs/ops/dependency-deferred.md §1` 갱신(신규 close PR 추가) + §2 신설(openapi-generator 보류).
+
+---
+
 ## [main] — 2026-06-16 — Sentry 알림 스크립트 점검·재발방지 개선
 
 > `scripts/setup-sentry-alerts.ps1` 첫 실행 시 8개 룰 전부 404 실패 → 근본원인 5개 분석·수정·주석화 + 구조 개선. 이후 스크립트 정상 실행 완료, 8개 알림 룰 Sentry UI 활성 확인. 커밋 `d18e335`.

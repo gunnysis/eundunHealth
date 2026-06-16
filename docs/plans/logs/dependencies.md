@@ -4,6 +4,21 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-16 — Dependabot PR 6개 triage (머지 3 / 닫기 3)
+
+- **PR**: #120 #121 #124 머지 / #117 #118 #119 닫기 (2026-06-16)
+- **Why**: main 동기화 후 open dependabot PR 6개 일괄 정리.
+- **What (머지)**:
+  - **#120** Sentry Android 8.43.1 → 8.43.2 (패치, CI pass)
+  - **#121** MockK 1.14.9 → 1.14.11 (패치, CI pass)
+  - **#124** Backend minor-patch 6개: fastapi 0.136.1→0.137.1 · sqlalchemy 2.0.50→2.0.51 · sentry-sdk 2.61.1→2.62.0 · pytest 9.0.3→9.1.0 · ruff 0.15.16→0.15.17 · pip-audit 2.10.0→2.10.1 (CI pass)
+- **What (닫기)**:
+  - **#117** Kotlin 2.4.0 + KSP 2.3.9 — Hilt 2.59.3+ 대기, build.gradle.kts DSL 마이그레이션 선행 필요. `dependency-deferred.md §1` 갱신(PR 이력 추가).
+  - **#118** Coil 3.5.0 — Kotlin 2.4.0 내부 사용 → #117과 동일 차단. `dependency-deferred.md §1` 갱신.
+  - **#119** openapi-generator 7.10.0→7.23.0 — 13 minor 점프, 생성 클라이언트 코드 변동 검토 필요. `dependency-deferred.md §2` 신설.
+- **Outcome**: 각 닫힌 PR에 사유 코멘트 추가. main 현재 최신 패치.
+- **Files touched**: `docs/ops/dependency-deferred.md`
+
 ### 2026-06-16 — starlette 1.2.1 → 1.3.1 (CI pip-audit 신규 CVE 차단 픽스)
 
 - **PR**: [#123](https://github.com/gunnysis/eundunHealth/pull/123) (shipped, v0.1.15 backend 동반)
