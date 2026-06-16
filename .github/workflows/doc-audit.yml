@@ -88,7 +88,7 @@ jobs:
 
       - name: Upload report artifact
         if: steps.auth.outputs.ready == 'true'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: doc-audit-report
           path: audit-report.txt
