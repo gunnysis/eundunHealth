@@ -328,6 +328,18 @@ Gson 으로 역직렬화되는 모델(Retrofit 응답 타입 + 그 중첩·래�
 4. 롤백 경로(이미지 캐시, git 백업, DB PITR)는?
 5. 실패 시 Sentry/Health Check로 즉시 인지 가능한가?
 
+### 병렬 작업 규칙
+
+- **같은 루트 디렉토리에서는 Claude Code 콘솔 1개만 실행**
+- 병렬 작업이 필요한 경우 `git worktree`로 디렉토리를 분리한 뒤 각 디렉토리에서 콘솔 1개씩 실행
+```bash
+  git worktree add ../eundunHealth-feat-A feature/작업명A
+  git worktree add ../eundunHealth-feat-B feature/작업명B
+  # 각 디렉토리에서 별도 claudex 실행
+```
+- 각 세션 시작 시 **수정 대상 파일/디렉토리를 프롬프트에 명시** (영역 외 파일 수정 금지)
+- 작업 완료 후 worktree 정리: `git worktree remove ../eundunHealth-feat-A`
+
 ### Commit / Push 워크플로우
 - main 직접 작업 시: 모든 부수 변경 (changelog, docs 갱신) 을 포함한 뒤 **1회 push**.
 - `/changelog` 는 push 전에 실행 → `git commit --amend --no-edit` 로 직전 커밋에 합침.
@@ -413,6 +425,27 @@ Gson 으로 역직렬화되는 모델(Retrofit 응답 타입 + 그 중첩·래�
 - `scripts/hooks/secretref-guard.sh` — git commit 시 backend.yml 신규 secretref 가 Container
   App 에 등록됐는지 자동 검증 (룰 6 1차 가드). PreToolUse hook 으로 자동 실행. fail-open.
 
+### 에이전트 스크립트 (`scripts/agents/`) — **WIP, 삭제 금지**
+> Claude Agent SDK 기반 헤드리스 자동화. errant artifact 로 오해해 삭제했다 복구한 이력 있음. 상세: `docs/plans/logs/process-infra.md` (2026-06-16 Agent SDK 적용 검토 entry).
+
+- `scripts/agents/doc_audit.py` — 문서 드리프트 감사관. 2단계: (1) collector — `version.properties`·`backend/app/__init__.py`·alembic head·pytest 수 등 canonical SSoT 파싱(결정론적, SDK 불필요); (2) auditor — Claude Agent SDK로 문서 사본(CLAUDE.md/README/operations-snapshot/TRD/PRD/CHANGELOG)과 대조(read-only, `dontAsk`+`[Read,Grep,Glob]` → 파일 변경 불가). 설계 배경: INC-27(`bump-version.sh` blind-replace).
+- `scripts/agents/doc-audit.sh` — 로컬 wrapper (구독 인증 + 출력 포맷).
+- `scripts/agents/test_doc_audit.py` — collector/파서 단위테스트 (SDK·인증 불필요).
+- `scripts/agents/requirements.txt` — `claude-agent-sdk` (Python 3.10+).
+
+```bash
+# 결정론적 사실 수집만 (SDK·인증 불필요)
+python scripts/agents/doc_audit.py --collect-only
+
+# 전체 감사 (collector → SDK auditor → 사람용 리포트)
+bash scripts/agents/doc-audit.sh
+
+# 단위 테스트
+backend/.venv/Scripts/python.exe -m pytest scripts/agents/test_doc_audit.py -q
+```
+
+**CI**: `.github/workflows/doc-audit.yml` — 2 job. `collector-test`(시크릿 불필요·항상 실행) + `audit`(주간 cron 월 09:00 KST + `workflow_dispatch`, `CLAUDE_CODE_OAUTH_TOKEN` 또는 `ANTHROPIC_API_KEY` 미설정 시 GREEN 스킵). advisory — `--strict` 미지정이라 드리프트가 있어도 run 은 green(Step Summary + artifact 로만 리포트).
+
 ### Claude Code 슬래시 명령 (`.claude/commands/`)
 
 - `/verify-deploy <inc-id>` — MCP (Sentry/Azure) 로 Phase 5 운영 검증 자동화 (alembic head
@@ -425,5 +458,5 @@ Gson 으로 역직렬화되는 모델(Retrofit 응답 타입 + 그 중첩·래�
 ### OpenAPI Generator (Android)
 - 입력: `backend/openapi.json` (git checked-in, `sync-openapi.sh`로 갱신)
 - 출력: `app/build/generated/openapi/src/main/kotlin/com/gunnys/eundunhealth/api/generated/` (gitignored, `:app:openApiGenerate`로 자동 생성, `preBuild` 의존성으로 컴파일 전 항상 최신)
-- 현재는 **side-by-side** — 기존 `EundunApi.kt`와 공존, Repository는 아직 generated 미사용. Phase 5 후속 PR에서 점진 전환.
+- Repository는 generated client 사용 (`EundunApi.kt`·`ApiDtos.kt` 제거됨). `di/NetworkModule.kt` 에 5개 generated Api provider, `data/repository/*RepositoryImpl.kt` 에서 `bodyOrThrow()` 사용.
 - 라우터에 추가/변경 시 체크리스트: ① 라우터에 `operation_id="..."` 명시(Android 함수명과 일치) ② Query param은 `alias="..."`로 camelCase 노출 ③ `bash scripts/sync-openapi.sh` ④ 같은 PR에 `backend/openapi.json` 포함
