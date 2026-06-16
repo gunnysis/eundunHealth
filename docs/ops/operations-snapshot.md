@@ -161,6 +161,17 @@ DSN 분리 보관:
 
 ProGuard mapping: release 빌드 시 sentry-gradle plugin이 자동 업로드 (`projectName.set("eundunhealth")`, `SENTRY_AUTH_TOKEN` 사용).
 
+Alert 룰 (총 8개 — `scripts/setup-sentry-alerts.ps1` 으로 설정, 2026-06-16):
+
+| 종류 | 룰 | 프로젝트 |
+|------|---|--------|
+| Issue Alert | [Android] 신규 이슈 즉시 알림 · 회귀 알림 · 빈도 급증 (3회/1h) | eundunhealth |
+| Issue Alert | [Backend] 신규 이슈 즉시 알림 · 회귀 알림 · 빈도 급증 (10회/1h) | eundunhealth-backend |
+| Metric Alert | [Backend] p95 응답시간 (warn 2s / crit 5s) | eundunhealth-backend |
+| Metric Alert | [Backend] 에러율 스파이크 (warn 1% / crit 5%) | eundunhealth-backend |
+
+> 출시 후 추가 권장: 각 룰 Edit → "Filter by Environment: production". Android p95 Metric Alert → DAU 100+ 후 수동 추가. 임계값은 ESTIMATE-ONLY — 출시 2주 후 실측 기반 재조정.
+
 ---
 
 ## 7. 외부 통합
@@ -325,3 +336,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-06-11 | **v0.1.11 (PR #104) + v0.1.12 (PR #106)**. #104: HC Android 14+ rationale intent + 런처 아이콘 intrinsic 수정(연동 버튼 무반응·읽기 실패) + 계정삭제 완전성(목표·신체이력 purge) backend 배포. #106: HC 체성분 가져오기 제거 + `READ_WEIGHT`/`READ_BODY_FAT` 권한 회수(6→4) + 신체 4지표 수동 단일화. 이후 코드베이스 리팩토링 #107~#112 → v0.1.13 |
 | 2026-06-15 | **v0.1.14 (PR #122) — 출시 준비 종합**. 실기기 제보 2버그 근본수정: ① 빈 운동계획 = R8 keep 갭(ExerciseDto 만 keep, Gson 래퍼 ExerciseListResponse/PageMeta 누락 → 릴리스 R8 제거 → `emptyList` 폴백) → 패키지 단위 keep + `ProguardKeepRulesTest` + CLAUDE.md 룰 12 ② 완료 토글 해제 미보존 = HC 자동완료가 수동 해제일 재마크 → `CompletionRequest.manual`/day `manuallySet` 수동 우선. 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증 500→400·토큰갱신 동시성·운동상세). 백엔드 자동배포(`manual` live). versionCode 28 (AAB 8.35 MB, Sentry 매핑 `1a8f12bb`) |
 | 2026-06-16 | **v0.1.15 (PR #123) — 감사 LOW 후속**. ① SideEffect 수집 라이프사이클-aware(`ObserveAsEvents`, repeatOnLifecycle STARTED, 7 Screen) ③ alembic forward 마이그레이션 `c849579de6c4`(rest_day server_default 일관화) ④ **CORS 와일드카드 제거**(config 기본 `[]` + `containerapp.yaml` `[]`, live 검증). CI pip-audit 신규 CVE 검출로 starlette 1.2.1→**1.3.1** 동반. 백엔드 배포·CORS live 검증 완료, Android Play 업로드 대기. versionCode 29 (Sentry 매핑 `1e11310d`) |
+| 2026-06-16 | **Sentry Alert 설정 (`scripts/setup-sentry-alerts.ps1`, commit `d18e335`)**. 스크립트 5개 버그 수정(B1 PS 대소문자 변수충돌·B2 environment 404·B3 interval 무효·B4 dataset deprecated·B5 team targetType) + 구조 개선(DryRun 플래그·GET 기반 idempotency·재발방지 주석). **Issue Alert 6 + Metric Alert 2 = 총 8개 Sentry 알림 활성** (§6 참조). 잘못 생성된 Priority Notification 룰 2개(#3589906·#3589907) UI에서 삭제 |

@@ -4,6 +4,13 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-16 — Sentry Alert 스크립트 점검·재발방지 개선 (commit d18e335)
+
+- **Why**: `scripts/setup-sentry-alerts.ps1` 최초 실행 시 8개 룰 전부 404 실패. 스크립트 자체에 5개 버그가 잠복.
+- **What**: ① B1 — PowerShell 변수명 case-insensitive 충돌: `$org`(API 응답)와 `$ORG`(org 슬러그)가 동일 변수로 취급되어 URI에 PS 객체 삽입 → `$orgInfo` 분리 + 모든 상수 `$script:` 명시. ② B2 — `environment="production"` 404: 첫 이벤트 수신 전 Sentry에 환경 미등록. environment 필드 제거. ③ B3 — `interval="30m"` 무효: `"1h"` 로 변경(유효값 `1m/5m/10m/1h/4h/24h/1w` 주석). ④ B4 — `dataset="transactions"` deprecated: `events_analytics_platform` + `is_transaction:true` + `p95(span.duration)`. ⑤ B5 — `targetType="team"`: 솔로 프로젝트에 팀 없음 → `targetType="user"` + `targetIdentifier=4265580`(user.id, 멤버 .id 아님). 구조 개선: `-DryRun` 플래그 + GET 기반 idempotency + `Get-SentryErrorDetail` 공통 헬퍼 + B1~B5 재발방지 주석블록.
+- **Outcome**: Issue Alert 6 + Metric Alert 2 = 8개 알림 룰 Sentry UI 활성 확인. 잘못 생성된 Priority Notification 룰 2개(#3589906·#3589907) 삭제. `docs/ops/operations-snapshot.md §6·§13` + `CLAUDE.md` 스크립트 목록 + `docs/CHANGELOG.md` 갱신(commit `8978081`).
+- **Lessons**: PowerShell 의 변수명 대소문자 무감지 특성은 외부 API 응답 수신 시 상수 변수명과 충돌 가능 — 응답 수신 변수는 항상 다른 이름 사용. Sentry API 는 첫 이벤트 전 environment 미등록·`transactions` dataset deprecated·`"30m"` 인터벌 무효 등 API 문서에서 찾기 어려운 계약이 있음 — 재발방지 주석이 필수. `-DryRun` 패턴은 실행 계획을 미리 검증하는 데 효과적.
+
 ### 2026-06-16 — 감사 후속 개선 백로그 구현 (TDD) — 코드·인프라
 
 - **PR**: (branch `feature/audit-followup-backlog`) — 직전 동일자 "전수 점검" entry 의 **후속 개선 백로그 8항목**을 TDD 로 구현.
