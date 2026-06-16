@@ -4,6 +4,25 @@
 
 ---
 
+## [v0.1.15] — 2026-06-16 — 감사 LOW 후속 (내부 품질, 사용자 가시 동작 변화 없음)
+
+> 출시 준비 감사(PR #122)에서 보류한 LOW 항목 중 권장 3건 구현 + 차단된 의존성 CVE 동반. PR #123 (squash `078a24fb`). versionCode 29. 백엔드 자동배포·CORS live 검증 완료, Android Play 업로드 대기.
+
+### ✅ 변경
+- **① SideEffect 수집 라이프사이클-aware** — 7개 Screen 이 `LaunchedEffect(Unit){ sideEffect.collect{} }` 로 컴포지션 전 생애 수집(STOPPED 중 도착 이벤트 즉시 소비) → 공식 패턴 `repeatOnLifecycle(STARTED)` 재사용 헬퍼 `ObserveAsEvents` 추출. Channel(BUFFERED) 버퍼가 화면 보일 때 전달. 룰 11 정합·향후 화면 자동 안전.
+- **③ alembic rest_day server_default 환경 일관화(B6)** — 초기 마이그레이션이 server_default 없이 생성 → fresh DB 분기. forward 마이그레이션 `c849579de6c4`(ALTER SET DEFAULT 7, idempotent) + 모델 server_default. **head = c849579de6c4**. runtime-smoke(PG)로 룰7 검증, live 적용.
+- **④ CORS 와일드카드 차단** — `allow_origins=['*']` → `config.py` 기본 `[]` + `containerapp.yaml` `[]`(--yaml 배포 = env 단일출처). 웹 cross-origin 표면 없음(네이티브 앱+App Links). live 검증: 임의 origin 에 ACAO 헤더 없음. 회귀가드 `test_cors_does_not_allow_arbitrary_origin`.
+- **starlette 1.2.1 → 1.3.1** — CI pip-audit 가 신규 CVE(GHSA-82w8-qh3p-5jfq, GHSA-jp82-jpqv-5vv3) 검출 → bump(PR 무관하나 차단 픽스). module-level CORS 라 룰4 무관.
+
+### ⏭ 스킵
+- **② AppError 403 매핑** — 앱의 403 은 전부 인증 성격(HTTPBearer 헤더 부재), authz-403 엔드포인트 없음, 401→refresh/403→no-refresh 동작 정확 → 현행 적정.
+
+### ✅ 검증
+- 백엔드 pytest 62 passed(+CORS 가드), ruff/mypy clean · Android 전체 단위테스트 GREEN, spotless/detekt clean · PR #123 CI 전 job pass(Security/runtime-smoke/Android/백엔드)
+- preflight: AAB + APK + Sentry 매핑 `1e11310d`
+
+---
+
 ## [v0.1.14] — 2026-06-15 — 출시 준비 종합 (제보 2버그 근본수정 + 전수감사 + 재발방지)
 
 > 실기기(Galaxy Z Flip3) 제보 2건에서 시작 → 4-에이전트 병렬 전수감사로 출시 차단 요소 발굴 → 클러스터별 TDD 수정 + 실기기/단위 검증 + 재발방지 가드. PR #122 (squash `e2d7460`). versionCode 28. 백엔드 자동배포 완료(`manual`/`manuallySet` live), Android Play 업로드 대기.
