@@ -17,7 +17,7 @@ class UserProfile(Base):
     weight_kg: Mapped[float] = mapped_column(Float, nullable=False)
     body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     muscle_mass_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
-    rest_day: Mapped[int] = mapped_column(Integer, default=7)
+    rest_day: Mapped[int] = mapped_column(Integer, default=7, server_default="7")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

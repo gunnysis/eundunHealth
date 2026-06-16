@@ -85,7 +85,7 @@
 | 프레임워크 | FastAPI 0.136.1 + uvicorn 0.49.0 | |
 | API 버전 | `1.0.0` (`backend/app/__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.50 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
-| 마이그레이션 | Alembic 1.18.4 (head: `fa3915deab2f`) | async 엔진 연동 |
+| 마이그레이션 | Alembic 1.18.4 (head: `c849579de6c4`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.2.1 | PYSEC-2026-161 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.61.1 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
@@ -175,7 +175,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── app/                      # Android 앱 (Kotlin / Compose)
 ├── backend/                  # FastAPI 백엔드 (Python 3.12)
 │   ├── app/                  # 애플리케이션 코드
-│   ├── alembic/              # DB 마이그레이션 (head: fa3915deab2f)
+│   ├── alembic/              # DB 마이그레이션 (head: c849579de6c4)
 │   ├── tests/                # pytest (41 PASS, coverage 82%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동

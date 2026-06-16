@@ -26,7 +26,7 @@
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.2.1** (PYSEC-2026-161 fix 포함 — v0.1.5 #54 에서 1.1.0 도입 후 1.2.x bump) |
 | versionCode / versionName | (미정) | **23 / 0.1.9** — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
-| Alembic head | (미정) | `fa3915deab2f` (v0.3 history + goals + rest_day 컬럼, INC-2026-05-27-01 fix 포함) |
+| Alembic head | (미정) | `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f`: v0.3 history + goals + rest_day 컬럼, INC-2026-05-27-01) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
 
