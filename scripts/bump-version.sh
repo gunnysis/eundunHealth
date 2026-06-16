@@ -54,17 +54,38 @@ fi
 sed -i -E "s/^versionName=.*/versionName=${NEW_NAME}/" "${PROPS}"
 sed -i -E "s/^versionCode=.*/versionCode=${NEW_CODE}/" "${PROPS}"
 
-# 2) current-state 문서 토큰 동기화(literal). '.' 가 regex any 라 과매칭 가능 → 커밋 전 git diff 검토 필수.
-for doc in README.md docs/PRD.md docs/ops/operations-snapshot.md; do
-  f="${REPO_ROOT}/${doc}"
-  [ -f "${f}" ] || continue
-  sed -i "s/${OLD_NAME}/${NEW_NAME}/g; s/versionCode ${OLD_CODE}/versionCode ${NEW_CODE}/g" "${f}"
-done
+# 2) current-state 문서 동기화 — 앵커드 라인-스코프 치환(전역 blind 치환 금지).
+#    과거: `s/${OLD_NAME}/${NEW_NAME}/g` 가 산문 속 과거 버전까지 오염 + versionCode 배지(`versionCode-NN`)는
+#    공백형만 매칭해 영영 고착 (INC-2026-06-16-27). 이제 '현재 버전' 단일 마커만 안전 치환한다.
+#    OLD_NAME/OLD_CODE 는 더 이상 치환 패턴에 쓰지 않는다(앵커가 현재값을 일반 패턴으로 잡음).
+README_F="${REPO_ROOT}/README.md"
+if [ -f "${README_F}" ]; then
+  # shields.io 배지(versionName + versionCode 양쪽) — 과거 공백형 치환이 놓치던 곳
+  sed -i -E "s#(badge/versionName-)[0-9][0-9.]*(-)#\1${NEW_NAME}\2#" "${README_F}"
+  sed -i -E "s#(badge/versionCode-)[0-9]+(-)#\1${NEW_CODE}\2#" "${README_F}"
+fi
+SNAP_F="${REPO_ROOT}/docs/ops/operations-snapshot.md"
+if [ -f "${SNAP_F}" ]; then
+  # §1 표의 'versionName / versionCode' 행만 (라인 스코프, 첫 매치)
+  sed -i -E "/versionName \/ versionCode/ s#\`[0-9][0-9.]*\` / \`[0-9]+\`#\`${NEW_NAME}\` / \`${NEW_CODE}\`#" "${SNAP_F}"
+fi
+PRD_F="${REPO_ROOT}/docs/PRD.md"
+if [ -f "${PRD_F}" ]; then
+  # '제품 버전:' 라인의 선두 마커만 (첫 매치 — 이후 '이전(vX)'/Play 상태 산문 보존)
+  sed -i -E "/^\*\*제품 버전:\*\*/ s#v[0-9][0-9.]* \(versionCode [0-9]+\)#v${NEW_NAME} (versionCode ${NEW_CODE})#" "${PRD_F}"
+fi
 
 echo
 echo "완료. 다음을 수행하세요:"
-echo "  1) git diff 로 문서 치환 검토 (의도치 않은 매칭 확인)"
-echo "  2) docs/CHANGELOG.md 에 [v${NEW_NAME}] 헤더 + 변경내역 작성"
-echo "  3) CLAUDE.md 의 버전 표기 수동 갱신(자동 제외)"
+echo "  1) git diff 로 검토 — 앵커드라 변경 라인은 소수여야 정상"
+echo "     (version.properties + README 배지2 + operations-snapshot §1 + PRD 제품버전 마커)"
+echo "  2) 산문 속 '현재 버전' 추가 언급은 자동 동기화 대상 아님 → 수동 갱신:"
+echo "       - CLAUDE.md 버전 표기, operations-snapshot 헤더(작성 기준/최근 갱신) + §13 이력 행 추가"
+echo "       - PRD '문서 버전'/Play 상태 narrative, README '현재 단계'"
+echo "  3) docs/CHANGELOG.md 에 [v${NEW_NAME}] 헤더 + 변경내역 작성"
 echo "  4) bash scripts/preflight-release.sh 로 산출물 빌드(룰 2)"
 echo "  5) git tag v${NEW_NAME} (검토 후)"
+echo
+echo "--- 변경 라인 요약(git diff --stat) ---"
+git -C "${REPO_ROOT}" --no-pager diff --stat -- \
+  version.properties README.md docs/PRD.md docs/ops/operations-snapshot.md 2>/dev/null || true

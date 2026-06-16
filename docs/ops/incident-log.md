@@ -457,6 +457,49 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 
 ---
 
+## INC-2026-06-15-25 — R8 Gson 래퍼 keep 갭 → 릴리스 빌드 빈 운동계획 (결정론적)
+
+**증상**: 실기기(Galaxy Z Flip3) **릴리스 빌드**에서 로그인 후 주간 운동계획이 통째로 비어 생성·저장·고착. 디버그 빌드·단위테스트는 정상 → 재현 불가로 오래 표면화 안 됨.
+
+**근본 원인**: `proguard-rules.pro` 가 `ExerciseDto` **한 클래스만** keep 하고, ExerciseDB 응답의 Gson 래퍼 `ExerciseListResponse`/`PageMeta` 를 빠뜨림. 이 두 타입은 `@SerializedName` 도 없어서 릴리스 R8 이 필드/클래스를 제거 → Gson 이 `data` 를 못 채워 `List<T>` 가 **silent 하게 `emptyList()` 로 폴백** → 운동 풀이 0개 → 빈 계획이 결정론적으로 생성. R8 미적용인 debug/단위테스트에서는 절대 안 잡힌다.
+
+**복구**: keep 을 **패키지 단위**로 전환 (`data.remote.exercisedb.**`, `data.remote.api.dto.**`, `api.generated.model.**`). 추가로 `GetOrCreateWeeklyPlanUseCase` 가 기존 계획이 비어 있으면 재생성하도록 자가치유(`hasExercises`) + `WorkoutRepositoryImpl` 가 빈 풀이면 저장 전 `error()` 로 차단. 검증은 단위테스트 불가라 릴리스 빌드 실기기 계측으로만 확인. (PR #122 `e2d7460`)
+
+**재발 방지**:
+- **CLAUDE.md 룰 12 신설** — Gson 반사 모델은 `@SerializedName` 또는 패키지 단위 `-keep` 전수. 새 모델은 keep 된 3개 패키지 안에 두면 자동 보호.
+- **`ProguardKeepRulesTest`** — 위 3개 keep 규칙의 존재를 박제(삭제 시 `:app:testDebugUnitTest` 실패).
+- 메모리 `r8-gson-wrapper-keep-gap.md` + `test-device-preference.md`(검증 실기기 = Flip3 only).
+- **잔존 리스크**: CI 는 `assembleDebug` 만 빌드 → 실제 R8 stripping 미실행. 룰 12 는 unit test 가드뿐이라 keep 패키지 밖 신규 모델은 릴리스 실기기 계측으로만 최종 확인 가능.
+
+---
+
+## INC-2026-06-15-26 — 운동 완료 토글 해제 미보존 (HC 자동완료가 수동 해제일 재마크)
+
+**증상**: 사용자가 완료 체크를 **해제**한 뒤 새로고침하면 그 날이 다시 완료로 체크됨. (INC-2026-05-25-19 의 422 silent-fail 과는 다른 별개 근본원인.)
+
+**근본 원인**: `SyncHealthDataUseCase` 가 Health Connect 자동 감지로 "오늘 운동함" 인 날을 완료로 표시할 때, **사용자가 방금 수동으로 해제한 날까지 무차별 재마크**. 수동 의도(해제)가 자동 동기화에 덮였다.
+
+**복구**: 완료 상태에 **수동 우선** 신호 도입 — 사용자 토글은 `CompletionRequest.manual=true` 로 전송, day 에 `manuallySet` 플래그 저장. `SyncHealthDataUseCase` 는 `!manuallySet` 인 날만 HC 자동완료 적용. HC 자동 푸시는 `manual=false`. 백엔드 `weekly_plan_service` 가 `manual` 일 때만 `manuallySet` 기록. 토글 직렬화(`toggleJobs[date]?.cancel()`)로 경합 제거. 백엔드 자동배포(`manual` live) 후 Flip3 e2e 검증(해제→새로고침 유지). (PR #122 `e2d7460`)
+
+**재발 방지**: `HomeViewModelTest`(toggle revert·todayActivity 보존·직렬화) + `WeeklyPlanTest`/`PlanJsonModelsTest`(manuallySet 라운드트립·`parseExerciseType` 폴백) 회귀 테스트. (후속 권장: 낙관적 토글의 `manuallySet=true` + `CompletionRequest.manual` 전송 직접 단언 테스트 추가 — 현재 간접 커버.)
+
+---
+
+## INC-2026-06-16-27 — `bump-version.sh` blind replace 로 문서 버전 오염 + versionCode 배지 고착
+
+**증상**: v0.1.14/v0.1.15 연속 bump 후 문서 드리프트 — `operations-snapshot.md §1` 이 `0.1.13/27` 에 고착, `README.md` versionCode 배지가 `26` 에 고착. CHANGELOG/과거 버전 설명문이 새 버전 문자열로 오염될 위험.
+
+**근본 원인**: `scripts/bump-version.sh` 가 current-state 문서에 대해 **앵커 없는 전역 치환** `s/${OLD_NAME}/${NEW_NAME}/g` 수행 → 문서 산문 속 과거 버전 언급까지 치환(설명 오염). 동시에 versionCode 치환은 `s/versionCode ${OLD_CODE}/...`(공백형)만 매칭 → 배지 URL `versionCode-NN` 형은 영영 매칭 안 됨(고착). 사용자가 매 릴리스마다 오염된 docs 를 `git checkout` 으로 되돌리고 수동 정정하면서, 배지/§1 은 누락된 채 누적.
+
+**복구**: (1) 본 감사(2026-06-16)에서 고착·오염 라인 일괄 정정. (2) `bump-version.sh` 를 **앵커 치환**으로 하드닝 — 전역 blind 치환 제거, README 배지(versionName/versionCode 양쪽)·operations-snapshot §1 행·PRD 제품버전 행을 단일 출현 앵커로만 치환 + `git diff --stat` 출력 + 수동 검토 체크리스트.
+
+**재발 방지**:
+- 하드닝된 `bump-version.sh`(앵커 치환 + 변경 라인 노출).
+- `docs/conventions/versioning.md §4` 에 blind-replace 경고 + "diff 로 의도치 않은 과거버전 매칭 확인" 명시.
+- 메모리 lesson 보존(bump 후 `git diff` 수동 검토 필수).
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
@@ -465,3 +508,4 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 | 2026-05-25 (후속) | 권장 항목 자동화 정착 — alembic-autogen.sh, preflight-release.sh, PR template, CLAUDE.md 룰 5종 |
 | 2026-05-25 (배포 검증) | INC-17·18 해결 + 자동 배포 첫 end-to-end 성공 (revision 0000006). register-azure-credentials.ps1 / secret precheck / workflow_dispatch 정착 |
 | 2026-05-25 (출시 직전 안정화) | INC-19~24 추가 — Phase 5A/5B+5C에서 발견된 silent 버그 6건. OpenAPI generator + drift detection CI(PR #19~#21)로 같은 종류 회귀를 컴파일 단계에서 차단 |
+| 2026-06-16 (출시 준비 회고) | INC-25~27 추가 — 릴리스 R8 Gson keep 갭(빈 운동계획, 룰 12+ProguardKeepRulesTest), 토글 해제 미보존(manual/manuallySet 수동 우선), bump-version.sh blind-replace 문서 오염(스크립트 앵커 하드닝). PR #122/#123 출시 사이클 전수감사 결과 정착 |

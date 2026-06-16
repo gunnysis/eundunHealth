@@ -4,6 +4,30 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-16 — 감사 LOW 후속: SideEffect 라이프사이클 헬퍼 (v0.1.15)
+
+- **PR**: [#123](https://github.com/gunnysis/eundunHealth/pull/123) (merged, squash `078a24fb`) — 백엔드 ③④·starlette 는 backend/dependencies ledger
+- **Why**: 직전 v0.1.14 전수감사에서 보류한 LOW 권장 항목 후속 — SideEffect 수집이 화면별 `LaunchedEffect`/수동 collect 라 라이프사이클-aware 하지 않음.
+- **What**: `ui/util/ObserveAsEvents.kt` 신설 — `repeatOnLifecycle(STARTED)` 기반 일회성 이벤트 수집 헬퍼. SideEffect Channel 수집을 7 Screen(Login/Signup/ForgotPassword/Home/Profile/Goal/Onboarding)에서 통일.
+- **Decisions**: ② 403 매핑은 스킵 — 앱의 403 은 전부 auth 성격이라 별도 매핑 불필요(점검 정정). ① 을 사용자에 반영하려 v0.1.15 bump + 재빌드.
+- **Outcome**: 게이트 green + 회귀가드(`ObserveAsEvents`). preflight AAB 8.35 MB, Sentry 매핑 `1e11310d`. `release: v0.1.15` `f9e6790` + 태그 push. Play 업로드 대기(v0.1.14 핵심수정 + ① 포함).
+- **Lessons**: `collectAsStateWithLifecycle`(상태) ↔ `ObserveAsEvents`(일회성 이벤트) 가 라이프사이클-aware 짝. (이 도입으로 `collectAsStateWithLifecycle` 측정치 33→20 으로 감소 — CLAUDE.md 룰 11 baseline 갱신.)
+- **Files touched**: ui/util/ObserveAsEvents.kt(신규), ui/{auth/Login,auth/Signup,auth/ForgotPassword,home/Home,profile/Profile,goal/Goal,onboarding/Onboarding}Screen.kt
+
+---
+
+### 2026-06-15 — 출시 준비 종합: 빈 운동계획·토글 버그 근본수정 + 전수감사 (v0.1.14)
+
+- **PR**: [#122](https://github.com/gunnysis/eundunHealth/pull/122) (merged, squash `e2d7460`) — design/plan 페어 없음(디버깅 발 + 감사). 인시던트: `incident-log.md` INC-25/26.
+- **Why**: 실기기(Flip3) 제보 2버그 — ① 릴리스에서 운동계획이 통째로 빔 ② 완료 체크 해제가 새로고침 후 되돌아옴. + 출시 전 4-에이전트 전수감사로 출시차단 클러스터 식별.
+- **What**: ① **R8 Gson keep 갭**(INC-25) — ExerciseDto 만 keep, 래퍼 ExerciseListResponse/PageMeta 누락 → R8 제거 → `emptyList` 폴백. 패키지 단위 keep + `GetOrCreateWeeklyPlanUseCase` 자가치유(`hasExercises`) + 빈 풀 저장 차단. ② **토글 해제 미보존**(INC-26) — `CompletionRequest.manual`/day `manuallySet` 수동 우선 + 토글 직렬화. 전수감사 해소: 완료 정합성(통계 isCompleted 통일·행잠금), 입력검증 500→400, 토큰갱신 동시성/일시실패 견고화(`SessionRefresher` 분리), 운동상세(GIF 싱글톤 복구·복사/선택·`getExerciseById` 데이터흐름 로컬화), 캐시 read 갱신·type 폴백·weekStart KST 고정, BadgeRepo @Singleton.
+- **Outcome**: 게이트 green. 백엔드 자동배포(`manual` live) 후 Flip3 e2e 검증(해제→새로고침 유지). v0.1.14 (AAB 8.35 MB, Sentry 매핑 `1a8f12bb`).
+- **Lessons**: (1) 릴리스-only silent empty data 는 디버그/단위테스트로 못 잡음 → 룰 12 + `ProguardKeepRulesTest` 박제 + 실기기 계측 필수. [[r8-gson-wrapper-keep-gap]] (2) 검증 실기기 = Flip3 only(사용자 환경 일치, S9+ 사이드이펙트). [[test-device-preference]] (3) **`bump-version.sh` blind-replace**(INC-27) — bump 후 `git diff` 로 과거 버전 오염·versionCode 잔재 수동 정정 필수.
+- **재발 방지**: CLAUDE.md 룰 12, `ProguardKeepRulesTest`, TokenAuthenticator/Sync/HomeVM/PlanJsonModels 회귀 테스트.
+- **Files touched**: proguard-rules.pro(+ProguardKeepRulesTest), domain/model/WeeklyPlan.kt, domain/usecase/{GetOrCreateWeeklyPlan,SyncHealthData}UseCase.kt, data/repository/WorkoutRepositoryImpl.kt, data/remote/api/dto/PlanJsonModels.kt, data/remote/interceptor/{TokenAuthenticator,SessionRefresher}.kt, ui/home/HomeViewModel.kt, ui/workout/WorkoutDetailScreen.kt(+VM), EundunHealthApplication.kt(GIF 싱글톤)
+
+---
+
 ### 2026-06-11 — Health Connect 체성분 가져오기 제거 (수동 단일화, v0.1.12)
 
 - **PR**: [#106](https://github.com/gunnysis/eundunHealth/pull/106) (merged, squash `bf260e9`) — 원래 #105였으나 #104 머지 시 base `--delete-branch` 삭제로 #105 자동 CLOSE → main rebase 후 #106 재생성

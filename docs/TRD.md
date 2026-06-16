@@ -11,12 +11,12 @@
 
 본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.9 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
-| 영역 | TRD v1.0 | 현재 (v0.1.9) |
+| 영역 | TRD v1.0 | 현재 (v0.1.15) |
 |------|----------|------------|
 | Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.136.1 (Python 3.12)** + uvicorn |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0 async + asyncpg** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (48 PASS, cov ~84%) |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (62 PASS, cov ~84%) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API | RapidAPI ExerciseDB | **OSS** `oss.exercisedb.dev` (인증 불필요) |
 | Supabase 리전 | (US) | **Korea (project `ttzzbfoksncqazvcsfiu`)** |
@@ -24,8 +24,8 @@
 | Android 정적 분석 | 미적용 | **Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0** |
 | 차트 라이브러리 | 미사용 | **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
-| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.2.1** (PYSEC-2026-161 fix 포함 — v0.1.5 #54 에서 1.1.0 도입 후 1.2.x bump) |
-| versionCode / versionName | (미정) | **23 / 0.1.9** — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix — v0.1.5 #54 에서 1.1.0 도입 → 1.2.1 → PR #123 에서 1.3.1) |
+| versionCode / versionName | (미정) | **29 / 0.1.15** — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
 | Alembic head | (미정) | `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f`: v0.3 history + goals + rest_day 컬럼, INC-2026-05-27-01) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
@@ -383,19 +383,24 @@ Application.kt (EngineMain)
 | `GET` | `/badges` | 획득 배지 목록 | O | - |
 | `POST` | `/badges/{key}` | 배지 수여 | O | key: whitelist 검증, 중복 방지 |
 
-### 4.4. CORS 설정
+### 4.4. CORS 설정 (FastAPI — PR #123 와일드카드 차단)
 
 | 항목 | 값 |
 |------|---|
-| 허용 Origin | `AppConfig.allowedOrigins` (기본: localhost:8080, 10.0.2.2:8080) |
-| 허용 헤더 | `Content-Type`, `Authorization` |
-| 허용 메서드 | GET, POST, PUT, PATCH, DELETE |
+| 허용 Origin | `cors_origins` (config 기본 `[]` · `containerapp.yaml` `[]`) — 네이티브 앱이라 웹 origin 불필요 → 기본 거부 |
+| 허용 헤더 | `["*"]` (origin 이 비어 있어 실질 무효) |
+| 허용 메서드 | `["*"]` (동일) |
+| credentials | 미허용 (`allow_credentials` 미설정) |
 
-### 4.5. 에러 처리
+> 모듈 레벨 `add_middleware` 등록 (룰 4 — lifespan 내부 금지). live 검증: 임의 origin 요청에 `Access-Control-Allow-Origin` 미반환. (구 Ktor `AppConfig.allowedOrigins` 표는 cutover 로 폐기.)
 
-- StatusPages 플러그인: 모든 `Throwable` 캐치
-- Sentry 전송: `Sentry.captureException(cause)`
-- 응답: 500 Internal Server Error + 에러 메시지
+### 4.5. 에러 처리 (FastAPI)
+
+- 전역 핸들러: `@app.exception_handler(Exception)` → 500 + `sentry_sdk.capture_exception`
+- 도메인 예외: `AppException`/`NotFoundException`(404)/`ConflictException`(409)/`BadRequestException`(400) → 매핑된 4xx
+- 검증 실패: `RequestValidationError` 핸들러 → 422 + path/method/body WARNING 로깅
+- `/health/ready` 의 DB 실패는 전역 핸들러를 거치지 않고 503 반환 (probe 가 Sentry 를 도배하지 않도록 의도적 분리)
+- (구 Ktor StatusPages / `Sentry.captureException` 은 cutover 로 폐기.)
 
 ---
 

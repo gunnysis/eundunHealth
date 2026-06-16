@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
-**Current state**: versionName `0.1.15` (versionCode `29` — 감사 LOW 후속: ① SideEffect 수집 라이프사이클-aware(`ObserveAsEvents`) + 백엔드(alembic rest_day server_default·CORS 와일드카드 차단) + starlette 1.3.1 CVE, PR #123 `078a24fb`(백엔드 배포·CORS live 검증 완료, Android Play 업로드 대기). 직전 v0.1.14 출시 준비 종합: 실기기 제보 2버그 근본수정(① 빈 운동계획 = R8 keep 갭 → 패키지 단위 keep + 자가치유 ② 완료 토글 해제 보존 = 수동 우선 `manuallySet`) + 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증 500→400·인증 토큰갱신 견고화·운동상세 GIF/복사/데이터흐름·캐시/파싱/KST·폴리시) + 재발방지 가드, PR #122 squash `e2d7460`; 백엔드 자동배포 완료(`manual`/`manuallySet` live), Android Play 업로드 대기; 직전 v0.1.13 = 코드베이스 리팩토링 #107~#112). 버전 SSoT = 루트 `version.properties`(앱) + `backend/app/__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포). Play Store: 0.1.13/27 프로덕션 심사는 **취소** → **0.1.14/28 출시준비 빌드 Play 업로드 대기**(백엔드는 배포 완료, Sentry 매핑 `1a8f12bb` 업로드됨). Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+**Current state**: versionName `0.1.15` (versionCode `29` — 감사 LOW 후속: ① SideEffect 수집 라이프사이클-aware(`ObserveAsEvents`) + 백엔드(alembic rest_day server_default·CORS 와일드카드 차단) + starlette 1.3.1 CVE, PR #123 `078a24fb`(백엔드 배포·CORS live 검증 완료, Android Play 업로드 대기). 직전 v0.1.14 출시 준비 종합: 실기기 제보 2버그 근본수정(① 빈 운동계획 = R8 keep 갭 → 패키지 단위 keep + 자가치유 ② 완료 토글 해제 보존 = 수동 우선 `manuallySet`) + 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증 500→400·인증 토큰갱신 견고화·운동상세 GIF/복사/데이터흐름·캐시/파싱/KST·폴리시) + 재발방지 가드, PR #122 squash `e2d7460`; 백엔드 자동배포 완료(`manual`/`manuallySet` live), Android Play 업로드 대기; 직전 v0.1.13 = 코드베이스 리팩토링 #107~#112). 버전 SSoT = 루트 `version.properties`(앱) + `backend/app/__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포). Play Store: 0.1.13/27 프로덕션 심사는 **취소**, 0.1.14/28 은 ① 미포함이라 **0.1.15/29 가 Play 업로드 대기 빌드**(백엔드 배포·CORS live 검증 완료, Sentry 매핑 `1e11310d`; 출시 산출물 단일 위치 `app/build/outputs/bundle` — preflight·AS 마법사 동일 경로, stale `app/release/` 삭제). Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
 > Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
@@ -147,7 +147,7 @@ Package: `app`
 - `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py` 신규.
 - `alembic/` — async 엔진 연동. **head: `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f` rest_day 추가 — INC-2026-05-27-01)**.
 
-**API Endpoints (12개 — `/health` 제외 모두 JWT 필요):**
+**API Endpoints (14개 — `/health` 제외 모두 JWT 필요. 공개 라우트 `/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm` 별도):**
 ```
 GET    /health
 GET    /profile
@@ -186,9 +186,9 @@ DELETE /account
 ### Backend (FastAPI)
 - **Python 3.12**, FastAPI 0.136.1, SQLAlchemy 2.0.50 async + asyncpg 0.31.0, Alembic 1.18.4
 - **API version `1.0.0`** — `backend/app/__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
-- **starlette 1.2.1** (PYSEC-2026-161 fix 포함), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
+- **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix 포함; PR #123), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
 - **Sentry SDK 2.61.1** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy strict 통과, ruff/bandit clean, pytest 48/48 PASS (`/health/ready` 2건 + `__version__` 2건), coverage ~84% (mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
+- mypy strict 통과, ruff/bandit clean, pytest 62/62 PASS, coverage ~84% (mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
 - Alembic head `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f` rest_day 추가, INC-2026-05-27-01)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
@@ -311,7 +311,7 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 
 **Baseline** (MEASURED 2026-06-06):
 - `collectAsState()` 호출: **0건** (`grep -rn '\.collectAsState(' app/src/main/java/`)
-- `collectAsStateWithLifecycle` 사용: **33건** across 13 files
+- `collectAsStateWithLifecycle` 사용: **20건** across 13 files (2026-06-16 재측정 — 2026-06-06 마이그레이션 시 33건, 이후 리팩토링·`ObserveAsEvents` 도입으로 감소. 핵심 불변식 = `collectAsState()` 0건 유지)
 
 ### 룰 12 — Gson 반사 모델은 R8 keep 전수 + 패키지 단위 (INC 2026-06-15 빈 운동계획 회귀)
 

@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.13` / `27`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
+| versionName / versionCode | **`0.1.15` / `29`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
@@ -22,10 +22,11 @@
 | Sentry SDK | Android 8.43.1 / Gradle plugin 6.10.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
-산출물 경로 (v0.1.9 빌드 시점 기준 — v0.1.12 산출물은 출시 빌드 시 갱신):
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (7.79 MB)
-- APK: `app/build/outputs/apk/release/app-release.apk` (5.56 MB)
-- ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 자동 업로드)
+산출물 경로 (v0.1.15 빌드 기준 — **단일 정규 위치**):
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (8.35 MB) — Play 업로드 대상
+- APK: `app/build/outputs/apk/release/app-release.apk` (5.95 MB)
+- ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 `1e11310d` 자동 업로드)
+- 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
 ---
 
@@ -54,7 +55,7 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | secretref | `supabase-service-role-key` |
 | `SENTRY_DSN` | secretref | `sentry-dsn-backend` |
 | `ENVIRONMENT` | value | `production` |
-| `CORS_ORIGINS` | value | `["*"]` |
+| `CORS_ORIGINS` | value | `[]` (PR #123 — 와일드카드 차단; 네이티브 앱이라 웹 origin 불필요. live 검증: 임의 origin 에 `Access-Control-Allow-Origin` 미반환) |
 
 ### Secrets (4 앱 secret — **Key Vault 참조**, `identity: system`)
 
@@ -321,3 +322,6 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-06-09 | **Cold start 제거 + Key Vault full IaC**. 로그인 느림 원인 = 백엔드 cold start 21.5s(scale-to-zero) 규명 → `min 1 / max 3` + http scale rule(PR #92). `/health/ready` readiness probe(PR #93). secret → Key Vault 참조(`kv-eundunhealth` + system MI + RBAC) · registries MI pull · HTTP probe 3종 · `--yaml` 배포 전환(PR2, `backend/containerapp.yaml` 단일 출처). staging dry-run 으로 clobber/resolve 실증 후 정리. Dependabot 5건 머지(sentry 8.43.1/spotless 8.6.0/detekt 1.23.8/androidx core-ktx 1.19.0/codecov 7) + 2건 close(kotlin CI fail, fastapi MAL). 비용 ~37,700 → ~43,700원 |
 | 2026-06-10 | **v0.1.9 릴리즈**. Health Connect 체중·체지방 가져오기(#84) + 홈 "오늘의 활동" 요약(#85) + HC 동기화 경로 정리·갤럭시 워치 온보딩(#83) + 사전점검 수정. versionCode 22→23 (산출물 AAB 7.79 MB / APK 5.56 MB, Sentry 매핑 `ab61f3a3`) |
 | 2026-06-10 | **앱 버전 명시 방식 종합 (PR #102)**. 앱 버전 SSoT = `version.properties`(`build.gradle.kts` 가 읽음, 이력 주석블록 제거) · 백엔드 독립 API 버전 `1.0.0`(`__version__` → FastAPI `version` → openapi 재싱크) · `ProfileScreen` 버전 라벨(BuildConfig) · `scripts/bump-version.sh`(semver/단조 가드) · `docs/conventions/versioning.md`. 배포 시 무관한 base-image openssl `CVE-2026-45447`(HIGH)로 Trivy 1차 차단 → Dockerfile `apt-get upgrade` 핫픽스(`5a78c69`) 자가치유. 라이브 검증 `info.version=1.0.0` |
+| 2026-06-11 | **v0.1.11 (PR #104) + v0.1.12 (PR #106)**. #104: HC Android 14+ rationale intent + 런처 아이콘 intrinsic 수정(연동 버튼 무반응·읽기 실패) + 계정삭제 완전성(목표·신체이력 purge) backend 배포. #106: HC 체성분 가져오기 제거 + `READ_WEIGHT`/`READ_BODY_FAT` 권한 회수(6→4) + 신체 4지표 수동 단일화. 이후 코드베이스 리팩토링 #107~#112 → v0.1.13 |
+| 2026-06-15 | **v0.1.14 (PR #122) — 출시 준비 종합**. 실기기 제보 2버그 근본수정: ① 빈 운동계획 = R8 keep 갭(ExerciseDto 만 keep, Gson 래퍼 ExerciseListResponse/PageMeta 누락 → 릴리스 R8 제거 → `emptyList` 폴백) → 패키지 단위 keep + `ProguardKeepRulesTest` + CLAUDE.md 룰 12 ② 완료 토글 해제 미보존 = HC 자동완료가 수동 해제일 재마크 → `CompletionRequest.manual`/day `manuallySet` 수동 우선. 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증 500→400·토큰갱신 동시성·운동상세). 백엔드 자동배포(`manual` live). versionCode 28 (AAB 8.35 MB, Sentry 매핑 `1a8f12bb`) |
+| 2026-06-16 | **v0.1.15 (PR #123) — 감사 LOW 후속**. ① SideEffect 수집 라이프사이클-aware(`ObserveAsEvents`, repeatOnLifecycle STARTED, 7 Screen) ③ alembic forward 마이그레이션 `c849579de6c4`(rest_day server_default 일관화) ④ **CORS 와일드카드 제거**(config 기본 `[]` + `containerapp.yaml` `[]`, live 검증). CI pip-audit 신규 CVE 검출로 starlette 1.2.1→**1.3.1** 동반. 백엔드 배포·CORS live 검증 완료, Android Play 업로드 대기. versionCode 29 (Sentry 매핑 `1e11310d`) |

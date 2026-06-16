@@ -33,6 +33,9 @@ bash scripts/bump-version.sh --dry-run 0.1.10  # 변경 미적용, 계획만 출
 
 이후: `git diff` 검토 → `docs/CHANGELOG.md` 작성 → `CLAUDE.md` 버전 표기 수동 갱신 → `bash scripts/preflight-release.sh`(룰 2) → `git tag v0.1.10`.
 
+> **자동 동기화 범위 (앵커드, INC-2026-06-16-27 이후)**: `bump-version.sh` 는 `version.properties` + 각 문서의 **구조적 '현재 버전' 마커만** 라인-스코프로 치환한다 — `README.md` shields 배지(versionName·versionCode 양쪽), `operations-snapshot.md §1` 표 행, `PRD.md` '제품 버전:' 선두 마커. **산문/narrative 는 자동 대상 아님** — 헤더(작성 기준/최근 갱신), Play 상태 문장, README '현재 단계', `CLAUDE.md`, `operations-snapshot §13` 이력 행은 수동 갱신.
+> **하지 말 것**: 과거(2026-06-15 이전) 의 전역 blind 치환(`s/OLD/NEW/g`)은 산문 속 과거 버전까지 오염시켜 이력을 손상했고 versionCode 배지를 고착시켰다. 현재 스크립트는 앵커드라 안전하지만, bump 후 출력되는 `git diff --stat` 으로 **변경 라인이 예상(소수)과 일치하는지** 반드시 확인.
+
 재업로드(같은 versionName)는 `version.properties` 의 `versionCode` 만 직접 +1.
 
 ## 5. 백엔드 버전 bump
@@ -45,4 +48,4 @@ bash scripts/bump-version.sh --dry-run 0.1.10  # 변경 미적용, 계획만 출
 
 ## 7. drift 방지
 
-현재 버전을 들고 있는 current-state 문서: `README.md` / `docs/PRD.md` / `docs/ops/operations-snapshot.md`(`bump-version.sh` 자동 동기화) + `CLAUDE.md`(수동, 대형·민감). append-only 이력 문서(`CHANGELOG` / `incident-log` / `plans/logs`)는 옛 버전을 **보존**한다(동기화 대상 아님).
+현재 버전을 들고 있는 current-state 문서: `README.md` / `docs/PRD.md` / `docs/ops/operations-snapshot.md`(`bump-version.sh` 가 **구조적 마커만** 앵커드 동기화 — 배지·§1 표·제품버전 마커) + 각 문서의 **narrative + `CLAUDE.md`**(수동, 대형·민감). append-only 이력 문서(`CHANGELOG` / `incident-log` / `plans/logs`)는 옛 버전을 **보존**한다(동기화 대상 아님 — 전역 치환이 이를 오염시키던 것이 INC-2026-06-16-27 의 근본원인이었다).

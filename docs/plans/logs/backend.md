@@ -4,6 +4,26 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-16 — 감사 LOW 후속(백엔드): CORS 와일드카드 차단 + alembic rest_day server_default (v0.1.15)
+
+- **PR**: [#123](https://github.com/gunnysis/eundunHealth/pull/123) (merged, squash `078a24fb`)
+- **Why**: 감사 LOW — CORS 가 `["*"]` 잔존(네이티브 앱이라 웹 origin 불필요) + alembic fresh DB 분기에서 `rest_day` server_default 불일치.
+- **What**: ③ alembic forward 마이그레이션 `c849579de6c4`(`user_profiles.rest_day` `server_default="7"` 일관화) + 모델 `server_default` 추가. ④ CORS 기본 `[]`(`config.py`) + `containerapp.yaml` `[]` → 와일드카드 제거. 회귀가드 `test_cors_does_not_allow_arbitrary_origin` + runtime-smoke(③ PG 검증).
+- **Outcome**: 백엔드 자동배포 완료, CORS live 검증(임의 origin 에 `Access-Control-Allow-Origin` 미반환). **alembic head = `c849579de6c4`** (직전 `fa3915deab2f`). pytest 62 PASS.
+- **Files touched**: alembic/versions/c849579de6c4_rest_day_server_default.py(신규), app/models/user_profile.py, app/config.py, containerapp.yaml, tests/(CORS)
+
+---
+
+### 2026-06-15 — 출시 준비 종합(백엔드): 입력검증 400·완료 정합성·manual 플래그 (v0.1.14)
+
+- **PR**: [#122](https://github.com/gunnysis/eundunHealth/pull/122) (merged, squash `e2d7460`)
+- **Why**: Android 토글 해제 보존(INC-2026-06-15-26) 의 서버측 + 전수감사 입력검증/정합성.
+- **What**: `CompletionRequest.manual: bool` 추가 → `manual` 일 때만 day `manuallySet` 기록. `weekly_plan_service` 입력검증 `_parse_date`/`_validate_day_plans`/day-offset → `BadRequestException`(500→400). 통계 `_completion_rate` 를 `isCompleted` 기준 통일 + `!isRestDay` 카운트. `weekly_plan_repo.get_by_user_and_week(for_update)` 행잠금.
+- **Outcome**: pytest green. `manual` live 배포 후 Flip3 e2e 검증(토글 해제 보존).
+- **Files touched**: app/schemas/weekly_plan.py, app/services/{weekly_plan,statistics}_service.py, app/repositories/weekly_plan_repo.py
+
+---
+
 ### 2026-06-11 — 코드베이스 리팩토링 Bundle B (백엔드 실버그/정리)
 
 - **PR**: [#108](https://github.com/gunnysis/eundunHealth/pull/108) (merged, squash `3b1d2e5`)

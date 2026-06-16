@@ -4,6 +4,25 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-16 — 전수 점검 + 프로젝트 문서 최신화 (감사·드리프트 정정·bump-version 하드닝)
+
+- **PR**: (docs/process — 본 커밋) · 트리거: 출시 사이클(PR #122/#123) 후 전체 점검 + 문서 최신화 요청
+- **Why**: v0.1.14/v0.1.15 출시 후 **코드는 건강하나 문서가 5릴리스 드리프트**. 5-도메인 병렬 감사(Android·Backend·DB/API·Infra/CI·Docs) + controller fact-check(룰 10)로 확정.
+- **What (정정)**: ① SSoT `operations-snapshot.md` — §1 버전 `0.1.13/27`→`0.1.15/29`, **`CORS_ORIGINS ["*"]`→`[]`**(보안 관련 stale, PR #123 반영), 산출물 v0.1.15(8.35MB·매핑 `1e11310d`)+단일 경로 명시, §13 이력 v0.1.11~v0.1.15 5행 추가. ② 테스트 수 `48/41`→`62`(CLAUDE/README×2/TRD), starlette `1.2.1`→`1.3.1`(CLAUDE/README/TRD), README versionCode 배지 `26`→`29`, CLAUDE 엔드포인트 `12개`→`14개` + 룰11 baseline `33`→`20`(2026-06-16 재측정), CLAUDE/PRD Play 상태 `0.1.14/28`→`0.1.15/29`. ③ TRD §4.4/§4.5 레거시 Ktor CORS/StatusPages → FastAPI 실제(`cors_origins=[]`·`@app.exception_handler`). ④ play-store-release 프로덕션 빌드 v0.1.13→v0.1.15(심사 취소 반영).
+- **What (기록·재발방지)**: incident-log INC-25(R8 Gson keep 갭)·INC-26(토글 해제 미보존)·INC-27(bump-version blind-replace) 정식 기록. android/backend/dependencies ledger 에 PR #122/#123 entry 추가. **`bump-version.sh` 하드닝** — 전역 blind `s/OLD/NEW/g` 제거 → 앵커드 라인-스코프 치환(README 배지2·snap §1·PRD 제품버전 마커) + `git diff --stat` 출력. 임시본 시뮬레이션으로 "마커만 변경·과거 산문 무오염" 검증 후 적용. versioning.md §4/§7 에 경고 추가.
+- **Decisions**: 코드 변경(리팩토링/silent-failure 수정 등)은 **본 작업에 미포함** — 요청 = "점검·분석 후 문서 최신화". 발견된 코드 개선은 아래 **백로그**로 기록(차후 별도 작업 시 권장 순서). 문서 편집은 outward-facing 아니라 push 전 사용자 확인만 대기.
+- **후속 개선 백로그 (구현 미착수 — 감사 발견, severity 태그)**:
+  - **[MED] silent empty data 관측성**: `WorkoutRepositoryImpl.parseDayPlans` 의 `getOrDefault(emptyList())` 가 손상 JSON 을 무음 폴백(INC-25 와 동일 실패 클래스, 텔레메트리 0). → 폴백 전 `toAppError().reportToSentry()`. 같은 파일 `createWeeklyPlan` 의 부분 풀 empty 도 breadcrumb.
+  - **[테스트] PR #122 핵심수정 직접 커버 보강**: `HomeViewModelTest` 에 낙관적 토글 `manuallySet=true` 단언 + `CompletionRequest.manual` 전송 단언, `WorkoutRepositoryImplTest` 에 malformed-JSON→empty 폴백 테스트(현재 간접 커버).
+  - **[리팩토링] Android**: `HomeScreen.kt`(491 LOC) → `TodayActivityCard`/HC 권한 프롬프트 분리. `createWeeklyPlan` 의 3중복 'exclude-then-reorder' 헬퍼 추출.
+  - **[리팩토링] Backend**: `json.loads(day_plans)`+isinstance 가드 3곳(weekly_plan/statistics service) → 단일 `parse_day_plans()` 헬퍼(R8 빈계획과 동일한 brittle JSON 계약 표면).
+  - **[모니터링] minReplicas 회귀 무알림**: warm baseline(`min=1`)이 scale-to-zero 로 무음 회귀해도 CA 가 metric 미emit → 알림 없음(헤드라인 신뢰성의 유일한 미관측 갭). → 스케줄드 `scale.minReplicas==1` 체크 또는 `/health` 지연 synthetic probe. (Task 8 미채택 이력과 연결.)
+  - **[CI] 엣지**: `android.yml` 은 `assembleDebug` 만 → 실제 R8 stripping 미실행(룰 12 가드는 unit test 뿐). `backend.yml` pip-audit `--strict` 는 ignore allowlist 없음 → 무관 transitive CVE 가 deploy hard-block(의도면 문서화, INC-27 동반 bump 의 배경).
+  - **[로깅] 백엔드**: plain string 로깅 + correlation-id 부재 → 다중 replica(1/3) 단일 요청 로그 상관 수동. `logging.basicConfig` 가 lifespan 내부라 uvicorn 선점 시 no-op 가능(footgun).
+  - **[명료성] 버전 파일 표기**: 문서가 `backend/app/__version__` 로 부르나 실제 파일은 `backend/app/__init__.py`(`__version__`) — 미래 reader glob 혼동 방지로 표기 정렬 검토.
+- **Outcome**: 8개 문서 정정 + 3 incident + 5 ledger entry + 스크립트 하드닝. 코드/계약/마이그레이션/openapi 는 감사 결과 **내부 일관**(alembic head `c849579de6c4` 단일 linear, openapi 18/18 synced, models=migrations). push 전 사용자 확인 대기.
+- **Files touched**: docs/ops/{operations-snapshot,incident-log,play-store-release}.md, README.md, CLAUDE.md, docs/{PRD,TRD}.md, docs/conventions/versioning.md, docs/plans/logs/{android,backend,dependencies,process-infra}.md, scripts/bump-version.sh
+
 ### 2026-06-11 — 코드베이스 리팩토링 Bundle D (위생 정리)
 
 - **PR**: [#107](https://github.com/gunnysis/eundunHealth/pull/107) (merged, squash `707d97f`)

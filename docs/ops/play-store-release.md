@@ -2,7 +2,7 @@
 
 > 작성일: 2026-05-24 / 최근 갱신: 2026-06-11 (프로덕션 출시 절차 추가 + Data safety #106 정합 + 빌드 경로 = preflight)
 > 대상: `com.gunnys.eundunhealth` (Application ID)
-> 출시 빌드: versionCode/versionName SSoT = 루트 `version.properties` (직접값 박제 금지 — 본 문서 작성 시점 0.1.13/27). 빌드는 **`bash scripts/preflight-release.sh`** (룰 2 — 게이트 + AAB/APK + Sentry 매핑 일괄).
+> 출시 빌드: versionCode/versionName SSoT = 루트 `version.properties` (직접값 박제 금지 — 본 문서 갱신 시점 0.1.15/29). 빌드는 **`bash scripts/preflight-release.sh`** (룰 2 — 게이트 + AAB/APK + Sentry 매핑 일괄). 산출물은 `app/build/outputs/bundle/release/app-release.aab` 단일 위치(Android Studio "Generate Signed Bundle/APK" 출력 경로도 동일하게 설정됨).
 
 이 문서는 Play Store 등록·업로드 절차를 정리한다. 자동화 가능한 부분(게이트·빌드·ProGuard mapping → Sentry 업로드)은 `preflight-release.sh` 가 수행하고, **Console UI 작업·정책 게이트·의사결정**만 남는다. 경로: **내부 테스팅(§6) → 프로덕션(§6.5)**. 첫 프로덕션은 내부 테스트보다 요건이 많으므로 §6.5 의 게이트(비공개 졸업·App access·콘텐츠 등급)를 먼저 확인할 것.
 
@@ -170,7 +170,7 @@ GitHub Pages 활성화: 리포 Settings → Pages → Branch: main / `/docs`.
 - **Data safety**(§3 — #106 정합표) + **개인정보 URL + 계정삭제 URL**(§4)
 - 타겟 고객·콘텐츠, 광고 선언, 정부 앱 등 **앱 콘텐츠** 전 항목
 
-> 첫 프로덕션 빌드 **v0.1.13/27** = 코드베이스 리팩토링(내부 품질, **사용자 영향 없음**) — 기능은 직전 내부테스트(v0.1.12)와 동일. 출시 노트는 "안정성·품질 개선" 수준으로 충분.
+> v0.1.13/27 프로덕션 심사는 **취소**됨. 현재 Play 업로드 대기 빌드 = **v0.1.15/29** (v0.1.14 실기기 2버그 근본수정 + #123 SideEffect 라이프사이클 + CORS 차단 포함). 내부 테스트 트랙 먼저 권장. 출시 노트는 "안정성·품질 개선" 수준으로 충분 (사용자 가시 기능 변화 없음).
 
 ---
 

@@ -7,7 +7,7 @@
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
 ![versionName](https://img.shields.io/badge/versionName-0.1.15-blue)
-![versionCode](https://img.shields.io/badge/versionCode-26-blue)
+![versionCode](https://img.shields.io/badge/versionCode-29-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB)
@@ -86,10 +86,10 @@
 | API 버전 | `1.0.0` (`backend/app/__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.50 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
 | 마이그레이션 | Alembic 1.18.4 (head: `c849579de6c4`) | async 엔진 연동 |
-| HTTP 코어 | starlette 1.2.1 | PYSEC-2026-161 fix |
+| HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.61.1 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 48/48 PASS, coverage ~84% |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 62/62 PASS, coverage ~84% |
 
 ### 인프라
 
@@ -176,7 +176,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── backend/                  # FastAPI 백엔드 (Python 3.12)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: c849579de6c4)
-│   ├── tests/                # pytest (41 PASS, coverage 82%)
+│   ├── tests/                # pytest (62 PASS, coverage ~84%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
