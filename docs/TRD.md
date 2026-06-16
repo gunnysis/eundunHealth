@@ -7,9 +7,9 @@
 
 ---
 
-## 구현 후 변경 사항 (v0.1.0 → v0.1.9)
+## 구현 후 변경 사항 (v0.1.0 → v0.1.15)
 
-본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.9 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
+본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.15 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
 | 영역 | TRD v1.0 | 현재 (v0.1.15) |
 |------|----------|------------|
@@ -32,7 +32,7 @@
 
 신규 도메인 / 화면 (v0.2·v0.3): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, 비밀번호 재설정.
 
-v0.1.1~v0.1.9 누적 (Android UI + Auth + Backend 안정화):
+v0.1.1~v0.1.15 누적 (Android UI + Auth + Backend 안정화):
 - v0.1.1 (#40) signup 가입 이메일 확인 흐름 + 인증 상태 모델 리팩터 (`SessionState` / `AuthOpState` / `SignupState` 분리)
 - v0.1.2 (#41) supabase-kt 3.6.0 `SupabaseEncodingException` 처리 hotfix
 - v0.1.3 (#42) Android App Links 자동 로그인 (intent-filter autoVerify + supabase-kt `handleDeeplinks` + assetlinks.json + `/auth/confirm` fallback)
@@ -46,6 +46,9 @@ v0.1.1~v0.1.9 누적 (Android UI + Auth + Backend 안정화):
 - 버전 명시 방식 종합 (PR #102) 앱 버전 SSoT `version.properties` + 백엔드 독립 API 버전 `1.0.0` + `ProfileScreen` 버전 라벨 + `scripts/bump-version.sh` + `docs/conventions/versioning.md`
 - v0.1.11 (#104) Health Connect Android 14+ 수정 — rationale intent 선언(연동 버튼 무반응) + 런처 아이콘 정상화(access-log 읽기 실패) + 계정 삭제 완전성(goals·신체이력 purge, backend) + Play store 자산
 - v0.1.12 (#106) Health Connect 체성분(체중·체지방) 가져오기 제거 + `READ_WEIGHT`/`READ_BODY_FAT` 권한 회수(6→4) + 신체 4지표 수동 단일화
+- v0.1.13 (#107~#112) 코드베이스 리팩토링 5번들 — `WeeklyPlanGenerator` 추출(알고리즘 분리) + JWT 검증 `except` 좁히기(JWKS 장애→503) + detekt baseline 단일화 + `UserProfile` body metrics `Float?` 정합 + UI 중복 제거(`LineChart`/`ResendConfirmationController`/`BodyMetricsSliders`). 사용자 동작 변화 없음.
+- v0.1.14 (#122) 출시 준비 종합 — R8 Gson keep 갭(빈 운동계획 결정론적 근본수정·패키지 단위 keep) + `manuallySet` 수동우선(토글 해제 보존) + 4-에이전트 전수감사(완료정합·입력검증 500→400·토큰갱신 동시성·운동상세·캐시/KST·폴리시) + `ProguardKeepRulesTest` + 룰 12.
+- v0.1.15 (#123) 감사 LOW 후속 — `ObserveAsEvents` 헬퍼(7 Screen, 룰 11 정합) + alembic rest_day `server_default` 일관화(`c849579de6c4`) + CORS 와일드카드 차단(`allow_origins=[]`) + starlette 1.3.1 CVE bump.
 
 ---
 
