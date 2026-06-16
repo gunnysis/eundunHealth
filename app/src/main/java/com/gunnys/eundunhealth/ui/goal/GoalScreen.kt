@@ -29,7 +29,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +46,7 @@ import com.gunnys.eundunhealth.domain.model.Goal
 import com.gunnys.eundunhealth.domain.model.GoalType
 import com.gunnys.eundunhealth.domain.model.ProfileHistoryPoint
 import com.gunnys.eundunhealth.ui.components.LineChart
+import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,11 +57,9 @@ fun GoalScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) {
-        viewModel.sideEffect.collect { effect ->
-            when (effect) {
-                is GoalSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
-            }
+    ObserveAsEvents(viewModel.sideEffect) { effect ->
+        when (effect) {
+            is GoalSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
         }
     }
 

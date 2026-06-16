@@ -187,3 +187,17 @@ async def test_missing_authorization_header_is_rejected(client_no_auth):
     """
     resp = await client_no_auth.get("/profile")
     assert resp.status_code in (401, 403)
+
+
+# === CORS — 임의 origin 을 허용하지 않음 (네이티브 앱은 CORS 비적용) ===
+
+@pytest.mark.asyncio
+async def test_cors_does_not_allow_arbitrary_origin(client):
+    """CORS_ORIGINS 기본 차단([]) → 임의 웹 origin 에 Access-Control-Allow-Origin 을 echo 하지 않는다.
+
+    탈취 토큰의 임의 웹사이트 JS 악용 표면 축소. 회귀가드: 다시 와일드카드(["*"])로 풀리면 실패.
+    """
+    resp = await client.get("/health", headers={"Origin": "https://evil.example"})
+    acao = resp.headers.get("access-control-allow-origin")
+    assert acao != "*"
+    assert acao != "https://evil.example"

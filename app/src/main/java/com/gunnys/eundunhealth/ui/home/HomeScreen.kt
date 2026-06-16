@@ -50,7 +50,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +69,7 @@ import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
+import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -91,11 +91,9 @@ fun HomeScreen(
     val pullState = rememberPullToRefreshState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) {
-        viewModel.sideEffect.collect { effect ->
-            when (effect) {
-                is HomeSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
-            }
+    ObserveAsEvents(viewModel.sideEffect) { effect ->
+        when (effect) {
+            is HomeSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
         }
     }
 

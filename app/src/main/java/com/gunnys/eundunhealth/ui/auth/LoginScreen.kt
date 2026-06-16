@@ -38,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
+import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
 @Composable
 fun LoginScreen(
@@ -73,12 +74,10 @@ fun LoginScreen(
     }
 
     // LoginSuccess SideEffect → AuthViewModel 세션 전환
-    LaunchedEffect(Unit) {
-        loginViewModel.sideEffect.collect { effect ->
-            when (effect) {
-                is LoginSideEffect.LoginSuccess ->
-                    authViewModel.onAuthSuccess(effect.userId, effect.needsOnboarding)
-            }
+    ObserveAsEvents(loginViewModel.sideEffect) { effect ->
+        when (effect) {
+            is LoginSideEffect.LoginSuccess ->
+                authViewModel.onAuthSuccess(effect.userId, effect.needsOnboarding)
         }
     }
 

@@ -18,7 +18,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +31,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
+import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
 @Composable
 fun OnboardingScreen(
@@ -45,12 +45,10 @@ fun OnboardingScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) {
-        viewModel.sideEffect.collect { effect ->
-            when (effect) {
-                is OnboardingSideEffect.NavigateToHome -> onComplete()
-                is OnboardingSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
-            }
+    ObserveAsEvents(viewModel.sideEffect) { effect ->
+        when (effect) {
+            is OnboardingSideEffect.NavigateToHome -> onComplete()
+            is OnboardingSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
         }
     }
 

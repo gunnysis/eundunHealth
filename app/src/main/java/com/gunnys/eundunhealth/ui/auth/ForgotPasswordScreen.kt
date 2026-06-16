@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
+import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,13 +55,11 @@ fun ForgotPasswordScreen(
     val formValid = email.contains("@")
 
     // ResetSent SideEffect → snackbar + navigate back
-    LaunchedEffect(Unit) {
-        forgotPasswordViewModel.sideEffect.collect { effect ->
-            when (effect) {
-                is ForgotPasswordSideEffect.ResetSent -> {
-                    snackbarHostState.showSnackbar("비밀번호 재설정 링크를 이메일로 보냈습니다")
-                    onNavigateBack()
-                }
+    ObserveAsEvents(forgotPasswordViewModel.sideEffect) { effect ->
+        when (effect) {
+            is ForgotPasswordSideEffect.ResetSent -> {
+                snackbarHostState.showSnackbar("비밀번호 재설정 링크를 이메일로 보냈습니다")
+                onNavigateBack()
             }
         }
     }

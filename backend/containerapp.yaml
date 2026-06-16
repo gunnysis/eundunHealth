@@ -60,7 +60,7 @@ properties:
       - name: ENVIRONMENT
         value: production
       - name: CORS_ORIGINS
-        value: '["*"]'
+        value: '[]'
       probes:
       - type: Startup
         httpGet:
