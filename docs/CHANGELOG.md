@@ -18,7 +18,7 @@
 - **② AppError 403 매핑** — 앱의 403 은 전부 인증 성격(HTTPBearer 헤더 부재), authz-403 엔드포인트 없음, 401→refresh/403→no-refresh 동작 정확 → 현행 적정.
 
 ### ✅ 검증
-- 백엔드 pytest 62 passed(+CORS 가드), ruff/mypy clean · Android 전체 단위테스트 GREEN, spotless/detekt clean · PR #123 CI 전 job pass(Security/runtime-smoke/Android/백엔드)
+- 백엔드 pytest 71 passed(+CORS 가드), ruff/mypy clean · Android 전체 단위테스트 GREEN, spotless/detekt clean · PR #123 CI 전 job pass(Security/runtime-smoke/Android/백엔드)
 - preflight: AAB + APK + Sentry 매핑 `1e11310d`
 
 ---

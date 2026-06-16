@@ -335,7 +335,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 운영 안전 규칙
 
-지난 인시던트의 root cause 가 모두 누적된 결과로 도출된 **8 개 강제 규칙**. 자세한 본문은 [CLAUDE.md](CLAUDE.md), 인시던트 이력은 [docs/ops/incident-log.md](docs/ops/incident-log.md).
+지난 인시던트의 root cause 가 모두 누적된 결과로 도출된 **12 개 강제 규칙**. 자세한 본문은 [CLAUDE.md](CLAUDE.md), 인시던트 이력은 [docs/ops/incident-log.md](docs/ops/incident-log.md).
 
 | # | 룰 | 출처 |
 |---|----|------|
@@ -371,7 +371,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | [모니터링 및 비용](docs/ops/monitoring-and-cost.md) | Sentry / ACR / Budget + 안전 패턴 |
 | [Play Store 출시](docs/ops/play-store-release.md) | 첫 출시 8 단계 + 데이터 안전 답변 |
 | [의존성 보류](docs/ops/dependency-deferred.md) | 출시 후 재검토 항목 |
-| [CLAUDE.md](CLAUDE.md) | AI 협업 컨벤션 + 운영 안전 룰 11 |
+| [CLAUDE.md](CLAUDE.md) | AI 협업 컨벤션 + 운영 안전 룰 12 |
 
 ---
 

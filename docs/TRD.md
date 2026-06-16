@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-06-10, v0.1.9):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-06-16, v0.1.15):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
