@@ -89,7 +89,7 @@
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.61.1 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 62/62 PASS, coverage ~84% |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 71/71 PASS, coverage ~84% |
 
 ### 인프라
 
@@ -141,13 +141,14 @@ app/routers/          # 얇은 라우터, Service 위임
 alembic/versions/     # async 엔진 연동 마이그레이션
 ```
 
-### API 엔드포인트 (17 개 — JWT 필요 14 + 공개 3)
+### API 엔드포인트 (18 개 — JWT 필요 14 + 공개 4)
 
-**공개 (3)**
+**공개 (4)**
 
 | Method | Path | 비고 |
 |--------|------|------|
-| `GET` | `/health` | 헬스체크 (Container App probe) |
+| `GET` | `/health` | 헬스체크 — liveness (Container App probe) |
+| `GET` | `/health/ready` | readiness probe (DB `SELECT 1` → 200/503) |
 | `GET` | `/.well-known/assetlinks.json` | Android App Links 검증 |
 | `GET` | `/auth/confirm` | 이메일 확인 fallback (HTML 응답) |
 
@@ -176,7 +177,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── backend/                  # FastAPI 백엔드 (Python 3.12)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: c849579de6c4)
-│   ├── tests/                # pytest (62 PASS, coverage ~84%)
+│   ├── tests/                # pytest (71 PASS, coverage ~84%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서

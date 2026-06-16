@@ -230,7 +230,7 @@
 
 ```
 ┌─────────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Android App       │────▶│  Backend (Ktor)  │────▶│ Azure PostgreSQL│
+│   Android App       │────▶│ Backend (FastAPI) │────▶│ Azure PostgreSQL│
 │   (Jetpack Compose) │     │  Azure Container  │     │                 │
 │                     │     │  Apps             │     │                 │
 └────────┬────────────┘     └──────────────────┘     └─────────────────┘

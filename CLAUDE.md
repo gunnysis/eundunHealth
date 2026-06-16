@@ -188,7 +188,7 @@ DELETE /account
 - **API version `1.0.0`** — `backend/app/__init__.py:__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
 - **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix 포함; PR #123), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
 - **Sentry SDK 2.61.1** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy strict 통과, ruff/bandit clean, pytest 62/62 PASS, coverage ~84% (mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
+- mypy strict 통과, ruff/bandit clean, pytest 71/71 PASS, coverage ~84% (mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
 - Alembic head `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f` rest_day 추가, INC-2026-05-27-01)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
