@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
+import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,13 +62,11 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.sideEffect.collect { effect ->
-            when (effect) {
-                is ProfileSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
-                is ProfileSideEffect.SavedAndNavigateBack -> onBack()
-                is ProfileSideEffect.NavigateToLogin -> onAccountDeleted()
-            }
+    ObserveAsEvents(viewModel.sideEffect) { effect ->
+        when (effect) {
+            is ProfileSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
+            is ProfileSideEffect.SavedAndNavigateBack -> onBack()
+            is ProfileSideEffect.NavigateToLogin -> onAccountDeleted()
         }
     }
 
