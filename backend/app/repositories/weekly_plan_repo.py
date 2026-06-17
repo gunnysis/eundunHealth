@@ -55,16 +55,26 @@ class WeeklyPlanRepository:
         await self.db.flush()
         return plan
 
-    async def get_history(self, user_id: str, page: int, size: int) -> list[WeeklyPlan]:
-        """페이지네이션 기반 plan 이력 조회. GET /weekly-plan/history 엔드포인트 전용."""
+    async def get_history(self, user_id: str, page: int, size: int) -> tuple[list[WeeklyPlan], int]:
+        """페이지 데이터 + 전체 카운트를 1쿼리로 반환. GET /weekly-plan/history 전용.
+
+        기존엔 페이지 SELECT + 별도 COUNT(*) 로 2-round-trip 이었다. `count(*) over()`
+        window 로 같은 쿼리에서 전체 행수를 함께 받아 round-trip 을 절반으로 줄인다.
+        데이터 끝 너머의 빈 페이지는 window 행이 없어 total 을 못 읽으므로 그때만 count 폴백.
+        """
         result = await self.db.execute(
-            select(WeeklyPlan)
+            select(WeeklyPlan, func.count().over().label("total"))
             .where(WeeklyPlan.user_id == user_id)
             .order_by(WeeklyPlan.week_start.desc())
             .offset(page * size)
             .limit(size)
         )
-        return list(result.scalars().all())
+        rows = result.all()
+        if not rows:
+            return [], await self.count_by_user(user_id)
+        plans = [row[0] for row in rows]
+        total = int(rows[0][1])
+        return plans, total
 
     async def count_by_user(self, user_id: str) -> int:
         """History envelope 의 total_count 필드용 — Android 페이지 인디케이터 입력."""

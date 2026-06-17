@@ -109,7 +109,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | Region | Korea Central |
 | Database | `postgres` |
 | User | `gunny` |
-| Alembic head | **`c849579de6c4`** (rest_day server_default 일관화 — 감사 B6; 직전 `fa3915deab2f` rest_day 추가 — INC-2026-05-27-01) |
+| Alembic head | **`b78b256c2b20`** (user_profile_history `(user_id, recorded_at)` 복합 인덱스 — 진행 차트 정렬; 직전 `c849579de6c4` rest_day server_default 일관화) |
 | Firewall | Container Apps IP allowlist + `allow-azure-services` 만 허용 |
 
 ### 테이블 row 카운트 (2026-05-25 출시 전 정리 직후)

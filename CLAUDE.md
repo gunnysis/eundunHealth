@@ -51,7 +51,7 @@ docker compose down -v                # 정리
 .venv/Scripts/bandit -r app -ll
 .venv/Scripts/pip-audit -r requirements.txt --strict --ignore-vuln PYSEC-2026-161
 
-# Alembic 마이그레이션 (현재 head: c849579de6c4)
+# Alembic 마이그레이션 (현재 head: b78b256c2b20)
 .venv/Scripts/alembic upgrade head
 .venv/Scripts/alembic revision --autogenerate -m "..."
 
@@ -145,7 +145,7 @@ Package: `app`
 - `app/repositories/` — DB 접근 추상화. `profile_history_repo`, `goal_repo` (v0.3).
 - `app/services/` — 비즈니스 로직. `account_service`가 Supabase Admin API로 Auth 사용자 삭제. `statistics_service` (v0.2), `goal_service` (v0.3).
 - `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py` 신규.
-- `alembic/` — async 엔진 연동. **head: `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f` rest_day 추가 — INC-2026-05-27-01)**.
+- `alembic/` — async 엔진 연동. **head: `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)**.
 
 **API Endpoints (14개 — `/health` 제외 모두 JWT 필요. 공개 라우트 `/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm` 별도):**
 ```
@@ -190,7 +190,7 @@ DELETE /account
 - **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix 포함; PR #123), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
 - **Sentry SDK 2.61.1** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
 - mypy strict 통과, ruff/bandit clean, pytest 71/71 PASS, coverage ~84% (mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
-- Alembic head `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f` rest_day 추가, INC-2026-05-27-01)
+- Alembic head `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure
