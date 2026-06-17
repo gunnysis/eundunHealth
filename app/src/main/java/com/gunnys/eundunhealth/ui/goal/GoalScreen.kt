@@ -82,7 +82,8 @@ fun GoalScreen(
             Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else if (error != null && uiState.goals.isEmpty()) {
+        } else if (error != null) {
+            // error 는 goals(핵심) 로드 실패 시에만 set 된다(history 실패는 snackbar) → 항상 전체 에러.
             ErrorContent(
                 error = error,
                 modifier = Modifier.padding(padding),

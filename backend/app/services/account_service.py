@@ -76,17 +76,21 @@ class AccountService:
                 logger.info("Reaped orphaned app data for user_id=%s", user_id)
         return reaped
 
+    def _admin_user_url(self, user_id: str) -> str:
+        return f"{self.settings.supabase_url}/auth/v1/admin/users/{user_id}"
+
+    def _admin_headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.settings.supabase_service_role_key}",
+            "apikey": self.settings.supabase_service_role_key,
+        }
+
     async def _user_exists_in_auth(self, user_id: str) -> bool | None:
         """Supabase Auth 의 user 존재 여부. 200=True, 404=False, 그 외/오류=None(불확실)."""
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
-                    f"{self.settings.supabase_url}/auth/v1/admin/users/{user_id}",
-                    headers={
-                        "Authorization": f"Bearer {self.settings.supabase_service_role_key}",
-                        "apikey": self.settings.supabase_service_role_key,
-                    },
-                    timeout=10,
+                    self._admin_user_url(user_id), headers=self._admin_headers(), timeout=10
                 )
         except httpx.HTTPError as e:
             logger.warning("Auth 존재 확인 실패(보존) user_id=%s: %s", user_id, e)
@@ -101,12 +105,7 @@ class AccountService:
     async def _delete_supabase_user(self, user_id: str) -> None:
         async with httpx.AsyncClient() as client:
             resp = await client.delete(
-                f"{self.settings.supabase_url}/auth/v1/admin/users/{user_id}",
-                headers={
-                    "Authorization": f"Bearer {self.settings.supabase_service_role_key}",
-                    "apikey": self.settings.supabase_service_role_key,
-                },
-                timeout=10,
+                self._admin_user_url(user_id), headers=self._admin_headers(), timeout=10
             )
             # 200=삭제 성공, 404=이미 없음 (멱등)
             if resp.status_code not in (200, 404):
