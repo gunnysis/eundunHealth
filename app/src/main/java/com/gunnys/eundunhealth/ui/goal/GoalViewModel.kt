@@ -3,6 +3,7 @@ package com.gunnys.eundunhealth.ui.goal
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.Goal
 import com.gunnys.eundunhealth.domain.model.GoalType
 import com.gunnys.eundunhealth.domain.model.ProfileHistoryPoint
@@ -29,6 +30,7 @@ data class GoalUiState(
     val history: List<ProfileHistoryPoint> = emptyList(),
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
+    val error: AppError? = null,
 )
 
 @HiltViewModel
@@ -47,20 +49,25 @@ class GoalViewModel @Inject constructor(
     }
 
     fun load() = viewModelScope.launch {
-        _uiState.value = _uiState.value.copy(isLoading = true)
+        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         val goalsResult = goalRepo.getGoals()
         val historyResult = goalRepo.getProfileHistory()
 
-        val goals = goalsResult.getOrElse {
-            handleError(it)
-            emptyList()
-        }
-        val history = historyResult.getOrElse {
-            handleError(it)
-            emptyList()
+        // 로드 실패를 빈 데이터로 흘려보내면 "데이터 없음"으로 오표시된다(silent failure).
+        // 첫 실패를 error 로 노출해 ErrorContent + 재시도를 띄운다.
+        val firstError = goalsResult.exceptionOrNull() ?: historyResult.exceptionOrNull()
+        if (firstError != null) {
+            val appErr = firstError.toAppError()
+            appErr.reportToSentry()
+            _uiState.value = _uiState.value.copy(isLoading = false, error = appErr)
+            return@launch
         }
 
-        _uiState.value = GoalUiState(goals = goals, history = history, isLoading = false)
+        _uiState.value = GoalUiState(
+            goals = goalsResult.getOrDefault(emptyList()),
+            history = historyResult.getOrDefault(emptyList()),
+            isLoading = false,
+        )
     }
 
     fun saveGoal(type: GoalType, value: Float) = viewModelScope.launch {
