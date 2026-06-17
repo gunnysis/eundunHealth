@@ -88,8 +88,8 @@
 | 마이그레이션 | Alembic 1.18.4 (head: `c849579de6c4`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
-| 모니터링 | Sentry SDK 2.61.1 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 71/71 PASS, coverage ~84% |
+| 모니터링 | Sentry SDK 2.63.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 77/77 PASS, coverage ~84% |
 
 ### 인프라
 
@@ -176,8 +176,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── app/                      # Android 앱 (Kotlin / Compose)
 ├── backend/                  # FastAPI 백엔드 (Python 3.12)
 │   ├── app/                  # 애플리케이션 코드
-│   ├── alembic/              # DB 마이그레이션 (head: c849579de6c4)
-│   ├── tests/                # pytest (71 PASS, coverage ~84%)
+│   ├── alembic/              # DB 마이그레이션 (head: b78b256c2b20)
+│   ├── tests/                # pytest (77 PASS, coverage ~84%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
@@ -357,7 +357,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 | 문서 | 내용 |
 |------|------|
-| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.15) |
+| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.16) |
 | [버전 관리](docs/conventions/versioning.md) | 앱/백엔드 버전 SSoT · semver 정책 · bump 절차 |
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
@@ -366,8 +366,9 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | [계정 및 데이터 삭제](docs/store/account-deletion.md) | Play Store 계정 삭제 요청 URL 대상 |
 | [Plans 인덱스](docs/plans/README.md) | design+plan 페어 + 토픽 ledger (자동 생성) |
 | [운영 스냅샷](docs/ops/operations-snapshot.md) | 현재 운영 상태 단일 출처 |
-| [인시던트 로그](docs/ops/incident-log.md) | 16 건 인시던트 + root cause + 재발 방지 |
+| [인시던트 로그](docs/ops/incident-log.md) | 인시던트 이력 + root cause + 재발 방지 패턴 |
 | [마이그레이션 런북](docs/ops/migration-runbook.md) | Ktor → FastAPI 절차 + 사후 정리 |
+| [Container Apps Job 런북](docs/ops/azure-container-apps-jobs.md) | orphan reaper Job 프로비저닝 패턴 + 함정 회피(E1~E4, 공식문서 fact-check) |
 | [모니터링 및 비용](docs/ops/monitoring-and-cost.md) | Sentry / ACR / Budget + 안전 패턴 |
 | [Play Store 출시](docs/ops/play-store-release.md) | 첫 출시 8 단계 + 데이터 안전 답변 |
 | [의존성 보류](docs/ops/dependency-deferred.md) | 출시 후 재검토 항목 |
@@ -377,7 +378,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.15` (versionCode `29`) / **0.1.15/29 = 감사 LOW 후속 빌드**(① SideEffect 라이프사이클 + 백엔드 alembic·CORS + starlette CVE, PR #123) — Play 업로드 대기(백엔드 배포 완료). 직전 0.1.14 = 출시 준비 종합: 실기기 제보 2버그 근본수정(빈 운동계획 = R8 keep 갭, 완료 토글 해제 보존 = 수동 우선) + 4-에이전트 전수감사 출시차단 해소 + 재발방지 (PR #122). 직전 0.1.13 = 코드베이스 리팩토링(내부 품질, 사용자 영향 없음)
+**현재 버전** — `0.1.16` (versionCode `30`) — **출시 전(pre-release), Play 프로덕션 미출시**(0.1.13/27 프로덕션 심사 취소, 프로덕션 사용자 0). v0.1.16 = 출시 후 심층 감사 개선(JWKS 오프로드 · 무테스트 VM 테스트 · Goal 에러상태 · DayPlanCard perf · 활동 a11y · history COUNT window · `user_profile_history` 복합인덱스 · 계정삭제 orphan reaper Container Apps Job) — PR #126/#127. 직전 v0.1.15 = 감사 LOW 후속(SideEffect 라이프사이클 + alembic·CORS + starlette CVE, PR #123)
 
 ### 마일스톤 진행
 
@@ -404,6 +405,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.13** — 코드베이스 리팩토링 (내부 품질, 사용자 영향 없음) — WeeklyPlanGenerator 추출·테스트화 + 백엔드 실버그(JWT except·goal createdAt) + detekt baseline 단일화 + 중복·죽은코드 정리 (#107~#112)
 - [x] **v0.1.14** — 출시 준비 종합 — 실기기 제보 2버그 근본수정(빈 운동계획=R8 keep 갭, 완료 토글 해제 보존=수동 우선) + 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증·인증 견고화·운동상세 GIF/복사/데이터흐름·캐시/파싱/KST·폴리시) + 재발방지 가드 (PR #122)
 - [x] **v0.1.15** — 감사 LOW 후속(내부 품질) — SideEffect 수집 라이프사이클-aware(`ObserveAsEvents` 헬퍼) + 백엔드(alembic rest_day server_default · CORS 와일드카드 차단) + starlette 1.3.1 CVE bump (PR #123)
+- [x] **v0.1.16** — 출시 후 심층 감사 개선 — JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`) + 무테스트 ViewModel 테스트 + GoalScreen 에러상태 + DayPlanCard `remember` perf + 활동 a11y + history COUNT window + `user_profile_history` 복합인덱스 + 계정삭제 orphan reaper(Container Apps Job 주간 cron) + 재발방지 런북 (PR #126/#127)
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시

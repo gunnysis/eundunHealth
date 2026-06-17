@@ -4,6 +4,15 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-17 — orphan reaper 운영화: Container Apps Job 프로비저닝 + 점검 하드닝 (PR #127)
+
+- **PR**: [#127](https://github.com/gunnysis/eundunHealth/pull/127) (shipped, squash `0e6a99d`)
+- **Why**: PR #126 머지된 orphan reaper 의 주기 자동화(Container Apps Job) + job 화 점검에서 발견한 하드닝.
+- **What**: **하드닝** — reaper 트랜잭션 사용자단위 commit/에러격리(한 명 실패가 전체 sweep 안 막음) · 스크립트 self-locating(`import app` footgun 제거 + subprocess 가드) · requirements **cp949 디코드 가드** pre-commit(em-dash 차단; "non-ASCII 전부 차단"은 한국어 주석 오탐이라 cp949 디코드 가능성으로 정밀화). **프로비저닝** — `backend/reaper-job.yaml`(UAI registry/secret) + `scripts/setup-reaper-job.sh`(멱등 preflight/best-effort). UAI `id-eundunhealth-reaper` + 포털 역할(AcrPull·KV Secrets User) → `--yaml` create → 수동실행 **Succeeded**.
+- **Outcome**: backend pytest 77 / android @Test 139, 전 게이트+CI green. 잡 주간 cron `0 18 * * 0` 가동(operations-snapshot §2). 프로비저닝 라이브 디버깅 4에러(E1 `--args -m` / E2 system MI chicken-egg→UAI-first / E3 개인 MSA RBAC CLI 불가→포털·SP / E4 job `--registry-identity`→`--yaml`)는 공식문서 fact-check 후 재발방지 런북 `docs/ops/azure-container-apps-jobs.md` 로 박제.
+- **Lessons**: ① 인프라 프로비저닝은 라이브 실행이 가장 강한 fact-check(설계만으론 E2/E4 못 잡음). ② az containerapp **job** `--registry-identity`+UAI 는 문제 영역 → `--yaml registries[].identity`(공식 Bicep IaC 형태)로. ③ 개인 MSA 계정은 scope 지정 RBAC CLI 불가(포털/SP 필요, [[azure-cli-rbac-msa-limitation]]). ④ 인용은 페이지 단위 fact-check 후 확정(E4 "정확히 그 버그" 과장을 #1284 직접 확인으로 정정).
+- **Files touched**: `backend/app/services/account_service.py`, `backend/scripts/reap_orphaned_accounts.py`, `backend/reaper-job.yaml`, `backend/tests/test_account.py`, `.githooks/pre-commit`, `scripts/setup-reaper-job.sh`, `docs/ops/azure-container-apps-jobs.md`(신규), `docs/ops/operations-snapshot.md`, `CLAUDE.md`
+
 ### 2026-06-17 — 출시 후 심층 감사 개선 (PR #126, v0.1.16)
 
 - **PR**: [#126](https://github.com/gunnysis/eundunHealth/pull/126) (shipped, squash `df65d91`)

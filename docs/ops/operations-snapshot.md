@@ -1,6 +1,6 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-06-17 v0.1.16 — 출시 후 심층 감사 개선(JWKS 오프로드 · 테스트 +20 · Goal 에러상태 · a11y · pool_pre_ping)
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-17 v0.1.16 출시 후 심층 감사 개선 + **orphan reaper Container Apps Job 프로비저닝**(§2 / PR #126·#127)
 > 작성 기준: v0.1.16 (versionCode 30) — 출시 후 심층 감사 개선 A~E + Tier2/3(테스트·신뢰성·housekeeping), 공식문서 fact-check 2건 정정 (이전: v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
@@ -27,6 +27,8 @@
 - APK: `app/build/outputs/apk/release/app-release.apk` (5.95 MB)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 `1e11310d` 자동 업로드)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
+
+> **출시 상태: 출시 전(pre-release) — Play 프로덕션 미출시.** 0.1.13/27 프로덕션 심사는 **취소**(개선 지속 중), 프로덕션 사용자 0(§4 테이블 0건·reaper purged 0 과 일관). 최신 prepared 빌드 = v0.1.16/30. 실제 출시(preflight 빌드 + Play 업로드)는 회원님이 출시 결정 시점에 수행. 백엔드는 자동 배포로 이미 운영(앱과 독립).
 
 ---
 
@@ -80,6 +82,24 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | Secrets (4) | database-url, supabase-url, supabase-service-role-key, sentry-dsn-backend |
 | RBAC | 운영자=Secrets Officer · Container App MI=Secrets User · CI SP=Secrets User · MI=AcrPull(ACR) |
 | Audit | `kv-audit` 진단설정 → Log Analytics `workspace-appsDOlM` (AuditEvent) |
+
+### Container Apps Job (orphan reaper, 2026-06-17)
+
+계정삭제 Step2(DB purge) 실패로 생긴 고아 데이터(Auth엔 없고 DB엔 남음)를 주기 정리하는 안전망 잡. 항상 떠 있는 `eundunhealth-api`와 **별개 리소스**(같은 env·이미지 재사용).
+
+| 항목 | 값 |
+|------|---|
+| Job | `eundunhealth-reaper` (RG `apps`, env `eundunhealth-env`) |
+| 트리거 / 스케줄 | Schedule cron `0 18 * * 0` (UTC) = **매주 월 03:00 KST** |
+| 커맨드 | `python scripts/reap_orphaned_accounts.py` (ENTRYPOINT 우회 → alembic 미실행) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:<SHA>` (앱과 동일, setup 시 치환) |
+| 리소스 | 0.25 vCPU / 0.5Gi, replica-timeout 1800, retry 1 |
+| Identity | **User-assigned MI** `id-eundunhealth-reaper` — AcrPull(ACR) + Key Vault Secrets User(KV) |
+| Secrets | `database-url`·`supabase-url`·`supabase-service-role-key` (KeyVault 참조, `identity:<UAI>`) |
+| IaC | `backend/reaper-job.yaml`(잡 정의) + `scripts/setup-reaper-job.sh`(멱등 오케스트레이션) |
+| 검증 | 수동 실행 `eundunhealth-reaper-g6ngiz7` **Succeeded**(2026-06-17). 현재 0 사용자 → purged 0 |
+
+> 프로비저닝 패턴·함정(E1~E4: az `--args` leading-dash / system MI chicken-egg → UAI-first / 개인 MSA RBAC CLI 불가 → 포털·SP / job `--registry-identity` CLI 문제 → `--yaml`)은 **`docs/ops/azure-container-apps-jobs.md`** 참조. 실행 이력: `az containerapp job execution list -n eundunhealth-reaper -g apps -o table`.
 
 ---
 
@@ -339,3 +359,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-06-16 | **Sentry Alert 설정 (`scripts/setup-sentry-alerts.ps1`, commit `d18e335`)**. 스크립트 5개 버그 수정(B1 PS 대소문자 변수충돌·B2 environment 404·B3 interval 무효·B4 dataset deprecated·B5 team targetType) + 구조 개선(DryRun 플래그·GET 기반 idempotency·재발방지 주석). **Issue Alert 6 + Metric Alert 2 = 총 8개 Sentry 알림 활성** (§6 참조). 잘못 생성된 Priority Notification 룰 2개(#3589906·#3589907) UI에서 삭제 |
 | 2026-06-16 | **Dependabot PR 6개 triage**. 머지 3건(Sentry Android 8.43.2 · MockK 1.14.11 · Backend 6개 minor-patch) + 닫기 3건(Kotlin 2.4.0 #117 · Coil 3.5.0 #118 — Hilt 대기 · openapi-generator 7.23.0 #119 — 13 minor 점프 별도 검토). `dependency-deferred.md §1` 갱신 + §2 신설 |
 | 2026-06-17 | **v0.1.16 — 출시 후 심층 감사 개선**. JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`+timeout 5s) · RetryInterceptor/Profile/History/Statistics/Onboarding/Goal 테스트(@Test 118→138) · GoalScreen silent-failure→`ErrorContent` · DayPlanCard `remember` perf · 오늘의활동 a11y(`mergeDescendants`) · 백엔드 `pool_pre_ping`·sentry-sdk 2.63.0. **백엔드 perf/신뢰성**: history COUNT `count(*) over()` 1쿼리화 · `user_profile_history (user_id, recorded_at)` 복합 인덱스(alembic **`b78b256c2b20`**) · 계정삭제 orphan reaper(fail-safe, `scripts/reap_orphaned_accounts.py`). 공식문서 fact-check 2건 정정(PyJWKClient 기본 timeout 30s · Compose strong skipping 기본활성→stability config Won't-do). versionCode 29→30. 설계 `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md` |
+| 2026-06-17 | **orphan reaper 운영화 (PR #127) + 프로비저닝**. reaper 트랜잭션 사용자단위 commit/격리 + 스크립트 self-locating + requirements cp949 가드(pre-commit). **Container Apps Job `eundunhealth-reaper`**(UAI `id-eundunhealth-reaper`, 주간 cron) 생성·수동실행 **Succeeded**(§2 참조). 프로비저닝 라이브 디버깅 4에러(E1~E4) → 재발방지 런북 `docs/ops/azure-container-apps-jobs.md`(공식문서 fact-check). backend pytest 77 / android @Test 139 |
