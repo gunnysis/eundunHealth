@@ -16,6 +16,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -75,9 +77,13 @@ internal fun TodayActivityCard(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        activity.steps?.let { ActivityMetric("👟", "$it", "걸음") }
-                        activity.totalCaloriesKcal?.let { ActivityMetric("🔥", "$it", "kcal") }
-                        activity.avgHeartRateBpm?.let { ActivityMetric("❤", "$it", "bpm") }
+                        activity.steps?.let { ActivityMetric("👟", "$it", "걸음", "걸음 $it 보") }
+                        activity.totalCaloriesKcal?.let {
+                            ActivityMetric("🔥", "$it", "kcal", "소모 칼로리 $it kcal")
+                        }
+                        activity.avgHeartRateBpm?.let {
+                            ActivityMetric("❤", "$it", "bpm", "평균 심박 $it bpm")
+                        }
                     }
                 }
             }
@@ -86,9 +92,14 @@ internal fun TodayActivityCard(
 }
 
 @Composable
-private fun ActivityMetric(icon: String, value: String, unit: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(icon, style = MaterialTheme.typography.titleLarge)
+private fun ActivityMetric(icon: String, value: String, unit: String, contentDesc: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        // 값+단위를 한 노드로 병합해 TalkBack 이 "걸음 1234 보"처럼 읽게 한다.
+        modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = contentDesc },
+    ) {
+        // 이모지는 미announce(TalkBack 이 "신발 이모지"를 읽지 않도록).
+        Text(icon, style = MaterialTheme.typography.titleLarge, modifier = Modifier.clearAndSetSemantics {})
         Text(value, style = MaterialTheme.typography.titleMedium)
         Text(
             unit,
