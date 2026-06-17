@@ -4,6 +4,33 @@
 
 ---
 
+## [v0.1.16] — 2026-06-17 — 출시 후 심층 감사 개선
+
+> v0.1.15 출시 사이클 후 5-도메인 심층 재감사(Android/Backend/테스트/의존성/UX). 공식 문서 fact-check 로 감사 발견 2건 정정. 코드 건강·출시 차단 0건 — 신뢰성·성능·접근성·테스트 폴리시. 브랜치 `feature/deep-audit-improvements`. 설계: `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md`.
+
+### 🛠️ Tier 1 — 개선 (A~E)
+- **A (Backend)**: JWKS 서명키 동기 조회를 `asyncio.to_thread` 로 이벤트 루프 밖으로 오프로드 + `PyJWKClient` timeout 30s→5s. 콜드스타트·키 로테이션 시 루프 정지 리스크 제거. (공식 PyJWT API 확인: 기본 timeout 은 무한대가 아니라 30s — 감사 보고 정정)
+- **B (Test)**: `RetryInterceptor` 단위 테스트 6건 신설 — 모든 백엔드 호출 경로(재시도/백오프/누수) 가드.
+- **C (UX)**: `GoalScreen` 이 네트워크 실패를 "데이터 없음"으로 오표시하던 silent failure 제거 → `ErrorContent`(재시도) + `GoalViewModelTest`.
+- **D (Perf)**: `DayPlanCard` 의 매-recomposition locale 포맷팅을 `remember(day.date)` 로 hoist.
+- **E (A11y)**: "오늘의 활동" 이모지-only 지표를 `mergeDescendants` + `clearAndSetSemantics` 로 TalkBack 가독화.
+
+### 🧪 Tier 2 — 테스트·신뢰성
+- 무테스트 ViewModel 4종(Profile/History/Statistics/Onboarding) 특성화 테스트 추가 — 계정삭제·페이지네이션 경계 등 고위험 로직 가드 (@Test 118→138).
+- 백엔드 DB 풀 `pool_pre_ping=True` — warm baseline 인스턴스 idle 후 끊긴 연결 first-request 500 방지.
+
+### 🧹 Tier 3 — housekeeping
+- `sentry-sdk` 2.62.0→2.63.0 · `requirements.txt` MAL 주석 실제 핀(0.137.1) 정합 · i18n 한국어 하드코딩이 의도된 결정임을 CLAUDE.md 명문화.
+
+### 🚫 Won't-do / 후속
+- **Compose stability config**: strong skipping 기본 활성(Kotlin 2.0.20+)으로 불필요(공식 확인) — 감사의 MED 보고 정정.
+- **후속(Tier 2/3 deferred)**: `user_profile_history` 복합 인덱스(데이터 증가 시·룰 7) / history COUNT 최적화 / 계정삭제 orphan reaper(신규 인프라). 근거는 design §5.7.
+
+### ✅ 검증
+- Backend pytest **73 PASS** · ruff · mypy · bandit · pip-audit clean. Android **@Test 138** · detekt · spotless green. versionCode 29→30.
+
+---
+
 ## [main] — 2026-06-16 — Dependabot PR 6개 triage
 
 > open dependabot PR 6개 일괄 정리 — CI 상태 + 호환성 기준 머지 3 / 닫기 3.

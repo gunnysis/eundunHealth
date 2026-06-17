@@ -579,7 +579,11 @@ PR 본문에 Task 0 baseline 측정값 + 게이트 결과 + 실기기(E TalkBack
 
 ## Phase 7 (선택): Tier 2/3 후속
 
-> Tier 1 머지 후 별도 사이클. design §5.7~§5.8 근거 확정 완료, 실행만 남음.
+> **실행 결과 (2026-06-17, 본 PR)**: 자율 판단으로 **T2a·T2d·T3a·T3b·T3c 는 본 PR 에 포함**(저위험·무계약변경·분명한 가치). **T2b·T2c·T2e 는 defer** — 출시 직전 "무변경+안전" 규율:
+> - **T2b**(복합 인덱스): 스키마 마이그레이션 + 룰 7 ceremony 인데 현재 row 수로 benefit ≈0 + 머지 시 prod 스키마 자동변경. 데이터 증가 시 실행.
+> - **T2c**(COUNT 최적화): 빈 페이지 total 등 엣지케이스 + 현재 benefit ≈0 인데 history 엔드포인트 동작 변경. 측정 후 실행.
+> - **T2e**(orphan reaper): 신규 인프라(Container Apps Job)라 별도 설계 필요. release 차단 아님.
+> design §5.7~§5.8 근거 확정 완료.
 
 ### Task T2a: 무테스트 ViewModel 회귀 테스트 (Android, test-only)
 ProfileViewModel(계정삭제/저장 null-userId 가드 — HIGH), HistoryViewModel(페이지네이션 `hasMore` 경계), StatisticsViewModel(empty/loaded/error 분기), OnboardingViewModel(null-userId 가드). `HomeViewModelTest`/`GoalViewModelTest` 패턴 재사용(StandardTestDispatcher + mockk). 각 3~4 케이스.
