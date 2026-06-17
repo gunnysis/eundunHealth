@@ -4,6 +4,15 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-17 — 출시 후 심층 감사 개선 (PR #126, v0.1.16)
+
+- **PR**: [#126](https://github.com/gunnysis/eundunHealth/pull/126) (shipped, squash `df65d91`)
+- **Why**: v0.1.15 출시 사이클(#122/#123/#125) 후 5-도메인 심층 재감사. 코드 건강·출시 차단 0건이었고, 신뢰성·성능·접근성·테스트 폴리시 개선 + 공식문서 fact-check 로 감사 발견 2건 정정.
+- **What**: **Tier1(A~E)** — A JWKS 동기조회 `asyncio.to_thread` 오프로드+`PyJWKClient timeout 30→5s` / B `RetryInterceptor` 단위테스트 6(mockk Chain) / C `GoalScreen` silent-failure→`ErrorContent` / D `DayPlanCard` 포맷팅 `remember` / E 오늘의활동 a11y `mergeDescendants`. **Tier2/3** — 무테스트 VM 4종 특성화 테스트 · 백엔드 `pool_pre_ping` · **history COUNT `count(*) over()` 1쿼리화** · **`user_profile_history (user_id, recorded_at)` 복합 인덱스**(alembic `b78b256c2b20`) · **계정삭제 orphan reaper**(fail-safe + `_purge_app_data` DRY + `scripts/reap_orphaned_accounts.py`) · sentry-sdk 2.63.0 · i18n 의도 명문화. design+plan 페어 먼저 작성·검토 후 자율 구현(@Test 118→139, backend 71→75).
+- **Outcome**: 전 게이트 green + CI green, squash 머지 → 백엔드 자동배포(룰7: entrypoint `alembic upgrade head` b78b256c2b20). Android C/D/E 는 preflight v0.1.16 빌드+Play 업로드 대기(회원님).
+- **Lessons**: ① 감사 에이전트 보고는 공식문서로 재검증 필수 — PyJWKClient 기본 timeout 은 무한대 아닌 30s, Compose strong skipping(Kotlin 2.0.20+) 기본활성이라 stability config 불필요(Won't-do). ② `(col DESC)` 복합 인덱스 수식어는 단일방향 ORDER BY 엔 불필요(Postgres backward scan). ③ requirements 주석 em-dash(비-ASCII)가 cp949 환경 pip-audit 를 깨뜨림 → ASCII 유지. ④ 코드리뷰(high)가 GoalViewModel 부분실패 회귀(비핵심 차트 실패가 핵심 편집기 차단) 포착 → goals/history 분리로 근본수정. ⑤ alembic index-only 마이그레이션의 미사용 `import sqlalchemy as sa` 는 F401 — per-file ignore 확장 대신 제거(F401 은 스타일 UP/I 와 달리 실제 미사용 탐지라 보존).
+- **Files touched**: `backend/app/{dependencies,main}.py`, `backend/app/services/{account,weekly_plan}_service.py`, `backend/app/repositories/{profile,weekly_plan}_repo.py`, `backend/app/models/user_profile_history.py`, `backend/alembic/versions/b78b256c2b20_*.py`, `backend/scripts/reap_orphaned_accounts.py`, `backend/requirements.txt`, `backend/tests/*`, `app/src/main/.../ui/{goal,home}/*`, `app/src/test/.../ui/*Test.kt`(6 신규), `version.properties`, docs(CHANGELOG/PRD/operations-snapshot/CLAUDE.md)
+
 ### 2026-06-16 — Sentry Alert 스크립트 점검·재발방지 개선 (commit d18e335)
 
 - **Why**: `scripts/setup-sentry-alerts.ps1` 최초 실행 시 8개 룰 전부 404 실패. 스크립트 자체에 5개 버그가 잠복.
