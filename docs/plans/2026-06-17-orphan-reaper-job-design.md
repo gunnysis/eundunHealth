@@ -1,6 +1,6 @@
 ---
 type: design
-status: in-progress  # 코드/IaC 머지(#127). 프로비저닝(UAI 역할 부여=포털 + 잡 생성)만 잔여
+status: shipped  # 코드/IaC #127 머지 + 프로비저닝 완료(잡 생성·수동실행 Succeeded, 2026-06-17)
 pr: https://github.com/gunnysis/eundunHealth/pull/127
 related_inc: null
 supersedes: null
@@ -46,7 +46,7 @@ PR #126 에서 계정삭제 고아 데이터(Auth엔 없고 DB엔 남음 — del
 | D5 | 시크릿 | **Key Vault 참조**(`keyvaultref:…,identityref:system`) | 앱과 동일 패턴(직접값 아님). database-url/supabase-url/supabase-service-role-key 3개(`Settings` 필수 필드) |
 | D6 | 이미지 | **현재 운영 Container App 이미지**(setup 시 조회) | 잡=앱 버전 동기화. 재실행 시 최신 앱 이미지로 갱신(`eundunhealth-api:<SHA>`) |
 | D7 | 리소스 | 0.25 vCPU / 0.5Gi, replica-timeout 1800, retry 1 | 수 초 실행. 비용 ≈0(주간 실행 × 수초, 무료 grant 내) |
-| D8 | IaC | 멱등 **셸 스크립트**(`--yaml` 아님) | 역할 부여가 별도 az 호출이라 단일 yaml 불가. `setup-azure-alerts.sh` 선례와 일치 |
+| D8 | IaC | **잡 정의=`backend/reaper-job.yaml`(`--yaml` create) + 오케스트레이션=멱등 셸 스크립트** | 잡 정의(registry/secret/identity)는 YAML 로(E4 CLI 버그 회피 + containerapp.yaml 패턴 일치). UAI 생성·역할 부여·image 치환·검증은 스크립트가 조율(역할은 별도 az 호출이라 순수 yaml 불가) |
 
 ## 4. 옵션 비교
 
@@ -123,6 +123,9 @@ setup 스크립트는 아래 3건을 코드/preflight 로 방지한다. 운영�
 | **E1** | `az containerapp job create … --args -m scripts.x` → `unrecognized arguments: -m …` | az argparse 가 `-`로 시작하는 `-m` 을 플래그로 오인(`--args` 가 값으로 못 받음) | `--command python --args scripts/reap_orphaned_accounts.py`(앞에 `-` 없는 인자). 스크립트 self-locating 이라 `-m` 불필요 |
 | **E2** | job create → `InvalidParameterValueInContainerTemplate … UNAUTHORIZED: authentication required`(ACR) | job create 가 이미지를 즉시 pull 검증. system MI 는 create 시 막 생겨 AcrPull 없음(chicken-egg) | **UAI 선생성 → 역할 부여 → 그 UAI 로 create**(D4). 역할 전파 대비 create retry(5×30s) |
 | **E3** | `az role assignment create/list --scope …` → `MissingSubscription: … or a valid tenant level resource provider` | 로그인 계정이 **개인 MSA**(예: gmail). `--scope` 미지정 RBAC 조회는 되나 **scope 지정 RBAC 작업(Microsoft.Authorization write)이 불가**. ARM read/배포는 정상 | preflight 가 `role assignment list --scope <ACR>` 로 **RBAC 가능 여부를 mutation 전에 진단** → 불가 시 역할 부여 best-effort(실패해도 중단 X) + **포털 수동 부여 안내**. 역할만 포털에서 주면 스크립트 재실행으로 완료(복구 가능) |
+| **E4** | `az containerapp job create --registry-identity <UAI id>` → `must be an identity resource ID or 'system'` | az containerapp **job** 의 user-assigned registry identity CLI **버그**([microsoft/azure-container-apps#1284](https://github.com/microsoft/azure-container-apps/issues/1284)). 케이싱·확장 업그레이드(1.3.0b4)와 무관 | **`--yaml`** 로 생성 — `backend/reaper-job.yaml` 의 `registries.identity`/`secrets.identity` 가 버그난 CLI 파라미터 검증을 우회(MI=AcrPull-only 최소권한 유지). 프로젝트 `containerapp.yaml --yaml` 패턴과 일치. 갱신은 `--image` 만 |
+
+> **프로비저닝 결과 (MEASURED 2026-06-17)**: UAI `id-eundunhealth-reaper` 생성 + 포털 역할 부여(AcrPull·KV Secrets User) → `az containerapp job create --yaml backend/reaper-job.yaml` 성공 → 수동 실행 `eundunhealth-reaper-g6ngiz7` **status=Succeeded**(이미지 pull + KV 시크릿 resolve + DB 연결 + reaper 실행 + exit 0 전부 정상; 현재 0 사용자 → purged 0). 주간 cron `0 18 * * 0` 활성.
 
 ### 운영자 셋업 (E3 해당 — 현재 환경)
 

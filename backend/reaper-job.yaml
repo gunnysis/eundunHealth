@@ -1,0 +1,48 @@
+location: koreacentral
+identity:
+  type: UserAssigned
+  userAssignedIdentities:
+    "/subscriptions/6890144c-c79e-46fc-a830-33335e8b4165/resourceGroups/apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper": {}
+properties:
+  environmentId: "/subscriptions/6890144c-c79e-46fc-a830-33335e8b4165/resourceGroups/apps/providers/Microsoft.App/managedEnvironments/eundunhealth-env"
+  configuration:
+    triggerType: Schedule
+    replicaTimeout: 1800
+    replicaRetryLimit: 1
+    scheduleTriggerConfig:
+      cronExpression: "0 18 * * 0"
+      parallelism: 1
+      replicaCompletionCount: 1
+    registries:
+      - server: eundunhealthacr.azurecr.io
+        identity: "/subscriptions/6890144c-c79e-46fc-a830-33335e8b4165/resourceGroups/apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
+    secrets:
+      - name: database-url
+        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/database-url"
+        identity: "/subscriptions/6890144c-c79e-46fc-a830-33335e8b4165/resourceGroups/apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
+      - name: supabase-url
+        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/supabase-url"
+        identity: "/subscriptions/6890144c-c79e-46fc-a830-33335e8b4165/resourceGroups/apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
+      - name: supabase-service-role-key
+        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/supabase-service-role-key"
+        identity: "/subscriptions/6890144c-c79e-46fc-a830-33335e8b4165/resourceGroups/apps/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
+  template:
+    containers:
+      - image: eundunhealthacr.azurecr.io/eundunhealth-api:0e6a99d
+        name: reaper
+        command:
+          - python
+        args:
+          - scripts/reap_orphaned_accounts.py
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+        env:
+          - name: ENVIRONMENT
+            value: production
+          - name: DATABASE_URL
+            secretRef: database-url
+          - name: SUPABASE_URL
+            secretRef: supabase-url
+          - name: SUPABASE_SERVICE_ROLE_KEY
+            secretRef: supabase-service-role-key

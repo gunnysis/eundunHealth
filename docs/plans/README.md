@@ -5,13 +5,9 @@
 > 컨벤션: 본 README 의 "워크플로" 섹션 + memory `plans-folder-archive-preference.md` + `design-plan-docs-convention.md`.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
-## 활성 작업 (페어 파일, 1)
+## 활성 작업 (페어 파일, 0)
 
-### 진행 중 (1)
-
-| 날짜 | 주제 | type | status | tags |
-|---|---|---|---|---|
-| 2026-06-17 | orphan-reaper-job | design | in-progress | infra, container-apps-job, account-deletion, reaper, key-vault |
+(없음 — 모든 작업이 ledger 에 흡수됨 또는 신규 작업 없음)
 
 ## Topic Ledgers (완료 작업 history)
 
