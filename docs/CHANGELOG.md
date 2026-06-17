@@ -15,16 +15,19 @@
 - **D (Perf)**: `DayPlanCard` 의 매-recomposition locale 포맷팅을 `remember(day.date)` 로 hoist.
 - **E (A11y)**: "오늘의 활동" 이모지-only 지표를 `mergeDescendants` + `clearAndSetSemantics` 로 TalkBack 가독화.
 
-### 🧪 Tier 2 — 테스트·신뢰성
+### 🧪 Tier 2 — 테스트·신뢰성·성능
 - 무테스트 ViewModel 4종(Profile/History/Statistics/Onboarding) 특성화 테스트 추가 — 계정삭제·페이지네이션 경계 등 고위험 로직 가드 (@Test 118→138).
 - 백엔드 DB 풀 `pool_pre_ping=True` — warm baseline 인스턴스 idle 후 끊긴 연결 first-request 500 방지.
+- **history COUNT 1-쿼리화** — 페이지 SELECT + 별도 `COUNT(*)` 2-round-trip → `count(*) over()` window(빈 페이지만 count 폴백) + 멀티페이지 경계 테스트.
+- **`user_profile_history (user_id, recorded_at)` 복합 인덱스** — 진행 차트 정렬 step 제거(alembic `b78b256c2b20`, 룰 7 PG 컨테이너 + entrypoint 실증). 단일방향 DESC 는 backward scan 으로 커버되어 DESC 수식어 불필요, 기존 단일 user_id 인덱스 제거(복합 prefix 가 커버).
+- **계정삭제 orphan reaper** — Auth엔 없고 DB엔 남은 고아 데이터를 청소하는 안전망. `reap_orphaned_data()`(fail-safe: Auth 404 확정만 purge) + `_purge_app_data` DRY 추출 + `scripts/reap_orphaned_accounts.py`.
 
 ### 🧹 Tier 3 — housekeeping
 - `sentry-sdk` 2.62.0→2.63.0 · `requirements.txt` MAL 주석 실제 핀(0.137.1) 정합 · i18n 한국어 하드코딩이 의도된 결정임을 CLAUDE.md 명문화.
 
 ### 🚫 Won't-do / 후속
 - **Compose stability config**: strong skipping 기본 활성(Kotlin 2.0.20+)으로 불필요(공식 확인) — 감사의 MED 보고 정정.
-- **후속(Tier 2/3 deferred)**: `user_profile_history` 복합 인덱스(데이터 증가 시·룰 7) / history COUNT 최적화 / 계정삭제 orphan reaper(신규 인프라). 근거는 design §5.7.
+- **후속**: orphan reaper 의 Container Apps Job(cron) wiring(스크립트는 포함, 잡 프로비저닝만 분리). 출시 전이라 스키마 변경 OK 판단으로 당초 defer 했던 T2b/T2c/T2e 는 본 PR 에 모두 포함.
 
 ### ✅ 검증
 - Backend pytest **73 PASS** · ruff · mypy · bandit · pip-audit clean. Android **@Test 138** · detekt · spotless green. versionCode 29→30.

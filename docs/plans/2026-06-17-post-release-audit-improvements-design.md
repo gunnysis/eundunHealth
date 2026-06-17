@@ -244,7 +244,7 @@ private fun ActivityMetric(icon: String, value: String, unit: String, contentDes
 
 도입하지 않는다. strong skipping 이 Kotlin 2.0.20+(본 프로젝트 2.2.10)에서 기본 활성이라 모든 restartable composable 이 unstable 파라미터와 무관하게 skippable 하며 unstable 값은 referential equality 로 비교된다([공식](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)). 단일 `_uiState` StateFlow UDF 에서 list 인스턴스는 상태 변경 시에만 교체되므로 `@Immutable` 어노테이션은 이미 의도한 skippability 를 받는다. config 파일/immutable-collections 도입은 ROI 없음.
 
-### 5.7 Tier 2 — 근거 확정 (실행은 후속)
+### 5.7 Tier 2 — 근거 확정 (T2b/T2c/T2e 는 PR #126 에 구현됨 — 출시 전 스키마 변경 OK 확인 후; Container Apps Job wiring 만 후속)
 
 - **T2b 인덱스** (`backend/app/models/user_profile_history.py:17,22`): 현재 `user_id` 단일 인덱스. 모든 read 가 `WHERE user_id ORDER BY recorded_at DESC LIMIT N`. 복합 인덱스 `Index("ix_history_user_recorded", "user_id", recorded_at.desc())` 추가 시 sort step 제거. **현재 user 당 row 수 적어 실측 영향 ≈0** → 데이터 증가 시 실행. 추가 시 **룰 7**(alembic + entrypoint 검증 + operations-snapshot head 갱신) 필수. [SQLAlchemy 인덱스 가이드](https://www.opcito.com/blogs/a-guide-to-postgresql-indexing-with-sqlalchemy): 복합 인덱스는 WHERE/ORDER BY 동반 컬럼에 유효.
   - 참고: `weekly_plans` 는 `UniqueConstraint(user_id, week_start)` 의 leftmost prefix 가 `week_start DESC` 정렬을 backward scan 으로 커버 → **이미 충분**(추가 불필요). `goals.user_id` 도 unique 제약 prefix 로 커버되나 타 테이블과 표기 비대칭(consistency nit, 선택).

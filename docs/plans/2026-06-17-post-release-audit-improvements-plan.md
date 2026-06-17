@@ -579,10 +579,10 @@ PR 본문에 Task 0 baseline 측정값 + 게이트 결과 + 실기기(E TalkBack
 
 ## Phase 7 (선택): Tier 2/3 후속
 
-> **실행 결과 (2026-06-17, 본 PR)**: 자율 판단으로 **T2a·T2d·T3a·T3b·T3c 는 본 PR 에 포함**(저위험·무계약변경·분명한 가치). **T2b·T2c·T2e 는 defer** — 출시 직전 "무변경+안전" 규율:
-> - **T2b**(복합 인덱스): 스키마 마이그레이션 + 룰 7 ceremony 인데 현재 row 수로 benefit ≈0 + 머지 시 prod 스키마 자동변경. 데이터 증가 시 실행.
-> - **T2c**(COUNT 최적화): 빈 페이지 total 등 엣지케이스 + 현재 benefit ≈0 인데 history 엔드포인트 동작 변경. 측정 후 실행.
-> - **T2e**(orphan reaper): 신규 인프라(Container Apps Job)라 별도 설계 필요. release 차단 아님.
+> **실행 결과 (2026-06-17, 본 PR)**: 1차로 T2a·T2d·T3a·T3b·T3c 를 포함하고 T2b·T2c·T2e 는 "출시 직전 무변경+안전" 규율로 defer 했으나, **회원님이 "출시 전이라 스키마 변경 OK" 확인** → **T2b·T2c·T2e 도 본 PR 에 모두 구현**:
+> - **T2b**(복합 인덱스): `user_profile_history (user_id, recorded_at)` + alembic `b78b256c2b20`(룰 7: PG 컨테이너 autogen + entrypoint `alembic upgrade head` + `/health` 200 실증). 팩트체크로 `DESC` 수식어 불필요(backward scan) 확인 → 단일 user_id 인덱스 제거(중복).
+> - **T2c**(COUNT 최적화): `count(*) over()` window 1쿼리화(빈 페이지만 폴백) + 멀티페이지 경계 테스트. API 계약·openapi 불변.
+> - **T2e**(orphan reaper): `reap_orphaned_data()`(fail-safe: Auth 404 확정만 purge) + `_purge_app_data` DRY + `scripts/reap_orphaned_accounts.py` + 테스트. **Container Apps Job(cron) wiring 만 후속**(스크립트 포함).
 > design §5.7~§5.8 근거 확정 완료.
 
 ### Task T2a: 무테스트 ViewModel 회귀 테스트 (Android, test-only)
