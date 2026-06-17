@@ -48,7 +48,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
 
     # DB 엔진 + 세션팩토리 1회 생성 → app.state에 저장
-    engine = create_async_engine(settings.database_url, pool_size=3, max_overflow=0)
+    # pool_pre_ping: idle 후 PG/방화벽이 끊은 연결을 checkout 시 SELECT 1 로 사전 검증해
+    # warm baseline 인스턴스의 첫 요청이 "connection closed" 500 으로 떨어지는 것을 방지한다.
+    engine = create_async_engine(
+        settings.database_url, pool_size=3, max_overflow=0, pool_pre_ping=True
+    )
     app.state.session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     if settings.sentry_dsn:
