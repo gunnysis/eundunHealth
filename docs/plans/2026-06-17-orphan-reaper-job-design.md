@@ -1,7 +1,7 @@
 ---
 type: design
-status: proposed
-pr: null
+status: in-progress  # 코드/IaC 머지(#127). 프로비저닝(UAI 역할 부여=포털 + 잡 생성)만 잔여
+pr: https://github.com/gunnysis/eundunHealth/pull/127
 related_inc: null
 supersedes: null
 target_version: infra-only

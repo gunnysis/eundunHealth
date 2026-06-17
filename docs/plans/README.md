@@ -7,11 +7,11 @@
 
 ## 활성 작업 (페어 파일, 1)
 
-### 대기 (proposed / approved) (1)
+### 진행 중 (1)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-06-17 | orphan-reaper-job | design | proposed | infra, container-apps-job, account-deletion, reaper, key-vault |
+| 2026-06-17 | orphan-reaper-job | design | in-progress | infra, container-apps-job, account-deletion, reaper, key-vault |
 
 ## Topic Ledgers (완료 작업 history)
 
