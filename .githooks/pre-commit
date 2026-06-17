@@ -7,6 +7,8 @@
 # 동작 (분기별 독립 — staged 변경에 해당하는 분기만 작동):
 # 1) Kotlin (.kt/.kts) staged → spotlessApply (자동 포맷) + detektDebug (baseline 외 신규 위반 차단)
 # 2) docs/plans/*.md staged → gen-plans-index.sh (README.md 자동 재생성 + auto-stage)
+# 3) backend/*.py staged → ruff check
+# 4) requirements*.txt staged → 비-ASCII 차단 (cp949 환경 pip-audit 깨짐 재발방지)
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -74,6 +76,34 @@ if [ -n "$CHANGED_PY" ]; then
 
     # 변경된 파일만 검사 (전체 app/ 스캔보다 빠름, file-local 룰만 적용되므로 충분)
     echo "$CHANGED_PY" | sed 's|^backend/||' | xargs "$RUFF" check
+fi
+
+# ---------- 4) requirements*.txt cp949 디코드 가드 ----------
+# em-dash(—) 등 cp949 가 디코드 못 하는 바이트가 들어가면 cp949(한국어 Windows) pip-audit 가
+# UnicodeDecodeError 로 깨진다(Linux/CI UTF-8 은 통과 → 로컬에서만 막을 수 있음). 한국어 주석
+# 자체는 cp949 로 디코드되므로 "non-ASCII 전부 차단"이 아니라 cp949 디코드 가능성으로 판정한다.
+CHANGED_REQS=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '(^|/)requirements[^/]*\.txt$' || true)
+
+if [ -n "$CHANGED_REQS" ]; then
+    PY="$REPO_ROOT/backend/.venv/Scripts/python.exe"
+    [ -x "$PY" ] || PY="$(command -v python || true)"
+    if [ -z "$PY" ]; then
+        echo "[pre-commit] (python 없음 → requirements cp949 가드 건너뜀)"
+    else
+        REQ_FAIL=""
+        for f in $CHANGED_REQS; do
+            [ -f "$REPO_ROOT/$f" ] || continue
+            if ! "$PY" -c "import sys; open(sys.argv[1],'rb').read().decode('cp949')" "$REPO_ROOT/$f" 2>/dev/null; then
+                REQ_FAIL="$REQ_FAIL $f"
+            fi
+        done
+        if [ -n "$REQ_FAIL" ]; then
+            echo "[pre-commit] ERROR: 다음 requirements 가 cp949 로 디코드 불가 (cp949 pip-audit 깨짐):$REQ_FAIL"
+            echo "  → em-dash(—) 등 cp949 미지원 문자를 ASCII(-)로 교체 후 다시 커밋하세요."
+            exit 1
+        fi
+    fi
 fi
 
 exit 0

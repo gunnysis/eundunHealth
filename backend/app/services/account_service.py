@@ -65,15 +65,23 @@ class AccountService:
         delete_account 의 Step 2(DB purge)가 실패해 남은 고아, 혹은 다른 경로의 불일치를
         주기적으로 청소한다(Container Apps Job 등). **fail-safe**: Auth 존재 확인이 404(확정
         부재)일 때만 purge — 200/네트워크오류/비정상응답은 보존(불확실하면 절대 지우지 않음).
-        반환: 실제 purge 한 user_id 목록. (commit 은 호출측 UoW/세션 책임.)
+
+        **사용자 단위 트랜잭션**: orphan 마다 commit + 에러 격리 — 한 명의 purge 실패가 전체
+        sweep 을 중단하거나 이미 정리한 사용자를 롤백하지 않게 한다(배치 잡이 세션을 소유하므로
+        메서드가 직접 commit/rollback — 요청 UoW 와 다른 경계). 반환: 실제 purge 한 user_id 목록.
         """
         candidate_ids = await self.profile_repo.list_all_user_ids()
         reaped: list[str] = []
         for user_id in candidate_ids:
-            if await self._user_exists_in_auth(user_id) is False:  # None(불확실)은 스킵
-                await self._purge_app_data(user_id)
-                reaped.append(user_id)
-                logger.info("Reaped orphaned app data for user_id=%s", user_id)
+            try:
+                if await self._user_exists_in_auth(user_id) is False:  # None(불확실)은 스킵
+                    await self._purge_app_data(user_id)
+                    await self.db.commit()
+                    reaped.append(user_id)
+                    logger.info("Reaped orphaned app data for user_id=%s", user_id)
+            except Exception:
+                await self.db.rollback()
+                logger.exception("Reap 실패(건너뜀) user_id=%s", user_id)
         return reaped
 
     def _admin_user_url(self, user_id: str) -> str:

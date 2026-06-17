@@ -119,3 +119,82 @@ async def test_reap_orphaned_data_purges_only_auth_missing_users(db_engine):
         repo = ProfileRepository(session)
         assert await repo.get_by_user_id("orphan-user") is None  # 고아 → purge
         assert await repo.get_by_user_id("valid-user") is not None  # 존재 → 보존
+
+
+@pytest.mark.asyncio
+async def test_reap_orphaned_data_isolates_per_user_failure(db_engine):
+    """한 orphan 의 purge 실패가 다른 orphan 청소를 막지 않는다(사용자 단위 트랜잭션).
+
+    orphan-a 의 purge 가 실패해도 orphan-b 는 정상 purge·commit 되고, 실패한 a 는 롤백·보존.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    from app.config import Settings
+    from app.repositories.profile_repo import ProfileRepository
+    from app.services.account_service import AccountService
+
+    settings = Settings(
+        database_url="sqlite+aiosqlite:///:memory:",
+        supabase_url="https://test.supabase.co",
+        supabase_service_role_key="k",
+    )
+    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with session_factory() as session:
+        repo = ProfileRepository(session)
+        await repo.upsert("orphan-a", {"height_cm": 170.0, "weight_kg": 60.0})
+        await repo.upsert("orphan-b", {"height_cm": 180.0, "weight_kg": 80.0})
+        await session.commit()
+
+    def fake_get(url: str, **_: object) -> httpx.Response:
+        return httpx.Response(404, request=httpx.Request("GET", url))  # 둘 다 orphan(404)
+
+    async with session_factory() as session:
+        service = AccountService(session, settings)
+        real_purge = service._purge_app_data
+
+        async def flaky_purge(uid: str) -> None:
+            if uid == "orphan-a":
+                raise RuntimeError("purge boom")
+            await real_purge(uid)
+
+        with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
+            instance = AsyncMock()
+            instance.get = AsyncMock(side_effect=fake_get)
+            instance.__aenter__ = AsyncMock(return_value=instance)
+            instance.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = instance
+            with patch.object(service, "_purge_app_data", new=flaky_purge):
+                reaped = await service.reap_orphaned_data()
+
+    assert reaped == ["orphan-b"]  # a 실패해도 sweep 계속 → b 청소
+
+    async with session_factory() as session:
+        repo = ProfileRepository(session)
+        assert await repo.get_by_user_id("orphan-a") is not None  # 실패 → 롤백·보존
+        assert await repo.get_by_user_id("orphan-b") is None      # 성공 → purge·commit
+
+
+def test_reaper_script_imports_resolve_when_run_directly():
+    """`python scripts/reap_orphaned_accounts.py` 직접 실행이 import 단계에서 깨지지 않는다.
+
+    self-locating(sys.path) 회귀 가드 — 과거 sys.path[0]=scripts/ 로 `import app` 가
+    ModuleNotFoundError 나던 footgun 의 재발 방지. (Settings/DB 단계에서 실패하는 건 무관 —
+    import 가 resolve 되는지만 본다.)
+    """
+    import pathlib
+    import subprocess
+    import sys
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    result = subprocess.run(
+        [sys.executable, "scripts/reap_orphaned_accounts.py"],
+        cwd=backend_root,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert "No module named 'app'" not in result.stderr
+    assert "ModuleNotFoundError" not in result.stderr
