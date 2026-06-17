@@ -405,6 +405,7 @@ Gson 으로 역직렬화되는 모델(Retrofit 응답 타입 + 그 중첩·래�
 - `@docs/ops/incident-log.md` — 16건 인시던트 + root cause + 재발 방지 패턴
 - `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
 - `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
+- `@docs/ops/azure-container-apps-jobs.md` — Container Apps **Job**(private ACR + KV + MI) 프로비저닝 재현 패턴 + 함정 회피(E1~E4: az `--args` leading-dash / system MI chicken-egg → UAI-first / 개인 MSA RBAC CLI 불가 → 포털·SP / job `--registry-identity` CLI 버그 → `--yaml`). orphan reaper 워크드 예시
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
 - `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.4 (Hilt 2.59.3+ 출시 대기 + build.gradle.kts DSL 마이그레이션 필요)
 - `@docs/ops/containerapp-env-ktor-backup.json` — cutover 직전 env 스냅샷 (historical)
