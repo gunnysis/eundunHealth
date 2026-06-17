@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-06-16 v0.1.15 — 감사 LOW 후속(SideEffect 라이프사이클 + alembic server_default · CORS 차단 + starlette CVE)
-> 작성 기준: v0.1.15 (versionCode 29) — 감사 LOW 후속(SideEffect 수집 라이프사이클-aware · alembic rest_day server_default · CORS 와일드카드 차단 · starlette 1.3.1 CVE, PR #123) (이전: v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응) / v0.1.9 HC 체중·체지방 가져오기 + 오늘의 활동 + 갤럭시 워치 온보딩)
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-17 v0.1.16 — 출시 후 심층 감사 개선(JWKS 오프로드 · 테스트 +20 · Goal 에러상태 · a11y · pool_pre_ping)
+> 작성 기준: v0.1.16 (versionCode 30) — 출시 후 심층 감사 개선 A~E + Tier2/3(테스트·신뢰성·housekeeping), 공식문서 fact-check 2건 정정 (이전: v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.15` / `29`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
+| versionName / versionCode | **`0.1.16` / `30`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
@@ -109,7 +109,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | Region | Korea Central |
 | Database | `postgres` |
 | User | `gunny` |
-| Alembic head | **`c849579de6c4`** (rest_day server_default 일관화 — 감사 B6; 직전 `fa3915deab2f` rest_day 추가 — INC-2026-05-27-01) |
+| Alembic head | **`b78b256c2b20`** (user_profile_history `(user_id, recorded_at)` 복합 인덱스 — 진행 차트 정렬; 직전 `c849579de6c4` rest_day server_default 일관화) |
 | Firewall | Container Apps IP allowlist + `allow-azure-services` 만 허용 |
 
 ### 테이블 row 카운트 (2026-05-25 출시 전 정리 직후)
@@ -338,3 +338,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-06-16 | **v0.1.15 (PR #123) — 감사 LOW 후속**. ① SideEffect 수집 라이프사이클-aware(`ObserveAsEvents`, repeatOnLifecycle STARTED, 7 Screen) ③ alembic forward 마이그레이션 `c849579de6c4`(rest_day server_default 일관화) ④ **CORS 와일드카드 제거**(config 기본 `[]` + `containerapp.yaml` `[]`, live 검증). CI pip-audit 신규 CVE 검출로 starlette 1.2.1→**1.3.1** 동반. 백엔드 배포·CORS live 검증 완료, Android Play 업로드 대기. versionCode 29 (Sentry 매핑 `1e11310d`) |
 | 2026-06-16 | **Sentry Alert 설정 (`scripts/setup-sentry-alerts.ps1`, commit `d18e335`)**. 스크립트 5개 버그 수정(B1 PS 대소문자 변수충돌·B2 environment 404·B3 interval 무효·B4 dataset deprecated·B5 team targetType) + 구조 개선(DryRun 플래그·GET 기반 idempotency·재발방지 주석). **Issue Alert 6 + Metric Alert 2 = 총 8개 Sentry 알림 활성** (§6 참조). 잘못 생성된 Priority Notification 룰 2개(#3589906·#3589907) UI에서 삭제 |
 | 2026-06-16 | **Dependabot PR 6개 triage**. 머지 3건(Sentry Android 8.43.2 · MockK 1.14.11 · Backend 6개 minor-patch) + 닫기 3건(Kotlin 2.4.0 #117 · Coil 3.5.0 #118 — Hilt 대기 · openapi-generator 7.23.0 #119 — 13 minor 점프 별도 검토). `dependency-deferred.md §1` 갱신 + §2 신설 |
+| 2026-06-17 | **v0.1.16 — 출시 후 심층 감사 개선**. JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`+timeout 5s) · RetryInterceptor/Profile/History/Statistics/Onboarding/Goal 테스트(@Test 118→138) · GoalScreen silent-failure→`ErrorContent` · DayPlanCard `remember` perf · 오늘의활동 a11y(`mergeDescendants`) · 백엔드 `pool_pre_ping`·sentry-sdk 2.63.0. **백엔드 perf/신뢰성**: history COUNT `count(*) over()` 1쿼리화 · `user_profile_history (user_id, recorded_at)` 복합 인덱스(alembic **`b78b256c2b20`**) · 계정삭제 orphan reaper(fail-safe, `scripts/reap_orphaned_accounts.py`). 공식문서 fact-check 2건 정정(PyJWKClient 기본 timeout 30s · Compose strong skipping 기본활성→stability config Won't-do). versionCode 29→30. 설계 `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md` |

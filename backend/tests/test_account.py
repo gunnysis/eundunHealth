@@ -69,3 +69,53 @@ async def test_delete_account_purges_all_user_data(
     # 삭제 후 전 per-user 테이블 0건
     for model in models:
         assert await count(model) == 0, f"계정 삭제 후 사용자 데이터 잔존: {model.__tablename__}"
+
+
+@pytest.mark.asyncio
+async def test_reap_orphaned_data_purges_only_auth_missing_users(db_engine):
+    """reap_orphaned_data 는 Supabase Auth 에 없는(404) user 의 데이터만 purge, 존재(200)는 보존.
+
+    fail-safe 가드: orphan-user(404)만 청소되고 valid-user(200)는 그대로 남아야 한다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    from app.config import Settings
+    from app.repositories.profile_repo import ProfileRepository
+    from app.services.account_service import AccountService
+
+    settings = Settings(
+        database_url="sqlite+aiosqlite:///:memory:",
+        supabase_url="https://test.supabase.co",
+        supabase_service_role_key="k",
+    )
+    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with session_factory() as session:
+        repo = ProfileRepository(session)
+        await repo.upsert("orphan-user", {"height_cm": 175.0, "weight_kg": 70.0})
+        await repo.upsert("valid-user", {"height_cm": 180.0, "weight_kg": 80.0})
+        await session.commit()
+
+    def fake_get(url: str, **_: object) -> httpx.Response:
+        status = 404 if "orphan-user" in url else 200
+        return httpx.Response(status, request=httpx.Request("GET", url))
+
+    async with session_factory() as session:
+        service = AccountService(session, settings)
+        with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
+            instance = AsyncMock()
+            instance.get = AsyncMock(side_effect=fake_get)
+            instance.__aenter__ = AsyncMock(return_value=instance)
+            instance.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = instance
+            reaped = await service.reap_orphaned_data()
+        await session.commit()
+
+    assert reaped == ["orphan-user"]
+
+    async with session_factory() as session:
+        repo = ProfileRepository(session)
+        assert await repo.get_by_user_id("orphan-user") is None  # 고아 → purge
+        assert await repo.get_by_user_id("valid-user") is not None  # 존재 → 보존

@@ -1,3 +1,5 @@
+import asyncio
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -18,6 +20,7 @@ def _get_jwk_client(supabase_url: str) -> PyJWKClient:
             f"{supabase_url}/auth/v1/.well-known/jwks.json",
             cache_keys=True,
             lifespan=86400,  # 24시간 TTL
+            timeout=5,  # 기본 30s → 5s: 느린 JWKS 가 워커 스레드를 오래 점유하지 못하게
         )
     return _jwk_client
 
@@ -29,7 +32,9 @@ async def get_current_user_id(
     """Bearer JWT 를 JWKS(ES256)로 검증하고 Supabase user_id(sub) 반환."""
     try:
         jwk_client = _get_jwk_client(settings.supabase_url)
-        signing_key = jwk_client.get_signing_key_from_jwt(credentials.credentials)
+        # 동기 urllib 호출을 워커 스레드로 오프로드해 이벤트 루프 블로킹 방지(콜드스타트·키 로테이션
+        # 시에만 실제 fetch — 24h 캐시 적중 시엔 네트워크 없음). 워커 예외는 그대로 전파된다.
+        signing_key = await asyncio.to_thread(jwk_client.get_signing_key_from_jwt, credentials.credentials)
         payload = jwt.decode(
             credentials.credentials,
             signing_key.key,

@@ -4,6 +4,36 @@
 
 ---
 
+## [v0.1.16] — 2026-06-17 — 출시 후 심층 감사 개선
+
+> v0.1.15 출시 사이클 후 5-도메인 심층 재감사(Android/Backend/테스트/의존성/UX). 공식 문서 fact-check 로 감사 발견 2건 정정. 코드 건강·출시 차단 0건 — 신뢰성·성능·접근성·테스트 폴리시. 브랜치 `feature/deep-audit-improvements`. 설계: `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md`.
+
+### 🛠️ Tier 1 — 개선 (A~E)
+- **A (Backend)**: JWKS 서명키 동기 조회를 `asyncio.to_thread` 로 이벤트 루프 밖으로 오프로드 + `PyJWKClient` timeout 30s→5s. 콜드스타트·키 로테이션 시 루프 정지 리스크 제거. (공식 PyJWT API 확인: 기본 timeout 은 무한대가 아니라 30s — 감사 보고 정정)
+- **B (Test)**: `RetryInterceptor` 단위 테스트 6건 신설 — 모든 백엔드 호출 경로(재시도/백오프/누수) 가드.
+- **C (UX)**: `GoalScreen` 이 네트워크 실패를 "데이터 없음"으로 오표시하던 silent failure 제거 → `ErrorContent`(재시도) + `GoalViewModelTest`.
+- **D (Perf)**: `DayPlanCard` 의 매-recomposition locale 포맷팅을 `remember(day.date)` 로 hoist.
+- **E (A11y)**: "오늘의 활동" 이모지-only 지표를 `mergeDescendants` + `clearAndSetSemantics` 로 TalkBack 가독화.
+
+### 🧪 Tier 2 — 테스트·신뢰성·성능
+- 무테스트 ViewModel 4종(Profile/History/Statistics/Onboarding) 특성화 테스트 추가 — 계정삭제·페이지네이션 경계 등 고위험 로직 가드 (@Test 118→138).
+- 백엔드 DB 풀 `pool_pre_ping=True` — warm baseline 인스턴스 idle 후 끊긴 연결 first-request 500 방지.
+- **history COUNT 1-쿼리화** — 페이지 SELECT + 별도 `COUNT(*)` 2-round-trip → `count(*) over()` window(빈 페이지만 count 폴백) + 멀티페이지 경계 테스트.
+- **`user_profile_history (user_id, recorded_at)` 복합 인덱스** — 진행 차트 정렬 step 제거(alembic `b78b256c2b20`, 룰 7 PG 컨테이너 + entrypoint 실증). 단일방향 DESC 는 backward scan 으로 커버되어 DESC 수식어 불필요, 기존 단일 user_id 인덱스 제거(복합 prefix 가 커버).
+- **계정삭제 orphan reaper** — Auth엔 없고 DB엔 남은 고아 데이터를 청소하는 안전망. `reap_orphaned_data()`(fail-safe: Auth 404 확정만 purge) + `_purge_app_data` DRY 추출 + `scripts/reap_orphaned_accounts.py`.
+
+### 🧹 Tier 3 — housekeeping
+- `sentry-sdk` 2.62.0→2.63.0 · `requirements.txt` MAL 주석 실제 핀(0.137.1) 정합 · i18n 한국어 하드코딩이 의도된 결정임을 CLAUDE.md 명문화.
+
+### 🚫 Won't-do / 후속
+- **Compose stability config**: strong skipping 기본 활성(Kotlin 2.0.20+)으로 불필요(공식 확인) — 감사의 MED 보고 정정.
+- **후속**: orphan reaper 의 Container Apps Job(cron) wiring(스크립트는 포함, 잡 프로비저닝만 분리). 출시 전이라 스키마 변경 OK 판단으로 당초 defer 했던 T2b/T2c/T2e 는 본 PR 에 모두 포함.
+
+### ✅ 검증
+- Backend pytest **73 PASS** · ruff · mypy · bandit · pip-audit clean. Android **@Test 138** · detekt · spotless green. versionCode 29→30.
+
+---
+
 ## [main] — 2026-06-16 — Dependabot PR 6개 triage
 
 > open dependabot PR 6개 일괄 정리 — CI 상태 + 호환성 기준 머지 3 / 닫기 3.

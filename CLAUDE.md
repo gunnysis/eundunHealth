@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
-**Current state**: versionName `0.1.15` (versionCode `29` — 감사 LOW 후속: ① SideEffect 수집 라이프사이클-aware(`ObserveAsEvents`) + 백엔드(alembic rest_day server_default·CORS 와일드카드 차단) + starlette 1.3.1 CVE, PR #123 `078a24fb`(백엔드 배포·CORS live 검증 완료, Android Play 업로드 대기). 직전 v0.1.14 출시 준비 종합: 실기기 제보 2버그 근본수정(① 빈 운동계획 = R8 keep 갭 → 패키지 단위 keep + 자가치유 ② 완료 토글 해제 보존 = 수동 우선 `manuallySet`) + 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증 500→400·인증 토큰갱신 견고화·운동상세 GIF/복사/데이터흐름·캐시/파싱/KST·폴리시) + 재발방지 가드, PR #122 squash `e2d7460`; 백엔드 자동배포 완료(`manual`/`manuallySet` live), Android Play 업로드 대기; 직전 v0.1.13 = 코드베이스 리팩토링 #107~#112). 버전 SSoT = 루트 `version.properties`(앱) + `backend/app/__init__.py:__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포). Play Store: 0.1.13/27 프로덕션 심사는 **취소**, 0.1.14/28 은 ① 미포함이라 **0.1.15/29 가 Play 업로드 대기 빌드**(백엔드 배포·CORS live 검증 완료, Sentry 매핑 `1e11310d`; 출시 산출물 단일 위치 `app/build/outputs/bundle` — preflight·AS 마법사 동일 경로, stale `app/release/` 삭제). Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+**Current state**: versionName `0.1.16` (versionCode `30` — 출시 후 심층 감사 개선(브랜치 `feature/deep-audit-improvements`): JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`+5s timeout) · RetryInterceptor/Profile/History/Statistics/Onboarding/Goal 테스트(@Test 118→138) · GoalScreen silent-failure→`ErrorContent` · DayPlanCard 포맷팅 `remember` perf · 오늘의활동 a11y(`mergeDescendants`) · 백엔드 `pool_pre_ping`·history COUNT window 1쿼리·`user_profile_history` 복합인덱스(alembic `b78b256c2b20`)·계정삭제 orphan reaper(fail-safe)·sentry-sdk 2.63.0; 공식문서 fact-check 2건 정정(PyJWKClient 기본 timeout 30s · Compose strong skipping 기본활성→stability config Won't-do). 설계 `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md`. 직전 v0.1.15 = 감사 LOW 후속: ① SideEffect 수집 라이프사이클-aware(`ObserveAsEvents`) + 백엔드(alembic rest_day server_default·CORS 와일드카드 차단) + starlette 1.3.1 CVE, PR #123 `078a24fb`. 직전 v0.1.14 출시 준비 종합: 실기기 제보 2버그 근본수정(① 빈 운동계획 = R8 keep 갭 → 패키지 단위 keep + 자가치유 ② 완료 토글 해제 보존 = 수동 우선 `manuallySet`) + 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증 500→400·인증 토큰갱신 견고화·운동상세 GIF/복사/데이터흐름·캐시/파싱/KST·폴리시) + 재발방지 가드, PR #122 squash `e2d7460`; 백엔드 자동배포 완료(`manual`/`manuallySet` live), Android Play 업로드 대기; 직전 v0.1.13 = 코드베이스 리팩토링 #107~#112). 버전 SSoT = 루트 `version.properties`(앱) + `backend/app/__init__.py:__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포). Play Store: 최신 prepared 버전 = **0.1.16/30**(심층 감사 개선; preflight 산출물 빌드 + Play 업로드는 출시 시점에 — Claude 불가). 직전 0.1.15/29 는 백엔드 배포·CORS live 검증 완료(Sentry 매핑 `1e11310d`), 0.1.14/28 은 ① 미포함, 0.1.13/27 프로덕션 심사는 취소. 출시 산출물 단일 위치 `app/build/outputs/bundle`(preflight·AS 마법사 동일 경로, stale `app/release/` 삭제). Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
 > Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
@@ -51,7 +51,7 @@ docker compose down -v                # 정리
 .venv/Scripts/bandit -r app -ll
 .venv/Scripts/pip-audit -r requirements.txt --strict --ignore-vuln PYSEC-2026-161
 
-# Alembic 마이그레이션 (현재 head: c849579de6c4)
+# Alembic 마이그레이션 (현재 head: b78b256c2b20)
 .venv/Scripts/alembic upgrade head
 .venv/Scripts/alembic revision --autogenerate -m "..."
 
@@ -145,7 +145,7 @@ Package: `app`
 - `app/repositories/` — DB 접근 추상화. `profile_history_repo`, `goal_repo` (v0.3).
 - `app/services/` — 비즈니스 로직. `account_service`가 Supabase Admin API로 Auth 사용자 삭제. `statistics_service` (v0.2), `goal_service` (v0.3).
 - `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py` 신규.
-- `alembic/` — async 엔진 연동. **head: `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f` rest_day 추가 — INC-2026-05-27-01)**.
+- `alembic/` — async 엔진 연동. **head: `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)**.
 
 **API Endpoints (14개 — `/health` 제외 모두 JWT 필요. 공개 라우트 `/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm` 별도):**
 ```
@@ -181,6 +181,7 @@ DELETE /account
 - Supabase JWT algorithm: **ES256 (ECDSA)** — backend uses JWKS public key verification
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)
+- **UI 문자열 = 한국어 하드코딩 리터럴(의도된 결정)**: 한국어 전용 제품이라 `strings.xml`은 `app_name`만 두고 화면 텍스트·`contentDescription`·에러 메시지를 코드에 직접 한국어로 둔다. string resource 리소스화/i18n 은 다국어 요구가 생기기 전까지 **비대상** — 감사·리뷰 시 "string resource 미사용"을 결함으로 재플래그하지 말 것.
 - pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
@@ -189,7 +190,7 @@ DELETE /account
 - **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix 포함; PR #123), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
 - **Sentry SDK 2.61.1** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
 - mypy strict 통과, ruff/bandit clean, pytest 71/71 PASS, coverage ~84% (mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
-- Alembic head `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f` rest_day 추가, INC-2026-05-27-01)
+- Alembic head `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure

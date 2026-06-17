@@ -97,8 +97,7 @@ class WeeklyPlanService:
     async def get_history(self, user_id: str, page: int, size: int) -> WeeklyPlanHistoryResponse:
         """주간 plan 이력을 페이지네이션해 반환한다. size는 최대 50으로 클램프된다."""
         size = min(size, 50)
-        plans = await self.repo.get_history(user_id, page, size)
-        total = await self.repo.count_by_user(user_id)
+        plans, total = await self.repo.get_history(user_id, page, size)
         return WeeklyPlanHistoryResponse(
             plans=[_to_response(p) for p in plans],
             total_count=total,

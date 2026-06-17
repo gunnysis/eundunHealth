@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.Goal
 import com.gunnys.eundunhealth.domain.model.GoalType
 import com.gunnys.eundunhealth.domain.model.ProfileHistoryPoint
+import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.LineChart
 import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
@@ -76,10 +77,18 @@ fun GoalScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
+        val error = uiState.error
         if (uiState.isLoading) {
             Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                 CircularProgressIndicator()
             }
+        } else if (error != null) {
+            // error 는 goals(핵심) 로드 실패 시에만 set 된다(history 실패는 snackbar) → 항상 전체 에러.
+            ErrorContent(
+                error = error,
+                modifier = Modifier.padding(padding),
+                onRetry = viewModel::load,
+            )
         } else {
             Column(
                 modifier = Modifier
