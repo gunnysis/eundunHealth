@@ -176,8 +176,12 @@ fun WeeklyProgressCard(completedCount: Int, totalDays: Int, completionRate: Floa
 
 @Composable
 fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit, onToggleComplete: () -> Unit) {
-    val dayName = day.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)
-    val dateStr = "${day.date.monthValue}/${day.date.dayOfMonth}"
+    // 날짜 라벨은 day.date 가 바뀔 때만 재계산 — 토글 색 애니메이션(animateColorAsState)으로
+    // 카드가 빈번히 recompose 되는데, getDisplayName(ResourceBundle lookup)을 매번 돌리지 않는다.
+    val dayLabel = remember(day.date) {
+        val name = day.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)
+        "$name (${day.date.monthValue}/${day.date.dayOfMonth})"
+    }
     val containerColor by animateColorAsState(
         if (day.isCompleted) {
             MaterialTheme.colorScheme.primaryContainer
@@ -194,7 +198,7 @@ fun DayPlanCard(day: DayPlan, onExerciseClick: (String) -> Unit, onToggleComplet
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("$dayName ($dateStr)", style = MaterialTheme.typography.titleMedium)
+                    Text(dayLabel, style = MaterialTheme.typography.titleMedium)
                 }
                 if (!day.isRestDay) {
                     IconButton(onClick = onToggleComplete) {
