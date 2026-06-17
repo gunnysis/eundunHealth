@@ -7,7 +7,8 @@ UoW 롤백으로 부분삭제는 없음). 이 잡이 그 고아를 주기적으�
 실행(backend/ 에서) — 둘 다 동작(self-locating: 스크립트가 backend 루트를 sys.path 에 추가):
     python -m scripts.reap_orphaned_accounts      # 권장(모듈 형태)
     python scripts/reap_orphaned_accounts.py      # 직접 실행도 OK
-Container Apps Job 의 command 는 `python -m scripts.reap_orphaned_accounts`.
+Container Apps Job 의 command 는 `python scripts/reap_orphaned_accounts.py`
+(self-locating 이라 동작 + az CLI 의 `--args -m ...` 플래그 오인 회피).
 
 운영: Container Apps Job(cron) 으로 주기 실행 — `scripts/setup-reaper-job.sh` 로 프로비저닝.
 fail-safe: Auth 존재 확인이 404(확정 부재)일 때만 purge(account_service.reap_orphaned_data).

@@ -41,8 +41,8 @@ PR #126 에서 계정삭제 고아 데이터(Auth엔 없고 DB엔 남음 — del
 |---|---|---|---|
 | D1 | 자동화 메커니즘 | Container Apps **Job(Schedule)** | 항상 떠 있는 API와 분리된 배치. in-app 스케줄러는 min/max 1/3 replica 중복 실행 위험 |
 | D2 | 스케줄 | 주간 `0 18 * * 0`(UTC) = **월 03:00 KST** | 고아는 delete-with-DB-failure 시에만 발생(희소) → 주간 청소로 충분. cron 은 UTC 평가([공식](https://learn.microsoft.com/en-us/azure/container-apps/jobs)) |
-| D3 | 실행 커맨드 | `python -m scripts.reap_orphaned_accounts` | `python scripts/x.py` 는 `import app` 실패(MEASURED). `--command` 가 Dockerfile ENTRYPOINT(entrypoint.sh)를 덮어 reaper만 실행(마이그레이션 우회 — 적절) |
-| D4 | 신원 | 잡 전용 **system-assigned MI** | 앱 MI와 분리(최소권한). KV Secrets User + AcrPull 부여 |
+| D3 | 실행 커맨드 | `python scripts/reap_orphaned_accounts.py` | 스크립트 self-locating(§5.3)이라 동작 + az `--args` 가 `-m` 을 플래그로 오인하는 파싱 문제 회피(MEASURED: `--args -m …` → `unrecognized arguments`). `--command` 가 Dockerfile ENTRYPOINT(entrypoint.sh)를 덮어 reaper만 실행(마이그레이션 우회 — 적절) |
+| D4 | 신원 | 잡 전용 **user-assigned identity**(UAI `id-eundunhealth-reaper`) | job create 가 이미지를 즉시 검증(ACR pull)하므로 create 시점에 권한 보유한 신원 필요. system MI 는 create 시 막 생겨 AcrPull 없음 → UNAUTHORIZED(chicken-egg, E2 §10). UAI 를 먼저 만들어 역할 부여 후 그 UAI 로 생성 |
 | D5 | 시크릿 | **Key Vault 참조**(`keyvaultref:…,identityref:system`) | 앱과 동일 패턴(직접값 아님). database-url/supabase-url/supabase-service-role-key 3개(`Settings` 필수 필드) |
 | D6 | 이미지 | **현재 운영 Container App 이미지**(setup 시 조회) | 잡=앱 버전 동기화. 재실행 시 최신 앱 이미지로 갱신(`eundunhealth-api:<SHA>`) |
 | D7 | 리소스 | 0.25 vCPU / 0.5Gi, replica-timeout 1800, retry 1 | 수 초 실행. 비용 ≈0(주간 실행 × 수초, 무료 grant 내) |
@@ -64,7 +64,7 @@ PR #126 에서 계정삭제 고아 데이터(Auth엔 없고 DB엔 남음 — del
 
 역할을 **먼저** 부여해야 첫 run 에서 이미지 pull + 시크릿 resolve 가 성공하므로 순서가 중요:
 
-1. `az containerapp job create … --mi-system-assigned --env-vars ENVIRONMENT=production --command python --args -m scripts.reap_orphaned_accounts`(registry/secret 제외 — MI 가 아직 권한 없음).
+1. `az containerapp job create … --mi-system-assigned --env-vars ENVIRONMENT=production --command python --args scripts/reap_orphaned_accounts.py`(registry/secret 제외 — MI 가 아직 권한 없음).
 2. `principalId = az containerapp job show … --query identity.principalId`.
 3. `az role assignment create … --role AcrPull --scope <ACR>` + `… --role "Key Vault Secrets User" --scope <KV>`.
 4. `az containerapp job registry set … --server eundunhealthacr.azurecr.io --identity system`.
@@ -113,3 +113,22 @@ job 화 과정 점검에서 발견한 3건을 함께 반영:
 - [Create a Job (CLI)](https://learn.microsoft.com/en-us/azure/container-apps/jobs-get-started-cli)
 - [Manage secrets — Key Vault reference(`keyvaultref:…,identityref:…`)](https://learn.microsoft.com/en-us/azure/container-apps/manage-secrets)
 - `az containerapp job create/update/secret/registry --help`(MEASURED — 플래그 확인)
+
+## 10. 프로비저닝 중 발생한 에러 & 재발방지 (MEASURED, 라이브 실행)
+
+setup 스크립트는 아래 3건을 코드/preflight 로 방지한다. 운영자 재발방지용 기록:
+
+| # | 에러 | 원인 | 대응(스크립트 반영) |
+|---|---|---|---|
+| **E1** | `az containerapp job create … --args -m scripts.x` → `unrecognized arguments: -m …` | az argparse 가 `-`로 시작하는 `-m` 을 플래그로 오인(`--args` 가 값으로 못 받음) | `--command python --args scripts/reap_orphaned_accounts.py`(앞에 `-` 없는 인자). 스크립트 self-locating 이라 `-m` 불필요 |
+| **E2** | job create → `InvalidParameterValueInContainerTemplate … UNAUTHORIZED: authentication required`(ACR) | job create 가 이미지를 즉시 pull 검증. system MI 는 create 시 막 생겨 AcrPull 없음(chicken-egg) | **UAI 선생성 → 역할 부여 → 그 UAI 로 create**(D4). 역할 전파 대비 create retry(5×30s) |
+| **E3** | `az role assignment create/list --scope …` → `MissingSubscription: … or a valid tenant level resource provider` | 로그인 계정이 **개인 MSA**(예: gmail). `--scope` 미지정 RBAC 조회는 되나 **scope 지정 RBAC 작업(Microsoft.Authorization write)이 불가**. ARM read/배포는 정상 | preflight 가 `role assignment list --scope <ACR>` 로 **RBAC 가능 여부를 mutation 전에 진단** → 불가 시 역할 부여 best-effort(실패해도 중단 X) + **포털 수동 부여 안내**. 역할만 포털에서 주면 스크립트 재실행으로 완료(복구 가능) |
+
+### 운영자 셋업 (E3 해당 — 현재 환경)
+
+1. `bash scripts/setup-reaper-job.sh` → UAI `id-eundunhealth-reaper` 생성(역할은 preflight 가 불가 진단).
+2. **Azure Portal** 에서 그 UAI 에 역할 2개 부여:
+   - ACR `eundunhealthacr` → 액세스 제어(IAM) → 역할 할당 → **AcrPull** → `id-eundunhealth-reaper`
+   - Key Vault `kv-eundunhealth` → 액세스 제어(IAM) → 역할 할당 → **Key Vault Secrets User** → `id-eundunhealth-reaper`
+   - (또는 RBAC 가능한 계정/SP 로 `az role assignment create --assignee-object-id <UAI principalId> --assignee-principal-type ServicePrincipal --role AcrPull --scope <ACR id>`)
+3. `bash scripts/setup-reaper-job.sh --verify` 재실행 → 역할 best-effort(이미 있음) 통과 후 잡 생성 + 수동 1회 실행 검증.
