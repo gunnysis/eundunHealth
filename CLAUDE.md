@@ -181,6 +181,7 @@ DELETE /account
 - Supabase JWT algorithm: **ES256 (ECDSA)** — backend uses JWKS public key verification
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)
+- **UI 문자열 = 한국어 하드코딩 리터럴(의도된 결정)**: 한국어 전용 제품이라 `strings.xml`은 `app_name`만 두고 화면 텍스트·`contentDescription`·에러 메시지를 코드에 직접 한국어로 둔다. string resource 리소스화/i18n 은 다국어 요구가 생기기 전까지 **비대상** — 감사·리뷰 시 "string resource 미사용"을 결함으로 재플래그하지 말 것.
 - pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
