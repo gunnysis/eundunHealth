@@ -4,6 +4,15 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-18 — 세션 작업 사이드이펙트 리팩토링: HTML 라우트 openapi 제외
+
+- **PR**: (main 직접 — 직전 legal-routes 작업 자체 리뷰)
+- **Why**: 이번 세션에 추가한 legal 라우트(`/privacy`·`/account-deletion`, `text/html`)를 리팩토링/사이드이펙트 관점 재점검 → openapi.json(= Android openapi-generator 입력)에 들어가 **앱이 절대 호출 않는 타입 없는 죽은 클라이언트 메서드(LegalApi)** 를 생성함을 실측. 같은 클래스 기존 문제 발견: `/auth/confirm`(text/html)도 `AuthApi.getAuthConfirmFallback` 죽은 메서드 생성(`AuthApi`·`HealthApi` 는 NetworkModule 어디서도 미참조 = 완전 죽은 코드).
+- **What**: HTML 브라우저 라우트 3종(`/privacy`·`/account-deletion`·`/auth/confirm`)에 `include_in_schema=False`(공식 FastAPI — 라우트 동작 유지, 스키마·자동문서만 제외) → openapi 17→14 path, LegalApi 미생성·AuthApi 축소. 정적 법적 페이지 `Cache-Control: public, max-age=3600`. 스키마 제외 회귀 가드 테스트(`test_html_routes_excluded_from_openapi_schema`) + Cache-Control 단언. Android 코드가 해당 생성 메서드 미참조 실측 후 안전 제거. pytest 86→**87**.
+- **Outcome**: openapi 재싱크 커밋, CLAUDE/README 엔드포인트 주석 갱신. 라우트는 prod 그대로 동작(브라우저·Play 크롤러 직접 접근). JSON infra 라우트(/health·ready·assetlinks)는 문서가치로 유지(범위 밖).
+- **Lessons**: ① `text/html` 라우트를 JSON openapi 계약에 두면 openapi-generator 가 타입 없는 죽은 클라이언트 메서드를 양산 — 브라우저/크롤러용 라우트는 `include_in_schema=False`. ② 자기 작업도 리뷰 대상(SDD controller fact-check 정신) — 방금 추가한 feature 의 2차 효과(생성 클라이언트 오염)는 별도 점검에서만 드러남. ③ 제거 전 미참조 실측(grep NetworkModule/repos) 필수.
+- **Files touched**: `backend/app/routers/legal.py`·`auth.py`, `backend/tests/test_legal.py`, `backend/openapi.json`, `CLAUDE.md`·`README.md`
+
 ### 2026-06-18 — 공개 출시 전 전체 감사 (PR #128, v0.1.17)
 
 - **PR**: [#128](https://github.com/gunnysis/eundunHealth/pull/128) (shipped, squash `d227da3`)

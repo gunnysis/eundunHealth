@@ -64,7 +64,9 @@ def assetlinks_json() -> list[dict[str, object]]:
     ]
 
 
-@router.get("/auth/confirm", operation_id="getAuthConfirmFallback", response_class=HTMLResponse)
+# include_in_schema=False — 브라우저용 HTML fallback 이라 JSON API 계약(openapi.json)에서 제외.
+# 포함 시 앱이 호출하지 않는 죽은 Android 클라이언트 메서드를 생성한다. 라우트는 그대로 동작(브라우저 직접 접근).
+@router.get("/auth/confirm", include_in_schema=False, response_class=HTMLResponse)
 def confirm_fallback() -> str:
     """앱 미설치 디바이스용 이메일 인증 완료 fallback 페이지를 반환한다."""
     return _CONFIRM_HTML

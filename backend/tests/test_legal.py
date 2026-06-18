@@ -13,6 +13,7 @@ async def test_privacy_route_returns_html(client):
     resp = await client.get("/privacy")
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/html")
+    assert "max-age" in resp.headers.get("cache-control", "")  # 정적 콘텐츠 캐시
     assert "개인정보 처리방침" in resp.text
     assert "<html" in resp.text  # 단순 md 가 아니라 완성된 HTML 페이지
 
@@ -22,8 +23,23 @@ async def test_account_deletion_route_returns_html(client):
     resp = await client.get("/account-deletion")
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/html")
+    assert "max-age" in resp.headers.get("cache-control", "")
     assert "계정" in resp.text and "삭제" in resp.text
     assert "<html" in resp.text
+
+
+def test_html_routes_excluded_from_openapi_schema():
+    """HTML 브라우저 라우트는 openapi.json(= Android 생성기 입력)에서 제외돼야 한다.
+
+    포함되면 앱이 절대 호출 않는 타입 없는 죽은 클라이언트 메서드(LegalApi 등)를 생성한다.
+    회귀 가드: 누군가 include_in_schema=False 를 빼면 실패. /health 등 JSON 라우트는 유지.
+    """
+    from app.main import app
+
+    paths = app.openapi()["paths"]
+    for p in ("/privacy", "/account-deletion", "/auth/confirm"):
+        assert p not in paths, f"{p} 는 HTML 라우트 — openapi 스키마에서 제외돼야 함"
+    assert "/health" in paths  # JSON 라우트는 문서화 유지
 
 
 @pytest.mark.asyncio

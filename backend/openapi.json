@@ -510,50 +510,6 @@
         ]
       }
     },
-    "/account-deletion": {
-      "get": {
-        "description": "계정 및 데이터 삭제 안내(Play Store 계정 삭제 요청 URL 등록 대상).",
-        "operationId": "getAccountDeletion",
-        "responses": {
-          "200": {
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Account Deletion",
-        "tags": [
-          "legal"
-        ]
-      }
-    },
-    "/auth/confirm": {
-      "get": {
-        "description": "앱 미설치 디바이스용 이메일 인증 완료 fallback 페이지를 반환한다.",
-        "operationId": "getAuthConfirmFallback",
-        "responses": {
-          "200": {
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Confirm Fallback",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
     "/badges": {
       "get": {
         "description": "현재 인증 사용자가 획득한 배지 목록을 반환한다.",
@@ -752,28 +708,6 @@
         "summary": "Health Ready",
         "tags": [
           "health"
-        ]
-      }
-    },
-    "/privacy": {
-      "get": {
-        "description": "개인정보 처리방침(Play Store 개인정보 URL 등록 대상).",
-        "operationId": "getPrivacyPolicy",
-        "responses": {
-          "200": {
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Privacy Policy",
-        "tags": [
-          "legal"
         ]
       }
     },

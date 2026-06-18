@@ -154,6 +154,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 | `GET` | `/privacy` | 개인정보 처리방침 (Play 등록 URL, `docs/store/` 렌더) |
 | `GET` | `/account-deletion` | 계정·데이터 삭제 안내 (Play 등록 URL) |
 
+> HTML 브라우저 라우트(`/privacy`·`/account-deletion`·`/auth/confirm`)는 `include_in_schema=False` — openapi.json(Android 생성기 입력)에서 제외해 앱이 호출하지 않는 죽은 클라이언트 메서드 생성을 막는다. 라우트 자체는 정상 동작(브라우저·크롤러 직접 접근).
+
 **JWT 필요 (14)**
 
 | Method | Path | 비고 |

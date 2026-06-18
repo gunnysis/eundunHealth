@@ -58,13 +58,21 @@ _PRIVACY_HTML = _render("privacy-policy.md", "개인정보 처리방침 — 은�
 _ACCOUNT_DELETION_HTML = _render("account-deletion.md", "계정 및 데이터 삭제 — 은둔헬스")
 
 
-@router.get("/privacy", operation_id="getPrivacyPolicy", response_class=HTMLResponse)
+# 정적 법적 콘텐츠 — 변경은 드물지만 정책 갱신 시 하루 안에 반영되도록 1h 캐시.
+_CACHE_HEADERS = {"Cache-Control": "public, max-age=3600"}
+
+# include_in_schema=False — 브라우저용 HTML 라우트라 JSON API 계약(openapi.json = Android
+# 생성기 입력)에 넣지 않는다. 넣으면 앱이 절대 호출 않는 타입 없는 죽은 클라이언트 메서드를
+# 생성한다(LegalApi). Container App probe·Play 크롤러·사용자 브라우저는 URL 로 직접 접근.
+
+
+@router.get("/privacy", include_in_schema=False, response_class=HTMLResponse)
 def privacy_policy() -> HTMLResponse:
     """개인정보 처리방침(Play Store 개인정보 URL 등록 대상)."""
-    return HTMLResponse(content=_PRIVACY_HTML)
+    return HTMLResponse(content=_PRIVACY_HTML, headers=_CACHE_HEADERS)
 
 
-@router.get("/account-deletion", operation_id="getAccountDeletion", response_class=HTMLResponse)
+@router.get("/account-deletion", include_in_schema=False, response_class=HTMLResponse)
 def account_deletion() -> HTMLResponse:
     """계정 및 데이터 삭제 안내(Play Store 계정 삭제 요청 URL 등록 대상)."""
-    return HTMLResponse(content=_ACCOUNT_DELETION_HTML)
+    return HTMLResponse(content=_ACCOUNT_DELETION_HTML, headers=_CACHE_HEADERS)
