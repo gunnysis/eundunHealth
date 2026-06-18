@@ -59,6 +59,14 @@ if [ -z "$SENTRY_TOKEN" ]; then
 fi
 # ---------------------------------------------------------------------------------------
 
+# --- JDK 보장 (셸에 JAVA_HOME/PATH 가 없어도 빌드되도록 자가치유) -----------------------
+# 근본 원인/탐지 우선순위(JDK 17 우선) 상세: scripts/ensure-java.sh.
+# (2026-06-19 사고: 시스템 JAVA_HOME 은 있으나 stale 터미널이 못 상속해 gradlew 가
+#  "JAVA_HOME is not set ..." 로 실패. 새 터미널 의존 없이 어느 셸에서든 빌드되게 한다.)
+source "$REPO_ROOT/scripts/ensure-java.sh"
+ensure_java
+# ---------------------------------------------------------------------------------------
+
 run "Spotless" "$GRADLEW" :app:spotlessCheck --quiet
 run "Detekt"   "$GRADLEW" :app:detektDebug --quiet
 run "Unit Tests" "$GRADLEW" :app:testDebugUnitTest --quiet

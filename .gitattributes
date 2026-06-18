@@ -1,3 +1,10 @@
 # shell scripts: 항상 LF (Bash tool 호환)
 *.sh text eol=lf
 scripts/**/*.sh text eol=lf
+
+# Gradle wrapper (Unix 런처) — 확장자가 없어 *.sh 에 안 걸린다.
+# CRLF 로 체크아웃되면 shebang 이 "#!/bin/sh\r" 가 되어 bash 가
+# "cannot execute: required file not found" 로 실패 → 명시적으로 LF 강제.
+/gradlew text eol=lf
+# Windows 배치 파일은 CRLF
+*.bat text eol=crlf
