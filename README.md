@@ -73,7 +73,7 @@
 | 차트 | Vico 3.2.2 (compose-m3) | 통계 + 목표 진행 |
 | Auth | Supabase Kotlin SDK 3.6.0 | ES256 JWT |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | |
-| 모니터링 | Sentry Android 8.43.1 | 16KB page-aligned native libs |
+| 모니터링 | Sentry Android 8.43.2 | 16KB page-aligned native libs |
 | API 클라이언트 | OpenAPI Generator 7.10.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동 |
 | 품질 도구 | Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0 | pre-commit hook 자동화 |
 
@@ -82,10 +82,10 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Python 3.12 | |
-| 프레임워크 | FastAPI 0.136.1 + uvicorn 0.49.0 | |
+| 프레임워크 | FastAPI 0.137.1 + uvicorn 0.49.0 | |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
-| ORM | SQLAlchemy 2.0.50 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
-| 마이그레이션 | Alembic 1.18.4 (head: `c849579de6c4`) | async 엔진 연동 |
+| ORM | SQLAlchemy 2.0.51 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
+| 마이그레이션 | Alembic 1.18.4 (head: `b78b256c2b20`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.63.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |

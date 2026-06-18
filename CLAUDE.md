@@ -173,8 +173,8 @@ DELETE /account
 - **Gradle 9.5.1**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
 - **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
-- **App version**: versionName **`0.1.15`**, versionCode **`29`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000). 정책 전문: `docs/conventions/versioning.md`
-- **Sentry Android 8.43.1** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
+- **App version**: versionName **`0.1.16`**, versionCode **`30`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000). 정책 전문: `docs/conventions/versioning.md`
+- **Sentry Android 8.43.2** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.3.2** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
 - **Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0**
@@ -185,10 +185,10 @@ DELETE /account
 - pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
-- **Python 3.12**, FastAPI 0.136.1, SQLAlchemy 2.0.50 async + asyncpg 0.31.0, Alembic 1.18.4
+- **Python 3.12**, FastAPI 0.137.1, SQLAlchemy 2.0.51 async + asyncpg 0.31.0, Alembic 1.18.4
 - **API version `1.0.0`** — `backend/app/__init__.py:__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
 - **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix 포함; PR #123), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
-- **Sentry SDK 2.61.1** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
+- **Sentry SDK 2.63.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
 - mypy strict 통과, ruff/bandit clean, pytest 77/77 PASS, coverage ~84% (mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
 - Alembic head `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)

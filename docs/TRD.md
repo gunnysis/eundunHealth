@@ -13,7 +13,7 @@
 
 | 영역 | TRD v1.0 | 현재 (v0.1.15) |
 |------|----------|------------|
-| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.136.1 (Python 3.12)** + uvicorn |
+| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.137.1 (Python 3.12)** + uvicorn |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0 async + asyncpg** |
 | Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (77 PASS, cov ~84%) |
@@ -25,8 +25,8 @@
 | 차트 라이브러리 | 미사용 | **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix — v0.1.5 #54 에서 1.1.0 도입 → 1.2.1 → PR #123 에서 1.3.1) |
-| versionCode / versionName | (미정) | **29 / 0.1.15** — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
-| Alembic head | (미정) | `c849579de6c4` (rest_day server_default 일관화; 직전 `fa3915deab2f`: v0.3 history + goals + rest_day 컬럼, INC-2026-05-27-01) |
+| versionCode / versionName | (미정) | **30 / 0.1.16** — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| Alembic head | (미정) | `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
 
