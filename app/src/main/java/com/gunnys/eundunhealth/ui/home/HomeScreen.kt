@@ -21,8 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -39,13 +37,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.DayPlan
+import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
 import com.gunnys.eundunhealth.ui.home.components.HealthConnectPromptCard
 import com.gunnys.eundunhealth.ui.home.components.HealthConnectUnavailableCard
 import com.gunnys.eundunhealth.ui.home.components.HomeTopBarActions
 import com.gunnys.eundunhealth.ui.home.components.TodayActivityCard
-import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -65,16 +63,8 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val pullState = rememberPullToRefreshState()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    ObserveAsEvents(viewModel.sideEffect) { effect ->
-        when (effect) {
-            is HomeSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
-        }
-    }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("이번 주 운동 계획") },
@@ -112,6 +102,15 @@ fun HomeScreen(
                 }
                 is HomeUiState.Success -> {
                     LazyColumn {
+                        state.toggleError?.let { err ->
+                            item {
+                                AuthErrorBanner(
+                                    error = err,
+                                    screen = "home_toggle",
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                )
+                            }
+                        }
                         item {
                             WeeklyProgressCard(
                                 completedCount = state.completedCount,

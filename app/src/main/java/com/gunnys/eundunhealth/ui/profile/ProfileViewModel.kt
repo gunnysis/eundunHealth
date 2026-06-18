@@ -26,6 +26,8 @@ sealed class ProfileUiState {
         val profile: UserProfile,
         val isSaving: Boolean = false,
         val isDeleting: Boolean = false,
+        val saveError: AppError? = null,
+        val deleteError: AppError? = null,
     ) : ProfileUiState()
 
     @Immutable data object Empty : ProfileUiState()
@@ -82,13 +84,12 @@ class ProfileViewModel @Inject constructor(
     ) = viewModelScope.launch {
         val current = _uiState.value
         if (current is ProfileUiState.Loaded) {
-            _uiState.value = current.copy(isSaving = true)
+            _uiState.value = current.copy(isSaving = true, saveError = null)
         }
         val userId = authRepo.getCurrentUserId()
         if (userId == null) {
-            _sideEffect.send(ProfileSideEffect.ShowSnackbar("로그인이 필요합니다"))
             if (current is ProfileUiState.Loaded) {
-                _uiState.value = current.copy(isSaving = false)
+                _uiState.value = current.copy(isSaving = false, saveError = AppError.Auth("로그인이 필요합니다"))
             }
             return@launch
         }
@@ -100,11 +101,15 @@ class ProfileViewModel @Inject constructor(
             .onSuccess {
                 _sideEffect.send(ProfileSideEffect.ShowSnackbar("신체 정보가 저장되었습니다"))
                 _sideEffect.send(ProfileSideEffect.SavedAndNavigateBack)
+                return@launch
             }
             .onFailure {
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
-                _sideEffect.send(ProfileSideEffect.ShowSnackbar(appErr.userMessage))
+                if (current is ProfileUiState.Loaded) {
+                    _uiState.value = current.copy(isSaving = false, saveError = appErr)
+                }
+                return@launch
             }
         if (current is ProfileUiState.Loaded) {
             _uiState.value = current.copy(isSaving = false)
@@ -114,17 +119,16 @@ class ProfileViewModel @Inject constructor(
     fun deleteAccount() = viewModelScope.launch {
         val current = _uiState.value
         if (current is ProfileUiState.Loaded) {
-            _uiState.value = current.copy(isDeleting = true)
+            _uiState.value = current.copy(isDeleting = true, deleteError = null)
         }
         authRepo.deleteAccount()
             .onSuccess { _sideEffect.send(ProfileSideEffect.NavigateToLogin) }
             .onFailure {
-                if (current is ProfileUiState.Loaded) {
-                    _uiState.value = current.copy(isDeleting = false)
-                }
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
-                _sideEffect.send(ProfileSideEffect.ShowSnackbar(appErr.userMessage))
+                if (current is ProfileUiState.Loaded) {
+                    _uiState.value = current.copy(isDeleting = false, deleteError = appErr)
+                }
             }
     }
 }

@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -38,22 +39,20 @@ class OnboardingViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `saveProfile 는 userId 가 null 이면 저장하지 않고 로그인 안내를 낸다`() = runTest {
+    fun `saveProfile 는 userId 가 null 이면 저장하지 않고 error 상태를 낸다`() = runTest {
         coEvery { authRepo.getCurrentUserId() } returns null
         val vm = OnboardingViewModel(userRepo, authRepo)
-        val effects = mutableListOf<OnboardingSideEffect>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.sideEffect.collect { effects.add(it) } }
 
         vm.saveProfile(175f, 70f, 18f, 33f)
         advanceUntilIdle()
 
-        assertTrue(effects.any { it is OnboardingSideEffect.ShowSnackbar })
+        assertNotNull("로그인 필요 에러 상태", vm.uiState.value.error)
         coVerify(exactly = 0) { userRepo.saveProfile(any()) }
         assertFalse(vm.uiState.value.isLoading)
     }
 
     @Test
-    fun `saveProfile 성공 시 NavigateToHome 을 낸다`() = runTest {
+    fun `saveProfile 성공 시 NavigateToHome sideEffect 를 낸다`() = runTest {
         coEvery { authRepo.getCurrentUserId() } returns "user-1"
         coEvery { userRepo.saveProfile(any()) } returns Result.success(Unit)
         val vm = OnboardingViewModel(userRepo, authRepo)

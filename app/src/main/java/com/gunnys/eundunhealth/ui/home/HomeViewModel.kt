@@ -18,12 +18,10 @@ import com.gunnys.eundunhealth.domain.usecase.HealthSyncResult
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -43,18 +41,13 @@ sealed class HomeUiState {
         val totalWorkoutDays: Int = 0,
         val todayActivity: DailyActivity? = null,
         val hasActivityPermission: Boolean = false,
+        val toggleError: AppError? = null,
     ) : HomeUiState() {
         val completionRate: Float get() = if (totalWorkoutDays > 0) completedCount.toFloat() / totalWorkoutDays else 0f
     }
 
     @Immutable
     data class Error(val error: AppError) : HomeUiState()
-}
-
-@Immutable
-sealed class HomeSideEffect {
-    @Immutable
-    data class ShowSnackbar(val message: String) : HomeSideEffect()
 }
 
 @HiltViewModel
@@ -81,9 +74,6 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-
-    private val _sideEffect = Channel<HomeSideEffect>(Channel.BUFFERED)
-    val sideEffect = _sideEffect.receiveAsFlow()
 
     // 같은 날짜의 토글 전송을 직렬화 — 빠른 체크/해제 시 이전 전송을 취소해 최신 의도만 서버에 반영.
     private val toggleJobs = mutableMapOf<LocalDate, Job>()
@@ -164,6 +154,7 @@ class HomeViewModel @Inject constructor(
             plan = updatedPlan,
             completedCount = updatedPlan.days.count { !it.isRestDay && it.isCompleted },
             totalWorkoutDays = updatedPlan.days.count { !it.isRestDay },
+            toggleError = null,
         )
 
         // 같은 날짜의 직전 전송을 취소하고 최신 의도만 전송 → 빠른 체크/해제 시 마지막 액션이 서버에 반영.
@@ -174,16 +165,16 @@ class HomeViewModel @Inject constructor(
                     // 실패 시 plan/완료 카운트만 current(토글 직전 스냅샷)로 revert. 활동 필드는 live 에서
                     // 보존(그 사이 loadTodayActivity 가 채운 todayActivity 유지).
                     val live = _uiState.value
+                    val appErr = it.toAppError()
+                    appErr.reportToSentry()
                     if (live is HomeUiState.Success) {
                         _uiState.value = live.copy(
                             plan = current.plan,
                             completedCount = current.completedCount,
                             totalWorkoutDays = current.totalWorkoutDays,
+                            toggleError = appErr,
                         )
                     }
-                    val appErr = it.toAppError()
-                    appErr.reportToSentry()
-                    _sideEffect.trySend(HomeSideEffect.ShowSnackbar(appErr.userMessage))
                 }
         }
     }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -43,23 +44,22 @@ class ProfileViewModelTest {
     private fun createViewModel() = ProfileViewModel(userRepo, authRepo)
 
     @Test
-    fun `saveProfile 는 userId 가 null 이면 저장하지 않고 로그인 안내를 낸다`() = runTest {
+    fun `saveProfile 는 userId 가 null 이면 저장하지 않고 saveError 상태를 낸다`() = runTest {
         coEvery { authRepo.getCurrentUserId() } returns null
         val vm = createViewModel()
-        val effects = mutableListOf<ProfileSideEffect>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.sideEffect.collect { effects.add(it) } }
         advanceUntilIdle()
 
         vm.saveProfile(175f, 70f, 18f, 33f)
         advanceUntilIdle()
 
-        assertTrue(effects.any { it is ProfileSideEffect.ShowSnackbar && it.message == "로그인이 필요합니다" })
+        val state = vm.uiState.value as ProfileUiState.Loaded
+        assertNotNull("로그인 필요 saveError 상태", state.saveError)
         coVerify(exactly = 0) { userRepo.saveProfile(any()) }
-        assertFalse((vm.uiState.value as ProfileUiState.Loaded).isSaving)
+        assertFalse(state.isSaving)
     }
 
     @Test
-    fun `deleteAccount 실패 시 NavigateToLogin 없이 isDeleting 을 해제한다`() = runTest {
+    fun `deleteAccount 실패 시 NavigateToLogin 없이 deleteError 상태와 isDeleting 해제`() = runTest {
         coEvery { authRepo.deleteAccount() } returns Result.failure(RuntimeException("server"))
         val vm = createViewModel()
         val effects = mutableListOf<ProfileSideEffect>()
@@ -71,8 +71,9 @@ class ProfileViewModelTest {
 
         // 실패한 삭제로 로그인 화면 이동하면 사용자에게 "삭제됨"으로 오인된다(회귀가드).
         assertFalse(effects.any { it is ProfileSideEffect.NavigateToLogin })
-        assertTrue(effects.any { it is ProfileSideEffect.ShowSnackbar })
-        assertFalse((vm.uiState.value as ProfileUiState.Loaded).isDeleting)
+        val state = vm.uiState.value as ProfileUiState.Loaded
+        assertNotNull("deleteError 상태 설정", state.deleteError)
+        assertFalse(state.isDeleting)
     }
 
     @Test

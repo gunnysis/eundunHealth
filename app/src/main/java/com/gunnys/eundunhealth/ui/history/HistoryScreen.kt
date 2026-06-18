@@ -148,7 +148,7 @@ fun HistoryWeekCard(plan: WeeklyPlan) {
                     if (!day.isRestDay) {
                         Icon(
                             if (day.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.Circle,
-                            contentDescription = null,
+                            contentDescription = if (day.isCompleted) "완료" else "미완료",
                             tint = if (day.isCompleted) {
                                 MaterialTheme.colorScheme.primary
                             } else {

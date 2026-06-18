@@ -117,5 +117,9 @@ class AccountService:
             )
             # 200=삭제 성공, 404=이미 없음 (멱등)
             if resp.status_code not in (200, 404):
-                logger.error(f"Supabase user deletion failed: {resp.status_code} {resp.text}")
+                try:
+                    error_detail = resp.json().get("message", "unknown")
+                except Exception:
+                    error_detail = "non-JSON response"
+                logger.error("Supabase user deletion failed: %s %s", resp.status_code, error_detail)
                 raise AppException(502, "AUTH_DELETE_FAILED", "인증 서버 사용자 삭제에 실패했습니다")

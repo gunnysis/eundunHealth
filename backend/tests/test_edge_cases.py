@@ -139,11 +139,26 @@ async def test_delete_account_supabase_404_is_idempotent(client, sample_profile,
     assert resp.status_code == 404
 
 
-# === Pydantic validation (heightCm < 50) ===
+# === Pydantic validation — 프로필 경계값 ===
 
 @pytest.mark.asyncio
 async def test_profile_validation_rejects_out_of_range(client):
+    """heightCm < 50 → 422 (기존 회귀가드)."""
     resp = await client.put("/profile", json={"heightCm": 30.0, "weightKg": 70.0})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_profile_weight_above_maximum_returns_422(client):
+    """weightKg > 500 → 422 (Field le=500)."""
+    resp = await client.put("/profile", json={"heightCm": 170.0, "weightKg": 999.0})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_profile_height_above_maximum_returns_422(client):
+    """heightCm > 300 → 422 (Field le=300)."""
+    resp = await client.put("/profile", json={"heightCm": 400.0, "weightKg": 65.0})
     assert resp.status_code == 422
 
 

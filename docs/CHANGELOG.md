@@ -4,6 +4,32 @@
 
 ---
 
+## [v0.1.17] — 2026-06-18 — 공개 출시 전 전체 감사
+
+> 7-도메인 공개 출시 전 전체 점검(보안·성능·에러UX·테스트·의존성·Play 컴플라이언스·코드품질). 출시 차단 없음. 브랜치 `fix/pre-release-audit`. 설계: `docs/plans/2026-06-18-pre-release-full-audit-{design,plan}.md`.
+
+### 🛠️ Android — Rule 8 inline 에러 배너 완전 적용
+- **OnboardingScreen**: 프로필 저장 실패 시 `Snackbar` → `AuthErrorBanner`(inline persistent + `liveRegion=Polite` + Sentry breadcrumb). `OnboardingUiState.error: AppError?` 신설.
+- **HomeScreen**: 완료 토글 실패 시 `Snackbar` → `AuthErrorBanner`(LazyColumn 내 item). `HomeUiState.Success.toggleError: AppError?` 신설. `HomeSideEffect`에서 `ShowSnackbar` 제거.
+- **ProfileScreen**: 프로필 저장·계정 삭제 실패 시 `Snackbar` → `AuthErrorBanner`. `ProfileUiState.Loaded.saveError / deleteError: AppError?` 신설.
+
+### 🔡 Android — a11y
+- **HistoryScreen**: 완료/미완료 아이콘에 `contentDescription = if (day.isCompleted) "완료" else "미완료"` 추가(TalkBack 접근성).
+
+### 🧪 테스트
+- **BadgeViewModelTest** 신설(3건): 카탈로그 9개 Loaded·획득 표시·로드 실패 Error.
+- **OnboardingViewModelTest** 업데이트: `ShowSnackbar` 검증 → `uiState.error != null`.
+- **ProfileViewModelTest** 업데이트: `ShowSnackbar` 검증 → `saveError/deleteError != null`.
+- **백엔드** `test_edge_cases.py` 2건 추가: `weightKg > 500` → 422, `heightCm > 300` → 422.
+
+### 📝 문서 드리프트 정정
+- CLAUDE.md / README.md / TRD.md: App 0.1.15/29→0.1.16/30, Sentry Android 8.43.1→**8.43.2**, FastAPI 0.136.1→**0.137.1**, SQLAlchemy 2.0.50→**2.0.51**, Sentry SDK 2.61.1→**2.63.0**, Alembic head c849579de6c4→**b78b256c2b20** (SSoT 실측 정정).
+
+### 🔧 Backend 개선
+- `account_service._delete_supabase_user`: Supabase 삭제 실패 로그를 구조화 (`%s` 포맷 + JSON 파싱 분기).
+
+---
+
 ## [v0.1.16] — 2026-06-17 — 출시 후 심층 감사 개선
 
 > v0.1.15 출시 사이클 후 5-도메인 심층 재감사(Android/Backend/테스트/의존성/UX). 공식 문서 fact-check 로 감사 발견 2건 정정. 코드 건강·출시 차단 0건 — 신뢰성·성능·접근성·테스트 폴리시. 브랜치 `feature/deep-audit-improvements`. 설계: `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md`.

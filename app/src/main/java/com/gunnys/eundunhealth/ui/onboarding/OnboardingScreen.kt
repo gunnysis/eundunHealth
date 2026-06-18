@@ -14,13 +14,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -29,6 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
@@ -43,18 +41,14 @@ fun OnboardingScreen(
     var bodyFat by rememberSaveable { mutableFloatStateOf(20f) }
     var muscleMass by rememberSaveable { mutableFloatStateOf(30f) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     ObserveAsEvents(viewModel.sideEffect) { effect ->
         when (effect) {
             is OnboardingSideEffect.NavigateToHome -> onComplete()
-            is OnboardingSideEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -74,6 +68,12 @@ fun OnboardingScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            uiState.error?.let { err ->
+                Spacer(modifier = Modifier.height(12.dp))
+                AuthErrorBanner(error = err, screen = "onboarding")
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             BodyMetricsSliders(

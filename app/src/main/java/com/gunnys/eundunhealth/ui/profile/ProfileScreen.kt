@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.BuildConfig
+import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
@@ -113,6 +115,8 @@ fun ProfileScreen(
                     initialRestDay = state.profile.restDay,
                     isSaving = state.isSaving,
                     isDeleting = state.isDeleting,
+                    saveError = state.saveError,
+                    deleteError = state.deleteError,
                     onSave = viewModel::saveProfile,
                     onDeleteClick = { showDeleteDialog = true },
                     modifier = Modifier.padding(padding),
@@ -159,6 +163,8 @@ private fun ProfileEditContent(
     initialRestDay: Int,
     isSaving: Boolean,
     isDeleting: Boolean,
+    saveError: AppError?,
+    deleteError: AppError?,
     onSave: (Float, Float, Float, Float, Int) -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -210,9 +216,16 @@ private fun ProfileEditContent(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
+        saveError?.let { err ->
+            Spacer(modifier = Modifier.height(4.dp))
+            AuthErrorBanner(error = err, screen = "profile_save")
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         ProfileActionButtons(
             isSaving = isSaving,
             isDeleting = isDeleting,
+            deleteError = deleteError,
             onSave = { onSave(height, weight, bodyFat, muscleMass, restDay) },
             onDeleteClick = onDeleteClick,
         )
@@ -257,6 +270,7 @@ private fun RestDaySelector(restDay: Int, onRestDayChange: (Int) -> Unit) {
 private fun ProfileActionButtons(
     isSaving: Boolean,
     isDeleting: Boolean,
+    deleteError: AppError?,
     onSave: () -> Unit,
     onDeleteClick: () -> Unit,
 ) {
@@ -276,6 +290,11 @@ private fun ProfileActionButtons(
     }
 
     Spacer(modifier = Modifier.height(32.dp))
+
+    deleteError?.let { err ->
+        AuthErrorBanner(error = err, screen = "profile_delete")
+        Spacer(modifier = Modifier.height(8.dp))
+    }
 
     OutlinedButton(
         onClick = onDeleteClick,
