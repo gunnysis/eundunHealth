@@ -96,7 +96,7 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 **현재 상태(2026-06-18 실측 — `./gradlew :app:signingReport` 대조)**: `backend/app/routers/auth.py` 의 `_SHA256_FINGERPRINTS` 에는 **로컬 debug 키 + 로컬 release(업로드) 키만** 있고 **Play App Signing 키가 없다**. → 이대로 Play 배포 시 **딥링크/자동로그인이 깨진다**(로컬 `adb install` APK 로는 정상이라 테스트로 못 잡는 late-critical).
 
 **조치(출시 전 필수)**:
-1. Play Console → **설정 → 앱 무결성(App integrity) → 앱 서명 키 인증서 → SHA-256** 복사.
+1. Play Console(해당 앱 선택) → 좌측 **Play로 보호(Protected with Play) → Play 스토어 배포(Play Store distribution) → Play 앱 서명으로 이동(Go to Play app signing)** → **App signing key(앱 서명 키)** 섹션의 **SHA-256** 복사. (구버전 경로 "설정→앱 무결성" 은 2024+ 개편으로 이동됨. 가장 안정적 앵커 = "Play 앱 서명".) ⚠️ Play 앱 서명 키는 **첫 AAB 업로드 시 자동 생성** — 아직 한 번도 업로드 안 했다면 먼저 내부 테스트 트랙에 AAB 업로드 → 그 후 키 조회. **로컬 keytool/apksigner 로 추출되는 건 업로드 키라 무용**(그건 이미 등록됨, 필요한 건 Play 서명 키).
 2. `backend/app/routers/auth.py` 의 `_SHA256_FINGERPRINTS` 에 그 값을 추가(TODO 주석 위치).
 3. 커밋 → main 머지 → backend.yml 자동배포 → prod `/.well-known/assetlinks.json` 에 반영 확인:
    `curl -s https://eundunhealth-api.../.well-known/assetlinks.json | grep <Play키 앞부분>`.

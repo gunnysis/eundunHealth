@@ -18,8 +18,10 @@ _PACKAGE_NAME = "com.gunnys.eundunhealth"
 # 따라서 Play 로 배포(내부 테스트 트랙 포함)된 설치본의 인증서 = **Play App Signing 키**이지
 # 아래 업로드 키가 아니다. Play App Signing 키 SHA-256 을 이 목록에 추가하지 않으면
 # **Play 배포 빌드에서만 이메일 확인 딥링크/자동로그인이 깨진다**(로컬 APK 는 정상이라 테스트로 못 잡음).
-#   값 위치: Play Console → 설정 → 앱 무결성(App integrity) → 앱 서명 키 인증서 → SHA-256.
-#   추가 후 `bash scripts/sync-openapi.sh` 불필요(assetlinks 는 schema 제외), 재배포만 하면 prod 반영.
+#   값 위치(2024+ 개편 경로): Play Console(앱 선택) → Play로 보호(Protected with Play)
+#     → Play 스토어 배포(Play Store distribution) → Play 앱 서명으로 이동 → App signing key SHA-256.
+#     (키는 첫 AAB 업로드 시 자동 생성 — 미업로드면 내부테스트 업로드 후 조회. 로컬 keytool 은 업로드 키라 무용.)
+#   추가 후 재배포만 하면 prod assetlinks 반영(앱 재업로드 불필요 — assetlinks 는 서버 측).
 # 절차/체크리스트: docs/ops/play-store-release.md §4.1.
 _SHA256_FINGERPRINTS = [
     # debug variant (로컬 adb 설치 테스트용)
