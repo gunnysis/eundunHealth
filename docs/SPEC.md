@@ -1,7 +1,7 @@
 # eundunHealth 기능 명세서
 
 > **문서 버전:** v1.0 (초기 설계) — 본문은 그대로 보존.
-> **현재 제품 상태(2026-05-30):** v0.1.7 (versionCode 21) — LoginScreen + ForgotPasswordScreen 룰 8 적용 + `AuthErrorBanner` promote to `ui/components/`. 이전 누적 v0.1.1~v0.1.6 (signup 흐름 + App Links + redirect hotfix + 422 observability + vico 3.1 + healthConnect stable + Signup Failed UX inline banner). v0.2·v0.3 spec 모두 구현 완료. 자세한 차이는 [CHANGELOG.md](./CHANGELOG.md) / [TRD.md](./TRD.md) 참조.
+> **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스(v0.2·v0.3 spec 모두 구현 완료). 본문(기능 명세)은 초기 설계 그대로 보존하며, 버전 스냅샷은 여기에 하드코딩하지 않는다(릴리스마다 drift 방지 — 과거 v0.1.7 에 고착된 이력 있음). 자세한 차이는 [TRD.md](./TRD.md) 참조.
 >
 > **Supabase 사용 범위 (v0.1.1 명시):** Authentication 한정. Database(테이블)/Storage/Realtime/Edge Functions는 사용하지 않음 — 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장. Supabase는 JWT 발급(ES256/JWKS) + 회원가입 이메일 확인 + 비밀번호 재설정 메일만 담당.
 

@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — Google Play Store **프로덕션 심사 신청 (검토 중, 2026-06-11)** — 직전 Internal Testing
+- **현재 단계** — **출시 전(pre-release)** — Play 프로덕션 미출시. 0.1.13/27 프로덕션 심사는 취소(이후 개선 지속), 프로덕션 사용자 0. 백엔드는 자동 배포로 운영 중(앱과 독립). 최신 버전 v0.1.17/31(코드 머지) — preflight 빌드 + Play 업로드는 출시 결정 시점에
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -89,7 +89,7 @@
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.63.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 77/77 PASS, coverage ~84% |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 79/79 PASS, coverage ~84% |
 
 ### 인프라
 
@@ -177,7 +177,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── backend/                  # FastAPI 백엔드 (Python 3.12)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: b78b256c2b20)
-│   ├── tests/                # pytest (77 PASS, coverage ~84%)
+│   ├── tests/                # pytest (79 PASS, coverage ~84%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
