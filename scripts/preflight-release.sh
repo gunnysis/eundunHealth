@@ -33,6 +33,32 @@ run() {
     "$@"
 }
 
+# --- Sentry mapping 게이트 (출시 빌드의 crash deobfuscation 보장) -----------------------
+# build.gradle.kts: enableMapping = hasToken && sentryRelease. 토큰이 없으면 release 빌드는
+# "성공"하지만 ProGuard 매핑이 빠진 AAB 가 나온다 → 업로드·심사 통과 후 프로덕션 크래시 스택을
+# 난독화 해제할 수 없는 *조용한 출시 결함*. preflight 가 "Build successful" 로 거짓 안심을 주던
+# 갭을 fail-fast 로 닫는다. 의도적으로 매핑 없이 빌드하려면 --allow-missing-sentry-mapping.
+ALLOW_NO_MAPPING=0
+for arg in "$@"; do
+    [ "$arg" = "--allow-missing-sentry-mapping" ] && ALLOW_NO_MAPPING=1
+done
+SENTRY_TOKEN="${SENTRY_AUTH_TOKEN:-}"
+if [ -z "$SENTRY_TOKEN" ] && [ -f local.properties ]; then
+    SENTRY_TOKEN=$(grep -E "^SENTRY_AUTH_TOKEN=" local.properties | head -1 | cut -d= -f2- | tr -d ' \r')
+fi
+if [ -z "$SENTRY_TOKEN" ]; then
+    if [ "$ALLOW_NO_MAPPING" -eq 0 ]; then
+        echo "ERROR: SENTRY_AUTH_TOKEN 이 없습니다 (env 또는 local.properties)." >&2
+        echo "  출시 빌드는 Sentry ProGuard 매핑이 있어야 프로덕션 크래시를 난독화 해제할 수 있습니다." >&2
+        echo "  매핑 없이 빌드하면 build.gradle.kts 의 enableMapping=false 라 산출물은 나오지만" >&2
+        echo "  프로덕션 크래시 스택이 영구히 unreadable 합니다(되돌릴 수 없음)." >&2
+        echo "  → 토큰 설정 후 재실행하거나, 의도적이면 --allow-missing-sentry-mapping 플래그를 주세요." >&2
+        exit 1
+    fi
+    echo "WARNING: SENTRY_AUTH_TOKEN 없음 — 매핑 없는 release 빌드(명시적 override). 프로덕션 크래시 난독화 해제 불가." >&2
+fi
+# ---------------------------------------------------------------------------------------
+
 run "Spotless" "$GRADLEW" :app:spotlessCheck --quiet
 run "Detekt"   "$GRADLEW" :app:detektDebug --quiet
 run "Unit Tests" "$GRADLEW" :app:testDebugUnitTest --quiet

@@ -89,6 +89,21 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 
 > 과거 이 자리에 있던 인라인 정책 초안(2026-05-24)은 SSoT 와의 드리프트를 막기 위해 제거됨 — 2026-06-10. 본문은 항상 `docs/store/` 의 두 파일을 참조할 것. 계정 삭제 완전성(goals·user_profile_history 포함)은 `backend tests/test_account.py::test_delete_account_purges_all_user_data` 가 회귀 가드.
 
+### 4.1 App Links(이메일 확인 딥링크) — 🔴 출시 CRITICAL: Play App Signing 키 등록
+
+이메일 확인/자동로그인 딥링크(App Links)는 **설치된 앱의 서명 인증서 SHA-256** 이 `/.well-known/assetlinks.json` 에 있어야 검증(autoVerify)된다. **AAB 는 Play App Signing 으로 Google 이 재서명**(opt-out 불가)하므로, **Play 로 배포(내부 테스트 트랙 포함)된 설치본의 인증서 = Play App Signing 키**이지 로컬 업로드 키가 아니다.
+
+**현재 상태(2026-06-18 실측 — `./gradlew :app:signingReport` 대조)**: `backend/app/routers/auth.py` 의 `_SHA256_FINGERPRINTS` 에는 **로컬 debug 키 + 로컬 release(업로드) 키만** 있고 **Play App Signing 키가 없다**. → 이대로 Play 배포 시 **딥링크/자동로그인이 깨진다**(로컬 `adb install` APK 로는 정상이라 테스트로 못 잡는 late-critical).
+
+**조치(출시 전 필수)**:
+1. Play Console → **설정 → 앱 무결성(App integrity) → 앱 서명 키 인증서 → SHA-256** 복사.
+2. `backend/app/routers/auth.py` 의 `_SHA256_FINGERPRINTS` 에 그 값을 추가(TODO 주석 위치).
+3. 커밋 → main 머지 → backend.yml 자동배포 → prod `/.well-known/assetlinks.json` 에 반영 확인:
+   `curl -s https://eundunhealth-api.../.well-known/assetlinks.json | grep <Play키 앞부분>`.
+4. (배포 후) 기기에서 Play 설치본으로 이메일 확인 링크 실제 동작 검증.
+
+> 왜 늦게 터지나: 로컬 빌드(debug/release APK)는 업로드 키로 서명 → 로컬 테스트에선 항상 작동. Play 배포본만 Play 키로 서명 → assetlinks 불일치 시 그 빌드에서만 실패. **"출시 빌드로 승인 요청 중/후" 에야 드러나는 전형적 critical.**
+
 ---
 
 ## 5. 그래픽 자산 요구사항

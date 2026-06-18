@@ -12,12 +12,21 @@ router = APIRouter(tags=["auth"])
 
 _PACKAGE_NAME = "com.gunnys.eundunhealth"
 
-# Task 2 에서 추출한 fingerprint
+# App Links 자산 링크 지문 — 설치된 앱의 *서명 인증서* SHA-256 과 일치해야 딥링크 검증(autoVerify) 성공.
+#
+# ⚠️ 출시 CRITICAL: AAB 는 **Play App Signing** 으로 Google 이 재서명한다(AAB 는 opt-out 불가).
+# 따라서 Play 로 배포(내부 테스트 트랙 포함)된 설치본의 인증서 = **Play App Signing 키**이지
+# 아래 업로드 키가 아니다. Play App Signing 키 SHA-256 을 이 목록에 추가하지 않으면
+# **Play 배포 빌드에서만 이메일 확인 딥링크/자동로그인이 깨진다**(로컬 APK 는 정상이라 테스트로 못 잡음).
+#   값 위치: Play Console → 설정 → 앱 무결성(App integrity) → 앱 서명 키 인증서 → SHA-256.
+#   추가 후 `bash scripts/sync-openapi.sh` 불필요(assetlinks 는 schema 제외), 재배포만 하면 prod 반영.
+# 절차/체크리스트: docs/ops/play-store-release.md §4.1.
 _SHA256_FINGERPRINTS = [
-    # debug variant
+    # debug variant (로컬 adb 설치 테스트용)
     "E3:A4:A8:3A:76:49:F3:34:62:4F:B0:B2:E6:6D:CF:51:36:BF:EF:0F:D9:15:FC:E8:4B:05:06:47:98:49:E4:42",
-    # release variant
+    # release = 로컬 업로드 키(.key/eundunhealth_upload_key). adb install 한 release APK 검증용.
     "20:96:86:D4:FC:1C:51:1D:64:09:FB:22:8D:FD:0C:DA:35:64:93:7F:24:1D:43:DA:CB:E7:02:41:6C:0F:0A:8D",
+    # TODO(출시 전 필수): Play App Signing 키 SHA-256 을 여기에 추가 — 없으면 Play 설치본 App Links 깨짐.
 ]
 
 _CONFIRM_HTML = """<!DOCTYPE html>

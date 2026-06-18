@@ -4,6 +4,17 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-18 — 출시 critical 점검: App Links Play 서명키 누락 + Sentry 매핑 게이트
+
+- **PR**: (main 직접 — 회원님 피드백 "출시 명시 시 late-critical 점검" 반영)
+- **Why**: 회원님이 출시 점검을 여러 번 했는데도 문제 재발 → 핵심 지적: **로컬 테스트는 통과하지만 Play 배포본/승인에서만 터지는 critical** 을 봐야 한다("출시버전 빌드 후 승인 중 문제 = 가장 비쌈"). 코드품질 렌즈가 아니라 release-pipeline 렌즈 필요.
+- **What (실측 발견 2건)**:
+  - **App Links Play App Signing 키 누락 (CRITICAL)**: `auth.py _SHA256_FINGERPRINTS` 에 debug + 로컬 업로드키만 존재(`./gradlew :app:signingReport` 로 대조 확정). AAB 는 Play App Signing 으로 Google 재서명(opt-out 불가) → Play 설치본 인증서 = Play 키인데 assetlinks 에 없음 → **이메일 확인 딥링크/자동로그인이 Play 배포본에서만 깨짐**(로컬 APK 정상이라 테스트로 못 잡음). 코드 TODO 슬롯 + `play-store-release.md §4.1` 절차 추가. **값은 Play Console(앱 무결성→서명키 SHA-256)에만 있어 회원님이 추가 필요**. (App Links 나머지=호스트 `appLinksHost`=백엔드도메인·autoVerify·/auth/confirm 경로는 정확 — 유일 결함이 Play 키.)
+  - **preflight 의 silent 매핑 누락**: `releaseArtifacts -PsentryRelease=true` 만 돌리고 `SENTRY_AUTH_TOKEN` 미검증. build.gradle `enableMapping=hasToken && sentryRelease` → 토큰 없으면 빌드 "성공"하지만 매핑 없는 AAB → 프로덕션 크래시 난독화 해제 영구 불가. preflight 에 **fail-fast 게이트**(`--allow-missing-sentry-mapping` 명시 override) 추가 — Rule 2 게이트의 거짓 안심 갭 차단.
+- **Outcome**: 릴리스 빌드 양쪽 실증 — `assembleRelease`(APK 5.96MB)·`bundleRelease`(AAB 8.35MB) BUILD SUCCESSFUL. 백엔드 pytest 87. 출시 critical 잔여 = App Links Play 키(회원님 Console) + 콘솔작업(데이터안전·비공개테스트 12/14·자산).
+- **Lessons**: ① "빌드 성공 = 출시 안전" 아님 — **로컬 서명 ≠ Play 서명**, 토큰 없어도 빌드는 됨. 로컬에서 재현 안 되는 것이 가장 비싸게 터진다. ② preflight 같은 release 게이트는 silent degradation 을 fail-fast 로 바꿔야 신뢰 가능. ③ "출시" 키워드 = release-pipeline 전용 경로(Play 재서명·매핑·데이터안전) 점검 신호([[release-critical-lens]]).
+- **Files touched**: `scripts/preflight-release.sh`(Sentry 게이트), `backend/app/routers/auth.py`(Play 키 TODO+설명), `docs/ops/play-store-release.md`(§4.1 App Links)
+
 ### 2026-06-18 — 공개 출시 전 전체 감사 (PR #128, v0.1.17)
 
 - **PR**: [#128](https://github.com/gunnysis/eundunHealth/pull/128) (shipped, squash `d227da3`)
