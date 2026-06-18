@@ -147,9 +147,11 @@ Package: `app`
 - `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py` 신규.
 - `alembic/` — async 엔진 연동. **head: `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)**.
 
-**API Endpoints (14개 — `/health` 제외 모두 JWT 필요. 공개 라우트 `/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm` 별도):**
+**API Endpoints (14개 JWT 필요 + 공개 6개. 공개 라우트 `/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm`·`/privacy`·`/account-deletion`. 마지막 둘은 `docs/store/*.md` 를 `app/legal/` 로 동기화(sync-legal-docs.sh)해 md→HTML 렌더 — Play 등록 URL):**
 ```
 GET    /health
+GET    /privacy                              # 공개 — 개인정보 처리방침 (Play URL)
+GET    /account-deletion                     # 공개 — 계정·데이터 삭제 안내 (Play URL)
 GET    /profile
 PUT    /profile                              # restDay 포함
 GET    /profile/history?limit=50             # v0.3

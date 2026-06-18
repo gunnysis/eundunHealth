@@ -70,28 +70,22 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 
 ## 4. Privacy Policy + 계정 삭제 URL
 
-Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한 앱은 **계정·데이터 삭제 요청 URL**도 별도로 요구합니다(데이터 안전 양식 + 스토어 등록정보 노출). 두 페이지 모두 `docs/store/` 에 있습니다.
+Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한 앱은 **계정·데이터 삭제 요청 URL**도 별도로 요구합니다(데이터 안전 양식 + 스토어 등록정보 노출).
 
-### 옵션 A: GitHub Pages로 호스팅 (Recommended)
+### 호스팅: 백엔드 라우트 (구현 완료 — v0.1.17)
 
-```
-docs/store/privacy-policy.md     # 개인정보 처리방침 (SSoT)
-docs/store/account-deletion.md   # 계정 및 데이터 삭제 (SSoT)
-```
+두 페이지는 **이미 배포된 백엔드가 공개 라우트로 서빙**합니다(별도 호스팅·설정 불필요, 항상 라이브):
 
-GitHub Pages 활성화: 리포 Settings → Pages → Branch: main / `/docs`.
+| 페이지 | Play Console 등록 URL |
+|--------|----------------------|
+| 개인정보 처리방침 | `https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/privacy` |
+| 계정·데이터 삭제 | `https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/account-deletion` |
 
-생성 URL 예:
-- 개인정보: `https://gunnysis.github.io/eundunHealth/store/privacy-policy.html`
-- 계정 삭제: `https://gunnysis.github.io/eundunHealth/store/account-deletion.html`
+위 두 URL 을 Play Console **스토어 등록정보(개인정보 URL)** + **앱 콘텐츠/데이터 안전(계정 삭제 요청 URL)** 에 각각 등록한다.
 
-### 옵션 B: 정적 호스팅 (Vercel/Netlify 무료)
+### 본문 (SSoT) + 동기화
 
-도메인 직접 보유 시 더 신뢰감 있는 URL. 작업 추가 비용 발생.
-
-### 본문 (SSoT)
-
-전문은 **`docs/store/privacy-policy.md`** + **`docs/store/account-deletion.md`** 가 단일 출처. 위 옵션 중 하나로 호스팅하고 생성된 URL 을 Play Console 에 등록한다(개인정보 URL + 계정 삭제 URL 각각). 내용 변경 시 이 두 파일만 갱신하면 된다.
+전문은 **`docs/store/privacy-policy.md`** + **`docs/store/account-deletion.md`** 가 단일 출처. 백엔드 Docker 빌드 컨텍스트(`backend/`)는 repo 루트 `docs/store/` 에 접근 불가라 `bash scripts/sync-legal-docs.sh` 로 `backend/app/legal/` 로 동기화하고, `backend/app/routers/legal.py` 가 md→HTML 렌더해 서빙한다(`markdown` 런타임 dep). **정책 변경 시: `docs/store/*.md` 편집 → 동기화 스크립트 실행 → 같은 커밋에 `backend/app/legal/` 포함.** drift 가드 = `backend/tests/test_legal.py::test_legal_docs_in_sync_with_ssot`(미동기 시 pytest 실패, openapi.json 패턴과 동일). 머지 → backend.yml 자동배포로 즉시 라이브.
 
 > 과거 이 자리에 있던 인라인 정책 초안(2026-05-24)은 SSoT 와의 드리프트를 막기 위해 제거됨 — 2026-06-10. 본문은 항상 `docs/store/` 의 두 파일을 참조할 것. 계정 삭제 완전성(goals·user_profile_history 포함)은 `backend tests/test_account.py::test_delete_account_purges_all_user_data` 가 회귀 가드.
 

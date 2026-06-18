@@ -16,3 +16,8 @@ pydantic-settings==2.14.1
 PyJWT[crypto]==2.13.0
 httpx==0.28.1
 sentry-sdk[fastapi]==2.63.0
+# Renders legal notices (privacy / account-deletion) md -> HTML for GET /privacy and
+# /account-deletion (Play Store registration URLs). Only our own docs/store/*.md is
+# rendered (never user input), so no injection surface. See routers/legal.py.
+# NOTE: keep this file ASCII-only -- non-ASCII comments break pip-audit under cp949 (INC-27).
+markdown==3.10.2

@@ -141,9 +141,9 @@ app/routers/          # 얇은 라우터, Service 위임
 alembic/versions/     # async 엔진 연동 마이그레이션
 ```
 
-### API 엔드포인트 (18 개 — JWT 필요 14 + 공개 4)
+### API 엔드포인트 (20 개 — JWT 필요 14 + 공개 6)
 
-**공개 (4)**
+**공개 (6)**
 
 | Method | Path | 비고 |
 |--------|------|------|
@@ -151,6 +151,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 | `GET` | `/health/ready` | readiness probe (DB `SELECT 1` → 200/503) |
 | `GET` | `/.well-known/assetlinks.json` | Android App Links 검증 |
 | `GET` | `/auth/confirm` | 이메일 확인 fallback (HTML 응답) |
+| `GET` | `/privacy` | 개인정보 처리방침 (Play 등록 URL, `docs/store/` 렌더) |
+| `GET` | `/account-deletion` | 계정·데이터 삭제 안내 (Play 등록 URL) |
 
 **JWT 필요 (14)**
 
