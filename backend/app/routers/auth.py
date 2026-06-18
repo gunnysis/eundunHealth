@@ -13,22 +13,23 @@ router = APIRouter(tags=["auth"])
 _PACKAGE_NAME = "com.gunnys.eundunhealth"
 
 # App Links 자산 링크 지문 — 설치된 앱의 *서명 인증서* SHA-256 과 일치해야 딥링크 검증(autoVerify) 성공.
+# 셋 다 등록 → 로컬(debug/release APK)·Play 배포본 모든 설치 경로에서 딥링크가 검증된다.
 #
 # ⚠️ 출시 CRITICAL: AAB 는 **Play App Signing** 으로 Google 이 재서명한다(AAB 는 opt-out 불가).
-# 따라서 Play 로 배포(내부 테스트 트랙 포함)된 설치본의 인증서 = **Play App Signing 키**이지
-# 아래 업로드 키가 아니다. Play App Signing 키 SHA-256 을 이 목록에 추가하지 않으면
-# **Play 배포 빌드에서만 이메일 확인 딥링크/자동로그인이 깨진다**(로컬 APK 는 정상이라 테스트로 못 잡음).
-#   값 위치(2024+ 개편 경로): Play Console(앱 선택) → Play로 보호(Protected with Play)
-#     → Play 스토어 배포(Play Store distribution) → Play 앱 서명으로 이동 → App signing key SHA-256.
-#     (키는 첫 AAB 업로드 시 자동 생성 — 미업로드면 내부테스트 업로드 후 조회. 로컬 keytool 은 업로드 키라 무용.)
-#   추가 후 재배포만 하면 prod assetlinks 반영(앱 재업로드 불필요 — assetlinks 는 서버 측).
+# 따라서 Play 로 배포(내부 테스트 트랙 포함)된 설치본의 인증서 = **Play App Signing 키**이지 업로드 키가 아니다.
+# 이 키가 빠지면 Play 배포 빌드에서만 딥링크/자동로그인이 깨진다(로컬 APK 는 정상이라 테스트로 못 잡음).
+#   Play 키 값 위치(2024+ 개편 경로): Play Console(앱 선택) → Play로 보호(Protected with Play)
+#     → Play 스토어 배포(Play Store distribution) → Play 앱 서명으로 이동 → "앱 서명 키 인증서" SHA-256.
+#     (키는 첫 AAB 업로드 시 자동 생성. 로컬 keytool 은 업로드 키만 나와 무용.)
+#   값 변경 후 재배포만 하면 prod assetlinks 반영(앱 재업로드 불필요 — assetlinks 는 서버 측).
 # 절차/체크리스트: docs/ops/play-store-release.md §4.1.
 _SHA256_FINGERPRINTS = [
-    # debug variant (로컬 adb 설치 테스트용)
+    # debug 키 — 로컬 adb 디버그 빌드 검증용
     "E3:A4:A8:3A:76:49:F3:34:62:4F:B0:B2:E6:6D:CF:51:36:BF:EF:0F:D9:15:FC:E8:4B:05:06:47:98:49:E4:42",
-    # release = 로컬 업로드 키(.key/eundunhealth_upload_key). adb install 한 release APK 검증용.
+    # 업로드 키(.key/eundunhealth_upload_key) — 로컬 adb install 한 release APK 검증용 (signingReport release)
     "20:96:86:D4:FC:1C:51:1D:64:09:FB:22:8D:FD:0C:DA:35:64:93:7F:24:1D:43:DA:CB:E7:02:41:6C:0F:0A:8D",
-    # TODO(출시 전 필수): Play App Signing 키 SHA-256 을 여기에 추가 — 없으면 Play 설치본 App Links 깨짐.
+    # Play App Signing 키 (Google 재서명) — Play 배포본(내부테스트 포함) 검증용. ★출시 필수.
+    "92:D5:0C:45:45:3B:BA:04:19:67:DD:F2:84:6D:A9:D7:0B:7B:80:9A:F6:BA:F2:A2:87:E1:62:FE:D2:D5:DA:48",
 ]
 
 _CONFIRM_HTML = """<!DOCTYPE html>
