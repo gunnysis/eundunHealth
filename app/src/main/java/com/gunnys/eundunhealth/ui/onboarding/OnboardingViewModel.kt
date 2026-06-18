@@ -3,6 +3,7 @@ package com.gunnys.eundunhealth.ui.onboarding
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.reportToSentry
 import com.gunnys.eundunhealth.domain.model.toAppError
@@ -20,12 +21,12 @@ import javax.inject.Inject
 @Immutable
 data class OnboardingUiState(
     val isLoading: Boolean = false,
+    val error: AppError? = null,
 )
 
 @Immutable
 sealed class OnboardingSideEffect {
     data object NavigateToHome : OnboardingSideEffect()
-    data class ShowSnackbar(val message: String) : OnboardingSideEffect()
 }
 
 @HiltViewModel
@@ -41,11 +42,10 @@ class OnboardingViewModel @Inject constructor(
     val sideEffect = _sideEffect.receiveAsFlow()
 
     fun saveProfile(heightCm: Float, weightKg: Float, bodyFatPct: Float, muscleMassKg: Float) = viewModelScope.launch {
-        _uiState.value = OnboardingUiState(isLoading = true)
+        _uiState.value = OnboardingUiState(isLoading = true, error = null)
         val userId = authRepo.getCurrentUserId()
         if (userId == null) {
-            _sideEffect.send(OnboardingSideEffect.ShowSnackbar("로그인이 필요합니다"))
-            _uiState.value = OnboardingUiState(isLoading = false)
+            _uiState.value = OnboardingUiState(isLoading = false, error = AppError.Auth("로그인이 필요합니다"))
             return@launch
         }
         runCatching {
@@ -57,7 +57,8 @@ class OnboardingViewModel @Inject constructor(
             .onFailure {
                 val appErr = it.toAppError()
                 appErr.reportToSentry()
-                _sideEffect.send(OnboardingSideEffect.ShowSnackbar(appErr.userMessage))
+                _uiState.value = OnboardingUiState(isLoading = false, error = appErr)
+                return@launch
             }
         _uiState.value = OnboardingUiState(isLoading = false)
     }
