@@ -18,12 +18,10 @@ import com.gunnys.eundunhealth.domain.usecase.HealthSyncResult
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -52,9 +50,6 @@ sealed class HomeUiState {
     data class Error(val error: AppError) : HomeUiState()
 }
 
-@Immutable
-sealed class HomeSideEffect
-
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getOrCreateWeeklyPlan: GetOrCreateWeeklyPlanUseCase,
@@ -79,9 +74,6 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-
-    private val _sideEffect = Channel<HomeSideEffect>(Channel.BUFFERED)
-    val sideEffect = _sideEffect.receiveAsFlow()
 
     // 같은 날짜의 토글 전송을 직렬화 — 빠른 체크/해제 시 이전 전송을 취소해 최신 의도만 서버에 반영.
     private val toggleJobs = mutableMapOf<LocalDate, Job>()
