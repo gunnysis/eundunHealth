@@ -4,15 +4,6 @@
 
 ## Recent (last 90 days)
 
-### 2026-06-18 — 개인정보/계정삭제 페이지 백엔드 서빙 (출시 블로커 해소)
-
-- **PR**: (main 직접 — 출시단계 재점검 후속)
-- **Why**: 출시단계 readiness 재점검에서 GitHub Pages URL 3개 전부 **404**(미설정) 발견 — Play 는 개인정보 URL 필수 + 계정생성 앱은 계정삭제 URL 필수라 **출시 블로커**. 문서(`docs/store/*.md`)는 작성됐으나 호스팅이 안 됨.
-- **What**: 회원님이 **백엔드 라우트** 방식 선택(AskUserQuestion) → FastAPI 공개 라우트 `GET /privacy`·`GET /account-deletion`(md→HTML 렌더, `markdown==3.10.2` 런타임 dep, 모바일 친화 템플릿). 백엔드 Docker 빌드 컨텍스트(`backend/`)가 repo 루트 `docs/store/` 에 접근 불가라 SSoT 유지하며 동기화: `scripts/sync-legal-docs.sh`(`docs/store/*.md` → `backend/app/legal/`) + drift 가드 `test_legal.py::test_legal_docs_in_sync_with_ssot`(openapi.json 패턴과 동일). 라우트 200/HTML/공개성 테스트 포함(pytest 79→**86**). openapi 재싱크(라우트 18→20).
-- **Outcome**: 이미 배포된 always-on 백엔드 재사용이라 별도 호스팅·설정 0. Play 등록 URL = prod `.../privacy`·`.../account-deletion`. CLAUDE/README/operations-snapshot/play-store-release 엔드포인트·호스팅 섹션 갱신. **남은 출시 블로커 = 없음(코드/백엔드 측)**; 회원님 콘솔 작업(URL 등록·preflight 빌드·업로드·비공개테스트)만 남음.
-- **Lessons**: ① **cp949 함정 재발(자책)**: requirements.txt 주석에 한국어·em-dash 넣어 pip-audit cp949 디코드 깨짐 — 문서화된 함정(INC-27)인데 또 만듦 → ASCII 영문으로 정정 + "keep ASCII" 주석 박제. requirements 주석은 항상 ASCII. ② **버전 추정 금지(자책)**: `types-Markdown` 버전을 검증 없이 추정해 존재하지 않는 버전 핀 → 설치 실패. pip index 로 실측 후 핀(회원님 지적). ③ 빌드 컨텍스트 제약(backend/)이 repo 루트 자산 접근을 막을 때 = openapi 식 sync+drift-guard 패턴이 정답(SSoT 유지).
-- **Files touched**: `backend/app/routers/legal.py`(신규), `backend/app/legal/*`(동기화 사본), `scripts/sync-legal-docs.sh`(신규), `backend/app/main.py`, `backend/requirements.txt`(markdown)·`requirements-dev.txt`(types-Markdown), `backend/tests/test_legal.py`(신규), `backend/openapi.json`, docs(CLAUDE/README/operations-snapshot/play-store-release)
-
 ### 2026-06-18 — 공개 출시 전 전체 감사 (PR #128, v0.1.17)
 
 - **PR**: [#128](https://github.com/gunnysis/eundunHealth/pull/128) (shipped, squash `d227da3`)
@@ -21,6 +12,15 @@
 - **Outcome**: 전 게이트 green(android test+detekt+spotless / backend 79 PASS+ruff+mypy) + CI 6잡 green, squash 머지. **남음(Claude 불가)**: preflight v0.1.17 빌드+Play 업로드 + Flip3 실기기 a11y/배너 검증.
 - **Lessons**: ① **죽은 코드의 자기 은폐**: `HomeSideEffect` 의 유일 emitter(ShowSnackbar) 제거 시 빈 sealed class + `_sideEffect` Channel 이 남았으나 빌드는 통과(Channel 이 import 를 여전히 "사용"하므로 spotless/detekt 미탐지) → pr-review-toolkit 코드리뷰가 포착, controller 가 grep 으로 fact-check(룰 10) 후 제거(`cb28450`). emitter 제거 PR 은 대응 Channel/sealed class/collector 도 함께 정리해야 함. ② 룰 8 위반은 신규 화면이 아니라 **기존 화면(Onboarding 은 에러 상태 0)** 에서 누적됨 — 감사가 신규뿐 아니라 baseline 전수를 봐야 함.
 - **Files touched**: `app/src/main/.../ui/{onboarding,home,profile,history}/*`, `app/src/test/.../ui/{badge,onboarding,profile}/*Test.kt`(badge 신규), `backend/app/services/account_service.py`, `backend/tests/test_edge_cases.py`, `version.properties`, docs(CHANGELOG/PRD/TRD/operations-snapshot/CLAUDE.md/README.md)
+
+### 2026-06-18 — 개인정보/계정삭제 페이지 백엔드 서빙 (출시 블로커 해소)
+
+- **PR**: (main 직접 — 출시단계 재점검 후속)
+- **Why**: 출시단계 readiness 재점검에서 GitHub Pages URL 3개 전부 **404**(미설정) 발견 — Play 는 개인정보 URL 필수 + 계정생성 앱은 계정삭제 URL 필수라 **출시 블로커**. 문서(`docs/store/*.md`)는 작성됐으나 호스팅이 안 됨.
+- **What**: 회원님이 **백엔드 라우트** 방식 선택(AskUserQuestion) → FastAPI 공개 라우트 `GET /privacy`·`GET /account-deletion`(md→HTML 렌더, `markdown==3.10.2` 런타임 dep, 모바일 친화 템플릿). 백엔드 Docker 빌드 컨텍스트(`backend/`)가 repo 루트 `docs/store/` 에 접근 불가라 SSoT 유지하며 동기화: `scripts/sync-legal-docs.sh`(`docs/store/*.md` → `backend/app/legal/`) + drift 가드 `test_legal.py::test_legal_docs_in_sync_with_ssot`(openapi.json 패턴과 동일). 라우트 200/HTML/공개성 테스트 포함(pytest 79→**86**). openapi 재싱크(라우트 18→20).
+- **Outcome**: 이미 배포된 always-on 백엔드 재사용이라 별도 호스팅·설정 0. Play 등록 URL = prod `.../privacy`·`.../account-deletion`. CLAUDE/README/operations-snapshot/play-store-release 엔드포인트·호스팅 섹션 갱신. **남은 출시 블로커 = 없음(코드/백엔드 측)**; 회원님 콘솔 작업(URL 등록·preflight 빌드·업로드·비공개테스트)만 남음.
+- **Lessons**: ① **cp949 함정 재발(자책)**: requirements.txt 주석에 한국어·em-dash 넣어 pip-audit cp949 디코드 깨짐 — 문서화된 함정(INC-27)인데 또 만듦 → ASCII 영문으로 정정 + "keep ASCII" 주석 박제. requirements 주석은 항상 ASCII. ② **버전 추정 금지(자책)**: `types-Markdown` 버전을 검증 없이 추정해 존재하지 않는 버전 핀 → 설치 실패. pip index 로 실측 후 핀(회원님 지적). ③ 빌드 컨텍스트 제약(backend/)이 repo 루트 자산 접근을 막을 때 = openapi 식 sync+drift-guard 패턴이 정답(SSoT 유지).
+- **Files touched**: `backend/app/routers/legal.py`(신규), `backend/app/legal/*`(동기화 사본), `scripts/sync-legal-docs.sh`(신규), `backend/app/main.py`, `backend/requirements.txt`(markdown)·`requirements-dev.txt`(types-Markdown), `backend/tests/test_legal.py`(신규), `backend/openapi.json`, docs(CLAUDE/README/operations-snapshot/play-store-release)
 
 ### 2026-06-18 — 백엔드 coverage 측정 코어 수정 (async 과소측정 root cause) + async 갭 테스트
 
