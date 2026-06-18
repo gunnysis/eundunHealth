@@ -4,6 +4,15 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-18 — 공개 출시 전 전체 감사 (PR #128, v0.1.17)
+
+- **PR**: [#128](https://github.com/gunnysis/eundunHealth/pull/128) (shipped, squash `d227da3`)
+- **Why**: Play Store 프로덕션 공개 출시 직전 7-도메인 전체 점검(보안·성능·에러UX·테스트·의존성·Play 컴플라이언스·코드품질). 출시 차단 0건이었고, 발견한 개선을 자율 구현(회원님 "보고/승인 없이 자율판단, 추상적 주장 금지, 재발방지 연구" 지시).
+- **What**: **에러 UX(룰 8)** — Onboarding·Home·Profile 화면의 사용자액션 실패를 Snackbar→inline `AuthErrorBanner`(persistent+a11y liveRegion+Sentry breadcrumb). 상태 필드 신설(`OnboardingUiState.error`·`HomeUiState.Success.toggleError`·`ProfileUiState.Loaded.{saveError,deleteError}`; toggleError 는 다음 토글 시 null 리셋=persist). Profile 저장성공 toast 는 Snackbar 유지(룰8 예외). **a11y** — HistoryScreen 완료/미완료 아이콘 `contentDescription`(이전 null). **테스트** — BadgeViewModelTest 3 신설(@Test 139→142), Onboarding/ProfileVMTest 의 ShowSnackbar 검증→state error 검증, backend `test_edge_cases` 경계 2(weight>500·height>300→422; pytest 77→79). **backend** — account_service 삭제실패 로그 구조화(raw `resp.text` 보간 제거). **문서 드리프트 5건 정정**(CLAUDE/README/TRD/snap: Sentry Android 8.43.2·FastAPI 0.137.1·SQLAlchemy 2.0.51·Sentry SDK 2.63.0·Alembic head b78b256c2b20).
+- **Outcome**: 전 게이트 green(android test+detekt+spotless / backend 79 PASS+ruff+mypy) + CI 6잡 green, squash 머지. **남음(Claude 불가)**: preflight v0.1.17 빌드+Play 업로드 + Flip3 실기기 a11y/배너 검증.
+- **Lessons**: ① **죽은 코드의 자기 은폐**: `HomeSideEffect` 의 유일 emitter(ShowSnackbar) 제거 시 빈 sealed class + `_sideEffect` Channel 이 남았으나 빌드는 통과(Channel 이 import 를 여전히 "사용"하므로 spotless/detekt 미탐지) → pr-review-toolkit 코드리뷰가 포착, controller 가 grep 으로 fact-check(룰 10) 후 제거(`cb28450`). emitter 제거 PR 은 대응 Channel/sealed class/collector 도 함께 정리해야 함. ② 룰 8 위반은 신규 화면이 아니라 **기존 화면(Onboarding 은 에러 상태 0)** 에서 누적됨 — 감사가 신규뿐 아니라 baseline 전수를 봐야 함.
+- **Files touched**: `app/src/main/.../ui/{onboarding,home,profile,history}/*`, `app/src/test/.../ui/{badge,onboarding,profile}/*Test.kt`(badge 신규), `backend/app/services/account_service.py`, `backend/tests/test_edge_cases.py`, `version.properties`, docs(CHANGELOG/PRD/TRD/operations-snapshot/CLAUDE.md/README.md)
+
 ### 2026-06-17 — orphan reaper 운영화: Container Apps Job 프로비저닝 + 점검 하드닝 (PR #127)
 
 - **PR**: [#127](https://github.com/gunnysis/eundunHealth/pull/127) (shipped, squash `0e6a99d`)
