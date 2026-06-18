@@ -4,6 +4,15 @@
 
 ## Recent (last 90 days)
 
+### 2026-06-18 — 백엔드 coverage 측정 코어 수정 (async 과소측정 root cause) + async 갭 테스트
+
+- **PR**: (main 직접 — 출시 전 readiness 점검 후속, 커밋 별도)
+- **Why**: 출시 전 테스트 커버리지 갭 분석 중 모순 발견 — `test_get_plan_not_found`(404 통과 = `raise NotFoundException` 반드시 실행)·`test_complete_*`(200 통과) 가 있는데도 coverage 가 해당 라인(service `raise`, router `return {"status":"ok"}`)을 미커버로 표시. 같은 함수에서 `await` 줄은 커버, **그 다음 줄만** 미커버 = 정상 실행 불가능한 패턴.
+- **What (root cause)**: Python 3.12+ 의 coverage 기본 측정 코어 `ctrace`(sys.settrace 기반)가 **코루틴이 `await` 에서 재개된 직후 라인을 체계적으로 누락**. 실측 비교 — 기본 코어 87% vs `sysmon`(PEP 669 sys.monitoring) **96%**, 거짓 미커버 65줄이 전부 router/service 의 await 다음 줄. 공식 문서(coverage 7.14 `[run].core`) 확인 후 `pyproject.toml [tool.coverage.run] core = "sysmon"` 고정(env var 아닌 config → local+CI 일괄, branch/dynamic-context/concurrency 미사용이라 sysmon 제약 해당 없음). 거짓 미커버 제거로 드러난 **진짜 갭** 2건 테스트 추가: ① weekly_plan_service 7일 범위 검증(`0<=offset<7`, before/after 경계) ② account_service reaper fail-safe(Auth 확인 네트워크오류·비정상응답 → None=보존, 잘못된 삭제 방지). 결과 backend pytest 79→**81**, coverage 정확 측정 **~97%**.
+- **Outcome**: CLAUDE/README/TRD 의 stale "~84%"(과소측정값) → "~97% (sysmon core)" 정정. CI Codecov 가 이제 정확한 async 커버리지 업로드. 남은 미커버는 대부분 infra(database.py engine 셋업·main.py lifespan) + account_service delete 중간실패 reraise(43-47, 강제 곤란).
+- **Lessons**: ① async 코드 커버리지가 "실행되는데 미커버"로 보이면 측정 코어(ctrace vs sysmon)를 의심 — 코드/테스트 문제가 아니라 tracer 한계. ② 측정값 모순은 그 자체가 단서 — 404/200 이 나오면 해당 raise/return 은 반드시 실행됐다는 ground truth 로 tracer 를 fact-check(Rule 10 정신). ③ 거짓 미커버 노이즈가 진짜 갭을 가린다 — 정확한 tracer 가 갭 분석의 전제.
+- **Files touched**: `backend/pyproject.toml`(core=sysmon + root cause 주석), `backend/tests/test_account.py`(reaper fail-safe), `backend/tests/test_edge_cases.py`(7일 범위), `CLAUDE.md`·`README.md`·`docs/TRD.md`(coverage 수치)
+
 ### 2026-06-18 — 공개 출시 전 전체 감사 (PR #128, v0.1.17)
 
 - **PR**: [#128](https://github.com/gunnysis/eundunHealth/pull/128) (shipped, squash `d227da3`)

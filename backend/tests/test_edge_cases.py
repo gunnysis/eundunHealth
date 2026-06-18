@@ -59,6 +59,30 @@ async def test_complete_day_offset_beyond_stored_days_returns_400(client):
 
 
 @pytest.mark.asyncio
+async def test_complete_date_outside_7day_window_returns_400(client):
+    """weekStart 기준 7일 범위를 벗어난 date(이전/이후 모두) → 500 아닌 400.
+
+    test_complete_day_offset_beyond_stored_days(범위 내·저장일 초과)와 다른 분기 —
+    여기선 day_offset 자체가 [0,7) 밖이라 weekly_plan_service 의 범위 가드(0<=offset<7)에 걸린다.
+    """
+    await client.post("/weekly-plan", json={"weekStart": "2026-05-25", "dayPlans": _ONE_DAY})
+
+    # 이후로 7일 초과 (offset 16)
+    after = await client.patch(
+        "/weekly-plan/complete",
+        json={"weekStart": "2026-05-25", "date": "2026-06-10", "completed": True},
+    )
+    assert after.status_code == 400
+
+    # weekStart 이전 (offset 음수)
+    before = await client.patch(
+        "/weekly-plan/complete",
+        json={"weekStart": "2026-05-25", "date": "2026-05-24", "completed": True},
+    )
+    assert before.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_complete_bad_date_returns_400(client):
     resp = await client.patch(
         "/weekly-plan/complete",

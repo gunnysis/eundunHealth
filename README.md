@@ -89,7 +89,7 @@
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.63.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 79/79 PASS, coverage ~84% |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 81/81 PASS, coverage ~97% (sysmon core) |
 
 ### 인프라
 
@@ -177,7 +177,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── backend/                  # FastAPI 백엔드 (Python 3.12)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: b78b256c2b20)
-│   ├── tests/                # pytest (79 PASS, coverage ~84%)
+│   ├── tests/                # pytest (81 PASS, coverage ~97%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서

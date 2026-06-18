@@ -23,6 +23,16 @@ convention = "pep257"
 "app/schemas/**" = ["D101"]      # Pydantic schema — Field(description=) 대체, 7건 제외
 "app/models/**" = ["D101"]       # SQLAlchemy ORM table — 3건 제외
 
+[tool.coverage.run]
+# 측정 코어 고정 — Python 3.12+ 의 기본 코어(ctrace, sys.settrace 기반)는 코루틴이
+# await 에서 재개된 "직후 라인"을 체계적으로 놓쳐 async 코드 커버리지를 과소측정한다.
+# 실측(2026-06-18): 기본 코어 87% vs sysmon 96% — 거짓 미커버 65줄이 전부 router/service 의
+# await 다음 줄(예: weekly_plan router `return {"status":"ok"}`, service `raise NotFound`).
+# 거짓 미커버가 진짜 갭을 노이즈로 가려 Codecov 신호를 왜곡했다. PEP 669 sys.monitoring
+# 기반 sysmon 코어가 정확히 추적한다. branch coverage(`--cov-branch`)·dynamic context·
+# 특수 concurrency 미사용이라 sysmon 제약(공식 문서 coverage 7.14 [run].core)에 해당 없음.
+core = "sysmon"
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

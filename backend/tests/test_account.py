@@ -122,6 +122,58 @@ async def test_reap_orphaned_data_purges_only_auth_missing_users(db_engine):
 
 
 @pytest.mark.asyncio
+async def test_reap_orphaned_data_preserves_on_uncertain_auth(db_engine):
+    """fail-safe: Auth 존재 확인이 '확정 부재(404)' 가 아니면 절대 purge 하지 않는다.
+
+    네트워크오류(httpx.HTTPError)·비정상응답(500) 둘 다 None(불확실)으로 처리되어
+    데이터가 보존돼야 한다. 잘못된 삭제(불확실한데 지움) 회귀를 차단하는 안전 가드.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    from app.config import Settings
+    from app.repositories.profile_repo import ProfileRepository
+    from app.services.account_service import AccountService
+
+    settings = Settings(
+        database_url="sqlite+aiosqlite:///:memory:",
+        supabase_url="https://test.supabase.co",
+        supabase_service_role_key="k",
+    )
+    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with session_factory() as session:
+        repo = ProfileRepository(session)
+        await repo.upsert("neterr-user", {"height_cm": 175.0, "weight_kg": 70.0})
+        await repo.upsert("status500-user", {"height_cm": 180.0, "weight_kg": 80.0})
+        await session.commit()
+
+    def fake_get(url: str, **_: object) -> httpx.Response:
+        if "neterr-user" in url:
+            raise httpx.ConnectError("boom")  # httpx.HTTPError → None(보존)
+        return httpx.Response(500, request=httpx.Request("GET", url))  # 비정상 → None(보존)
+
+    async with session_factory() as session:
+        service = AccountService(session, settings)
+        with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
+            instance = AsyncMock()
+            instance.get = AsyncMock(side_effect=fake_get)
+            instance.__aenter__ = AsyncMock(return_value=instance)
+            instance.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = instance
+            reaped = await service.reap_orphaned_data()
+        await session.commit()
+
+    assert reaped == []  # 불확실 → 아무도 purge 안 됨
+
+    async with session_factory() as session:
+        repo = ProfileRepository(session)
+        assert await repo.get_by_user_id("neterr-user") is not None  # 네트워크오류 → 보존
+        assert await repo.get_by_user_id("status500-user") is not None  # 비정상 응답 → 보존
+
+
+@pytest.mark.asyncio
 async def test_reap_orphaned_data_isolates_per_user_failure(db_engine):
     """한 orphan 의 purge 실패가 다른 orphan 청소를 막지 않는다(사용자 단위 트랜잭션).
 

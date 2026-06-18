@@ -14,7 +14,7 @@
 - [Android](logs/android.md) — recent 21, older 0
 - [Backend](logs/backend.md) — recent 4, older 0
 - [Dependencies](logs/dependencies.md) — recent 6, older 0
-- [Process & Infra](logs/process-infra.md) — recent 16, older 0
+- [Process & Infra](logs/process-infra.md) — recent 17, older 0
 
 ## 워크플로
 
