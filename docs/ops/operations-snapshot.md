@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: 2026-06-18 v0.1.17 공개 출시 전 전체 감사(Rule 8 inline 에러 배너·a11y·테스트·문서 드리프트 정정, PR #128 머지·백엔드 자동배포 완료) + orphan reaper Container Apps Job 프로비저닝(§2 / PR #126·#127)
-> 작성 기준: v0.1.17 (versionCode 31) — 공개 출시 전 7-도메인 전체 감사: Rule 8 inline 에러 배너(Onboarding·Home·Profile) + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 경계 테스트 2 + account_service 로그 구조화 + 문서 드리프트 정정 (이전: v0.1.16 출시 후 심층 감사 개선 A~E + Tier2/3 PR #126·#127 / v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
+> 작성일: 2026-05-25 / 최근 갱신: 2026-06-19 v0.1.18 출시 재업로드 — versionCode 31 Play 중복 거부(INC-2026-06-19-28) → 32 재빌드 + 단조성 가드(`play-upload-ledger.md`·`check-version-monotonic.sh`·룰 13) (이전: 2026-06-18 v0.1.17 공개 출시 전 전체 감사 PR #128 + orphan reaper Job 프로비저닝 PR #126·#127)
+> 작성 기준: v0.1.18 (versionCode 32) — 출시 재업로드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드. 이전 v0.1.17: 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너[Onboarding·Home·Profile] + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 경계 테스트 2 + account_service 로그 구조화 + 문서 드리프트 정정) (이전: v0.1.16 출시 후 심층 감사 개선 A~E + Tier2/3 PR #126·#127 / v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.17` / `31`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
+| versionName / versionCode | **`0.1.18` / `32`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.5.1 |
 | Compose BOM | 2026.05.01 |
@@ -22,13 +22,13 @@
 | Sentry SDK | Android 8.43.2 / Gradle plugin 6.10.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) |
 
-산출물 경로 (v0.1.17 빌드 기준 — **단일 정규 위치**):
+산출물 경로 (v0.1.18 빌드 기준 — **단일 정규 위치**):
 - AAB: `app/build/outputs/bundle/release/app-release.aab` (8.35 MB) — Play 업로드 대상
 - APK: `app/build/outputs/apk/release/app-release.apk` (5.97 MB)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 `af1a233a` 자동 업로드)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: 출시 전(pre-release) — Play 프로덕션 미출시.** 0.1.13/27 프로덕션 심사는 **취소**(개선 지속 중), 프로덕션 사용자 0(§4 테이블 0건·reaper purged 0 과 일관). 최신 버전 = v0.1.17/31(코드 머지·백엔드 자동배포 완료); 마지막 실제 빌드 산출물은 **v0.1.17/31** (2026-06-19 preflight, AAB 8.35MB·APK 5.97MB·Sentry 매핑 `af1a233a`). 실제 출시(Play 업로드)는 회원님이 출시 결정 시점에 수행. 백엔드는 자동 배포로 이미 운영(앱과 독립).
+> **출시 상태: 출시 전(pre-release) — Play 프로덕션 미출시.** 0.1.13/27 프로덕션 심사는 **취소**(개선 지속 중), 프로덕션 사용자 0(§4 테이블 0건·reaper purged 0 과 일관). 최신 버전 = v0.1.18/32(versionCode 31 Play 중복 거부 → 32 재빌드, INC-2026-06-19-28); 마지막 실제 빌드 산출물은 **v0.1.18/32** (2026-06-19 preflight, AAB 8.35MB·APK 5.97MB·Sentry 매핑 `af1a233a` — v0.1.17 코드 동일). 실제 출시(Play 업로드)는 회원님이 출시 결정 시점에 수행. 백엔드는 자동 배포로 이미 운영(앱과 독립).
 
 ---
 
@@ -363,3 +363,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-06-18 | **v0.1.17 — 공개 출시 전 전체 감사 (PR #128)**. 7-도메인 점검(보안·성능·에러UX·테스트·의존성·Play컴플·코드품질), 출시차단 0건. **Rule 8 inline 에러 배너 완성**(Onboarding·Home·Profile 사용자액션 실패 Snackbar→`AuthErrorBanner`) + HistoryScreen 완료/미완료 a11y `contentDescription` + BadgeViewModelTest 3 + 백엔드 프로필 경계 테스트 2(weight>500·height>300→422) + account_service 로그 구조화 + 문서 드리프트 5건 정정. 코드리뷰 후 죽은코드(빈 `HomeSideEffect`+미사용 Channel) 제거. backend pytest 77→**79** / android @Test 139→**142**. 백엔드 자동배포·prod `/health`·`/health/ready` 200 라이브 검증. 설계 ledger `docs/plans/logs/process-infra.md`(2026-06-18). **남음**: preflight v0.1.17 빌드 + Play 업로드(회원님) |
 | 2026-06-18 | **출시 점검 후속 — 개인정보/계정삭제 페이지 백엔드 서빙**. 출시단계 재점검에서 GitHub Pages URL 404(미설정) = Play 개인정보 URL 필수 블로커 발견 → 백엔드 공개 라우트로 해소: `GET /privacy`·`GET /account-deletion`(md→HTML 렌더, `markdown` 런타임 dep). SSoT `docs/store/*.md` → `scripts/sync-legal-docs.sh` → `backend/app/legal/` 동기화(빌드 컨텍스트), drift 가드 `test_legal.py`. coverage 측정 코어도 `sysmon` 고정(async 과소측정 87→97% root cause). backend pytest 79→**87**. Play 등록 URL = `.../privacy`·`.../account-deletion` |
 | 2026-06-19 | **출시 빌드 + bash 빌드 환경 견고화**. v0.1.17/31 preflight 출시 빌드 완료(AAB 8.35MB·APK 5.97MB·Sentry 매핑 `af1a233a`, 게이트 전부 green·pytest 87/87). bash 출시 빌드 2함정 근본수정·재발방지(commit `b2ee6ba`): ① `gradlew` CRLF(autocrlf=true + `.gitattributes` 미보호 → shebang `#!/bin/sh\r`) → `.gitattributes` `/gradlew text eol=lf` ② JAVA_HOME stale-shell(시스템 Machine 범위엔 있으나 미상속) → `scripts/ensure-java.sh`(JDK 17 우선 자가탐지, preflight 가 source). 문서 드리프트 정정(pytest 81→87·마지막 빌드 v0.1.15→v0.1.17). **남음**: Play 업로드(회원님) |
+| 2026-06-19 | **v0.1.18 — 출시 재업로드 + versionCode 단조성 가드 (INC-2026-06-19-28)**. v0.1.17/31 업로드가 Play "이미 사용된 버전 코드 31" 로 거부 → versionCode 32 재빌드(**앱 동작 변화 없음**=v0.1.17 빌드 동일). 재발방지: `docs/ops/play-upload-ledger.md`(원장 `LAST_UPLOADED_VERSION_CODE=31`) + `scripts/check-version-monotonic.sh`(preflight·bump fail-fast 배선, 31 후보 거부 검증) + CLAUDE.md 룰 13 + versioning.md §3. 부수: User 환경변수 `CLAUDE_CODE_OAUTH_TOKEN` 레지스트리 삭제(/login 토큰 덮어쓰기 경고 근본해소). preflight 빌드(가드 first gate 통과) AAB 8.35MB·APK 5.97MB·Sentry 매핑 `af1a233a`(=v0.1.17 코드 동일). versionCode 31→32 |

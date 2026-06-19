@@ -500,6 +500,22 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 
 ---
 
+## INC-2026-06-19-28 — versionCode 사전 검토 누락 → Play "이미 사용된 버전 코드" 업로드 거부
+
+**증상**: 출시 release AAB 를 Play Console 에 업로드하니 **"이미 사용된 버전 코드"** 로 거부됨. versionCode 31(v0.1.17)이 이미 Play 에 올라가 있는데 같은 31 을 재업로드 시도. 빌드 자체는 성공했으나 업로드 단계(Claude 접근 불가)에서야 실패.
+
+**근본 원인**: Play 는 **모든 트랙**(내부/비공개/프로덕션)에 한 번이라도 올라간 versionCode 의 재사용·하향을 거부한다. 그러나 (1) 저장소는 Play 에 무엇이 올라갔는지 기록을 두지 않았고, (2) `preflight-release.sh` 는 AAB/APK 의 versionCode *일치*만 검증할 뿐 **이미 업로드된 값과의 대조**가 없었다. 저장소-로컬 단조성(+1)은 Play 가 저장소보다 앞서 있을 때 무력. versionName 은 Play 유일성 대상이 아니라 무관(충돌은 항상 versionCode).
+
+**복구**: versionCode 를 32(=31+1)로 올려(`version.properties`) 비충돌 산출물 재빌드. 업로드 가능 상태 복원.
+
+**재발 방지**:
+- `docs/ops/play-upload-ledger.md` 신설 — 이미 업로드된 최고 versionCode 를 저장소에 기록(`LAST_UPLOADED_VERSION_CODE=`), **업로드 성공마다 갱신**.
+- `scripts/check-version-monotonic.sh` 신설 — 후보 versionCode 가 원장 최고값보다 큰지 검증(≤ 면 exit 1). `preflight-release.sh`(빌드 전 fail-fast) + `bump-version.sh`(번프 시) 양쪽 배선. 가드는 31 후보를 거부함을 단위 검증으로 확인.
+- `CLAUDE.md` 룰 13 + `docs/conventions/versioning.md §3` 명문화. AS "Generate Signed Bundle" 마법사는 가드 우회 → 출시 빌드는 preflight 경로 강제.
+- 한계: 원장 **수동 갱신** 의존(업로드 성공 후). Play Developer Publishing API 도입 시 자동 조회로 대체 가능(미도입, `play-store-release.md §7`).
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
@@ -509,3 +525,4 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 | 2026-05-25 (배포 검증) | INC-17·18 해결 + 자동 배포 첫 end-to-end 성공 (revision 0000006). register-azure-credentials.ps1 / secret precheck / workflow_dispatch 정착 |
 | 2026-05-25 (출시 직전 안정화) | INC-19~24 추가 — Phase 5A/5B+5C에서 발견된 silent 버그 6건. OpenAPI generator + drift detection CI(PR #19~#21)로 같은 종류 회귀를 컴파일 단계에서 차단 |
 | 2026-06-16 (출시 준비 회고) | INC-25~27 추가 — 릴리스 R8 Gson keep 갭(빈 운동계획, 룰 12+ProguardKeepRulesTest), 토글 해제 미보존(manual/manuallySet 수동 우선), bump-version.sh blind-replace 문서 오염(스크립트 앵커 하드닝). PR #122/#123 출시 사이클 전수감사 결과 정착 |
+| 2026-06-19 (출시 재시도) | INC-28 추가 — versionCode 사전검토 누락(Play 중복 업로드 거부). play-upload-ledger.md(원장) + check-version-monotonic.sh(preflight·bump 배선) + 룰 13 정착 |

@@ -4,6 +4,20 @@
 
 ---
 
+## [v0.1.18] — 2026-06-19 — 출시 재업로드 + versionCode 단조성 가드
+
+> v0.1.17 업로드가 Play "이미 사용된 버전 코드 31" 로 거부됨(INC-2026-06-19-28) → versionCode 32 로 재빌드 + 재발 방지 인프라. **앱 동작 변화 없음** — v0.1.17 빌드와 동일, versionCode/versionName 만 상이.
+
+### 🚦 릴리스 파이프라인 — versionCode 단조성 가드
+- `docs/ops/play-upload-ledger.md` 신설 — Play 에 이미 업로드된 최고 versionCode(`LAST_UPLOADED_VERSION_CODE=31`) SSoT. 업로드 성공마다 갱신.
+- `scripts/check-version-monotonic.sh` 신설 — 후보 versionCode 가 원장 최고값보다 큰지 검증(≤ 면 fail-fast). `preflight-release.sh`(빌드 전) + `bump-version.sh`(번프 시) 배선.
+- `CLAUDE.md` 룰 13 + `docs/conventions/versioning.md §3` 명문화.
+
+### 🔢 버전
+- versionName 0.1.17 → 0.1.18, versionCode 31 → 32 (Play 중복 거부 해소).
+
+---
+
 ## [v0.1.17] — 2026-06-18 — 공개 출시 전 전체 감사
 
 > 7-도메인 공개 출시 전 전체 점검(보안·성능·에러UX·테스트·의존성·Play 컴플라이언스·코드품질). 출시 차단 없음. 브랜치 `fix/pre-release-audit`. 설계: `docs/plans/2026-06-18-pre-release-full-audit-{design,plan}.md`.

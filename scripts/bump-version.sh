@@ -45,6 +45,11 @@ echo "versionName : ${OLD_NAME} -> ${NEW_NAME}"
 echo "versionCode : ${OLD_CODE} -> ${NEW_CODE}  (단조증가 OK, < 2,100,000,000)"
 echo "동기화 문서 : README.md, docs/PRD.md, docs/ops/operations-snapshot.md"
 
+# Play 단조성 가드 — 새 versionCode 가 이미 업로드된 최고값(원장)보다 큰지 검증.
+# 저장소가 Play 보다 뒤처져 NEW_CODE 가 이미 사용된 코드면 여기서 차단(INC-2026-06-19-28).
+# dry-run 에서도 검증되도록 조기 종료 이전에 둔다.
+bash "${REPO_ROOT}/scripts/check-version-monotonic.sh" "${NEW_CODE}"
+
 if [ "${DRY_RUN}" = "1" ]; then
   echo "[dry-run] 변경 미적용."
   exit 0

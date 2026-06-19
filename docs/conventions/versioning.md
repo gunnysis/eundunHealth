@@ -22,7 +22,8 @@
 
 - 양의 정수, **단조증가 필수**, **최대 2,100,000,000**, 재사용 불가(Play).
 - 본 프로젝트는 **명시 정수 + 수동 증가**(릴리즈마다 +1). 같은 `versionName` 재업로드(빌드 교체) 시 `versionName` 유지하고 `versionCode` 만 증가 — 이 워크플로 때문에 versionName 도출 공식은 채택하지 않는다.
-- bump 은 `scripts/bump-version.sh` 가 단조성을 가드한다.
+- bump 은 `scripts/bump-version.sh` 가 (로컬) 단조성을 가드한다.
+- **Play 업로드 단조성 가드 (INC-2026-06-19-28)**: 저장소-로컬 +1 만으로는 Play 에 이미 올라간 값과의 충돌을 못 막는다 — Play 는 **모든 트랙**의 versionCode 재사용·하향을 "이미 사용된 버전 코드" 로 거부하는데 저장소는 Play 상태를 직접 모른다. `docs/ops/play-upload-ledger.md` 의 `LAST_UPLOADED_VERSION_CODE=` 에 이미 업로드된 최고값을 기록하고, `scripts/check-version-monotonic.sh` 가 빌드/번프 전에 `versionCode > 그 값` 을 검증한다(`preflight-release.sh`·`bump-version.sh` 배선). **업로드 성공 시마다 원장 갱신 필수**. Android Studio "Generate Signed Bundle" 마법사는 가드를 우회하므로 **출시 빌드는 preflight 경로**로.
 
 ## 4. bump 절차 (앱)
 

@@ -179,7 +179,7 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 - **Data safety**(§3 — #106 정합표) + **개인정보 URL + 계정삭제 URL**(§4)
 - 타겟 고객·콘텐츠, 광고 선언, 정부 앱 등 **앱 콘텐츠** 전 항목
 
-> v0.1.13/27 프로덕션 심사는 **취소**됨 → 현재 **출시 전(pre-release)**. 최신 버전 = **v0.1.17/31**(코드 머지·백엔드 자동배포 완료). 마지막 실제 빌드 AAB = **v0.1.17/31**(2026-06-19 preflight, AAB 8.35MB·Sentry 매핑 `af1a233a`) → Play 바로 업로드 가능. 내부 테스트 트랙 먼저 권장. 출시 노트는 "안정성·품질 개선" 수준으로 충분 (사용자 가시 기능 변화 없음).
+> v0.1.13/27 프로덕션 심사는 **취소**됨 → 현재 **출시 전(pre-release)**. 최신 버전 = **v0.1.18/32**(versionCode 31 Play "이미 사용된 버전 코드" 거부 → 32 재빌드, INC-2026-06-19-28). 마지막 실제 빌드 AAB = **v0.1.18/32**(2026-06-19 preflight, AAB 8.35MB·Sentry 매핑 `af1a233a` — v0.1.17 코드 동일) → Play 바로 업로드 가능. 내부 테스트 트랙 먼저 권장. 출시 노트는 "안정성·품질 개선" 수준으로 충분 (사용자 가시 기능 변화 없음).
 
 ---
 
@@ -217,9 +217,10 @@ Google Cloud Console에서 service account 생성 + Play Console에서 권한 �
 
 ## 8. 출시 후 체크리스트
 
+- [ ] **업로드 성공 직후 (필수)**: `docs/ops/play-upload-ledger.md` 의 `LAST_UPLOADED_VERSION_CODE=` 를 방금 올린 versionCode 로 갱신 + 이력 표 행 추가 → 다음 빌드의 단조성 가드 기준(INC-2026-06-19-28). 누락 시 다음 업로드가 중복으로 또 거부됨.
 - [ ] (내부/비공개) 참여 링크 옵트인 → 단말 설치 → 핵심 플로우 5건 통과 (로그인 / 온보딩 / 주간 계획 / 운동 완료 / 통계)
 - [ ] 사이드로드 검증: `adb install -r app/build/outputs/apk/release/app-release.apk`
 - [ ] Sentry **eundunhealth** 프로젝트에서 현재 release(`0.1.13+27`) crash/transaction 표시 + ProGuard mapping deobfuscation(스택트레이스 복원) 동작 확인
 - [ ] Sentry **eundunhealth-backend** 프로젝트에서 API 호출 트랜잭션 표시 확인
 - [ ] (프로덕션) 단계적 출시 % 모니터링 → 이상 없으면 100% 확대
-- [ ] 다음 빌드: `bash scripts/bump-version.sh <ver>` → `bash scripts/preflight-release.sh` (versionCode 자동 +1, 재사용 불가)
+- [ ] 다음 빌드: `bash scripts/bump-version.sh <ver>` → `bash scripts/preflight-release.sh` (versionCode 자동 +1; preflight·bump 가 원장 `LAST_UPLOADED_VERSION_CODE` 와 대조해 중복/하향 fail-fast 차단)

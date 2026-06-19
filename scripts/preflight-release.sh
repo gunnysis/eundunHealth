@@ -59,6 +59,13 @@ if [ -z "$SENTRY_TOKEN" ]; then
 fi
 # ---------------------------------------------------------------------------------------
 
+# --- versionCode 단조성 가드 (Play "이미 사용된 버전 코드" 업로드 거부 fail-fast) -------
+# INC-2026-06-19-28: versionCode 를 이전 업로드값과 대조 없이 빌드→업로드해 중복 거부됨.
+# 빌드(수 분) 전에 version.properties 의 versionCode 가 원장의 최고 업로드값보다 큰지 검증.
+# 원장: docs/ops/play-upload-ledger.md (업로드 성공 시마다 LAST_UPLOADED_VERSION_CODE 갱신).
+run "versionCode 가드" bash "$REPO_ROOT/scripts/check-version-monotonic.sh"
+# ---------------------------------------------------------------------------------------
+
 # --- JDK 보장 (셸에 JAVA_HOME/PATH 가 없어도 빌드되도록 자가치유) -----------------------
 # 근본 원인/탐지 우선순위(JDK 17 우선) 상세: scripts/ensure-java.sh.
 # (2026-06-19 사고: 시스템 JAVA_HOME 은 있으나 stale 터미널이 못 상속해 gradlew 가
