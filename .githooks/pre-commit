@@ -9,6 +9,7 @@
 # 2) docs/plans/*.md staged → gen-plans-index.sh (README.md 자동 재생성 + auto-stage)
 # 3) backend/*.py staged → ruff check
 # 4) requirements*.txt staged → 비-ASCII 차단 (cp949 환경 pip-audit 깨짐 재발방지)
+# 5) staged 추가 라인의 Azure 구독 GUID 리터럴 차단 (public repo 정찰면 축소)
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -104,6 +105,18 @@ if [ -n "$CHANGED_REQS" ]; then
             exit 1
         fi
     fi
+fi
+
+# ---------- 5) Azure 구독 GUID 평문 가드 ----------
+# 리소스 ID 의 구독 GUID 는 커밋하지 않는다(public repo 정찰면 축소).
+# 규약: YAML/스크립트는 __SUBSCRIPTION_ID__ 플레이스홀더 + 배포/프로비저닝 시
+# `az account show --query id` 주입 (backend.yml deploy step, setup-reaper-job.sh 참조).
+GUID_RE='/subscriptions/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+if git diff --cached -U0 | grep -E '^\+' | grep -qE "$GUID_RE"; then
+    echo "[pre-commit] ERROR: staged 추가 라인에 Azure 구독 GUID 리터럴(/subscriptions/<guid>)이 있습니다."
+    git diff --cached -U0 | grep -E '^\+' | grep -nE "$GUID_RE" | head -5
+    echo "  → __SUBSCRIPTION_ID__ 플레이스홀더 + 'az account show' 런타임 주입 패턴을 사용하세요."
+    exit 1
 fi
 
 exit 0

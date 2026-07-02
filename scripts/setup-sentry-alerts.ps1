@@ -31,8 +31,9 @@ $ErrorActionPreference = "Stop"
 # 설정 상수 — 이 블록만 수정하면 됨
 # ═══════════════════════════════════════════════════════════════════════════
 $script:ORG_SLUG        = "gunnys"
-$script:SENTRY_USER_ID  = "4265580"    # Sentry 유저 ID (멤버 ID 아님!)
-                                        # 갱신: GET /api/0/organizations/$ORG_SLUG/members/ → .user.id
+# Sentry 유저 ID (멤버 ID 아님!) — 개인 계정 식별자라 커밋하지 않음(public repo). env 로 주입.
+# 조회: GET /api/0/organizations/$ORG_SLUG/members/ → .user.id
+$script:SENTRY_USER_ID  = $env:SENTRY_USER_ID
 $script:ANDROID_PROJECT = "eundunhealth"
 $script:BACKEND_PROJECT = "eundunhealth-backend"
 $script:BASE_URL        = "https://sentry.io/api/0"
@@ -41,6 +42,10 @@ $script:BASE_URL        = "https://sentry.io/api/0"
 $TOKEN = $env:SENTRY_AUTH_TOKEN
 if (-not $TOKEN) {
     Write-Error "SENTRY_AUTH_TOKEN 환경변수가 설정되지 않았습니다."
+    exit 1
+}
+if (-not $script:SENTRY_USER_ID) {
+    Write-Error "SENTRY_USER_ID 환경변수가 설정되지 않았습니다. 조회: GET /api/0/organizations/$($script:ORG_SLUG)/members/ → .user.id"
     exit 1
 }
 $script:HEADERS = @{

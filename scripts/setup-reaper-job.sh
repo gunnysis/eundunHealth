@@ -57,6 +57,8 @@ IMAGE=$(az containerapp show -n "$APP" -g "$RG" --query "properties.template.con
   || die "Container App '$APP'(RG $RG) 조회 실패 — 이름/권한 확인."
 ACR_ID=$(az acr show -n "$ACR_NAME" -g "$RG" --query id -o tsv 2>/dev/null) || die "ACR '$ACR_NAME' 조회 실패."
 KV_ID=$(az keyvault show -n "$KV_NAME" -g "$RG" --query id -o tsv 2>/dev/null) || die "Key Vault '$KV_NAME' 조회 실패."
+# reaper-job.yaml 은 구독 GUID 를 커밋하지 않고 __SUBSCRIPTION_ID__ 플레이스홀더 사용(public repo).
+SUB_ID=$(az account show --query id -o tsv 2>/dev/null) || die "구독 ID 조회 실패 — 'az login' 확인."
 echo "  image=$IMAGE"
 
 RBAC_OK=true
@@ -108,8 +110,9 @@ elif az containerapp job show -n "$JOB" -g "$RG" >/dev/null 2>&1; then
   run az containerapp job update -n "$JOB" -g "$RG" --image "$IMAGE" -o none
 else
   TMP_YAML="$(mktemp)"
-  # YAML 의 image 를 현재 앱 이미지로 치환(잡=앱 버전 동기화)
-  sed "s|image: eundunhealthacr.azurecr.io/eundunhealth-api:[^[:space:]]*|image: $IMAGE|" "$JOB_YAML" > "$TMP_YAML"
+  # YAML 의 image 를 현재 앱 이미지로 + __SUBSCRIPTION_ID__ 를 로그인 구독으로 치환
+  sed -e "s|image: eundunhealthacr.azurecr.io/eundunhealth-api:[^[:space:]]*|image: $IMAGE|" \
+      -e "s|__SUBSCRIPTION_ID__|$SUB_ID|g" "$JOB_YAML" > "$TMP_YAML"
   n=0
   until az containerapp job create -n "$JOB" -g "$RG" --yaml "$TMP_YAML" -o none; do
     n=$((n + 1))

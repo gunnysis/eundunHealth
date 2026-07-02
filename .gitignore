@@ -42,6 +42,8 @@ replay_pid*
 .gradle
 /local.properties
 /.idea
+# per-developer IDE MCP 설정 — ADO org 핸들 등 개인 식별자 포함, 커밋 금지(public repo)
+.vscode/
 .DS_Store
 /build
 /app/build

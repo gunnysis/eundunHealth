@@ -102,7 +102,7 @@
 - **B2 — environment="production" 404**: 첫 이벤트 수신 전 Sentry에 "production" 환경이 등록되지 않아 거부. 수정: `environment` 필드 생략(출시 후 UI Edit에서 추가하도록 안내 주석).
 - **B3 — interval="30m" 무효 값**: Sentry API가 비표준 인터벌 거부. 유효값: `1m/5m/10m/1h/4h/24h/1w`. 수정: `"1h"` 사용 + 주석 명시.
 - **B4 — dataset="transactions" deprecated**: Sentry가 spans(`events_analytics_platform`)로 마이그레이션 완료. 수정: `dataset="events_analytics_platform"`, `query="is_transaction:true"`, `p95(span.duration)`.
-- **B5 — targetType="team" 솔로 프로젝트 부적합**: 팀 ID(`targetIdentifier`) 필수인데 팀 없음 → 404. 수정: `targetType="user"` + `targetIdentifier=4265580`(Sentry user.id, 멤버 .id 아님).
+- **B5 — targetType="team" 솔로 프로젝트 부적합**: 팀 ID(`targetIdentifier`) 필수인데 팀 없음 → 404. 수정: `targetType="user"` + `targetIdentifier=<sentry-user-id>`(Sentry user.id, 멤버 .id 아님).
 
 ### ✅ 구조 개선
 
