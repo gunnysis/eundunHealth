@@ -1,7 +1,7 @@
 ---
 type: design
-status: proposed
-pr: null
+status: in-progress
+pr: 143
 related_inc: INC-2026-06-19-28
 supersedes: null
 target_version: infra-only
@@ -12,7 +12,7 @@ tags: [ci-cd, android, play-store, release-automation, github-actions]
 # Android CD — Play 내부 트랙 업로드 자동화 설계 (P4)
 
 - **작성일**: 2026-07-02
-- **상태**: proposed — **회원님 가치판단 2건 선결**(§3 D4·§6 Task 0: 업로드 키 CI 시크릿화 + 서비스 계정 생성)
+- **상태**: in-progress — 가치판단 2건 승인(2026-07-02) · 잔여 선결 = 서비스 계정 JSON + local.properties 유래 secrets(회원님)
 - **연관 작업**: [CI/CD 개선 설계](./2026-06-29-cicd-recommended-design.md) P4 분리 트랙 · INC-2026-06-19-28(versionCode 원장) · INC-2026-07-02-29(서명 존재-조건부) · `docs/ops/play-store-release.md` §7
 - **대상 버전**: infra-only (워크플로 신규 1개 + 문서, 앱 코드 무변경)
 - **선행 작업**: P2 OIDC(완료) — 단 본 설계는 OIDC 미사용(§4.2 B4 각하 근거 참조)

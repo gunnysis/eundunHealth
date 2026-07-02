@@ -183,35 +183,27 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 
 ---
 
-## 7. 다음 빌드부터의 자동화 옵션 (선택)
+## 7. 자동 업로드 (release.yml — 2026-07 P4 구현)
 
-릴리스 빌드 + Play Console 업로드를 매번 수동으로 하는 게 번거로우면:
+**자동 경로 (권장)**: 태그 `v*` push → `.github/workflows/release.yml` 이 environment `play-release`
+(required reviewer 승인) 게이트 후 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB 빌드 →
+**Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`scripts/update-upload-ledger.sh`)까지 수행.
+프로덕션 승격은 Play Console 수동 유지. 설계: `docs/plans/2026-07-02-android-cd-play-upload-design.md`.
 
-### 옵션 1: gradle-play-publisher 플러그인
-
-```kotlin
-// app/build.gradle.kts에 추가
-plugins {
-    id("com.github.triplet.play") version "3.12.1"
-}
-
-play {
-    serviceAccountCredentials.set(file("$rootDir/.key/play-service-account.json"))
-    track.set("internal")
-    defaultToAppBundles.set(true)
-}
+```bash
+bash scripts/bump-version.sh 0.1.19          # 버전 bump (+원장 단조 가드)
+git push origin main && git tag v0.1.19 && git push origin v0.1.19   # 태그가 트리거
+# 사전 검증(업로드 없음): gh workflow run release.yml  (dry_run 기본 true)
 ```
 
-Google Cloud Console에서 service account 생성 + Play Console에서 권한 부여 필요. 이후:
-```powershell
-.\gradlew :app:publishReleaseBundle  # AAB 자동 업로드
-```
+**태그 push 후 워크플로 실패 시**: 원인 수정 → 같은 태그 재실행(`gh run rerun <id>`) 또는
+태그 삭제(`git push origin :refs/tags/v0.1.19`) → 재작업 → 재태그. 업로드 실패는 Play 무영향.
 
-### 옵션 2: GitHub Actions release workflow
+**수동 폴백**: §4~5 의 preflight → Play Console 직접 업로드 경로는 그대로 유효 —
+이 경우 원장 갱신(§8 체크리스트)은 **수동 필수**.
 
-`.github/workflows/release.yml`에 tag(`v0.x.y`) push 시 자동 빌드 + AAB artifact 업로드 + Play Console 배포. SENTRY_AUTH_TOKEN, signing keystore, service account를 GitHub Secrets로 관리.
-
-> 현 단계에서는 내부 테스트 규모상 수동이면 충분. v1.0 정식 출시 이후 자동화 권장.
+> gradle-play-publisher 플러그인 안은 채택하지 않음 — maintenance mode(이슈 무시) + AGP 9 호환
+> 미명시 (design §4.1).
 
 ---
 

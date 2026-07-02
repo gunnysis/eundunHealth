@@ -209,8 +209,9 @@ Alert 룰 (총 8개 — `scripts/setup-sentry-alerts.ps1` 으로 설정, 2026-06
 GitHub Actions:
 - **`.github/workflows/backend.yml`** — `backend/**` 또는 `backend.yml` 변경 시: ruff + mypy + pytest + Codecov → docker compose runtime smoke (INC-03 차단) → pip-audit + bandit + gitleaks → (main push) Trivy + ACR push + **secret precheck (INC-18 차단)** → Container App 배포 → /health
   - `workflow_dispatch` 지원 — 수동 실행 가능 (`gh workflow run backend.yml --ref main`)
-  - GitHub repo secret `AZURE_CREDENTIALS` 필요 (service principal JSON, scope `RG apps` + `AcrPush` on ACR)
+  - Azure 로그인 = **OIDC federated**(P2, PR #142 — secrets `AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID`). 구 `AZURE_CREDENTIALS` 는 롤백 보험으로 잔존(제거 결정 ~07-16, CI/CD design §6.2 사후②)
 - **`.github/workflows/android.yml`** — `app/**` 변경 시 spotlessCheck + **collectAsState anti-pattern 검사** (룰 11) + detektDebug + testDebugUnitTest + assembleDebug + PR이면 APK artifact 업로드
+- **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`update-upload-ledger.sh`, 룰 13). 프로덕션 승격은 Console 수동. 설계: `docs/plans/2026-07-02-android-cd-play-upload-design.md`
 - **`.github/dependabot.yml`** — pip + github-actions + gradle 주간 PR (KST 월 06:00, 보안 패치는 단일 PR로 그룹화)
 
 로컬 자동화:

@@ -7,17 +7,12 @@
 
 ## 활성 작업 (페어 파일, 2)
 
-### 진행 중 (1)
+### 진행 중 (2)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
+| 2026-07-02 | android-cd-play-upload | design + plan | in-progress | ci-cd, android, play-store, release-automation, github-actions |
 | 2026-06-29 | cicd-recommended | design | in-progress | ci-cd, github-actions, oidc, concurrency, caching |
-
-### 대기 (proposed / approved) (1)
-
-| 날짜 | 주제 | type | status | tags |
-|---|---|---|---|---|
-| 2026-07-02 | android-cd-play-upload | design + plan | proposed | ci-cd, android, play-store, release-automation, github-actions |
 
 ## Topic Ledgers (완료 작업 history)
 

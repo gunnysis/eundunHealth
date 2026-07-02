@@ -75,6 +75,8 @@ bash C:/programming/docker/eundunhealth-api/redeploy.sh [tag]
 ```
 FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `apps`, Korea Central) 업데이트 → /health 헬스체크 → timestamp 태그 자동 정리(최근 5개만 보존). 환경변수 변경은 별도 `az containerapp update --set-env-vars` 또는 `secret set`. 자세한 절차는 `docs/ops/migration-runbook.md`.
 
+**Android 출시 (자동 — Play 내부 트랙)** — 태그 `v*` push 로 `release.yml` 이 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB → Play **내부 트랙** 업로드 → 원장 자동 갱신 커밋까지 수행. environment `play-release`(required reviewer) 승인 게이트. 프로덕션 승격은 Play Console 수동. 사전 검증: `gh workflow run release.yml`(dry_run 기본 true = 업로드 생략). 절차·실패 대응: `docs/ops/play-store-release.md` §7. 수동 업로드 폴백 시 원장 수동 갱신 필수(룰 13).
+
 **Secret 등록 / SP 만료 갱신** — `AZURE_CREDENTIALS` 등록 또는 service principal credential 만료 시:
 ```powershell
 pwsh -File scripts\register-azure-credentials.ps1 -Verify
