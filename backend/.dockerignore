@@ -1,0 +1,24 @@
+# Build-context excludes for Dockerfile `COPY . .` (secret + cache hygiene).
+# NEVER bake local env/secret files into the image (image is pushed to ACR;
+# CI checkout has no .env, but manual/local builds would copy it without this).
+.env
+*.env
+
+# Local dev/test artifacts (bloat; .venv alone is hundreds of MB on dev hosts)
+.venv/
+**/__pycache__
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+test_*.db
+*.sqlite
+tests/
+
+# Docker/deploy meta - not needed inside the runtime image
+.dockerignore
+Dockerfile
+docker-compose.yml
+containerapp.yaml
+reaper-job.yaml
