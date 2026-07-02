@@ -7,11 +7,11 @@
 
 ## 활성 작업 (페어 파일, 1)
 
-### 대기 (proposed / approved) (1)
+### 진행 중 (1)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-06-29 | cicd-recommended | design | proposed | ci-cd, github-actions, cost, oidc |
+| 2026-06-29 | cicd-recommended | design | in-progress | ci-cd, github-actions, cost, oidc |
 
 ## Topic Ledgers (완료 작업 history)
 
