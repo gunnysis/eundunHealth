@@ -1,7 +1,7 @@
 ---
 type: design
-status: proposed
-pr: null
+status: in-progress
+pr: 140
 related_inc: null
 supersedes: null
 target_version: infra-only
@@ -17,6 +17,8 @@ tags: [ci-cd, github-actions, cost, oidc]
 > 측정 원칙: 모든 baseline 은 실측(룰 9). 추정은 ESTIMATE 라벨.
 >
 > **2026-07-02 후기(문서 등재 시점)**: repo 가 public 으로 전환되어 GitHub Actions standard runner 분이 **무료·무제한**이 됨 — §2 의 private 무료분 비교는 더 이상 제약이 아니며, 본 문서의 결론(엔진 = GHA 유지)은 오히려 **강화**된다. private 한도 기반이던 artifact storage quota CI 실패도 전환으로 소멸(2026-07-02 실증). P1(concurrency)~P4 권장 순서는 유효.
+>
+> **2026-07-02 점검(MEASURED) + P1 착수**: ① §1 의 "PRIVATE" 는 stale — 현재 **PUBLIC**(`gh repo view` 실측). 분(minute) 비용 동기는 소멸했고 P1 의 가치는 **피드백 속도 + superseded 실행의 러너 점유 제거**로 재정의된다. ② P3(캐싱)의 비용 동기도 동일하게 소멸 — 속도 이득만 남아 **ROI 재평가 대상**(deploy 실측 ~3.2분이라 한계 이득 작음). ③ 워크플로 인벤토리 변화: CodeQL(기본 설정, repo yml 아님) 가동 + `doc-audit.yml`(주간 cron) §1 표 누락 보완. ④ §3.2 스니펫의 `azure/login@v2` 는 현행 `@v3` 기준으로 읽을 것(federated 모드 동일 지원). ⑤ **P1 적용 = 본 문서의 PR**(android.yml·backend.yml concurrency 추가, 보조 워크플로는 설계대로 제외). P2 는 포털 선결 점검([[azure-cli-rbac-msa-limitation]]) 대기.
 
 ---
 
