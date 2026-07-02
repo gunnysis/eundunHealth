@@ -1,7 +1,7 @@
 ---
 type: design
 status: in-progress
-pr: 140
+pr: 142
 related_inc: null
 supersedes: null
 target_version: infra-only
@@ -11,7 +11,7 @@ tags: [ci-cd, github-actions, oidc, concurrency, caching]
 
 # CI/CD 개선 구현 설계 (GHA 유지 + P1~P5)
 
-- **작성일**: 2026-06-29 (추천 설계) → **2026-07-02 구현 설계로 격상**
+- **작성일**: 2026-06-29 (추천 설계) → **2026-07-02 구현 설계로 격상** → 2026-07-02 적용 검증 감사(§5 완료 표기·§6.2 사후 게이트 정밀화·§8 리스크 2건·§9.1 F6/F7 실측 추가)
 - **상태**: in-progress — P1 shipped(PR #140, `2bece6d`) · **P2 shipped**(PR #141 `5be3a33` + #142 `2c66a1d`, 사후 게이트 2건 잔여: §6.2) · P3 보류 · P4/P5 Won't-do-for-now
 - **연관 작업**: [ADO 적용 검토](./2026-06-29-azure-devops-pipelines-migration-review.md)(엔진 비교 원본) · PR #137(public 전환·GUID 가드) · PR #140(P1)
 - **대상 버전**: infra-only (앱/백엔드 코드 무변경)
@@ -86,9 +86,10 @@ concurrency:
 ```
 
 - PR 이벤트의 `github.ref` = `refs/pull/N/merge` → PR별 그룹. main push 그룹은 취소 없이 직렬화(pending 최신 1건 유지).
-- 보조 워크플로 3종(docs-plans-index·warm-baseline·doc-audit)은 ~15s/cron 이라 제외(설계대로).
+- 보조 워크플로 3종(docs-plans-index·warm-baseline·doc-audit)은 단발 실행·cron 이라 제외(설계대로). warm-baseline 실측 26~36s(직근 8 run, `gh run list`) — 초안의 "~15s" ESTIMATE 를 MEASURED 로 정정, 제외 판정 불변.
+- **주석 §참조 drift(후속)**: android.yml·backend.yml 의 concurrency 주석이 구판 "§3.1" 을 참조(07-02 재구성 후 = §5.1/D2). 주석-only 수정도 paths 필터로 full CI·deploy 를 트리거하므로 즉시 수정 비경제 → **다음 각 yml 기능 변경 시 배치 수정**(§8 기록).
 
-### 5.2 P2-사전: federated credential 생성 (1회, CLI)
+### 5.2 ✅ DONE (2026-07-02): P2-사전 federated credential 생성 (1회, CLI)
 
 기존 앱 등록 `eundunhealth-github-deploy` 에 추가(GUID 는 D6 에 따라 비기재 — `az ad app list --query "[].{n:displayName,id:appId}"` 로 조회):
 
@@ -101,10 +102,11 @@ az ad app federated-credential create --id <appId> --parameters '{
 }'
 ```
 
-- subject 1개로 충분: deploy(main push)·warm-baseline(schedule/dispatch, default branch에서 실행) 모두 main ref 주체 — 단 schedule/dispatch 의 sub 형식은 §6.2 1단계에서 실증(DEFERRED).
+- subject 1개로 충분: deploy(main push)·warm-baseline(schedule/dispatch, default branch에서 실행) 모두 main ref 주체 — dispatch 는 §6.2 1단계에서 실증 완료, schedule 은 사후① 잔여.
 - 역할 할당 변경 **없음** — 기존 SP 의 AcrPush·KV Secrets User 그대로(D5).
+- 생성 결과 재확인(MEASURED 2026-07-02): `az ad app federated-credential list` → `github-main`(issuer/subject 설계값 일치) 1건 실존.
 
-### 5.3 P2-사전: GitHub secrets 3종 등록 (1회)
+### 5.3 ✅ DONE (2026-07-02): P2-사전 GitHub secrets 3종 등록 (1회)
 
 ```bash
 gh secret set AZURE_CLIENT_ID       # 앱 등록 appId
@@ -112,9 +114,9 @@ gh secret set AZURE_TENANT_ID       # az account show --query tenantId
 gh secret set AZURE_SUBSCRIPTION_ID # az account show --query id
 ```
 
-client/tenant ID 는 엄밀히 비밀은 아니나 D6(GUID 스크럽 정책)에 따라 secrets 경유로 통일.
+client/tenant ID 는 엄밀히 비밀은 아니나 D6(GUID 스크럽 정책)에 따라 secrets 경유로 통일. 등록 실측: `gh secret list` — 3종 모두 2026-07-02T06:57Z 등록, `AZURE_CREDENTIALS`(05-24) 잔존(D7 일치).
 
-### 5.4 P2-1단계 PR: `.github/workflows/warm-baseline-check.yml`
+### 5.4 ✅ DONE (PR #141): P2-1단계 `.github/workflows/warm-baseline-check.yml`
 
 ```yaml
 permissions:
@@ -130,7 +132,7 @@ permissions:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 ```
 
-### 5.5 P2-2단계 PR: `.github/workflows/backend.yml` deploy job
+### 5.5 ✅ DONE (PR #142): P2-2단계 `.github/workflows/backend.yml` deploy job
 
 deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의 `creds:` → OIDC 3-입력으로 교체(5.4 와 동일 형태). 이후 스텝(`az acr login`·KV precheck·`az containerapp update`)은 로그인 세션을 그대로 사용하므로 무변경.
 
@@ -148,15 +150,16 @@ deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의
 | 사전 | federated credential 이 MSA CLI 로 생성되는가 | ✅ **MEASURED**: `az ad app federated-credential create`(`github-main`) 성공 — Graph 경로라 MSA 제약 미적용, 포털 불필요 확정 |
 | 1단계 | warm-baseline `workflow_dispatch` 수동 실행 green | ✅ **MEASURED**: run 28572203623 — `Azure login (OIDC)` success. dispatch sub claim = main ref 실증(§9.1 F4 의 미명시 해소) |
 | 2단계 | backend.yml 머지 → deploy run green + prod `/health` 200 | ✅ **MEASURED**: run 28572684503 — 4 job 전부 success(OIDC 로그인→ACR push→KV precheck→containerapp update→Health check) + 독립 curl `/health`·`/health/ready` 200 |
-| 사후① | cron 자동 실행 green | ⏳ DEFERRED — 다음날 KST 09:17 run 확인 |
-| 사후② | `AZURE_CREDENTIALS` 미사용 확인 후 제거 여부 결정 | ⏳ DEFERRED — OIDC 2주 안정 후(D7). SP secret 만료 2027-05 라 잔존 무해 |
+| 사후① | cron 자동 실행 green | ⏳ DEFERRED — **첫 OIDC cron = 07-03**. 주의 2가지(MEASURED): ① 07-02 04:32Z schedule run 은 P2-1 머지(07:10Z) **이전** = 구 creds 경로라 증거 아님 ② cron 명목 KST 09:17 이나 실측 시작 = **13:28~14:02 KST**(직근 8 run, GitHub schedule 지연 4.2~4.7h) → 오후에 `gh run list --workflow warm-baseline-check.yml` 확인 |
+| 사후② | `AZURE_CREDENTIALS` 미사용 확인 후 제거 여부 결정 | ⏳ DEFERRED — OIDC 2주 안정 후(D7, ~07-16). SP secret 만료 2027-05 라 잔존 무해. **제거 시 동시 갱신 3곳**(룰 6 패턴 — 드리프트 예방): ① `scripts/register-azure-credentials.ps1` 폐기/용도 재정의 ② CLAUDE.md "Secret 등록 / SP 만료 갱신" 절 ③ `operations-snapshot.md` deploy 전제(`AZURE_CREDENTIALS` 필요 문구)·SP 만료 점검 명령 |
 
 ### 6.3 정량 표현 라벨 총괄 (룰 9)
 
 | 항목 | 라벨 |
 |---|---|
 | run 시간·중복 실행·취소 동작·repo 가시성·SP 만료·credential 목록 | MEASURED (§9.2, 명령 동봉) |
-| P2 create 가능 여부·schedule sub 형식·머지 후 deploy green | DEFERRED — P2 각 단계 게이트에서 검증 |
+| P2 create 가능 여부·dispatch sub·머지 후 deploy green·secrets 등록·warm-baseline run 시간 | MEASURED (§6.2·§5.1~5.3, 2026-07-02) |
+| schedule(cron) sub 형식 | DEFERRED — 사후① (첫 OIDC cron 07-03) |
 | P3 캐시 적용 시 단축 폭 | ESTIMATE-ONLY (보류라 미측정) |
 
 ## 7. 롤백 절차
@@ -173,6 +176,8 @@ deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의
 | ~~schedule/dispatch sub claim 형식 공식 문서 미명시~~ | ~~중~~ | **해소(2026-07-02)** — dispatch green 실증(§6.2 1단계). cron 은 사후① 잔여 |
 | main push 직렬화로 연속 배포 시 대기 발생 | 저 | 의도된 동작(D2) — pending 최신 1건 수렴은 배포 안전에 오히려 유리 |
 | P3 재개 시 `load: true` + gha 캐시 호환 미확인 | 저(보류 중) | 재개 시 PR 검증 필수 — 공식 문서에 조합 미기재(§9.1 F3) |
+| android.yml·backend.yml 주석의 설계 §참조 drift(구판 "§3.1") | 저 | 주석-only 수정도 paths 필터로 full CI·deploy 트리거 → 다음 각 yml 기능 변경 시 배치 수정(§5.1) |
+| federated credential subject = main ref 1개 → non-main ref 에서 `workflow_dispatch` 시 OIDC 로그인 실패 | 저 | 의도된 최소 주체(D5·D6). 브랜치 실행이 필요해지면 subject 추가로 해결 — 로그인 실패 시 이 제약부터 의심 |
 
 ## 9. 참고 자료
 
@@ -185,6 +190,8 @@ deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의
 | F3 | buildx gha 캐시 = `cache-from/to: type=gha` + `setup-buildx-action@v4`(Cache API v2). `load:true` 조합은 문서 미기재 | §8 잔여 리스크로 이관 |
 | F4 | OIDC sub: branch push = `repo:ORG/REPO:ref:refs/heads/BRANCH` 확정, PR = `repo:ORG/REPO:pull_request`. schedule/dispatch 는 명시 없음. issuer = `https://token.actions.githubusercontent.com` | §5.2 subject 설계 + §6.2 실증 게이트 |
 | F5 | 개인 MSA 에서 `az ad app list`·`federated-credential list`·`credential list` 정상 동작(Graph). ARM RBAC 할당만 제약 | D5 — 포털 불필요 경로 성립. [[azure-cli-rbac-msa-limitation]] 의 적용 범위 정밀화 |
+| F6 | CI 캐시 현황(MEASURED 2026-07-02): android = `gradle/actions/setup-gradle@v6`(기본 캐시 활성) · backend = `actions/setup-python@v6` `cache: pip` 2 job. GHA 캐시 관점 미적용 갭 없음 | "현재 CI는 건강"(§1) 근거 보강 → P3(Docker 레이어만 잔여)·P5 보류 판정 강화 |
+| F7 | GitHub OIDC 공식 문서 재확인(2026-07-02): schedule/dispatch 의 sub 형식 여전히 미명시 — F4 유지. dispatch = main ref 는 §6.2 1단계 실증으로 확정, schedule 은 사후① 잔여 | §6.2 사후① 게이트 유지 |
 
 ### 9.2 Baseline (MEASURED — `gh run list`)
 
@@ -192,6 +199,7 @@ deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의
 |---|---|
 | 2026-06-29 | Backend full-run 3m29s·3m36s·3m15s(~3.5분) / Android 3m32s·3m47s·3m59s(~3.7분) / 당시 PRIVATE·concurrency 5개 워크플로 전부 미설정 |
 | 2026-07-02 | **PUBLIC**(`gh repo view`) / Android 2m49s~6m12s·Backend 3m10s~3m16s / 인벤토리 변화: CodeQL(기본 설정) 가동·`doc-audit.yml` 주간 cron 존재 / PR #140 로 concurrency 적용·취소 실측 |
+| 2026-07-02 (P2 사후 검토) | warm-baseline run 26~36s(직근 8회) / schedule 실행 실측 시작 04:28~05:02 UTC = **13:28~14:02 KST**(명목 00:17 UTC 대비 4.2~4.7h 지연 — GitHub 공유 러너 스케줄 지연, 결함 아님) / federated credential `github-main` 실존·secrets 4종 상태 확인(§5.2·5.3) |
 
 ### 9.3 출처 (2026-07-02 재확인)
 
