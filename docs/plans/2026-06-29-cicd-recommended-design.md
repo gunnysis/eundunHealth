@@ -34,7 +34,7 @@ tags: [ci-cd, github-actions, oidc, concurrency, caching]
 
 ### Out-of-scope
 - **P3** Docker 레이어 캐시 (이유: §3 D4 — 비용 동기 소멸 + Trivy 캐시는 이미 기본 활성이라 남는 이득이 한계적. 재평가 조건 명시 후 보류)
-- **P4** Android CD/Play 업로드 자동화 (이유: 서명키 CI 시크릿화 = 회원님 가치판단 선행 + LIVE 프로덕션 리스크 → **별도 design+plan 페어**로 분리)
+- **P4** Android CD/Play 업로드 자동화 (이유: 서명키 CI 시크릿화 = 회원님 가치판단 선행 + LIVE 프로덕션 리스크 → **별도 design+plan 페어**로 분리 — **2026-07-02 작성됨**: [design](./2026-07-02-android-cd-play-upload-design.md)·[plan](./2026-07-02-android-cd-play-upload-plan.md), proposed)
 - **P5** composite action 리팩토링 (이유: 워크플로 5개·소규모에 YAGNI. 워크플로 증가 시 재검토)
 - 엔진 교체(ADO)·Azure Repos 이전·self-hosted 러너 (이유: §4.1 판정 + [ADO 검토](./2026-06-29-azure-devops-pipelines-migration-review.md) §7)
 
