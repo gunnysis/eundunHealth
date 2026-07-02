@@ -180,7 +180,7 @@ jobs:
 | 단계 | 검증 | 방법 |
 |---|---|---|
 | PR | yml 문법+게이트 로직 | `workflow_dispatch` dry-run(기본 true) — 업로드 스텝 skip, preflight 까지 green |
-| 머지 후 1 | dry-run 실행 green | dispatch 수동 실행 — 서명 AAB+매핑 산출 확인(DEFERRED) |
+| 머지 후 1 | dry-run 실행 green | 1차(run 28578413672): **룰 13 가드 CI 정상 발동**(versionCode 32 ≤ 원장 32 차단 — D5 상속 실증, MEASURED). bump 전 리허설 불가 갭 → dry-run 전용 러너-로컬 임시 versionCode(원장+1) + Sentry 매핑 생략(`--allow-missing-sentry-mapping`, 가짜 release 오염 방지)으로 해결 후 재실행 |
 | 머지 후 2 | **실제 e2e**: 다음 릴리스(v0.1.19) 태그 push → 내부 트랙 게시 + 원장 자동 커밋 확인 | DEFERRED — 다음 릴리스 시점 |
 | 상시 | 업로드 실패 시 | Play 상태 불변(원장 커밋도 skip) — 워크플로 로그로 원인 확인 |
 

@@ -67,10 +67,22 @@ jobs:
           RELEASE_KEY_ALIAS=eundunhealth_sign_key
           EOF
 
+      # dry-run 은 bump 전 상태에서 돌므로 룰 13 단조성 가드에 걸린다(2026-07-02 첫 dry-run 실측 —
+      # 가드 정상 작동). 리허설이 가능하도록 러너 로컬에서만 임시 versionCode(원장+1)를 쓴다.
+      # 커밋되지 않으며, 실제 경로(태그 push)는 이 스텝을 타지 않아 가드가 그대로 유효하다.
+      - name: dry-run 전용 임시 versionCode (러너 로컬, 커밋 없음)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: |
+          LAST=$(sed -n 's/^LAST_UPLOADED_VERSION_CODE=\([0-9][0-9]*\).*/\1/p' docs/ops/play-upload-ledger.md)
+          sed -i "s/^versionCode=.*/versionCode=$((LAST+1))/" version.properties
+          echo "dry-run: versionCode 임시 $((LAST+1)) (원장 $LAST + 1)"
+
+      # dry-run 은 Sentry 매핑 업로드 생략 (가짜 release 로 Sentry 오염 방지) — 매핑 경로는
+      # 실제 태그 push 에서만 검증. SENTRY_AUTH_TOKEN 도 dry-run 에선 비주입.
       - name: Preflight (룰 2 — 전체 게이트 + AAB/APK + Sentry 매핑)
-        run: bash scripts/preflight-release.sh
+        run: bash scripts/preflight-release.sh ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '--allow-missing-sentry-mapping' || '' }}
         env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_AUTH_TOKEN: ${{ (github.event_name == 'push' || !inputs.dry_run) && secrets.SENTRY_AUTH_TOKEN || '' }}
 
       - name: Play 내부 트랙 업로드
         if: github.event_name == 'push' || !inputs.dry_run
