@@ -44,7 +44,9 @@ for arg in "$@"; do
 done
 SENTRY_TOKEN="${SENTRY_AUTH_TOKEN:-}"
 if [ -z "$SENTRY_TOKEN" ] && [ -f local.properties ]; then
-    SENTRY_TOKEN=$(grep -E "^SENTRY_AUTH_TOKEN=" local.properties | head -1 | cut -d= -f2- | tr -d ' \r')
+    # `|| true`: 키가 없으면 grep 이 exit 1 → set -e + pipefail 이 스크립트를 무출력 즉사시킴
+    # (2026-07-02 release.yml dry-run 2차에서 발견 — 토큰 없는 로컬 사용자도 동일하게 당하는 잠복 버그)
+    SENTRY_TOKEN=$(grep -E "^SENTRY_AUTH_TOKEN=" local.properties | head -1 | cut -d= -f2- | tr -d ' \r' || true)
 fi
 if [ -z "$SENTRY_TOKEN" ]; then
     if [ "$ALLOW_NO_MAPPING" -eq 0 ]; then
