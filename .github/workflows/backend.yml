@@ -32,7 +32,7 @@ jobs:
       run:
         working-directory: ${{ env.BACKEND_DIR }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v6
@@ -108,7 +108,7 @@ jobs:
       run:
         working-directory: ${{ env.BACKEND_DIR }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Compose up (db + api)
         env:
@@ -144,7 +144,7 @@ jobs:
       contents: read
       pull-requests: read  # gitleaks-action 이 PR commits 조회 (403 회피)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # gitleaks가 전체 히스토리 검사
 
@@ -183,7 +183,7 @@ jobs:
       run:
         working-directory: ${{ env.BACKEND_DIR }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Azure login
         uses: azure/login@v3
