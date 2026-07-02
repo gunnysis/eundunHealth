@@ -66,3 +66,6 @@ backend/alembic/versions/__pycache__/
 
 # docs/plans scratch 작업용 — 커밋 전 개인 정리/메모
 docs/plans/_staging/
+
+# GCP 서비스 계정 키 등 로컬 자격증명 — public repo 커밋 절대 금지 (값은 GitHub environment secrets)
+/gcp/
