@@ -6,6 +6,8 @@
 
 ## [v0.1.18] — 2026-06-19 — 출시 재업로드 + versionCode 단조성 가드
 
+> **🎉 2026-06-29 Google Play 프로덕션 정식 출시(LIVE)** — 본 버전(v0.1.18/32)으로 출시·승인 완료. 이후 2026-07-02 repo public 전환(보안감사·식별자 스크럽 PR #137 + secret scanning·push protection·CodeQL 활성) + CodeQL 대응 release 서명 존재-조건부화(INC-2026-07-02-29, 앱 산출물 변화 없음).
+>
 > v0.1.17 업로드가 Play "이미 사용된 버전 코드 31" 로 거부됨(INC-2026-06-19-28) → versionCode 32 로 재빌드 + 재발 방지 인프라. **앱 동작 변화 없음** — v0.1.17 빌드와 동일, versionCode/versionName 만 상이.
 
 ### 🚦 릴리스 파이프라인 — versionCode 단조성 가드

@@ -207,8 +207,8 @@ az postgres flexible-server firewall-rule delete \
 
 v1.0 정식 출시 후에는 **Supabase 프로젝트 교체를 절대 자유롭게 하지 말 것.** user_id namespace가 갈아엎혀 옛 사용자가 "user not found"가 된다.
 
-- 출시 전(현 단계): 5개 사용자 테이블 `TRUNCATE`로 정리 가능 (이미 수행).
-- 출시 후 불가피한 경우: 옛 user_id → 새 user_id 매핑 테이블 + 백필 스크립트 + 사용자 공지가 필수.
+- ~~출시 전: 5개 사용자 테이블 `TRUNCATE`로 정리 가능~~ — **2026-06-29 프로덕션 정식 출시로 닫힌 경로**(2026-05 수행 이력만 해당).
+- 출시 후(현 단계) 불가피한 경우: 옛 user_id → 새 user_id 매핑 테이블 + 백필 스크립트 + 사용자 공지가 필수.
 
 ### 6.5 Sentry 프로젝트 교체 시 (참고: INC-09, INC-10)
 

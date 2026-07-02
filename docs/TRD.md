@@ -1,13 +1,13 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-06-16, v0.1.15):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-07-02, v0.1.18 — Play 프로덕션 LIVE 2026-06-29):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
 ---
 
-## 구현 후 변경 사항 (v0.1.0 → v0.1.15)
+## 구현 후 변경 사항 (v0.1.0 → v0.1.18)
 
 본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.18 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
@@ -52,6 +52,7 @@ v0.1.1~v0.1.18 누적 (Android UI + Auth + Backend 안정화):
 - v0.1.16 (#126/#127) 출시 후 심층 감사 개선 — JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`) + 무테스트 ViewModel 특성화 테스트 + GoalScreen 에러상태 + DayPlanCard `remember` perf + 활동 a11y + history COUNT `count(*) over()` 1쿼리화 + `user_profile_history (user_id, recorded_at)` 복합 인덱스(`b78b256c2b20`) + 계정삭제 orphan reaper(Container Apps Job 주간 cron).
 - v0.1.17 (#128) 공개 출시 전 7-도메인 전체 감사(출시차단 0건) — Rule 8 inline 에러 배너(Onboarding·Home·Profile) + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 프로필 경계 테스트 + account_service 로그 구조화 + 개인정보/계정삭제 백엔드 공개 라우트(`GET /privacy`·`/account-deletion`, md→HTML) + 문서 드리프트 정정.
 - v0.1.18 출시 재업로드 — versionCode 31 Play 중복 거부(INC-2026-06-19-28) → 32 재빌드(**앱 동작 변화 없음**=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13).
+- **2026-06-29 Google Play 프로덕션 정식 출시(LIVE)** — v0.1.18/32 출시·승인. 2026-07-02 repo public 전환(사전 보안감사 + 인프라 식별자 스크럽 PR #137 + secret scanning·push protection·CodeQL 활성) + release 서명 keystore 존재-조건부화(clean checkout/CodeQL autobuild 빌드 가능, INC-2026-07-02-29).
 
 ---
 

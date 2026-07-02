@@ -4,6 +4,15 @@
 
 ## Recent (last 90 days)
 
+### 2026-07-02 — repo public 전환(보안감사·스크럽) + open PR 전량 정리 + CodeQL java-kotlin 근본수정 (INC-29)
+
+- **PR**: [#137](https://github.com/gunnysis/eundunHealth/pull/137)(식별자 스크럽) + #138/#139/#132 머지·#130/#131/#133/#134/#135 close + main 직접 `845b65c`(INC-29)
+- **Why**: 회원님 요청 = repo private→public 전환 전 시크릿 유출/보안 위배 전수 점검 → 전환 완료 후 open PR 정리 → CodeQL 기본설정 `Analyze (java-kotlin)` 설정 에러 근본 해결. (배경: 2026-06-29 Play 프로덕션 정식 출시 LIVE.)
+- **What**: ① **보안감사** — 추적 파일 314 + git 전 이력(24 refs·278 커밋) + GitHub 표면 + Docker. 유일한 실질 유출 = 커밋 `29c4202` 의 keystore 비밀번호 하드코딩(회전 + local.properties 반영 + `validateSigningRelease` 통과로 종결; **이력 재작성 안함** — GitHub 공식: 회전이 해법, SHA 캐시/PR 참조로 재작성 불완전). ② **스크럽(PR #137)** — Azure 구독 GUID → `__SUBSCRIPTION_ID__` 런타임 주입(`az account show`), PG admin 계정명 일반화, pre-commit `/subscriptions/<guid>` 가드, `backend/.dockerignore` 신설(`COPY . .` 가 .env/.venv 굽는 갭). ③ **public 전환 + secret scanning·push protection·CodeQL 기본설정**(회원님). ④ **dependabot 7→0** — 6/22 android CI 실패 전부 private **artifact storage quota**(public 전환으로 소멸, 의존성 무관 실증); #138 backend 5종 머지·배포, #139 android 배치(toml 충돌 연쇄 회피), #132 checkout v7, #133 kotlin 2.4 deferral 유지. ⑤ **INC-2026-07-02-29** — CodeQL autobuild(`./gradlew assemble`)가 clean checkout 의 release 서명 검증에서 실패 → release 서명 keystore **존재-조건부화**(없으면 unsigned) + preflight 서명 자료 fail-fast 가드 + java-kotlin 재등록.
+- **Outcome**: open PR 0·open issue 0, backend deploy 3건 success, clean worktree `assembleRelease` unsigned 실증(`app-release-unsigned.apk`), 로컬 서명 경로 `validateSigningRelease` 통과 유지.
+- **Lessons**: ① **private→public 은 CI 전제를 바꾼다** — artifact quota 소멸(만성 실패 원인 제거) + CodeQL autobuild 가 release variant 까지 빌드(clean-clone 빌드 가능성이 새 요구사항). ② **로컬 시크릿을 참조하는 빌드 설정은 존재-조건부**여야 clean checkout 이 안 깨진다(BuildConfig `getProperty(key, default)` 패턴과 동일 원칙) — 폴백이 출시 경로로 새지 않게 게이트(preflight) 동반 필수. ③ **원장(룰 13)의 사람 의존 갭 실측** — Play 업로드 성공(2026-06-29 LIVE) 후 `LAST_UPLOADED_VERSION_CODE` 미갱신(31 고착)을 문서 최신화 감사가 발견·소급(32). 업로드 주체가 사람인 한 문서 감사가 백스톱.
+- **Files touched**: `app/build.gradle.kts`, `scripts/preflight-release.sh`, `backend/{containerapp,reaper-job}.yaml`, `.github/workflows/backend.yml`, `.githooks/pre-commit`, `backend/.dockerignore`, `scripts/setup-{reaper-job,azure-alerts}.sh`, `scripts/setup-sentry-alerts.ps1`, `docs/ops/{incident-log,play-upload-ledger,operations-snapshot,dependency-deferred,monitoring-and-cost}.md`, CLAUDE.md/README/PRD/TRD
+
 ### 2026-06-18 — 공개 출시 전 전체 감사 (PR #128, v0.1.17)
 
 - **PR**: [#128](https://github.com/gunnysis/eundunHealth/pull/128) (shipped, squash `d227da3`)

@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **출시 전(pre-release)** — Play 프로덕션 미출시. 0.1.13/27 프로덕션 심사는 취소(이후 개선 지속), 프로덕션 사용자 0. 백엔드는 자동 배포로 운영 중(앱과 독립). 최신 버전 v0.1.18/32 (versionCode 31 Play 중복 거부 → 32 재빌드, INC-2026-06-19-28) — preflight 빌드 완료(AAB 8.35MB), Play 업로드는 출시 결정 시점에
+- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 출시 버전 v0.1.18 (versionCode 32). 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성)
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -382,7 +382,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.18` (versionCode `32`) — **출시 전(pre-release), Play 프로덕션 미출시**(0.1.13/27 프로덕션 심사 취소, 프로덕션 사용자 0). v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, **앱 동작 변화 없음**=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128). 직전 v0.1.16 = 출시 후 심층 감사 개선(JWKS 오프로드 · 무테스트 VM 테스트 · Goal 에러상태 · DayPlanCard perf · 활동 a11y · history COUNT window · `user_profile_history` 복합인덱스 · 계정삭제 orphan reaper Container Apps Job, PR #126/#127)
+**현재 버전** — `0.1.18` (versionCode `32`) — **Google Play 프로덕션 정식 출시(LIVE, 2026-06-29 승인)**. v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, **앱 동작 변화 없음**=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128). 직전 v0.1.16 = 출시 후 심층 감사 개선(JWKS 오프로드 · 무테스트 VM 테스트 · Goal 에러상태 · DayPlanCard perf · 활동 a11y · history COUNT window · `user_profile_history` 복합인덱스 · 계정삭제 orphan reaper Container Apps Job, PR #126/#127)
 
 ### 마일스톤 진행
 

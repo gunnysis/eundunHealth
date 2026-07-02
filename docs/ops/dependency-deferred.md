@@ -36,6 +36,9 @@ v0.1.0 Internal Testing 직전 안정성 우선으로 보류한 dependabot 의�
 - **build.gradle.kts**: Kotlin 2.4.0 + AGP 9.2.1 조합에서 deprecated DSL이 **컴파일 에러**(warning이 아닌 error)로 승격. `android {}` 블록과 `kotlinOptions` DSL 마이그레이션이 선행 필수.
 - **결론**: 재개 블로커 = (1) Hilt 2.59.3+ 출시 대기 + (2) build.gradle.kts DSL 마이그레이션 작업.
 
+### 상태 점검 (2026-07-02)
+- dependabot **#133**(kotlin 2.4.0) close — CI **Spotless 실패 실증**(같은 날 public 전환으로 소멸한 artifact-quota 실패와 무관한 실제 호환성 실패). Hilt 최신은 여전히 **2.59.2**(dependabot 이 Hilt bump PR 을 안 만든 것이 간접 증거) → 재개 조건 미충족, deferral 유지. 다음 트리거 = Hilt 2.59.3+/2.60 출시.
+
 ### 재개 조건 (모두 충족)
 1. Hilt 2.59.3+ 또는 2.60+이 Kotlin 2.4 호환 명시
 2. build.gradle.kts DSL 마이그레이션 완료 (`BaseAppModuleExtension` → `ApplicationExtension`, `kotlinOptions` → `compilerOptions`)
