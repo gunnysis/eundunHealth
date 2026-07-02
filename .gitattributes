@@ -8,3 +8,8 @@ scripts/**/*.sh text eol=lf
 /gradlew text eol=lf
 # Windows 배치 파일은 CRLF
 *.bat text eol=crlf
+
+# docs/plans: gen_plans_index.py(pre-commit 훅)가 README·logs/ ledger 를 LF 로 재기록.
+# autocrlf=true 는 checkout 시 CRLF 를 기대해 훅이 돌 때마다 내용 diff 0 인
+# phantom modified(EOL-only)가 재발 → LF 를 정본으로 고정해 근본 해결.
+docs/plans/**/*.md text eol=lf
