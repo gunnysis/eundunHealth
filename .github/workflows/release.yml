@@ -1,0 +1,99 @@
+# Android CD — 태그 push 로 서명 AAB 빌드(preflight 전체 게이트) → Play 내부 트랙 업로드 → 원장 자동 갱신.
+# 설계: docs/plans/2026-07-02-android-cd-play-upload-design.md
+# - 서명 자료 = environment `play-release` secrets (required reviewer 승인 게이트, D4)
+# - 빌드 = scripts/preflight-release.sh 단일 진입 (룰 2·13·Sentry 매핑 게이트 상속, D5)
+# - 업로드 성공 시 scripts/update-upload-ledger.sh 가 원장 갱신 커밋 push (INC-2026-06-19-28 사람 의존 갭 해소, D6)
+# - 프로덕션 승격은 Play Console 수동 (Out-of-scope). 실패 시 Play 무영향, 수동 업로드 경로는 폴백으로 유지.
+name: Release (Play internal)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '업로드 생략 (빌드 + 게이트만 검증)'
+        type: boolean
+        default: true
+
+# 릴리스는 절대 중단하지 않는다 — 동시 실행은 직렬화만.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, Gate & Upload (internal)
+    runs-on: ubuntu-latest
+    environment: play-release
+    timeout-minutes: 45
+    permissions:
+      contents: write   # 원장 갱신 커밋 push
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # 태그↔main 관계 확인 + 원장 push
+
+      - name: 태그 ↔ version.properties 일치 가드
+        if: github.event_name == 'push'
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER=$(grep '^versionName=' version.properties | cut -d= -f2 | tr -d ' \r')
+          if [ "$TAG" != "$VER" ]; then
+            echo "::error::태그 v$TAG 와 version.properties versionName=$VER 불일치 — 태그를 삭제하고 bump-version.sh 후 재태그하세요."
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: 서명 자료 + 출시 BuildConfig 복원 (environment secrets)
+        run: |
+          mkdir -p .key
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > .key/eundunhealth_upload_key
+          cat > local.properties <<EOF
+          SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.PROD_SUPABASE_ANON_KEY }}
+          BACKEND_BASE_URL=${{ secrets.PROD_BACKEND_BASE_URL }}
+          eundunhealth-app_SENTRY_DSN=${{ secrets.PROD_SENTRY_DSN_ANDROID }}
+          RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
+          RELEASE_KEY_ALIAS=eundunhealth_sign_key
+          EOF
+
+      - name: Preflight (룰 2 — 전체 게이트 + AAB/APK + Sentry 매핑)
+        run: bash scripts/preflight-release.sh
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      - name: Play 내부 트랙 업로드
+        if: github.event_name == 'push' || !inputs.dry_run
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.gunnys.eundunhealth
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+          mappingFile: app/build/outputs/mapping/release/mapping.txt
+
+      - name: 원장 자동 갱신 (룰 13 — 업로드 성공 직후)
+        if: github.event_name == 'push' || !inputs.dry_run
+        run: |
+          VC=$(grep '^versionCode=' version.properties | cut -d= -f2 | tr -d ' \r')
+          VN=$(grep '^versionName=' version.properties | cut -d= -f2 | tr -d ' \r')
+          # 태그 시점 이후 main 이 전진했어도 안전하게: 항상 최신 origin/main 위에 커밋.
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git checkout -B ledger-update origin/main
+          bash scripts/update-upload-ledger.sh docs/ops/play-upload-ledger.md "$VN" "$VC" internal
+          git add docs/ops/play-upload-ledger.md
+          git commit -m "docs(ledger): v$VN/$VC 내부 트랙 업로드 — 원장 자동 갱신 (release.yml)"
+          git push origin ledger-update:main
