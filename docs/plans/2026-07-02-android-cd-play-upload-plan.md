@@ -1,6 +1,6 @@
 ---
 type: plan
-status: proposed
+status: in-progress
 pr: null
 related_inc: INC-2026-06-19-28
 supersedes: null
