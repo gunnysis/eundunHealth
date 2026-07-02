@@ -6,186 +6,200 @@ related_inc: null
 supersedes: null
 target_version: infra-only
 ledger_topic: process-infra
-tags: [ci-cd, github-actions, cost, oidc]
+tags: [ci-cd, github-actions, oidc, concurrency, caching]
 ---
 
-# 추천 CI/CD 설계 (cost/speed 최적화 관점)
+# CI/CD 개선 구현 설계 (GHA 유지 + P1~P5)
 
-> 작성일: 2026-06-29 · 작성: Claude (Opus 4.8) · 상태: **추천 설계(proposed) — 의사결정 전**
-> 배경: Azure DevOps Pipelines 적용 검토(2026-06-29 세션, 문서 미보존)에서 동기가 **"운영 비용·속도 개선"**으로 확정됨. 본 문서는 그 목표를 **엔진 중립적으로** 최적 달성하는 설계를 제시한다(Azure Pipelines 비전제).
-> 분석 관점: 성능 · 비용 · 보안 · 리팩토링/유지보수 · 테스트/디버깅 가드 보존 · 공식문서 fact-check
-> 측정 원칙: 모든 baseline 은 실측(룰 9). 추정은 ESTIMATE 라벨.
->
-> **2026-07-02 후기(문서 등재 시점)**: repo 가 public 으로 전환되어 GitHub Actions standard runner 분이 **무료·무제한**이 됨 — §2 의 private 무료분 비교는 더 이상 제약이 아니며, 본 문서의 결론(엔진 = GHA 유지)은 오히려 **강화**된다. private 한도 기반이던 artifact storage quota CI 실패도 전환으로 소멸(2026-07-02 실증). P1(concurrency)~P4 권장 순서는 유효.
->
-> **2026-07-02 점검(MEASURED) + P1 착수**: ① §1 의 "PRIVATE" 는 stale — 현재 **PUBLIC**(`gh repo view` 실측). 분(minute) 비용 동기는 소멸했고 P1 의 가치는 **피드백 속도 + superseded 실행의 러너 점유 제거**로 재정의된다. ② P3(캐싱)의 비용 동기도 동일하게 소멸 — 속도 이득만 남아 **ROI 재평가 대상**(deploy 실측 ~3.2분이라 한계 이득 작음). ③ 워크플로 인벤토리 변화: CodeQL(기본 설정, repo yml 아님) 가동 + `doc-audit.yml`(주간 cron) §1 표 누락 보완. ④ §3.2 스니펫의 `azure/login@v2` 는 현행 `@v3` 기준으로 읽을 것(federated 모드 동일 지원). ⑤ **P1 적용 = 본 문서의 PR**(android.yml·backend.yml concurrency 추가, 보조 워크플로는 설계대로 제외). P2 는 포털 선결 점검([[azure-cli-rbac-msa-limitation]]) 대기.
+- **작성일**: 2026-06-29 (추천 설계) → **2026-07-02 구현 설계로 격상**
+- **상태**: in-progress — P1 shipped(PR #140, `2bece6d`) · P2 설계 확정 · P3 보류 · P4/P5 Won't-do-for-now
+- **연관 작업**: [ADO 적용 검토](./2026-06-29-azure-devops-pipelines-migration-review.md)(엔진 비교 원본) · PR #137(public 전환·GUID 가드) · PR #140(P1)
+- **대상 버전**: infra-only (앱/백엔드 코드 무변경)
+- **선행 작업**: 없음
+- **측정 원칙**: 모든 정량 표현은 룰 9 라벨(`MEASURED`/`DEFERRED`/`ESTIMATE-ONLY`) 명시. 팩트체크 기록은 §9.1.
 
----
+## 1. 배경
 
-## 0. TL;DR
+- **동기의 변천**: 2026-06-29 Azure DevOps Pipelines 검토에서 목표가 "운영 비용·속도 개선"으로 확정 → 엔진 중립 분석 결과 **GHA 유지**가 최적(§4.1). 2026-07-02 **repo public 전환**으로 GHA standard runner 분(minute)이 무료·무제한이 되면서 **비용 동기는 소멸** — 본 설계의 남은 가치 축은 ① **피드백 속도/러너 위생**(P1) ② **보안 현대화**(P2) ③ **역량 갭**(P4)이다.
+- **현재 CI는 건강**: Android·Backend full-run 각 ~3.5분(§9.2 baseline). 속도 "위기"는 없으므로 큰 재설계가 아니라 **낭비 제거 + 표적 개선**이 정답.
+- **관찰된 낭비(P1 근거)**: 2026-06-22 13:12~13:17 5분 구간 Android CI **6회** 중복 실행(PR 반복 push, MEASURED `gh run list`). concurrency 자동취소 부재가 원인 → P1이 정확히 이 누수를 막는다. **2026-07-02 PR #140에서 해소 + 취소 동작 실측 완료**(§6.1).
+- **보안 부채(P2 근거)**: deploy·warm-baseline이 **장수명 SP secret JSON**(`AZURE_CREDENTIALS`)으로 Azure 로그인. 유출 시 회전 비용·상시 노출. 현 SP secret 만료 = **2027-05-24**(MEASURED `az ad app credential list`). OIDC 워크로드 ID 연합 = 단기 토큰·저장 비밀 0 — Azure·GitHub 공통 모범사례.
 
-1. **엔진은 GitHub Actions 유지가 최적** — cost/speed 목표에 한해 ADO 는 *역효과*다(아래 §2 데이터: private repo 무료분 ADO 1,800 < GHA 2,000+, ADO 무료 병렬 1슬롯 직렬화). 엔진 교체는 비용·속도를 *악화*시킨다.
-2. **현재 CI 는 이미 건강·고속** — Android·Backend 성공 full-run **각 ~3.5분**(§1 실측). 속도 "위기"는 없다 → 큰 한 방보다 **낭비 제거 + 캐싱**으로 한계 효율을 짜내는 게 정답.
-3. **최고 ROI 개선 = `concurrency` 자동취소**(현재 미설정). 중복 실행 낭비 제거 → 비용↓ + PR 피드백 속도↑. **5줄/워크플로, 리스크 0.**
-4. **진짜 큰 가치는 cost/speed 가 아니라**: ① 보안(장수명 SP secret → OIDC) ② 역량 갭(Android Play 업로드 자동화 부재). 둘 다 엔진과 무관하게 GHA 위에서 해결.
+## 2. Scope
 
-권장 적용 순서: **P1 concurrency → P2 OIDC 현대화 → P3 캐싱(Docker/Trivy) → (선택) P4 Android CD / P5 리팩토링.**
+### In-scope
+- **P1** `concurrency` 자동취소 — android.yml·backend.yml (✅ shipped PR #140)
+- **P2** Azure 인증 OIDC 연합 전환 — warm-baseline-check.yml + backend.yml deploy job, 2단계 PR(§4.2)
+- 설계 문서 자체의 팩트체크·측정 기록(§9)
 
----
+### Out-of-scope
+- **P3** Docker 레이어 캐시 (이유: §3 D4 — 비용 동기 소멸 + Trivy 캐시는 이미 기본 활성이라 남는 이득이 한계적. 재평가 조건 명시 후 보류)
+- **P4** Android CD/Play 업로드 자동화 (이유: 서명키 CI 시크릿화 = 회원님 가치판단 선행 + LIVE 프로덕션 리스크 → **별도 design+plan 페어**로 분리)
+- **P5** composite action 리팩토링 (이유: 워크플로 5개·소규모에 YAGNI. 워크플로 증가 시 재검토)
+- 엔진 교체(ADO)·Azure Repos 이전·self-hosted 러너 (이유: §4.1 판정 + [ADO 검토](./2026-06-29-azure-devops-pipelines-migration-review.md) §7)
 
-## 1. 측정된 baseline (MEASURED 2026-06-29, `gh run list`)
+## 3. 의사결정 요약
 
-| 워크플로 | 트리거 | 성공 full-run 실측 | 비고 |
+| # | 결정 | 채택안 | 근거 |
 |---|---|---|---|
-| **Backend CI/CD** | push→main (test→smoke→security→**deploy**) | 3m29s · 3m36s · 3m15s → **~3.5분** | 배포 포함 전 구간 |
-| **Android CI** | push/PR (lint→detekt→test→assembleDebug) | 3m32s · 3m47s · 3m59s → **~3.7분** | 단일 check job |
-| docs-plans-index | PR/push (docs/plans) | ~15s | trivial |
-| Warm baseline check | daily cron | ~30s | trivial |
-| Dependabot Updates | dynamic | ~45s–1m40s | GitHub 네이티브(엔진 종속) |
+| D1 | CI/CD 엔진 | **GitHub Actions 유지** | cost/speed 모든 축에서 ADO 동률 이하(§4.1). public 전환으로 우위 강화 |
+| D2 | P1 취소 정책 | `cancel-in-progress`를 **PR 이벤트만 true** | main push(배포 경로) 실행 보존. pending 은 최신 1건만 남아 배포가 최신 코드로 수렴 |
+| D3 | P2 전환 전략 | **2단계 PR**(warm-baseline 먼저 → deploy) | 읽기 전용 경로에서 OIDC 실증 후 배포 경로 전환 — LIVE 영향 최소화(§4.2) |
+| D4 | P3 처리 | **보류(deferred)** | 비용 동기 소멸(public) + Trivy `cache` 기본 활성 실측(§9.1) → 남는 이득 = Docker pip 레이어뿐, deploy 실측 ~3.2분에서 한계적 |
+| D5 | P2 자격증명 주체 | **기존 앱 등록 `eundunhealth-github-deploy` 재사용** | 신규 SP 불필요 → RBAC 재할당 불필요 → 개인 MSA 제약([[azure-cli-rbac-msa-limitation]]) 완전 회피. federated credential 은 Graph API 라 CLI 가능(§6.2 실측) |
+| D6 | GUID 기재 정책 | 문서·yml 에 **GUID 비기재**, GitHub secrets 로만 주입 | PR #137 pre-commit GUID 가드가 커밋 차단 + public repo 식별자 스크럽 정책 일관성 |
+| D7 | 롤백 보험 | `AZURE_CREDENTIALS` secret **잔존**(OIDC 안정 확인 시까지) | 전환 실패 시 워크플로 revert 만으로 즉시 복귀. SP secret 만료 2027-05 라 잔존 비용 0 |
 
-**저장소**: `gunnysis/eundunHealth` = **PRIVATE**(확인됨). `concurrency:` 키 = **5개 워크플로 모두 미설정**(확인됨).
+## 4. 옵션 비교
 
-**관찰된 낭비 신호**: 2026-06-22 13:12~13:17 5분 구간에 Android CI **6회**가 중복 실행(PR 반복 push). 자동취소가 없어 superseded 된 실행도 끝까지 분(minute)을 소모 → §3.1 이 정확히 이 누수를 막는다.
-
-> **정직한 결론**: ~3.5분은 이미 좋은 수치다. *극적인* 속도 단축 여지는 작다. 따라서 본 설계의 cost/speed 파트는 "큰 재설계"가 아니라 **낭비 제거 + 캐싱 한계효율**에 집중한다. 더 큰 가치(보안·Android CD)는 §3.2/§3.4 로 분리.
-
----
-
-## 2. 엔진 결정 — GitHub Actions 유지 (cost/speed 근거)
-
-회원님 목표가 "비용·속도 개선"이므로, 엔진 비교를 그 축으로만 평가한다.
+### 4.1 엔진 (2026-06-29 판정 — 기록 보존)
 
 | 축 | GitHub Actions (현행) | Azure Pipelines | 판정 |
 |---|---|---|---|
-| **무료 분(private)** | GitHub Free **2,000분/월**(Pro 3,000), Linux 1× | **1,800분/월** + 신규 조직 grant **신청 대기** | GHA 우위 |
-| **무료 병렬** | 동시 작업 여유(Free 다수) | **1 병렬 job** → backend 4-job DAG 직렬화 | GHA 우위(속도) |
-| **추가 병렬 비용** | 플랜 내 | MS-hosted **+$40/월/슬롯** | GHA 우위(비용) |
-| **현재 실측 속도** | ~3.5분 | 직렬화로 **느려질 가능성** | GHA 우위 |
-| **Dependabot** | 네이티브(이미 가동 중) | 비네이티브(확장 필요) | GHA 우위 |
+| 무료 분 | (당시 private) 2,000분/월 → **현재 public 무료·무제한** | 1,800분/월 + 신규 조직 grant 신청 대기 | GHA |
+| 무료 병렬 | 여유 | **1 병렬** → backend 4-job DAG 직렬화 | GHA |
+| 실측 속도 | ~3.5분 | 직렬화로 악화 가능성 | GHA |
+| Dependabot | 네이티브 가동 중 | 비네이티브 | GHA |
 
-→ **cost/speed 단일 목표에서 ADO 는 모든 칸에서 동률 이하.** 엔진 교체는 목표에 반(反)한다. (전체 다관점 비교는 [ADO 검토 문서](./2026-06-29-azure-devops-pipelines-migration-review.md) §7 참조.)
+→ 엔진 교체는 목표에 반한다. **public 전환(2026-07-02)으로 이 판정은 더 강화됨.**
 
-**결정: GitHub Actions 유지.** 이하 개선은 전부 현행 엔진 위에서 수행한다.
+### 4.2 P2 전환 전략
 
----
+| 옵션 | A. 단일 PR 일괄 전환 | **B. 2단계 PR (채택)** | C. 브랜치 PoC 후 일괄 |
+|---|---|---|---|
+| 방법 | warm-baseline+deploy 동시 수정 | ① warm-baseline만 전환 → `workflow_dispatch` 실증 → ② deploy 전환 | 임시 branch-subject credential 로 사전 검증 |
+| 장점 | PR 1개 | 읽기 전용 경로에서 sub claim·로그인 실증 후 배포 경로 진입 | merge 전 검증 |
+| 단점 | 실패 시 배포 경로가 첫 실증 지점 | PR 2개 | 임시 credential 생성·삭제 관리 + subject 가 검증 대상과 달라 실증력 낮음 |
+| 판정 | 리스크 집중 | **리스크 격리 + 실증력 최고** | 관리 오버헤드 대비 이득 낮음 |
 
-## 3. 개선안 (ROI 순위)
+schedule/workflow_dispatch 의 sub claim 형식은 공식 문서에 명시가 없어(§9.1 F4) 옵션 B의 1단계가 곧 **실증 게이트** 역할을 겸한다.
 
-각 항목: **무엇 / 왜 / 어떻게 / 효과 / 노력·리스크.**
+## 5. 구성 요소별 변경
 
-### 3.1 [P1·최고 ROI] `concurrency` 자동취소 — 중복 실행 낭비 제거
-
-- **왜**: PR 반복 push 시 이전 실행이 살아남아 분을 소모(§1 — 5분에 6회 중복 실측). private repo 무료분을 가장 많이 갉아먹는 누수이자, 피드백 지연 원인.
-- **어떻게**: 각 워크플로 상단에 추가(브랜치별 그룹 + 진행 중 취소). `main` push 는 보호하려면 `github.ref` 를 그룹 키에 포함.
+### 5.1 ✅ DONE (PR #140): `.github/workflows/android.yml` · `backend.yml` — concurrency
 
 ```yaml
-# android.yml / backend.yml 상단(name: 아래)에 추가
+# name: 아래 최상단
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}   # PR 만 취소, main push 는 보존
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 ```
 
-- **효과**: PR 당 중복 실행 → 최신 1건만. 낭비 분 직접 절감 + 빠른 피드백. **cost·speed 동시 개선.**
-- **노력/리스크**: 워크플로당 3줄, **리스크 0**(main 배포는 `cancel-in-progress=false` 로 보존). 적용 대상: `android.yml`, `backend.yml`(배포는 PR 에서 안 도니 안전). 보조 3종은 cron/경량이라 선택.
+- PR 이벤트의 `github.ref` = `refs/pull/N/merge` → PR별 그룹. main push 그룹은 취소 없이 직렬화(pending 최신 1건 유지).
+- 보조 워크플로 3종(docs-plans-index·warm-baseline·doc-audit)은 ~15s/cron 이라 제외(설계대로).
 
-### 3.2 [P2·고가치] 인증 현대화 — `AZURE_CREDENTIALS`(장수명 SP) → OIDC 연합
+### 5.2 P2-사전: federated credential 생성 (1회, CLI)
 
-- **왜**: 현재 deploy/warm-baseline 이 **장수명 SP secret JSON**(`AZURE_CREDENTIALS`)으로 Azure 로그인. 유출 시 회전 비용·상시 노출. OIDC 워크로드 ID 연합 = **단기 토큰, 저장 시크릿 0** — Azure·GitHub 공통 모범사례. ("Azure 일원화" 잠재 동기도 *마이그레이션 없이* 이걸로 충족.)
-- **어떻게**: Entra 앱 등록에 GitHub federated credential(subject = `repo:gunnysis/eundunHealth:ref:refs/heads/main` 등) 추가 → `azure/login` 을 federated 모드로.
+기존 앱 등록 `eundunhealth-github-deploy` 에 추가(GUID 는 D6 에 따라 비기재 — `az ad app list --query "[].{n:displayName,id:appId}"` 로 조회):
+
+```bash
+az ad app federated-credential create --id <appId> --parameters '{
+  "name": "github-main",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:gunnysis/eundunHealth:ref:refs/heads/main",
+  "audiences": ["api://AzureADTokenExchange"]
+}'
+```
+
+- subject 1개로 충분: deploy(main push)·warm-baseline(schedule/dispatch, default branch에서 실행) 모두 main ref 주체 — 단 schedule/dispatch 의 sub 형식은 §6.2 1단계에서 실증(DEFERRED).
+- 역할 할당 변경 **없음** — 기존 SP 의 AcrPush·KV Secrets User 그대로(D5).
+
+### 5.3 P2-사전: GitHub secrets 3종 등록 (1회)
+
+```bash
+gh secret set AZURE_CLIENT_ID       # 앱 등록 appId
+gh secret set AZURE_TENANT_ID       # az account show --query tenantId
+gh secret set AZURE_SUBSCRIPTION_ID # az account show --query id
+```
+
+client/tenant ID 는 엄밀히 비밀은 아니나 D6(GUID 스크럽 정책)에 따라 secrets 경유로 통일.
+
+### 5.4 P2-1단계 PR: `.github/workflows/warm-baseline-check.yml`
 
 ```yaml
 permissions:
-  id-token: write      # OIDC 토큰 발급
   contents: read
-steps:
-  - uses: azure/login@v2
-    with:
-      client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      # creds(JSON) 제거 — federated 자동
+  id-token: write        # OIDC 토큰 발급
+
+# steps 의 Azure login 교체:
+      - name: Azure login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 ```
 
-- **⚠️ 환경 선결 점검**: 이 환경은 **개인 MSA**라 SP 생성·RBAC 할당이 CLI 로 막힌 이력([[azure-cli-rbac-msa-limitation]]). federated credential 등록·역할 할당을 **포털 경유**로 할 수 있는지 먼저 확인(30분). 막히면 현행 SP 유지(차선).
-- **효과**: 보안↑(cost/speed 무관). 시크릿 3개로 분리되지만 장수명 비밀 제거.
-- **노력/리스크**: 중. 포털 셋업 + warm-baseline·deploy 두 워크플로 수정. 롤백 = 기존 `AZURE_CREDENTIALS` 잔존 시 즉시 복귀.
+### 5.5 P2-2단계 PR: `.github/workflows/backend.yml` deploy job
 
-### 3.3 [P3·한계효율] 빌드 캐싱 — Docker 레이어 + Trivy DB
+deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의 `creds:` → OIDC 3-입력으로 교체(5.4 와 동일 형태). 이후 스텝(`az acr login`·KV precheck·`az containerapp update`)은 로그인 세션을 그대로 사용하므로 무변경.
 
-- **왜**: backend deploy 의 `docker build` 는 캐시 없이 매 push 풀 빌드. Trivy 는 매 실행 취약점 DB 재다운로드. 둘 다 ~3.5분의 일부.
-- **어떻게(Docker)**: buildx + GitHub Actions 캐시. 단 **현 플로 주의** — build→Trivy(로컬 이미지 스캔)→push 순서라 buildx 가 로컬에 load 돼야 함(`--load`). 또는 레지스트리 `:latest` 기반 `--cache-from`(BuildKit inline cache).
+## 6. 검증 계획
 
-```yaml
-# 옵션 A: buildx + gha 캐시 (검증 필요 — --load 로 Trivy 스캔 호환)
-- uses: docker/setup-buildx-action@v3
-- uses: docker/build-push-action@v6
-  with:
-    context: ./backend
-    load: true                      # 로컬 로드 → Trivy 스캔 가능
-    tags: ${{ env.IMAGE_TAG }}
-    cache-from: type=gha
-    cache-to: type=gha,mode=max
-```
+### 6.1 P1 게이트 — ✅ 통과 (MEASURED 2026-07-02)
 
-- **⚠️ 부분 효과 주의**: `backend/Dockerfile` 의 `apt-get upgrade` 레이어(base-image CVE 자가치유)는 매번 무효화돼 **OS 레이어 캐시 이득이 제한적**. Python deps 레이어(`pip install`)는 캐시 이득 확실.
-- **어떻게(Trivy)**: `aquasecurity/trivy-action` 의 `cache: true` 또는 DB 캐시 스텝.
-- **효과**: deploy 시간 일부 단축(ESTIMATE — 적용 후 측정). cost 소폭↓.
-- **노력/리스크**: 중. **반드시 PR 에서 build→Trivy→push 호환 검증**(룰 2 정신 — 배포 경로라 LIVE 영향). 효과 미미하면 롤백.
+- PR #140 브랜치에 2번째 push → 직전 Android CI(run 28570874795)·Backend CI/CD(28570874817) **`cancelled` 전환 실측**(`gh run list`).
+- main push(머지 커밋 `2bece6d`) 는 취소 없이 정상 실행 — Backend CI/CD(deploy 포함)·Android CI **success 실측**(MEASURED 2026-07-02) → deploy 경로 보존 확인.
 
-### 3.4 [P4·선택, 역량 갭] Android CD — Play 업로드 자동화
+### 6.2 P2 게이트 (단계별)
 
-- **현황**: Android 는 **CD 부재** — 릴리스/서명/Play 업로드 전부 수동(`preflight-release.sh` 로컬 + 회원님 Console 업로드). cost/speed 가 아니라 *역량/수작업 제거* 가치.
-- **어떻게**: 태그 push 트리거 → 서명 release 빌드 → `r0adkll/upload-google-play` 로 내부테스트 트랙 업로드.
-- **⚠️ 선결 리스크(엔진 무관)**:
-  1. **서명 키를 CI 시크릿화**(keystore base64 + 비번) — 키 유출 = 앱 영구 손상. 신중한 결정 필요.
-  2. **룰 13 versionCode 원장 가드**를 CI 에 배선(`check-version-monotonic.sh`) — Play 중복거부(INC-28) 재발 방지.
-  3. **룰 12 R8 keep 갭**은 실기기 계측 필요 → CI 자동화로 *완전 대체 불가*, 내부테스트 트랙까지만 자동화하고 프로덕션 승급은 수동 유지 권장.
-- **효과**: 수작업 제거(릴리스 1회당 수십 분). **단 cost/speed 목표와는 무관** — 별도 가치 판단 필요.
-- **노력/리스크**: 대. **LIVE 프로덕션이므로 내부테스트 트랙부터**, 프로덕션 자동승급은 보류. 별도 design+plan 페어 권장.
+| 단계 | 검증 | 명령/증거 |
+|---|---|---|
+| 사전 | federated credential 이 MSA CLI 로 생성되는가 | `az ad app federated-credential create` — list 는 성공 실측(MEASURED 2026-07-02: 기존 0건 조회), **create 는 DEFERRED — P2 사전 단계에서 검증**. 실패 시 포털 폴백 |
+| 1단계 | warm-baseline `workflow_dispatch` 수동 실행 **green** | schedule/dispatch sub claim 실증 겸용(§4.2). 실패 시 sub 불일치 → credential subject 보정 |
+| 1단계+1일 | cron 자동 실행 green | 다음날 KST 09:17 run 확인 |
+| 2단계 | backend.yml 머지 → deploy run green + prod `/health` 200 | 기존 Health check 스텝이 게이트 겸용 |
+| 사후 | `AZURE_CREDENTIALS` 미사용 확인 후 제거 여부 결정 | OIDC 2주 안정 후(D7) |
 
-### 3.5 [P5·선택, 유지보수] 중복 setup 스텝 리팩토링
+### 6.3 정량 표현 라벨 총괄 (룰 9)
 
-- **왜**: 5개 워크플로에 checkout/setup-python/setup-java 중복. 변경 시 산발 수정.
-- **어떻게**: 공통 setup 을 composite action(`.github/actions/setup-backend/`) 또는 reusable workflow(`workflow_call`)로 추출.
-- **효과**: 유지보수성↑(속도/비용 무관). **YAGNI 주의** — 5개·소규모라 *지금은 과할 수 있음*. 워크플로가 더 늘면 도입.
-- **노력/리스크**: 소~중. 기능 변화 0이라 리스크 낮으나 이득도 낮음 → **후순위**.
-
----
-
-## 4. 단계별 적용 plan
-
-| 단계 | 작업 | 게이트 | 롤백 |
-|---|---|---|---|
-| **P1** | `concurrency` 추가(android·backend) | PR 1건으로 중복취소 동작 확인 | 키 제거 |
-| **P2** | OIDC 포털 셋업 PoC(MSA 가능여부) → 가능 시 `azure/login` federated 전환 | warm-baseline 수동 실행 green + deploy 1회 검증 | `AZURE_CREDENTIALS` 잔존 복귀 |
-| **P3** | Docker buildx 캐시 + Trivy DB 캐시 | PR 에서 build→Trivy→push 호환 + deploy green | plain `docker build` 복귀 |
-| **P4**(선택) | Android CD(내부테스트 트랙) — 별도 design+plan | 서명키 시크릿화 결정 + 룰13 배선 + 내부트랙 실제 업로드 | 워크플로 비활성 |
-| **P5**(선택) | composite action 리팩토링 | 전 워크플로 green | revert |
-
-- **P1 은 즉시 가능**(리스크 0, 최고 ROI). P2~P3 은 배포 경로라 PR 검증 필수. P4 는 가치판단 후 별도 착수.
-- 각 단계는 **독립 PR** — LIVE 프로덕션 영향 최소화([[play-store-live]]).
-
----
-
-## 5. 안 하기로 한 것(Won't-do) + 근거
-
-| 항목 | 이유 |
+| 항목 | 라벨 |
 |---|---|
-| **Azure Pipelines 전환** | cost/speed 목표에 역효과(§2). [ADO 검토](./2026-06-29-azure-devops-pipelines-migration-review.md) §0/§7. |
-| 저장소 Azure Repos 이전 | Dependabot·PR 이력·App Links 비용 큰데 이득 없음. |
-| self-hosted 러너 | 현재 ~3.5분 충분. VM 운영비/관리 부담 > 이득. |
-| 대대적 파이프라인 재설계 | 현 설계 건강(인시던트 가드 박힘). 과최적화 = 회귀 리스크. |
-| 프로덕션 Play 자동승급 | 룰 12 R8 갭은 실기기 계측 필요 → 완전 자동화 부적합. |
+| run 시간·중복 실행·취소 동작·repo 가시성·SP 만료·credential 목록 | MEASURED (§9.2, 명령 동봉) |
+| P2 create 가능 여부·schedule sub 형식·머지 후 deploy green | DEFERRED — P2 각 단계 게이트에서 검증 |
+| P3 캐시 적용 시 단축 폭 | ESTIMATE-ONLY (보류라 미측정) |
 
----
+## 7. 롤백 절차
 
-## 6. 부록 — 출처(2026-06 확인)
+- **P1**: 두 워크플로에서 `concurrency:` 블록 제거(5줄×2) — 기능 영향 0.
+- **P2 1단계**: warm-baseline yml revert → `creds:` 방식 복귀(`AZURE_CREDENTIALS` 잔존, D7).
+- **P2 2단계**: backend.yml revert — 배포 실패해도 기존 revision 이 트래픽 유지(Container Apps)라 프로덕션 무중단. federated credential 은 잔존해도 무해(단기 토큰 발급 주체일 뿐).
 
-- [GitHub Actions: concurrency / cancel-in-progress (GitHub Docs)](https://docs.github.com/en/actions/using-jobs/using-concurrency)
-- [GitHub Actions billing — included minutes (GitHub Docs)](https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions)
+## 8. 잔여 리스크
+
+| 리스크 | 심각도 | 완화 |
+|---|---|---|
+| MSA 계정에서 `federated-credential create` 미실증 | 중 | list 성공으로 Graph 경로 확인됨. 실패 시 포털 폴백(회원님 1회 작업) |
+| schedule/dispatch sub claim 형식 공식 문서 미명시 | 중 | §4.2 옵션 B — 읽기 전용 경로에서 먼저 실증 |
+| main push 직렬화로 연속 배포 시 대기 발생 | 저 | 의도된 동작(D2) — pending 최신 1건 수렴은 배포 안전에 오히려 유리 |
+| P3 재개 시 `load: true` + gha 캐시 호환 미확인 | 저(보류 중) | 재개 시 PR 검증 필수 — 공식 문서에 조합 미기재(§9.1 F3) |
+
+## 9. 참고 자료
+
+### 9.1 팩트체크 기록 (2026-07-02, 공식 문서 재확인)
+
+| # | 확인 사항 | 결과 → 설계 반영 |
+|---|---|---|
+| F1 | `azure/login` 최신 = **v3**(2026-03), OIDC 3-입력 + `id-token: write` | §5.4/5.5 스니펫 v3 기준(초안의 v2 정정) |
+| F2 | trivy-action **`cache` 입력 기본 활성**(v0.36.0, actions/cache 기반) | **P3 의 Trivy 파트는 이미 충족** → P3 범위가 Docker 레이어만 남아 보류 판정(D4) 강화 |
+| F3 | buildx gha 캐시 = `cache-from/to: type=gha` + `setup-buildx-action@v4`(Cache API v2). `load:true` 조합은 문서 미기재 | §8 잔여 리스크로 이관 |
+| F4 | OIDC sub: branch push = `repo:ORG/REPO:ref:refs/heads/BRANCH` 확정, PR = `repo:ORG/REPO:pull_request`. schedule/dispatch 는 명시 없음. issuer = `https://token.actions.githubusercontent.com` | §5.2 subject 설계 + §6.2 실증 게이트 |
+| F5 | 개인 MSA 에서 `az ad app list`·`federated-credential list`·`credential list` 정상 동작(Graph). ARM RBAC 할당만 제약 | D5 — 포털 불필요 경로 성립. [[azure-cli-rbac-msa-limitation]] 의 적용 범위 정밀화 |
+
+### 9.2 Baseline (MEASURED — `gh run list`)
+
+| 시점 | 측정 |
+|---|---|
+| 2026-06-29 | Backend full-run 3m29s·3m36s·3m15s(~3.5분) / Android 3m32s·3m47s·3m59s(~3.7분) / 당시 PRIVATE·concurrency 5개 워크플로 전부 미설정 |
+| 2026-07-02 | **PUBLIC**(`gh repo view`) / Android 2m49s~6m12s·Backend 3m10s~3m16s / 인벤토리 변화: CodeQL(기본 설정) 가동·`doc-audit.yml` 주간 cron 존재 / PR #140 로 concurrency 적용·취소 실측 |
+
+### 9.3 출처 (2026-07-02 재확인)
+
+- [GitHub Actions: concurrency / cancel-in-progress](https://docs.github.com/en/actions/using-jobs/using-concurrency)
+- [GitHub Actions OIDC reference (sub claim·issuer)](https://docs.github.com/en/actions/reference/security/oidc)
+- [Azure/login v3 — OIDC federated](https://github.com/Azure/login)
 - [Authenticate to Azure from GitHub Actions with OIDC (Microsoft Learn)](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect)
-- [docker/build-push-action — GitHub Actions cache (GitHub)](https://github.com/docker/build-push-action/blob/master/docs/advanced/cache.md)
-- [aquasecurity/trivy-action (GitHub)](https://github.com/aquasecurity/trivy-action)
-- [r0adkll/upload-google-play (GitHub)](https://github.com/r0adkll/upload-google-play)
-- 내부 교차참조: [ADO 적용 검토](./2026-06-29-azure-devops-pipelines-migration-review.md) · [[azure-cli-rbac-msa-limitation]] · [[play-store-live]] · CLAUDE.md 룰 2·12·13
-```
+- [Docker Build: GitHub Actions cache](https://docs.docker.com/build/ci/github-actions/cache/)
+- [aquasecurity/trivy-action (cache 기본 활성)](https://github.com/aquasecurity/trivy-action)
+- [r0adkll/upload-google-play](https://github.com/r0adkll/upload-google-play) (P4 재개 시)
+- 내부: [ADO 적용 검토](./2026-06-29-azure-devops-pipelines-migration-review.md) · [[azure-cli-rbac-msa-limitation]] · [[play-store-live]] · CLAUDE.md 룰 2·9·12·13

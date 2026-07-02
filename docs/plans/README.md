@@ -11,7 +11,7 @@
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-06-29 | cicd-recommended | design | in-progress | ci-cd, github-actions, cost, oidc |
+| 2026-06-29 | cicd-recommended | design | in-progress | ci-cd, github-actions, oidc, concurrency, caching |
 
 ## Topic Ledgers (완료 작업 history)
 
