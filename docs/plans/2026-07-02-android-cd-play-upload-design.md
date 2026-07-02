@@ -180,7 +180,7 @@ jobs:
 | 단계 | 검증 | 방법 |
 |---|---|---|
 | PR | yml 문법+게이트 로직 | `workflow_dispatch` dry-run(기본 true) — 업로드 스텝 skip, preflight 까지 green |
-| 머지 후 1 | dry-run 실행 green | 1차(run 28578413672): **룰 13 가드 CI 정상 발동**(versionCode 32 ≤ 원장 32 차단 — D5 상속 실증, MEASURED). bump 전 리허설 불가 갭 → dry-run 전용 러너-로컬 임시 versionCode(원장+1) + Sentry 매핑 생략(`--allow-missing-sentry-mapping`, 가짜 release 오염 방지)으로 해결 후 재실행 |
+| 머지 후 1 | dry-run 실행 green | ✅ **MEASURED — 3차 green**(run 28579020890, 8m40s). 1차: 룰 13 가드 CI 정상 발동(versionCode 32 ≤ 원장 32 차단 — D5 상속 실증) → dry-run 전용 러너-로컬 임시 versionCode(원장+1)+Sentry 매핑 생략으로 해결. 2차: preflight 잠복 버그 발견(local.properties 에 SENTRY_AUTH_TOKEN 키 부재 시 grep exit 1 → set -e/pipefail 무출력 즉사) → `|| true` 수정(`ec7535c`). 3차: 전 게이트+R8 서명 AAB green, skip = 의도된 3스텝(태그 가드·업로드·원장)뿐 |
 | 머지 후 2 | **실제 e2e**: 다음 릴리스(v0.1.19) 태그 push → 내부 트랙 게시 + 원장 자동 커밋 확인 | DEFERRED — 다음 릴리스 시점 |
 | 상시 | 업로드 실패 시 | Play 상태 불변(원장 커밋도 skip) — 워크플로 로그로 원인 확인 |
 
@@ -189,8 +189,8 @@ jobs:
 | 항목 | 라벨 |
 |---|---|
 | 도구 버전·유지보수 상태·업로드 키 재설정 가능·기존 secrets·서명/게이트 구성 | MEASURED (§9.1) |
-| CI release 빌드 시간 | ESTIMATE-ONLY ~10–15분(preflight full 게이트, 로컬 실측 없음 — dry-run 에서 실측) |
-| 서비스 계정 권한 전파·첫 업로드 성공 | DEFERRED — 머지 후 1·2 |
+| CI release 빌드 시간 | **MEASURED 8m40s** (run 28579020890, 2026-07-02 dry-run 3차 — 초안 ESTIMATE ~10–15분 해소) |
+| 서비스 계정 권한 전파·첫 업로드 성공 | DEFERRED — 머지 후 2 (v0.1.19 실 e2e) |
 
 ## 7. 롤백 절차
 
