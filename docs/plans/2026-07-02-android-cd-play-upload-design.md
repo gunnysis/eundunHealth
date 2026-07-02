@@ -1,7 +1,7 @@
 ---
 type: design
 status: in-progress
-pr: null
+pr: 143
 related_inc: INC-2026-06-19-28
 supersedes: null
 target_version: infra-only
