@@ -12,7 +12,7 @@ tags: [ci-cd, github-actions, oidc, concurrency, caching]
 # CI/CD 개선 구현 설계 (GHA 유지 + P1~P5)
 
 - **작성일**: 2026-06-29 (추천 설계) → **2026-07-02 구현 설계로 격상**
-- **상태**: in-progress — P1 shipped(PR #140, `2bece6d`) · P2 설계 확정 · P3 보류 · P4/P5 Won't-do-for-now
+- **상태**: in-progress — P1 shipped(PR #140, `2bece6d`) · **P2 shipped**(PR #141 `5be3a33` + #142 `2c66a1d`, 사후 게이트 2건 잔여: §6.2) · P3 보류 · P4/P5 Won't-do-for-now
 - **연관 작업**: [ADO 적용 검토](./2026-06-29-azure-devops-pipelines-migration-review.md)(엔진 비교 원본) · PR #137(public 전환·GUID 가드) · PR #140(P1)
 - **대상 버전**: infra-only (앱/백엔드 코드 무변경)
 - **선행 작업**: 없음
@@ -141,15 +141,15 @@ deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의
 - PR #140 브랜치에 2번째 push → 직전 Android CI(run 28570874795)·Backend CI/CD(28570874817) **`cancelled` 전환 실측**(`gh run list`).
 - main push(머지 커밋 `2bece6d`) 는 취소 없이 정상 실행 — Backend CI/CD(deploy 포함)·Android CI **success 실측**(MEASURED 2026-07-02) → deploy 경로 보존 확인.
 
-### 6.2 P2 게이트 (단계별)
+### 6.2 P2 게이트 (단계별) — 2026-07-02 실측 결과 반영
 
-| 단계 | 검증 | 명령/증거 |
+| 단계 | 검증 | 결과 |
 |---|---|---|
-| 사전 | federated credential 이 MSA CLI 로 생성되는가 | `az ad app federated-credential create` — list 는 성공 실측(MEASURED 2026-07-02: 기존 0건 조회), **create 는 DEFERRED — P2 사전 단계에서 검증**. 실패 시 포털 폴백 |
-| 1단계 | warm-baseline `workflow_dispatch` 수동 실행 **green** | schedule/dispatch sub claim 실증 겸용(§4.2). 실패 시 sub 불일치 → credential subject 보정 |
-| 1단계+1일 | cron 자동 실행 green | 다음날 KST 09:17 run 확인 |
-| 2단계 | backend.yml 머지 → deploy run green + prod `/health` 200 | 기존 Health check 스텝이 게이트 겸용 |
-| 사후 | `AZURE_CREDENTIALS` 미사용 확인 후 제거 여부 결정 | OIDC 2주 안정 후(D7) |
+| 사전 | federated credential 이 MSA CLI 로 생성되는가 | ✅ **MEASURED**: `az ad app federated-credential create`(`github-main`) 성공 — Graph 경로라 MSA 제약 미적용, 포털 불필요 확정 |
+| 1단계 | warm-baseline `workflow_dispatch` 수동 실행 green | ✅ **MEASURED**: run 28572203623 — `Azure login (OIDC)` success. dispatch sub claim = main ref 실증(§9.1 F4 의 미명시 해소) |
+| 2단계 | backend.yml 머지 → deploy run green + prod `/health` 200 | ✅ **MEASURED**: run 28572684503 — 4 job 전부 success(OIDC 로그인→ACR push→KV precheck→containerapp update→Health check) + 독립 curl `/health`·`/health/ready` 200 |
+| 사후① | cron 자동 실행 green | ⏳ DEFERRED — 다음날 KST 09:17 run 확인 |
+| 사후② | `AZURE_CREDENTIALS` 미사용 확인 후 제거 여부 결정 | ⏳ DEFERRED — OIDC 2주 안정 후(D7). SP secret 만료 2027-05 라 잔존 무해 |
 
 ### 6.3 정량 표현 라벨 총괄 (룰 9)
 
@@ -169,8 +169,8 @@ deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의
 
 | 리스크 | 심각도 | 완화 |
 |---|---|---|
-| MSA 계정에서 `federated-credential create` 미실증 | 중 | list 성공으로 Graph 경로 확인됨. 실패 시 포털 폴백(회원님 1회 작업) |
-| schedule/dispatch sub claim 형식 공식 문서 미명시 | 중 | §4.2 옵션 B — 읽기 전용 경로에서 먼저 실증 |
+| ~~MSA 계정에서 `federated-credential create` 미실증~~ | ~~중~~ | **해소(2026-07-02)** — create 성공 실측(§6.2 사전) |
+| ~~schedule/dispatch sub claim 형식 공식 문서 미명시~~ | ~~중~~ | **해소(2026-07-02)** — dispatch green 실증(§6.2 1단계). cron 은 사후① 잔여 |
 | main push 직렬화로 연속 배포 시 대기 발생 | 저 | 의도된 동작(D2) — pending 최신 1건 수렴은 배포 안전에 오히려 유리 |
 | P3 재개 시 `load: true` + gha 캐시 호환 미확인 | 저(보류 중) | 재개 시 PR 검증 필수 — 공식 문서에 조합 미기재(§9.1 F3) |
 
