@@ -64,8 +64,8 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Kotlin 2.2.10, Java 17 | KSP 2.3.2 |
-| 빌드 | Gradle 9.5.1, AGP 9.2.1 | Min SDK 26 / Target SDK 37 |
-| UI | Jetpack Compose (BOM 2026.05.01) | Material 3 |
+| 빌드 | Gradle 9.6.0, AGP 9.2.1 | Min SDK 26 / Target SDK 37 |
+| UI | Jetpack Compose (BOM 2026.06.00) | Material 3 |
 | DI | Hilt 2.59.2 | |
 | 비동기 | kotlinx-coroutines + Flow | |
 | 네트워크 | Retrofit + OkHttp + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 |
@@ -82,13 +82,13 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Python 3.12 | |
-| 프레임워크 | FastAPI 0.137.1 + uvicorn 0.49.0 | |
+| 프레임워크 | FastAPI 0.139.0 + uvicorn 0.49.0 | |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.51 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
-| 마이그레이션 | Alembic 1.18.4 (head: `b78b256c2b20`) | async 엔진 연동 |
+| 마이그레이션 | Alembic 1.18.5 (head: `b78b256c2b20`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
-| 모니터링 | Sentry SDK 2.63.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
+| 모니터링 | Sentry SDK 2.64.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
 | 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 87/87 PASS, coverage ~97% (sysmon core) |
 
 ### 인프라

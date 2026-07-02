@@ -96,7 +96,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 호환성 (MEASURED 2026-06-08, 블로커 0):
 - 디바이스 **API 30+ 필수** — 본 앱 `minSdk=26` 이므로 **API 30+ 에뮬레이터/기기로 배포**해야 Live Edit 활성 (API 26~29 기기는 비활성).
-- `kotlinOptions.moduleName` 커스텀 금지 → `app/build.gradle.kts:132-134` 는 `jvmTarget` 만 설정 (위반 없음). AGP 9.2.1 / Compose BOM 2026.05.01 모두 요구치 상회. `android.builtInKotlin=false` 는 Live Edit 가 Gradle 미경유라 무관.
+- `kotlinOptions.moduleName` 커스텀 금지 → `app/build.gradle.kts:132-134` 는 `jvmTarget` 만 설정 (위반 없음). AGP 9.2.1 / Compose BOM 2026.06.00 모두 요구치 상회. `android.builtInKotlin=false` 는 Live Edit 가 Gradle 미경유라 무관.
 
 적용 범위 — **Composable 함수 *바디* 만** 핫스왑:
 - ✅ `Modifier`(padding/spacing), `Color`/`dp` 상수, 애니메이션 튜닝, 레이아웃 미세조정 → `ui/theme/`·`ui/components/` 시각 마감 작업의 inner-loop 가속.
@@ -172,7 +172,7 @@ DELETE /account
 
 ### Android App
 - **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
-- **Gradle 9.5.1**, AGP 9.2.1
+- **Gradle 9.6.0**, AGP 9.2.1
 - **Min SDK 26**, Target SDK 37, Java 17
 - **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
 - **App version**: versionName **`0.1.18`**, versionCode **`32`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000, **Play 재사용 불가** — 룰 13 원장 가드). 정책 전문: `docs/conventions/versioning.md`
@@ -187,10 +187,10 @@ DELETE /account
 - pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
-- **Python 3.12**, FastAPI 0.137.1, SQLAlchemy 2.0.51 async + asyncpg 0.31.0, Alembic 1.18.4
+- **Python 3.12**, FastAPI 0.139.0, SQLAlchemy 2.0.51 async + asyncpg 0.31.0, Alembic 1.18.5
 - **API version `1.0.0`** — `backend/app/__init__.py:__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
 - **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix 포함; PR #123), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Supabase Admin API)
-- **Sentry SDK 2.63.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
+- **Sentry SDK 2.64.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
 - mypy strict 통과, ruff/bandit clean, pytest 87/87 PASS, coverage ~97% (coverage 측정 코어 = `sysmon`/PEP 669 — 기본 ctrace 는 async `await` 이후 라인 과소측정, `pyproject.toml [tool.coverage.run] core` 참조; mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
 - Alembic head `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
