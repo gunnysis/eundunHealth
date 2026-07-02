@@ -516,6 +516,20 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 
 ---
 
+## INC-2026-07-02-29 — CodeQL 기본 설정 java-kotlin 분석 실패 (clean checkout 에서 release 서명 검증 불가)
+
+**증상**: repo public 전환 후 활성화한 CodeQL 기본 설정(Default setup)의 `Analyze (java-kotlin)` 잡이 `Execution failed for task ':app:validateSigningRelease' — Keystore file '.key/eundunhealth_upload_key' not found` 로 실패. 이후 GitHub 이 java-kotlin 언어를 설정 에러 상태로 강등해 후속 CodeQL run 에서 Kotlin 분석이 통째로 빠짐(actions/python 만 분석).
+
+**근본 원인**: CodeQL 기본 설정은 Kotlin 에 `build-mode: autobuild` 를 쓰고(Kotlin 은 buildless 미지원), autobuilder 가 `./gradlew assemble`(debug+**release** 전 variant)을 실행한다. 그런데 `app/build.gradle.kts` 의 release `signingConfig` 가 **무조건** 로컬 전용(gitignored) 자료(`.key/` keystore + `local.properties` 비밀번호)를 참조 → clean checkout(CodeQL·외부 기여자·任의 CI)에서는 release variant 가 빌드 자체 불가. 기존 android.yml CI 는 `assembleDebug` 만 돌아 이 갭이 숨어 있었다. 즉 CodeQL 은 트리거일 뿐, 결함은 "clean clone 에서 빌드 불가능한 빌드 스크립트".
+
+**복구**: release 서명을 조건부로 변경 — keystore 파일이 존재할 때만 `signingConfig` 부착, 없으면 unsigned release 빌드(AGP 표준 동작, 컴파일·정적분석에 충분). clean worktree(서명 자료 없음)에서 `assembleRelease` 성공 실증 후 main 반영, 기본 설정에 java-kotlin 재등록.
+
+**재발 방지**:
+- unsigned 폴백이 출시 경로로 새는 것 차단 — `preflight-release.sh` 에 서명 자료(keystore + `RELEASE_STORE_PASSWORD`/`RELEASE_KEY_PASSWORD`) fail-fast 가드 추가(빌드 수 분 전에 실패). 룰 2 "출시 빌드는 preflight 경로" 가 이 가드를 태운다.
+- 패턴 일반화: **로컬 시크릿을 참조하는 빌드 설정은 존재-조건부**여야 clean checkout 이 깨지지 않는다(BuildConfig 필드들이 이미 쓰는 `getProperty(key, default)` 패턴과 동일 원칙).
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
@@ -526,3 +540,4 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 | 2026-05-25 (출시 직전 안정화) | INC-19~24 추가 — Phase 5A/5B+5C에서 발견된 silent 버그 6건. OpenAPI generator + drift detection CI(PR #19~#21)로 같은 종류 회귀를 컴파일 단계에서 차단 |
 | 2026-06-16 (출시 준비 회고) | INC-25~27 추가 — 릴리스 R8 Gson keep 갭(빈 운동계획, 룰 12+ProguardKeepRulesTest), 토글 해제 미보존(manual/manuallySet 수동 우선), bump-version.sh blind-replace 문서 오염(스크립트 앵커 하드닝). PR #122/#123 출시 사이클 전수감사 결과 정착 |
 | 2026-06-19 (출시 재시도) | INC-28 추가 — versionCode 사전검토 누락(Play 중복 업로드 거부). play-upload-ledger.md(원장) + check-version-monotonic.sh(preflight·bump 배선) + 룰 13 정착 |
+| 2026-07-02 (public 전환 후속) | INC-29 추가 — CodeQL java-kotlin autobuild 가 clean checkout 의 release 서명 검증에서 실패. 서명 존재-조건부화 + preflight 서명 자료 fail-fast 가드 |

@@ -59,6 +59,24 @@ if [ -z "$SENTRY_TOKEN" ]; then
 fi
 # ---------------------------------------------------------------------------------------
 
+# --- Release 서명 자료 가드 (unsigned 산출물 유출 차단) --------------------------------
+# build.gradle.kts 는 .key/ keystore 가 없으면 서명 없이 release 를 빌드한다 — clean checkout
+# (CI·CodeQL autobuild)에서도 빌드가 되도록 한 의도적 폴백 (INC-2026-07-02-29). 그 폴백이
+# 출시 경로로 새면 unsigned AAB 가 "성공" 으로 나오므로, 빌드(수 분) 전에 여기서 fail-fast.
+KEYSTORE="$REPO_ROOT/.key/eundunhealth_upload_key"
+if [ ! -f "$KEYSTORE" ]; then
+    echo "ERROR: release keystore 없음: $KEYSTORE" >&2
+    echo "  keystore 없이는 unsigned 산출물이 나와 Play 업로드가 불가합니다." >&2
+    exit 1
+fi
+for key in RELEASE_STORE_PASSWORD RELEASE_KEY_PASSWORD; do
+    if [ ! -f local.properties ] || ! grep -qE "^${key}=." local.properties; then
+        echo "ERROR: local.properties 의 ${key} 가 비어 있습니다 — 서명 불가." >&2
+        exit 1
+    fi
+done
+# ---------------------------------------------------------------------------------------
+
 # --- versionCode 단조성 가드 (Play "이미 사용된 버전 코드" 업로드 거부 fail-fast) -------
 # INC-2026-06-19-28: versionCode 를 이전 업로드값과 대조 없이 빌드→업로드해 중복 거부됨.
 # 빌드(수 분) 전에 version.properties 의 versionCode 가 원장의 최고 업로드값보다 큰지 검증.

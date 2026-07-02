@@ -59,13 +59,25 @@ spotless {
     }
 }
 
+// release 서명 자료(.key/ keystore + local.properties 비밀번호)는 로컬 전용(gitignored) —
+// clean checkout(CI·CodeQL autobuild·외부 기여자)에는 없다. keystore 가 있을 때만 서명을 붙여
+// `validateSigningRelease` 가 clean 환경의 release 빌드를 깨지 않게 한다(unsigned 로 빌드됨).
+// 출시 경로의 unsigned 유출은 scripts/preflight-release.sh 의 서명 자료 fail-fast 가드가 차단(룰 2).
+// 참조: docs/ops/incident-log.md INC-2026-07-02-29 (CodeQL java-kotlin autobuild 실패).
+val releaseKeystore = rootProject.file(".key/eundunhealth_upload_key")
+val hasReleaseSigning = releaseKeystore.exists()
+
 android {
     signingConfigs {
-        create("release") {
-            storeFile = rootProject.file(".key/eundunhealth_upload_key")
-            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD", "")
-            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD", "")
-            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS", "eundunhealth_store_key")
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD", "")
+                keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD", "")
+                keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS", "eundunhealth_store_key")
+            }
+        } else {
+            logger.lifecycle("release keystore 없음(.key/) → unsigned release 빌드 (CI/CodeQL/clean checkout 경로)")
         }
     }
     namespace = "com.gunnys.eundunhealth"
@@ -115,7 +127,7 @@ android {
             )
         }
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
