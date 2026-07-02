@@ -181,7 +181,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── backend/                  # FastAPI 백엔드 (Python 3.12)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: b78b256c2b20)
-│   ├── tests/                # pytest (81 PASS, coverage ~97%)
+│   ├── tests/                # pytest (87 PASS, coverage ~97%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
@@ -361,7 +361,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 | 문서 | 내용 |
 |------|------|
-| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.16) |
+| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.18) |
 | [버전 관리](docs/conventions/versioning.md) | 앱/백엔드 버전 SSoT · semver 정책 · bump 절차 |
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
@@ -382,7 +382,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.16` (versionCode `30`) — **출시 전(pre-release), Play 프로덕션 미출시**(0.1.13/27 프로덕션 심사 취소, 프로덕션 사용자 0). v0.1.16 = 출시 후 심층 감사 개선(JWKS 오프로드 · 무테스트 VM 테스트 · Goal 에러상태 · DayPlanCard perf · 활동 a11y · history COUNT window · `user_profile_history` 복합인덱스 · 계정삭제 orphan reaper Container Apps Job) — PR #126/#127. 직전 v0.1.15 = 감사 LOW 후속(SideEffect 라이프사이클 + alembic·CORS + starlette CVE, PR #123)
+**현재 버전** — `0.1.18` (versionCode `32`) — **출시 전(pre-release), Play 프로덕션 미출시**(0.1.13/27 프로덕션 심사 취소, 프로덕션 사용자 0). v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, **앱 동작 변화 없음**=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128). 직전 v0.1.16 = 출시 후 심층 감사 개선(JWKS 오프로드 · 무테스트 VM 테스트 · Goal 에러상태 · DayPlanCard perf · 활동 a11y · history COUNT window · `user_profile_history` 복합인덱스 · 계정삭제 orphan reaper Container Apps Job, PR #126/#127)
 
 ### 마일스톤 진행
 
@@ -410,6 +410,8 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.14** — 출시 준비 종합 — 실기기 제보 2버그 근본수정(빈 운동계획=R8 keep 갭, 완료 토글 해제 보존=수동 우선) + 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증·인증 견고화·운동상세 GIF/복사/데이터흐름·캐시/파싱/KST·폴리시) + 재발방지 가드 (PR #122)
 - [x] **v0.1.15** — 감사 LOW 후속(내부 품질) — SideEffect 수집 라이프사이클-aware(`ObserveAsEvents` 헬퍼) + 백엔드(alembic rest_day server_default · CORS 와일드카드 차단) + starlette 1.3.1 CVE bump (PR #123)
 - [x] **v0.1.16** — 출시 후 심층 감사 개선 — JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`) + 무테스트 ViewModel 테스트 + GoalScreen 에러상태 + DayPlanCard `remember` perf + 활동 a11y + history COUNT window + `user_profile_history` 복합인덱스 + 계정삭제 orphan reaper(Container Apps Job 주간 cron) + 재발방지 런북 (PR #126/#127)
+- [x] **v0.1.17** — 공개 출시 전 7-도메인 전체 감사(출시차단 0건) — Rule 8 inline 에러 배너(Onboarding·Home·Profile) + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 프로필 경계 테스트 + account_service 로그 구조화 + 개인정보/계정삭제 백엔드 공개 라우트(`GET /privacy`·`/account-deletion`, md→HTML) + 문서 드리프트 정정 (PR #128)
+- [x] **v0.1.18** — 출시 재업로드 — versionCode 31 Play 중복 거부(INC-2026-06-19-28) → 32 재빌드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13)
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시

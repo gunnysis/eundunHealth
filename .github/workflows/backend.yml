@@ -236,11 +236,14 @@ jobs:
           echo "All required Key Vault secrets present: $REQUIRED"
 
       # backend/containerapp.yaml 이 scale/probes/secrets(KeyVault)/registries(MI) 단일 출처.
-      # 이미지 태그만 주입 후 --yaml 적용 (--image/--set-env-vars 흡수).
+      # 이미지 태그 + 구독 GUID 주입 후 --yaml 적용 (--image/--set-env-vars 흡수).
+      # __SUBSCRIPTION_ID__ 는 az 로그인 컨텍스트에서 해석 — public repo 에 구독 GUID 비커밋.
       - name: Deploy to Container App
         run: |
           # deploy job 의 working-directory 가 backend/ 이므로 경로는 backend-relative.
-          sed "s|__IMAGE__|${IMAGE_TAG}|" containerapp.yaml > /tmp/containerapp.rendered.yaml
+          SUB_ID=$(az account show --query id -o tsv)
+          sed -e "s|__IMAGE__|${IMAGE_TAG}|" -e "s|__SUBSCRIPTION_ID__|${SUB_ID}|g" \
+            containerapp.yaml > /tmp/containerapp.rendered.yaml
           az containerapp update \
             --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --yaml /tmp/containerapp.rendered.yaml

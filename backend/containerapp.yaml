@@ -3,7 +3,8 @@
 #   1) probes x3 (startup/liveness=/health, readiness=/health/ready)
 #   2) secrets -> Key Vault references (identity: system, no secret values committed)
 #   3) registries -> managed identity pull (admin password method removed)
-# CI substitutes `__IMAGE__` -> ${ACR}/eundunhealth-api:${SHA::7}.
+# CI substitutes `__IMAGE__` -> ${ACR}/eundunhealth-api:${SHA::7} and
+# `__SUBSCRIPTION_ID__` -> `az account show --query id` (public repo: no subscription GUID committed).
 # IMPORTANT: keep comments ASCII-only. `az ... --yaml` reads this file with the OS
 # locale codec (cp949 on Korean Windows) and fails on non-ASCII bytes; CI (Ubuntu UTF-8) is fine.
 identity:
@@ -11,7 +12,7 @@ identity:
 location: Korea Central
 name: eundunhealth-api
 properties:
-  managedEnvironmentId: /subscriptions/6890144c-c79e-46fc-a830-33335e8b4165/resourceGroups/apps/providers/Microsoft.App/managedEnvironments/eundunhealth-env
+  managedEnvironmentId: /subscriptions/__SUBSCRIPTION_ID__/resourceGroups/apps/providers/Microsoft.App/managedEnvironments/eundunhealth-env
   workloadProfileName: Consumption
   configuration:
     activeRevisionsMode: Single

@@ -31,7 +31,8 @@ set -euo pipefail
 export MSYS_NO_PATHCONV=1
 
 # ── Constants ──────────────────────────────────────────────
-SUB_ID="6890144c-c79e-46fc-a830-33335e8b4165"
+# 구독 GUID 는 커밋하지 않는다(public repo) — az 로그인 컨텍스트에서 해석, env 로 override 가능.
+SUB_ID="${SUB_ID:-$(az account show --query id -o tsv)}"
 RG="apps"
 LOCATION="koreacentral"
 EMAIL="qkr133456@gmail.com"

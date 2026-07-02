@@ -419,7 +419,6 @@ versionCode 는 저장소 로컬 +1(`bump-version.sh`) 만으로는 안전하지
 - `@docs/ops/azure-container-apps-jobs.md` — Container Apps **Job**(private ACR + KV + MI) 프로비저닝 재현 패턴 + 함정 회피(E1~E4: az `--args` leading-dash / system MI chicken-egg → UAI-first / 개인 MSA RBAC CLI 불가 → 포털·SP / job `--registry-identity` CLI 버그 → `--yaml`). orphan reaper 워크드 예시
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
 - `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.4 (Hilt 2.59.3+ 출시 대기 + build.gradle.kts DSL 마이그레이션 필요)
-- `@docs/ops/containerapp-env-ktor-backup.json` — cutover 직전 env 스냅샷 (historical)
 - `@docs/conventions/naming.md` — 명명/문서화 SSoT (5종 공식 가이드 + 본 프로젝트 결정 D1~D10)
 - `@docs/conventions/versioning.md` — 버전 관리 SSoT (앱 `version.properties` + 백엔드 `__version__` 독립 / semver 정책 / versionCode 규칙 / bump 절차 / 프론트 표시 / drift 방지)
 

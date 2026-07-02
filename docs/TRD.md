@@ -9,14 +9,14 @@
 
 ## 구현 후 변경 사항 (v0.1.0 → v0.1.15)
 
-본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.15 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
+본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.18 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
-| 영역 | TRD v1.0 | 현재 (v0.1.15) |
+| 영역 | TRD v1.0 | 현재 (v0.1.18) |
 |------|----------|------------|
 | Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.137.1 (Python 3.12)** + uvicorn |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0 async + asyncpg** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (81 PASS, cov ~97% / coverage core `sysmon`) |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (87 PASS, cov ~97% / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API | RapidAPI ExerciseDB | **OSS** `oss.exercisedb.dev` (인증 불필요) |
 | Supabase 리전 | (US) | **Korea (project `ttzzbfoksncqazvcsfiu`)** |
@@ -25,14 +25,14 @@
 | 차트 라이브러리 | 미사용 | **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix — v0.1.5 #54 에서 1.1.0 도입 → 1.2.1 → PR #123 에서 1.3.1) |
-| versionCode / versionName | (미정) | **30 / 0.1.16** — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| versionCode / versionName | (미정) | **32 / 0.1.18** — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
 | Alembic head | (미정) | `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
 
 신규 도메인 / 화면 (v0.2·v0.3): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, 비밀번호 재설정.
 
-v0.1.1~v0.1.15 누적 (Android UI + Auth + Backend 안정화):
+v0.1.1~v0.1.18 누적 (Android UI + Auth + Backend 안정화):
 - v0.1.1 (#40) signup 가입 이메일 확인 흐름 + 인증 상태 모델 리팩터 (`SessionState` / `AuthOpState` / `SignupState` 분리)
 - v0.1.2 (#41) supabase-kt 3.6.0 `SupabaseEncodingException` 처리 hotfix
 - v0.1.3 (#42) Android App Links 자동 로그인 (intent-filter autoVerify + supabase-kt `handleDeeplinks` + assetlinks.json + `/auth/confirm` fallback)
@@ -49,6 +49,9 @@ v0.1.1~v0.1.15 누적 (Android UI + Auth + Backend 안정화):
 - v0.1.13 (#107~#112) 코드베이스 리팩토링 5번들 — `WeeklyPlanGenerator` 추출(알고리즘 분리) + JWT 검증 `except` 좁히기(JWKS 장애→503) + detekt baseline 단일화 + `UserProfile` body metrics `Float?` 정합 + UI 중복 제거(`LineChart`/`ResendConfirmationController`/`BodyMetricsSliders`). 사용자 동작 변화 없음.
 - v0.1.14 (#122) 출시 준비 종합 — R8 Gson keep 갭(빈 운동계획 결정론적 근본수정·패키지 단위 keep) + `manuallySet` 수동우선(토글 해제 보존) + 4-에이전트 전수감사(완료정합·입력검증 500→400·토큰갱신 동시성·운동상세·캐시/KST·폴리시) + `ProguardKeepRulesTest` + 룰 12.
 - v0.1.15 (#123) 감사 LOW 후속 — `ObserveAsEvents` 헬퍼(7 Screen, 룰 11 정합) + alembic rest_day `server_default` 일관화(`c849579de6c4`) + CORS 와일드카드 차단(`allow_origins=[]`) + starlette 1.3.1 CVE bump.
+- v0.1.16 (#126/#127) 출시 후 심층 감사 개선 — JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`) + 무테스트 ViewModel 특성화 테스트 + GoalScreen 에러상태 + DayPlanCard `remember` perf + 활동 a11y + history COUNT `count(*) over()` 1쿼리화 + `user_profile_history (user_id, recorded_at)` 복합 인덱스(`b78b256c2b20`) + 계정삭제 orphan reaper(Container Apps Job 주간 cron).
+- v0.1.17 (#128) 공개 출시 전 7-도메인 전체 감사(출시차단 0건) — Rule 8 inline 에러 배너(Onboarding·Home·Profile) + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 프로필 경계 테스트 + account_service 로그 구조화 + 개인정보/계정삭제 백엔드 공개 라우트(`GET /privacy`·`/account-deletion`, md→HTML) + 문서 드리프트 정정.
+- v0.1.18 출시 재업로드 — versionCode 31 Play 중복 거부(INC-2026-06-19-28) → 32 재빌드(**앱 동작 변화 없음**=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13).
 
 ---
 

@@ -192,7 +192,7 @@ az postgres flexible-server firewall-rule create \
 
 # 2) 작업 (alembic / SQL)
 cd backend
-export DATABASE_URL="postgresql+asyncpg://gunny:****@healthapp.postgres.database.azure.com:5432/postgres?ssl=require"
+export DATABASE_URL="postgresql+asyncpg://<db-admin-user>:****@healthapp.postgres.database.azure.com:5432/postgres?ssl=require"
 .venv/Scripts/alembic upgrade head
 
 # 3) 반드시 회수 (성공/실패 무관)

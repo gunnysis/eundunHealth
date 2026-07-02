@@ -40,11 +40,11 @@
 ```
 # Ktor (JDBC + 별도 user/password)
 AZURE_DB_URL=jdbc:postgresql://healthapp.postgres.database.azure.com:5432/postgres?ssl=true&sslmode=require
-AZURE_DB_USER=gunny
+AZURE_DB_USER=<db-admin-user>
 AZURE_DB_PASSWORD=<password>
 
 # FastAPI (asyncpg, 단일 URL)
-DATABASE_URL=postgresql+asyncpg://gunny:<password>@healthapp.postgres.database.azure.com:5432/postgres?ssl=require
+DATABASE_URL=postgresql+asyncpg://<db-admin-user>:<password>@healthapp.postgres.database.azure.com:5432/postgres?ssl=require
 ```
 
 **변환 규칙**:
@@ -87,13 +87,14 @@ az postgres flexible-server backup list \
   --name healthapp
 
 # 필요 시 수동 백업 — 로컬 pg_dump (네트워크 허용 필요)
-pg_dump "postgres://gunny:<password>@healthapp.postgres.database.azure.com:5432/postgres?sslmode=require" \
+pg_dump "postgres://<db-admin-user>:<password>@healthapp.postgres.database.azure.com:5432/postgres?sslmode=require" \
   > backup-pre-fastapi-$(date +%Y%m%d-%H%M%S).sql
 ```
 
 ### 2.3 Container App 현재 환경변수 스냅샷
 
 ```bash
+# 출력 스냅샷은 로컬 보관 전용 — DB 호스트/계정명이 담기므로 repo 에 커밋 금지(public repo)
 az containerapp show --name eundunhealth-api --resource-group apps \
   --query "properties.template.containers[0].env" -o json \
   > containerapp-env-ktor-backup.json
@@ -110,7 +111,7 @@ az containerapp show --name eundunhealth-api --resource-group apps \
 ```bash
 # 로컬에서 프로덕션 DB에 stamp 실행 (1회만)
 cd backend
-export DATABASE_URL="postgresql+asyncpg://gunny:<password>@healthapp.postgres.database.azure.com:5432/postgres?ssl=require"
+export DATABASE_URL="postgresql+asyncpg://<db-admin-user>:<password>@healthapp.postgres.database.azure.com:5432/postgres?ssl=require"
 .venv/Scripts/alembic stamp head
 ```
 
@@ -118,7 +119,7 @@ export DATABASE_URL="postgresql+asyncpg://gunny:<password>@healthapp.postgres.da
 
 ```bash
 # alembic_version 테이블이 생성되고 현재 버전이 기록되어야 함
-psql "postgres://gunny:<password>@healthapp.postgres.database.azure.com:5432/postgres?sslmode=require" \
+psql "postgres://<db-admin-user>:<password>@healthapp.postgres.database.azure.com:5432/postgres?sslmode=require" \
   -c "SELECT * FROM alembic_version;"
 ```
 
@@ -175,7 +176,7 @@ az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api
 # 1) 새 시크릿 등록
 az containerapp secret set --name eundunhealth-api --resource-group apps \
   --secrets \
-    "database-url=postgresql+asyncpg://gunny:<password>@healthapp.postgres.database.azure.com:5432/postgres?ssl=require" \
+    "database-url=postgresql+asyncpg://<db-admin-user>:<password>@healthapp.postgres.database.azure.com:5432/postgres?ssl=require" \
     "supabase-service-role-key=<service_role_key>" \
     "sentry-dsn-backend=<new_or_existing_dsn>"
 
@@ -254,7 +255,7 @@ az containerapp update --name eundunhealth-api --resource-group apps \
   --image "eundunhealthacr.azurecr.io/eundunhealth-api:ktor-final" \
   --set-env-vars \
     "AZURE_DB_URL=jdbc:postgresql://healthapp.postgres.database.azure.com:5432/postgres?ssl=true&sslmode=require" \
-    "AZURE_DB_USER=gunny" \
+    "AZURE_DB_USER=<db-admin-user>" \
     "AZURE_DB_PASSWORD=secretref:azure-db-password" \
     "SUPABASE_JWT_SECRET=secretref:supabase-jwt-secret" \
     "SUPABASE_URL=secretref:supabase-url" \
