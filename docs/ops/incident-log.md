@@ -390,7 +390,7 @@ ERROR: (ContainerAppSecretRefNotFound) SecretRef 'supabase-url' defined for cont
 | 14 Supabase orphan | CLAUDE.md 룰 5 + monitoring §6.4 | 정책 |
 | 15 Container App secret | monitoring §6.2 4단계 패턴 + PR template | secret 변경 시 |
 | 16 Sentry CLI warning | 수용 (무해) | — |
-| 17 AZURE_CREDENTIALS 부재 | ✅ `scripts/register-azure-credentials.ps1` + monitoring §6.7 + 운영자 1회 실행 | SP 만료 갱신 |
+| 17 AZURE_CREDENTIALS 부재 | ✅ `scripts/register-azure-credentials.ps1` + monitoring §6.7 + 운영자 1회 실행 | ~~SP 만료 갱신~~ 소멸(2026-07-03 OIDC 전환 + secret 완전 제거 — 스크립트는 긴급 폴백 전용) |
 | 18 supabase-url secret 누락 | ✅ `backend.yml` "Verify required Container App secrets" step + `workflow_dispatch` + monitoring §6.6 + CLAUDE.md 룰 6 + PR template Backend 섹션 | 모든 deploy + PR 단계 |
 | 공통 | ✅ `.github/PULL_REQUEST_TEMPLATE.md` destructive-ops 체크리스트 | 모든 PR |
 

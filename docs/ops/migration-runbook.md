@@ -302,7 +302,7 @@ az containerapp ingress traffic set --name eundunhealth-api --resource-group app
 - `az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api`로 untagged manifest 누적 확인. 필요 시 `az acr manifest delete`로 정리.
 - Azure PostgreSQL 백업 정책(PITR retention) 확인 및 비용 모니터링.
 - Sentry 백엔드 DSN: ✅ 2026-05-25에 별도 프로젝트 `eundunhealth-backend`로 분리됨. Container App secret `sentry-dsn-backend`로 활성. (INC-09 후속)
-- GitHub Actions `AZURE_CREDENTIALS` SP credential은 2년 만료. 6개월 전 알림은 `monitoring-and-cost.md §5`+`§6.7` 참조.
+- ~~GitHub Actions `AZURE_CREDENTIALS` SP credential은 2년 만료~~ — **소멸(2026-07-03)**: OIDC 연합 전환 + secret 완전 제거로 만료 점검 불요. `monitoring-and-cost.md §6.7` 참조.
 
 ### 마이그레이션 사후 발견 사항 (2026-05-25, 자동 배포 첫 동작 시)
 

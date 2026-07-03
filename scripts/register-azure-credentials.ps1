@@ -1,8 +1,16 @@
 <#
-GitHub Actions의 AZURE_CREDENTIALS secret 등록 / 갱신.
+GitHub Actions의 AZURE_CREDENTIALS secret 등록 / 갱신 — **긴급 폴백 전용 (2026-07-03~)**.
 
-backend.yml의 Build, Scan & Deploy job이 azure/login@v2로 사용하는 service
-principal JSON을 생성/패치하고 GitHub repository secret으로 등록한다.
+2026-07-02 OIDC 연합 전환(PR #141/#142) 후 워크플로 Azure 로그인은 federated
+credential(`github-main`) 기반이며, 상시 AZURE_CREDENTIALS secret 은 2026-07-03
+완전 제거됨(GitHub secret + Entra 앱 비밀번호). 본 스크립트는 다음 경우에만 실행:
+  - OIDC 장애 시 임시 복귀 — 워크플로 azure/login 을 creds: 방식으로 revert 한 뒤
+    본 스크립트로 SP credential 재생성 + secret 재등록 (기존 secret 불요, 매 실행 reset)
+  - SP 역할(AcrPush 등) 재부여/점검
+상세: docs/ops/monitoring-and-cost.md §6.7.
+
+backend.yml의 Build, Scan & Deploy job이 (구 방식에서) azure/login@v2로 사용하는
+service principal JSON을 생성/패치하고 GitHub repository secret으로 등록한다.
 
 참조 인시던트: docs/ops/incident-log.md INC-2026-05-25-17.
 

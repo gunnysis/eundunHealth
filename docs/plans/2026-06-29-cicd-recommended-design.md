@@ -150,8 +150,8 @@ deploy job 의 `permissions` 에 `id-token: write` 추가 + `azure/login@v3` 의
 | 사전 | federated credential 이 MSA CLI 로 생성되는가 | ✅ **MEASURED**: `az ad app federated-credential create`(`github-main`) 성공 — Graph 경로라 MSA 제약 미적용, 포털 불필요 확정 |
 | 1단계 | warm-baseline `workflow_dispatch` 수동 실행 green | ✅ **MEASURED**: run 28572203623 — `Azure login (OIDC)` success. dispatch sub claim = main ref 실증(§9.1 F4 의 미명시 해소) |
 | 2단계 | backend.yml 머지 → deploy run green + prod `/health` 200 | ✅ **MEASURED**: run 28572684503 — 4 job 전부 success(OIDC 로그인→ACR push→KV precheck→containerapp update→Health check) + 독립 curl `/health`·`/health/ready` 200 |
-| 사후① | cron 자동 실행 green | ⏳ DEFERRED — **첫 OIDC cron = 07-03**. 주의 2가지(MEASURED): ① 07-02 04:32Z schedule run 은 P2-1 머지(07:10Z) **이전** = 구 creds 경로라 증거 아님 ② cron 명목 KST 09:17 이나 실측 시작 = **13:28~14:02 KST**(직근 8 run, GitHub schedule 지연 4.2~4.7h) → 오후에 `gh run list --workflow warm-baseline-check.yml` 확인 |
-| 사후② | `AZURE_CREDENTIALS` 미사용 확인 후 제거 여부 결정 | ⏳ DEFERRED — OIDC 2주 안정 후(D7, ~07-16). SP secret 만료 2027-05 라 잔존 무해. **제거 시 동시 갱신 3곳**(룰 6 패턴 — 드리프트 예방): ① `scripts/register-azure-credentials.ps1` 폐기/용도 재정의 ② CLAUDE.md "Secret 등록 / SP 만료 갱신" 절 ③ `operations-snapshot.md` deploy 전제(`AZURE_CREDENTIALS` 필요 문구)·SP 만료 점검 명령 |
+| 사후① | cron 자동 실행 green | ✅ **MEASURED(2026-07-03)**: schedule run 28637885468(07-03 13:12 KST 시작, 27s) success + run 로그 `Azure CLI login succeeds by using OIDC` 직접 확인 — schedule 트리거에서 federated credential `github-main` 정상 동작 최종 증거 |
+| 사후② | `AZURE_CREDENTIALS` 미사용 확인 후 제거 여부 결정 | ✅ **제거 완료(2026-07-03)** — D7 의 ~07-16 게이트를 조기 종결: 근거 = ① push deploy(28572684503)·schedule cron(28637885468) 양 트리거 OIDC 실측 green(사용 컨텍스트 100% 커버) ② 워크플로 grep 참조 0건 ③ 롤백이 기존 secret 에 무의존(스크립트가 매 실행 credential reset — 잔존의 롤백 가치 없음). **GitHub secret + Entra 앱 비밀번호(keyId cef34a8e, 만료 2027-05) 모두 삭제** + 동시 갱신 3곳(스크립트 헤더 폴백 재정의·CLAUDE.md Azure 로그인 절·operations-snapshot §8/분기 점검) + monitoring-and-cost §5/§6.7·migration-runbook·incident-log 매트릭스 |
 
 ### 6.3 정량 표현 라벨 총괄 (룰 9)
 

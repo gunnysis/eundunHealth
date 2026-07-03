@@ -209,7 +209,7 @@ Alert 룰 (총 8개 — `scripts/setup-sentry-alerts.ps1` 으로 설정, 2026-06
 GitHub Actions:
 - **`.github/workflows/backend.yml`** — `backend/**` 또는 `backend.yml` 변경 시: ruff + mypy + pytest + Codecov → docker compose runtime smoke (INC-03 차단) → pip-audit + bandit + gitleaks → (main push) Trivy + ACR push + **secret precheck (INC-18 차단)** → Container App 배포 → /health
   - `workflow_dispatch` 지원 — 수동 실행 가능 (`gh workflow run backend.yml --ref main`)
-  - Azure 로그인 = **OIDC federated**(P2, PR #142 — secrets `AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID`). 구 `AZURE_CREDENTIALS` 는 롤백 보험으로 잔존(제거 결정 ~07-16, CI/CD design §6.2 사후②)
+  - Azure 로그인 = **OIDC federated**(P2, PR #142 — secrets `AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID`). 구 `AZURE_CREDENTIALS` 는 **2026-07-03 완전 제거**(GitHub secret + Entra 앱 비밀번호 credential 모두 — push deploy·schedule cron 양 트리거 OIDC 실측 green 후 조기 종결, CI/CD design §6.2 사후②). OIDC 장애 시 롤백 = 워크플로 yml revert + `pwsh -File scripts/register-azure-credentials.ps1`(SP credential 재생성+재등록, 기존 secret 불요)
 - **`.github/workflows/android.yml`** — `app/**` 변경 시 spotlessCheck + **collectAsState anti-pattern 검사** (룰 11) + detektDebug + testDebugUnitTest + assembleDebug + PR이면 APK artifact 업로드
 - **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`update-upload-ledger.sh`, 룰 13). 프로덕션 승격은 Console 수동. 설계: `docs/plans/2026-07-02-android-cd-play-upload-design.md`
 - **`.github/dependabot.yml`** — pip + github-actions + gradle 주간 PR (KST 월 06:00, 보안 패치는 단일 PR로 그룹화)
@@ -218,7 +218,7 @@ GitHub Actions:
 - **`scripts/preflight-release.sh`** — Spotless + Detekt + Tests + `releaseArtifacts`(AAB+APK 동시) 일괄 (INC-04 차단)
 - **`scripts/bump-version.sh`** — 앱 버전 bump (versionName + versionCode +1 + semver/단조 가드 + 문서 동기화, `--dry-run`). 정책: `docs/conventions/versioning.md`
 - **`scripts/alembic-autogen.sh`** — postgres:16-alpine 컨테이너에 autogen 실행 (INC-07 차단)
-- **`scripts/register-azure-credentials.ps1`** — SP 생성/패치 + AcrPush role + GitHub secret 등록 (INC-17 운영자 1회/만료 갱신용)
+- **`scripts/register-azure-credentials.ps1`** — SP 생성/패치 + AcrPush role + GitHub secret 등록. **2026-07-03 이후 = OIDC 장애 시 긴급 폴백·SP 역할 관리 전용** (상시 `AZURE_CREDENTIALS` secret 은 제거됨)
 - **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11)
 
 ---
@@ -268,10 +268,8 @@ az consumption usage list --start-date $(date -d '-30 days' +%Y-%m-%d) --end-dat
 ### 분기별
 
 ```bash
-# Service principal credential 만료 점검 (AZURE_CREDENTIALS, INC-17)
-# clientId는 az ad sp list --display-name eundunhealth-github-deploy로 찾을 수 있음
-az ad sp credential list --id <clientId> --query "[].endDate" -o tsv
-# 6개월 이내 만료라면: pwsh -File scripts\register-azure-credentials.ps1 -Verify
+# (소멸 2026-07-03) SP credential 만료 점검 — OIDC 전환 + AZURE_CREDENTIALS 완전 제거로
+# 만료되는 장수명 secret 이 더 이상 없음. federated credential 은 만료 개념 없음.
 
 # 옛 untagged manifest 누적 확인 (Basic SKU에선 직접 삭제 불가)
 az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api \

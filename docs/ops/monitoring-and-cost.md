@@ -145,7 +145,7 @@ az consumption budget create \
 - [ ] PostgreSQL slow query 확인: Azure Portal → Insights
 - [ ] 월간 비용 actual vs budget 비교
 - [ ] Azure Monitor alert 확인: `az monitor metrics alert list -g apps -o table` + `az monitor activity-log alert list -g apps -o table` (8개 enabled)
-- [ ] (분기별) GitHub Actions `AZURE_CREDENTIALS` service principal 만료 점검 — `az ad sp credential list --id <clientId> --query "[].endDate"`. 만료 6개월 전이면 갱신 (`az ad sp credential reset` + `gh secret set`). 참고: `docs/ops/incident-log.md` INC-17.
+- [x] ~~(분기별) GitHub Actions `AZURE_CREDENTIALS` service principal 만료 점검~~ — **소멸(2026-07-03)**: OIDC 연합 전환(PR #141/#142) + `AZURE_CREDENTIALS` 완전 제거(GitHub secret + Entra 앱 비밀번호)로 만료되는 장수명 secret 없음. §6.7 참조.
 
 ## 6. Destructive 명령 안전 패턴
 
@@ -234,19 +234,19 @@ PR 머지 후 첫 push에서 deploy job의 **"Verify required Container App secr
 
 > **새 필수 secret을 추가했다면** `backend.yml`의 "Verify required Container App secrets exist" step의 `REQUIRED` 문자열에도 그 secret 이름을 추가해야 한다. 누락 시 사전 점검을 우회.
 
-### 6.7 GitHub repo secret 만료 (참고: INC-17)
+### 6.7 GitHub repo secret 만료 (참고: INC-17) — 2026-07-03 소멸
 
-`AZURE_CREDENTIALS`(service principal JSON)는 기본 2년 만료. 만료 6개월 전이 되면 다음 명령으로 점검:
+~~`AZURE_CREDENTIALS`(service principal JSON)는 기본 2년 만료~~ → **OIDC 연합 전환(PR #141/#142) 후 2026-07-03 완전 제거**(GitHub secret + Entra 앱 비밀번호 credential 모두). Azure 로그인은 federated credential `github-main`(subject=`repo:gunnysis/eundunHealth:ref:refs/heads/main`) 기반 단기 토큰 — **만료 개념 없음**, 분기별 점검 불요.
+
+OIDC 장애 시 긴급 폴백(장수명 secret 방식으로 임시 복귀):
 
 ```bash
-# clientId 확인 (필요 시 az ad sp list로 찾기)
-az ad sp credential list --id <clientId> --query "[].endDate" -o tsv
-
-# 갱신: 스크립트 한 줄로 SP secret + GitHub secret 동시 재발급
+# 1) 워크플로 revert: azure/login 을 creds: ${{ secrets.AZURE_CREDENTIALS }} 방식으로 되돌림
+# 2) SP credential 재생성 + GitHub secret 재등록 (기존 secret 불요 — 스크립트가 reset)
 pwsh -File scripts\register-azure-credentials.ps1 -Verify
 ```
 
-스크립트가 SP를 patch 모드로 동작하므로 GitHub Actions 측은 secret만 새 JSON으로 덮어쓰면 바로 동작. 이전 SP secret은 자동 invalidate.
+스크립트가 SP를 patch 모드로 동작하므로 GitHub Actions 측은 secret만 새 JSON으로 덮어쓰면 바로 동작.
 
 ### 6.8 destructive 명령 실행 전 5-second sanity check
 

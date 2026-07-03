@@ -77,11 +77,13 @@ FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eu
 
 **Android 출시 (자동 — Play 내부 트랙)** — 태그 `v*` push 로 `release.yml` 이 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB → Play **내부 트랙** 업로드 → 원장 자동 갱신 커밋까지 수행. environment `play-release`(required reviewer) 승인 게이트. 프로덕션 승격은 Play Console 수동. 사전 검증: `gh workflow run release.yml`(dry_run 기본 true = 업로드 생략). 절차·실패 대응: `docs/ops/play-store-release.md` §7. 수동 업로드 폴백 시 원장 수동 갱신 필수(룰 13).
 
-**Secret 등록 / SP 만료 갱신** — `AZURE_CREDENTIALS` 등록 또는 service principal credential 만료 시:
+**Azure 로그인 (CI)** — OIDC 연합(PR #141/#142, 2026-07-02)이 유일 경로: `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` secrets + federated credential `github-main`. 장수명 `AZURE_CREDENTIALS` 는 **2026-07-03 완전 제거됨**(GitHub secret + Entra 앱 비밀번호 — 만료 점검 불요). OIDC 장애 시 긴급 폴백만:
 ```powershell
+# 1) 워크플로 azure/login 을 creds: 방식으로 revert 후
+# 2) SP credential 재생성 + secret 재등록 (기존 secret 불요 — 매 실행 reset)
 pwsh -File scripts\register-azure-credentials.ps1 -Verify
 ```
-> 2026-07-02 OIDC 전환(PR #141/#142) 후 워크플로는 `AZURE_CREDENTIALS` 를 더 이상 사용하지 않는다(로그인 = `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` + federated credential). 위 스크립트는 SP 자체(AcrPush 역할 등) 관리용으로만 유효 — secret 완전 제거는 결정 대기 중.
+> 위 스크립트는 긴급 폴백 + SP 역할(AcrPush 등) 관리용. 상세: `monitoring-and-cost.md §6.7`.
 
 Docker development location: `C:\programming\docker\eundunhealth-api`
 
