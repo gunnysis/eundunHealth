@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 출시 버전 v0.1.18 (versionCode 32). 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성)
+- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 프로덕션 버전 v0.1.18 (versionCode 32), 내부 트랙 최신 v0.1.19/33(2026-07-03, 태그 push → `release.yml` 자동 CD). 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성)
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -361,7 +361,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 | 문서 | 내용 |
 |------|------|
-| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 (v0.1.0 ~ v0.1.18) |
+| [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 |
 | [버전 관리](docs/conventions/versioning.md) | 앱/백엔드 버전 SSoT · semver 정책 · bump 절차 |
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
@@ -382,7 +382,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.18` (versionCode `32`) — **Google Play 프로덕션 정식 출시(LIVE, 2026-06-29 승인)**. v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, **앱 동작 변화 없음**=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128). 직전 v0.1.16 = 출시 후 심층 감사 개선(JWKS 오프로드 · 무테스트 VM 테스트 · Goal 에러상태 · DayPlanCard perf · 활동 a11y · history COUNT window · `user_profile_history` 복합인덱스 · 계정삭제 orphan reaper Container Apps Job, PR #126/#127)
+**현재 버전** — `0.1.19` (versionCode `33`) — **Google Play 프로덕션 정식 출시(LIVE, 2026-06-29 승인)**, 프로덕션 = v0.1.18/32, 내부 트랙 최신 = v0.1.19/33. v0.1.19 = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
 
 ### 마일스톤 진행
 
@@ -412,6 +412,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.16** — 출시 후 심층 감사 개선 — JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`) + 무테스트 ViewModel 테스트 + GoalScreen 에러상태 + DayPlanCard `remember` perf + 활동 a11y + history COUNT window + `user_profile_history` 복합인덱스 + 계정삭제 orphan reaper(Container Apps Job 주간 cron) + 재발방지 런북 (PR #126/#127)
 - [x] **v0.1.17** — 공개 출시 전 7-도메인 전체 감사(출시차단 0건) — Rule 8 inline 에러 배너(Onboarding·Home·Profile) + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 프로필 경계 테스트 + account_service 로그 구조화 + 개인정보/계정삭제 백엔드 공개 라우트(`GET /privacy`·`/account-deletion`, md→HTML) + 문서 드리프트 정정 (PR #128)
 - [x] **v0.1.18** — 출시 재업로드 — versionCode 31 Play 중복 거부(INC-2026-06-19-28) → 32 재빌드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13)
+- [x] **v0.1.19** — Android CD 첫 자동 출시(내부 트랙) — 태그 push → `release.yml`(preflight 게이트 → 서명 AAB → Play 내부 트랙 업로드 → 원장 자동 갱신) 실 e2e 실증 + 의존성 배치(#139) + release 서명 keystore 존재-조건부화(INC-2026-07-02-29). 사용자 가시 동작 변화 없음 (PR #143)
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시

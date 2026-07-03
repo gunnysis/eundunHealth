@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
 > 작성일: 2026-05-25 / 최근 갱신: **2026-07-03 — v0.1.19/33 = Android CD(release.yml) 첫 실 e2e 성공(내부 트랙 업로드 + 원장 자동 갱신 실증) + AZURE_CREDENTIALS 완전 제거(OIDC 전용화)** (이전: 2026-07-02 Play 프로덕션 정식 출시 반영 + repo public 전환 + dependabot 정리 + CodeQL 근본수정)
-> 작성 기준: v0.1.18 (versionCode 32) — **Google Play 프로덕션 LIVE(2026-06-29)**. 출시 재업로드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드. 이전 v0.1.17: 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너[Onboarding·Home·Profile] + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 경계 테스트 2 + account_service 로그 구조화 + 문서 드리프트 정정) (이전: v0.1.16 출시 후 심층 감사 개선 A~E + Tier2/3 PR #126·#127 / v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
+> 작성 기준: v0.1.19 (versionCode 33, 내부 트랙) — **Google Play 프로덕션 LIVE = v0.1.18/32(2026-06-29)**. v0.1.19 = Android CD 첫 실 e2e(release.yml, 사용자 가시 동작 변화 없음). 이전 v0.1.18: 출시 재업로드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드. 이전 v0.1.17: 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너[Onboarding·Home·Profile] + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 경계 테스트 2 + account_service 로그 구조화 + 문서 드리프트 정정) (이전: v0.1.16 출시 후 심층 감사 개선 A~E + Tier2/3 PR #126·#127 / v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -22,13 +22,13 @@
 | Sentry SDK | Android 8.43.2 / Gradle plugin 6.12.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (v0.1.18 빌드 기준 — **단일 정규 위치**):
+산출물 경로 (로컬 최신 = v0.1.18 빌드 기준 — **단일 정규 위치**. v0.1.19/33 은 `release.yml` CI 러너에서 빌드·업로드돼 로컬 산출물 없음):
 - AAB: `app/build/outputs/bundle/release/app-release.aab` (8.35 MB) — Play 업로드 대상
 - APK: `app/build/outputs/apk/release/app-release.apk` (5.97 MB)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 `af1a233a` 자동 업로드)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: 프로덕션 정식 출시(LIVE).** 2026-06-29 Google Play 프로덕션 출시·승인 완료(회원님 확인). 출시 버전 = **v0.1.18/32** (2026-06-19 preflight 산출물, AAB 8.35MB·APK 5.97MB·Sentry 매핑 `af1a233a`). 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=32` — 다음 릴리스 versionCode ≥ 33(룰 13 가드). **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Supabase 교체·TRUNCATE 금지), 스키마 변경은 alembic 마이그레이션만. 백엔드는 자동 배포로 운영(앱과 독립).
+> **출시 상태: 프로덕션 정식 출시(LIVE).** 2026-06-29 Google Play 프로덕션 출시·승인 완료(회원님 확인). 출시 버전 = **v0.1.18/32** (2026-06-19 preflight 산출물, AAB 8.35MB·APK 5.97MB·Sentry 매핑 `af1a233a`). 내부 트랙 최신 = **v0.1.19/33**(2026-07-03 release.yml 자동 CD — 프로덕션 승격은 Console 수동). 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=33`(자동 갱신 커밋 `32f0ebe`) — 다음 릴리스 versionCode ≥ 34(룰 13 가드). **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Supabase 교체·TRUNCATE 금지), 스키마 변경은 alembic 마이그레이션만. 백엔드는 자동 배포로 운영(앱과 독립).
 
 ---
 

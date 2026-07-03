@@ -308,7 +308,7 @@ az containerapp ingress traffic set --name eundunhealth-api --resource-group app
 
 PR #15 머지로 GitHub Actions `Build, Scan & Deploy` job이 처음 실제 동작했을 때 두 가지 잠재 결함이 표면화. 둘 다 본 마이그레이션 cutover 당시 `redeploy.sh`(수동 흐름)만 사용해서 노출되지 않은 것:
 
-- **INC-17 `AZURE_CREDENTIALS` 부재** — GitHub repo secret 미등록. `scripts/register-azure-credentials.ps1`로 SP 생성/패치 + AcrPush role + secret 등록 후 해결. SP 만료 갱신도 동일 스크립트.
+- **INC-17 `AZURE_CREDENTIALS` 부재** — GitHub repo secret 미등록. `scripts/register-azure-credentials.ps1`로 SP 생성/패치 + AcrPush role + secret 등록 후 해결. (~~SP 만료 갱신도 동일 스크립트~~ — 2026-07-03 OIDC 전환 + secret 완전 제거로 만료 갱신 개념 소멸, 스크립트는 긴급 폴백 전용)
 - **INC-18 `supabase-url` Container App secret 누락** — `backend.yml`의 `--set-env-vars`가 `secretref:supabase-url`을 참조하나 실제 등록 안 됨. 운영자가 `az containerapp secret set`으로 추가 후 해결. 재발 방지로 `backend.yml`에 "Verify required Container App secrets exist" step + `workflow_dispatch` trigger 추가.
 
 상세 + 복구 절차는 `incident-log.md` INC-2026-05-25-17, -18 참조.
