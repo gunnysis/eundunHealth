@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 프로덕션 버전 v0.1.18 (versionCode 32), 내부 트랙 최신 v0.1.19/33(2026-07-03, 태그 push → `release.yml` 자동 CD). 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성)
+- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 프로덕션 버전 v0.1.19 (versionCode 33) — 2026-07-03 자동 CD(태그 push → `release.yml`, 내부 트랙) 후 같은 날 프로덕션 승격. 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성)
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -382,7 +382,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.19` (versionCode `33`) — **Google Play 프로덕션 정식 출시(LIVE, 2026-06-29 승인)**, 프로덕션 = v0.1.18/32, 내부 트랙 최신 = v0.1.19/33. v0.1.19 = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
+**현재 버전** — `0.1.19` (versionCode `33`) — **Google Play 프로덕션 정식 출시(LIVE)** — 프로덕션 = v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인). v0.1.19 = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
 
 ### 마일스톤 진행
 

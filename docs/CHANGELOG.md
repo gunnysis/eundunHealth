@@ -6,7 +6,7 @@
 
 ## [v0.1.19] — 2026-07-03 — Android CD 첫 자동 출시(내부 트랙) + 의존성 배치
 
-> P4 Android CD(`release.yml`, PR #143)의 첫 실 e2e 릴리스 — 태그 `v*` push → environment `play-release` 승인 → preflight 전체 게이트(룰 2·13·Sentry 매핑) → Play **내부 트랙** 자동 업로드 → 원장 자동 갱신 커밋. 사용자 가시 동작 변화 없음(의존성 업데이트 + 빌드/파이프라인).
+> P4 Android CD(`release.yml`, PR #143)의 첫 실 e2e 릴리스 — 태그 `v*` push → environment `play-release` 승인 → preflight 전체 게이트(룰 2·13·Sentry 매핑) → Play **내부 트랙** 자동 업로드 → 원장 자동 갱신 커밋. 사용자 가시 동작 변화 없음(의존성 업데이트 + 빌드/파이프라인). **같은 날(2026-07-03) Console 수동 승격으로 프로덕션 반영.**
 
 ### 🚀 릴리스 파이프라인
 - 태그 push → Play 내부 트랙 자동 업로드 경로(`release.yml`) 첫 실전 사용. dry-run 3차 green(빌드 8m40s 실측) 후 본 릴리스로 실 업로드 검증.
