@@ -4,6 +4,16 @@
 
 ## Recent (last 90 days)
 
+### 2026-07-03 — CI/CD 권장 개선 P1~P4 완결: concurrency + Azure OIDC(+AZURE_CREDENTIALS 완전 제거) + Android CD(태그 push→Play 내부 트랙) 실 e2e
+
+- **PR**: [#140](https://github.com/gunnysis/eundunHealth/pull/140)(P1) + [#141](https://github.com/gunnysis/eundunHealth/pull/141)/[#142](https://github.com/gunnysis/eundunHealth/pull/142)(P2) + [#143](https://github.com/gunnysis/eundunHealth/pull/143)(P4) + main 직접(`6d9cff7` v0.1.19 릴리스, `ef47514` secret 제거, `f61254d`/`c4b717b` deprecation RCA)
+- **Why**: 2026-06-29 CI/CD 전수 점검 design 의 우선순위 구현 — PR CI 중복 실행 낭비(P1), 장수명 SP secret 보안 부채(P2), Play 업로드 사람 의존 + 원장 갱신 갭 INC-2026-06-19-28(P4). P3(Docker 캐시)는 public 전환·trivy 기본 캐시로 동기 소멸 = 보류, P5 YAGNI.
+- **What**: **P1** — android/backend yml `concurrency`(PR 이벤트만 cancel-in-progress, main push 보존). **P2** — Azure 로그인 OIDC 연합(federated `github-main`, subject=main ref; MSA CLI 로 생성 가능 실증) → push deploy·schedule cron 양 트리거 실측 green 후 **AZURE_CREDENTIALS 완전 제거**(GitHub secret + Entra 앱 비밀번호 keyId cef34a8e — ~07-16 게이트 조기 종결; 근거 = 사용 컨텍스트 100% 실측 + 워크플로 참조 0 + 롤백 스크립트가 매 실행 credential reset 이라 잔존 보험 가치 0. 동시갱신 7파일: 스크립트 헤더 긴급폴백 재정의·CLAUDE.md·snapshot·monitoring §5/§6.7·runbook·incident-log). **P4** — `release.yml`: 태그 `v*` push → environment `play-release` 승인 → preflight 단일 진입(룰 2·13·Sentry 매핑 게이트 상속) → r0adkll v1.1.5 내부 트랙 업로드 → `update-upload-ledger.sh` 원장 자동 커밋. dry-run 리허설 경로(러너-로컬 임시 versionCode + 매핑 생략) 별도. **v0.1.19/33 실 e2e**: preflight까지 전 게이트 1차에 green, Play 업로드만 403 ×2(서비스 계정 권한 전파/수준) → 회원님 Console 권한 조정 후 3차 성공 — **원장 자동 커밋 `32f0ebe`(LAST=33) 실증** = INC-28 사람 의존 갭 자동화로 폐쇄.
+- **Outcome**: run 28641479092 green(빌드 8m40s±). 프로덕션 = v0.1.18/32 유지, 내부 트랙 = v0.1.19/33. 만료되는 장수명 Azure secret 0. 부수 픽스: preflight Sentry 토큰 폴백 set -e 무출력 즉사(`ec7535c`), bump-version.sh 잉여 인자 거부(--dry-run 후치 footgun), r0adkll `track`→`tracks`.
+- **Lessons**: ① **잔존 "롤백 보험" secret 은 롤백 경로가 그 secret 에 의존할 때만 가치** — register 스크립트가 매 실행 credential 을 reset 하므로 보험 가치 0 = 조기 제거 가능(2주 안정 게이트는 트리거 커버리지 실측으로 대체). ② **Play 서비스 계정 403 은 인증 아닌 Console 권한** — 토큰 발급 성공 + Edit 생성 거부 패턴이면 전파 대기(24~48h)나 권한 수준(테스트 트랙 출시) 문제; 재개는 `gh run rerun <id> --failed`(태그 재생성 불요, versionCode 미소비 = 룰 13 안전). ③ **upstream README 예제도 드리프트** — r0adkll 예제가 자기 deprecated 입력(`track`)을 사용 → action 입력은 예제가 아닌 태그 시점 `action.yml` 선언과 대조. ④ 태그 push run 의 rerun 은 **태그 시점 yml** 실행 — 워크플로 픽스는 다음 태그부터 유효. ⑤ dry-run 리허설이 가드(룰 13)와 충돌하면 가드를 끄지 말고 **러너-로컬 임시값**으로 우회(실경로 가드 보존) — 그 리허설이 preflight 잠복버그(`set -e`+grep exit 1 무출력 즉사)까지 잡음.
+- **Files touched**: `.github/workflows/{android,backend,warm-baseline-check,release}.yml`, `scripts/{update-upload-ledger,preflight-release,bump-version,check-version-monotonic}.sh`, `scripts/register-azure-credentials.ps1`, `docs/ops/{play-upload-ledger,operations-snapshot,monitoring-and-cost,migration-runbook,incident-log}.md`, CLAUDE.md/README/PRD/CHANGELOG, `version.properties`
+- **설계 원문**: `2026-06-29-cicd-recommended-design.md` + `2026-07-02-android-cd-play-upload-{design,plan}.md` (본 entry 로 흡수, git rm)
+
 ### 2026-07-02 — repo public 전환(보안감사·스크럽) + open PR 전량 정리 + CodeQL java-kotlin 근본수정 (INC-29)
 
 - **PR**: [#137](https://github.com/gunnysis/eundunHealth/pull/137)(식별자 스크럽) + #138/#139/#132 머지·#130/#131/#133/#134/#135 close + main 직접 `845b65c`(INC-29)
