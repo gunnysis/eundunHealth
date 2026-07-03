@@ -21,6 +21,13 @@ if [ -z "${NEW_NAME}" ]; then
   exit 1
 fi
 
+# 잉여 인자 거부 — `bump-version.sh 0.1.19 --dry-run` 처럼 플래그를 뒤에 붙이면
+# 조용히 무시되고 실제 적용되는 footgun 차단(2026-07-03 실측). --dry-run 은 버전 앞.
+if [ "$#" -gt 1 ]; then
+  echo "ERROR: 인식할 수 없는 잉여 인자: '${2}'. --dry-run 은 버전 앞에 두세요: bash scripts/bump-version.sh --dry-run ${NEW_NAME}" >&2
+  exit 1
+fi
+
 # semver 2.0.0 (pre-release/build metadata 포함) 검증
 SEMVER_RE='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
 if ! [[ "${NEW_NAME}" =~ ${SEMVER_RE} ]]; then

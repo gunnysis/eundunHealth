@@ -4,6 +4,26 @@
 
 ---
 
+## [v0.1.19] — 2026-07-03 — Android CD 첫 자동 출시(내부 트랙) + 의존성 배치
+
+> P4 Android CD(`release.yml`, PR #143)의 첫 실 e2e 릴리스 — 태그 `v*` push → environment `play-release` 승인 → preflight 전체 게이트(룰 2·13·Sentry 매핑) → Play **내부 트랙** 자동 업로드 → 원장 자동 갱신 커밋. 사용자 가시 동작 변화 없음(의존성 업데이트 + 빌드/파이프라인).
+
+### 🚀 릴리스 파이프라인
+- 태그 push → Play 내부 트랙 자동 업로드 경로(`release.yml`) 첫 실전 사용. dry-run 3차 green(빌드 8m40s 실측) 후 본 릴리스로 실 업로드 검증.
+
+### 📦 의존성 (v0.1.18 빌드 이후 누적 — #139·#132)
+- sentry-gradle 6.11.0→6.12.0, Compose BOM →2026.06.00, lifecycle →2.11.0, Gradle →9.6.0, actions/checkout →v7.
+
+### 🔧 빌드/스크립트
+- release 서명 keystore **존재-조건부화**(INC-2026-07-02-29 — CodeQL autobuild 가 clean checkout 에서 release variant 빌드 실패하던 문제; keystore 없으면 unsigned 폴백 + preflight 서명 fail-fast 가드).
+- `bump-version.sh` 잉여 인자 거부 — `--dry-run` 을 버전 뒤에 붙이면 조용히 무시되고 실제 적용되던 footgun 차단.
+- preflight Sentry 토큰 폴백의 `set -e`/pipefail 무출력 즉사 수정(`ec7535c`) — 토큰 없는 로컬 사용자도 겪던 잠복 버그.
+
+### 🔢 버전
+- versionName 0.1.18 → 0.1.19, versionCode 32 → 33.
+
+---
+
 ## [v0.1.18] — 2026-06-19 — 출시 재업로드 + versionCode 단조성 가드
 
 > **🎉 2026-06-29 Google Play 프로덕션 정식 출시(LIVE)** — 본 버전(v0.1.18/32)으로 출시·승인 완료. 이후 2026-07-02 repo public 전환(보안감사·식별자 스크럽 PR #137 + secret scanning·push protection·CodeQL 활성) + CodeQL 대응 release 서명 존재-조건부화(INC-2026-07-02-29, 앱 산출물 변화 없음).
