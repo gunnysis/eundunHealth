@@ -114,6 +114,7 @@ grep 'LAST_UPLOADED_VERSION_CODE=33' /tmp/ledger-test.md
 - 다음 릴리스(v0.1.19)에서 실 e2e: `bump-version.sh` → 태그 push → 워크플로 green → Play Console 내부 트랙 게시 확인 → **원장 자동 커밋 확인**(`git log docs/ops/play-upload-ledger.md`).
 - Sentry 매핑: 새 release 의 mapping UUID 업로드 확인. Play Console deobfuscation 파일 존재 확인(D7).
 - 첫 실행에서 서비스 계정 401/404 시: 권한 전파 대기(§8) — 24h 후 재시도.
+- **실측(2026-07-03, v0.1.19/33 · run 28641479092)**: 태그↔version 가드 → environment 승인 → preflight(서명 AAB+Sentry 매핑) 까지 실전 **green**. Play 업로드만 `The caller does not have permission`(403) ×2 — 서비스 계정 JSON secret 등록(07-02 09:01Z) 후 ~21h 시점 + 직후 재시도 모두 동일. 해소 경로 = Play Console `사용자 및 권한` 에서 서비스 계정 상태(활성/대기)·앱 권한("테스트 트랙에 출시") 확인 + 아무 변경 재저장(전파 촉진 사례 다수) 또는 24~48h 대기 → `gh run rerun 28641479092 --failed` + environment 승인으로 재개(**태그 재생성 불요**, versionCode 33 은 Play 미소비라 룰 13 안전). r0adkll `track`→`tracks` deprecation 경고는 후속 커밋 반영.
 
 ## 잔여 리스크 / 후속 작업
 
