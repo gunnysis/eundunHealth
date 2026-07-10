@@ -8,7 +8,7 @@ fastapi==0.139.0
 # app/main.py registers middleware at module level (post INC-2026-05-24-03), unaffected
 # by starlette 1.x's lifespan policy.
 starlette==1.3.1
-uvicorn[standard]==0.49.0
+uvicorn[standard]==0.50.0
 sqlalchemy[asyncio]==2.0.51
 asyncpg==0.31.0
 alembic==1.18.5
