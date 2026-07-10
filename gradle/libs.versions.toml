@@ -1,6 +1,6 @@
 [versions]
 agp = "9.2.1"
-kotlin = "2.2.10"
+kotlin = "2.4.0"
 coreKtx = "1.19.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
@@ -15,7 +15,7 @@ retrofit = "3.0.0"
 okhttp = "5.3.2"
 coil = "3.4.0"
 navigationCompose = "2.9.8"
-ksp = "2.3.2"
+ksp = "2.3.10"
 sentry = "8.47.0"
 sentryGradle = "6.12.0"
 dataStore = "1.2.1"
@@ -71,7 +71,7 @@ vico-compose-m3 = { module = "com.patrykandpatrick.vico:compose-m3", version.ref
 
 junit = { group = "junit", name = "junit", version = "4.13.2" }
 mockk = { module = "io.mockk:mockk", version = "1.14.11" }
-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = "1.10.2" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = "1.11.0" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
