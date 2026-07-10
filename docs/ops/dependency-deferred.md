@@ -39,6 +39,10 @@ v0.1.0 Internal Testing 직전 안정성 우선으로 보류한 dependabot 의�
 ### 상태 점검 (2026-07-02)
 - dependabot **#133**(kotlin 2.4.0) close — CI **Spotless 실패 실증**(같은 날 public 전환으로 소멸한 artifact-quota 실패와 무관한 실제 호환성 실패). Hilt 최신은 여전히 **2.59.2**(dependabot 이 Hilt bump PR 을 안 만든 것이 간접 증거) → 재개 조건 미충족, deferral 유지. 다음 트리거 = Hilt 2.59.3+/2.60 출시.
 
+### 상태 점검 (2026-07-10)
+- **Hilt 2.60.1 출시 → #148 로 머지** (Kotlin 2.2.10 조합 CI green). 재개 조건 1 은 "출시" 측면 충족 — 단 Hilt 2.60.x 의 Kotlin 2.4 호환 **명시** 여부는 재개 시점에 릴리스 노트로 확인할 것.
+- dependabot **#147**(kotlin 2.4.0 + KSP 2.3.9 + coroutines 1.11.0) close — CI 재실증: Spotless 이전 단계에서 **build.gradle.kts script compilation errors 4건**(Kotlin 2.4 + AGP 9 조합에서 deprecated DSL 이 에러로 승격). **남은 블로커 = 재개 조건 2(build.gradle.kts DSL 마이그레이션)** — 이건 대기가 아니라 이쪽 작업. 마이그레이션 완료 후 수동 bump 또는 `@dependabot recreate` 로 재개.
+
 ### 재개 조건 (모두 충족)
 1. Hilt 2.59.3+ 또는 2.60+이 Kotlin 2.4 호환 명시
 2. build.gradle.kts DSL 마이그레이션 완료 (`BaseAppModuleExtension` → `ApplicationExtension`, `kotlinOptions` → `compilerOptions`)

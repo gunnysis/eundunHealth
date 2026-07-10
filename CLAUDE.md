@@ -101,7 +101,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 호환성 (MEASURED 2026-06-08, 블로커 0):
 - 디바이스 **API 30+ 필수** — 본 앱 `minSdk=26` 이므로 **API 30+ 에뮬레이터/기기로 배포**해야 Live Edit 활성 (API 26~29 기기는 비활성).
-- `kotlinOptions.moduleName` 커스텀 금지 → `app/build.gradle.kts:132-134` 는 `jvmTarget` 만 설정 (위반 없음). AGP 9.2.1 / Compose BOM 2026.06.00 모두 요구치 상회. `android.builtInKotlin=false` 는 Live Edit 가 Gradle 미경유라 무관.
+- `kotlinOptions.moduleName` 커스텀 금지 → `app/build.gradle.kts:132-134` 는 `jvmTarget` 만 설정 (위반 없음). AGP 9.2.1 / Compose BOM 2026.06.01 모두 요구치 상회. `android.builtInKotlin=false` 는 Live Edit 가 Gradle 미경유라 무관.
 
 적용 범위 — **Composable 함수 *바디* 만** 핫스왑:
 - ✅ `Modifier`(padding/spacing), `Color`/`dp` 상수, 애니메이션 튜닝, 레이아웃 미세조정 → `ui/theme/`·`ui/components/` 시각 마감 작업의 inner-loop 가속.
@@ -181,7 +181,7 @@ DELETE /account
 - **Min SDK 26**, Target SDK 37, Java 17
 - **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
 - **App version**: versionName **`0.1.19`**, versionCode **`33`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000, **Play 재사용 불가** — 룰 13 원장 가드). 정책 전문: `docs/conventions/versioning.md`
-- **Sentry Android 8.43.2** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
+- **Sentry Android 8.47.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.3.2** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
 - **Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0**
@@ -423,7 +423,7 @@ versionCode 는 저장소 로컬 +1(`bump-version.sh`) 만으로는 안전하지
 - `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
 - `@docs/ops/azure-container-apps-jobs.md` — Container Apps **Job**(private ACR + KV + MI) 프로비저닝 재현 패턴 + 함정 회피(E1~E4: az `--args` leading-dash / system MI chicken-egg → UAI-first / 개인 MSA RBAC CLI 불가 → 포털·SP / job `--registry-identity` CLI 버그 → `--yaml`). orphan reaper 워크드 예시
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
-- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.4 (Hilt 2.59.3+ 출시 대기 + build.gradle.kts DSL 마이그레이션 필요 — 2026-07-02 #133 재확인, Spotless 실패 실증) + openapi-generator 7.23 (13 minor 점프, 생성 코드 diff 검토 필요)
+- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.4 (Hilt 대기는 2.60.1 머지[#148, 2026-07-10]로 해소 — 남은 블로커 = build.gradle.kts DSL 마이그레이션; 2026-07-10 #147 재확인, script compilation errors 4건 실증) + openapi-generator 7.23 (13 minor 점프, 생성 코드 diff 검토 필요)
 - `@docs/conventions/naming.md` — 명명/문서화 SSoT (5종 공식 가이드 + 본 프로젝트 결정 D1~D10)
 - `@docs/conventions/versioning.md` — 버전 관리 SSoT (앱 `version.properties` + 백엔드 `__version__` 독립 / semver 정책 / versionCode 규칙 / bump 절차 / 프론트 표시 / drift 방지)
 

@@ -65,15 +65,15 @@
 |------|------|------|
 | 언어 / 런타임 | Kotlin 2.2.10, Java 17 | KSP 2.3.2 |
 | 빌드 | Gradle 9.6.0, AGP 9.2.1 | Min SDK 26 / Target SDK 37 |
-| UI | Jetpack Compose (BOM 2026.06.00) | Material 3 |
-| DI | Hilt 2.59.2 | |
+| UI | Jetpack Compose (BOM 2026.06.01) | Material 3 |
+| DI | Hilt 2.60.1 | |
 | 비동기 | kotlinx-coroutines + Flow | |
 | 네트워크 | Retrofit + OkHttp + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 |
 | 로컬 DB | Room (version=2) | `EundunDatabase` |
 | 차트 | Vico 3.2.2 (compose-m3) | 통계 + 목표 진행 |
 | Auth | Supabase Kotlin SDK 3.6.0 | ES256 JWT |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | |
-| 모니터링 | Sentry Android 8.43.2 | 16KB page-aligned native libs |
+| 모니터링 | Sentry Android 8.47.0 | 16KB page-aligned native libs |
 | API 클라이언트 | OpenAPI Generator 7.10.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동 |
 | 품질 도구 | Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0 | pre-commit hook 자동화 |
 
@@ -82,7 +82,7 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Python 3.12 | |
-| 프레임워크 | FastAPI 0.139.0 + uvicorn 0.49.0 | |
+| 프레임워크 | FastAPI 0.139.0 + uvicorn 0.50.0 | |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.51 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
 | 마이그레이션 | Alembic 1.18.5 (head: `b78b256c2b20`) | async 엔진 연동 |

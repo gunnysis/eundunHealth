@@ -20,40 +20,35 @@
 
 ## 기술 스택
 
+> 버전은 여기에 적지 않는다 — SSoT: Android = `gradle/libs.versions.toml`, Backend = `backend/requirements.txt` (요약: `CLAUDE.md` Key Technical Details / `README.md` 기술 스택). 본 표는 반쯤-갱신된 버전 핀으로 만성 드리프트를 겪어(백엔드가 레거시 Ktor 표로 남아있던 이력) 2026-07-10 버전 열을 제거하고 역할 명세만 남김.
+
 ### Android (클라이언트)
-| 기술 | 버전 | 용도 |
-|------|------|------|
-| Kotlin | 2.2.10 | 언어 |
-| Jetpack Compose (BOM) | 2026.05.01 | UI 프레임워크 |
-| Hilt | 2.59.2 | 의존성 주입 |
-| Room | 2.8.4 | 로컬 데이터베이스 (오프라인 캐시) |
-| Retrofit + OkHttp | 2.11.0 / 4.12.0 | 백엔드 API 통신 |
-| Coil | 2.7.0 | 이미지/GIF 로딩 |
-| DataStore | 1.1.4 | 설정 영속화 (다크모드) |
-| Supabase Kotlin SDK | 3.6.0 | 인증 (Auth) |
-| Health Connect | 1.1.0 | 운동 세션 자동 감지 |
-| Sentry Android SDK | 7.14.0 | 크래시/에러 모니터링 |
-| Navigation Compose | 2.9.0 | 화면 전환 |
-| Activity Compose | 1.13.0 | Activity + Compose 연동 |
+| 기술 | 용도 |
+|------|------|
+| Kotlin | 언어 |
+| Jetpack Compose (BOM) + Material 3 | UI 프레임워크 |
+| Hilt | 의존성 주입 |
+| Room | 로컬 데이터베이스 (오프라인 캐시) |
+| Retrofit + OkHttp | 백엔드 API 통신 |
+| Coil 3 | 이미지/GIF 로딩 |
+| DataStore | 설정 영속화 (다크모드) |
+| Supabase Kotlin SDK | 인증 (Auth) |
+| Health Connect | 활동 자동 추적 |
+| Sentry Android SDK | 크래시/에러 모니터링 |
+| Navigation Compose | 화면 전환 |
+| Vico (compose-m3) | 통계·목표 차트 |
 
 ### Backend (서버)
-| 기술 | 버전 | 용도 |
-|------|------|------|
-| Ktor (Netty) | 3.4.3 | HTTP 서버 |
-| Exposed ORM | 0.61.0 | 데이터베이스 쿼리 |
-| PostgreSQL (Azure) | 42.7.7 | 데이터 저장소 |
-| HikariCP | 6.2.1 | DB 커넥션 풀 |
-| Supabase JWT | java-jwt 4.5.0 | 인증 토큰 검증 |
-| Sentry JVM SDK | 7.14.0 | 서버 에러 모니터링 |
-| Shadow Plugin | 9.0.0-beta12 | Fat JAR 빌드 |
+| 기술 | 용도 |
+|------|------|
+| FastAPI (Python 3.12) + uvicorn | HTTP 서버 |
+| SQLAlchemy 2.0 async + asyncpg | ORM / 데이터베이스 쿼리 |
+| Alembic | 스키마 마이그레이션 |
+| PyJWT (JWKS, ES256) | 인증 토큰 검증 |
+| Sentry Python SDK | 서버 에러 모니터링 |
 
 ### 빌드 도구
-| 기술 | 버전 |
-|------|------|
-| AGP | 9.2.1 |
-| Gradle | 9.3.1 |
-| KSP | 2.3.2 |
-| Sentry Gradle Plugin | 4.14.1 |
+AGP · Gradle · KSP · Sentry Gradle Plugin · Detekt · Spotless — 버전은 `gradle/libs.versions.toml` 참조.
 
 ### 인프라
 | 기술 | 용도 |

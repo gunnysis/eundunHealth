@@ -14,12 +14,12 @@
 | versionName / versionCode | **`0.1.19` / `33`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.6.0 |
-| Compose BOM | 2026.06.00 |
+| Compose BOM | 2026.06.01 |
 | 차트 | Vico 3.2.2 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
 | 정적 분석 | Detekt 1.23.8 (baseline.xml — generated 포함) + Spotless 8.6.0 + ktlint 1.5.0 |
 | API client | openapi-generator 7.10.0 (jvm-retrofit2 + gson + coroutines) — preBuild 자동 |
-| Sentry SDK | Android 8.43.2 / Gradle plugin 6.12.0 |
+| Sentry SDK | Android 8.47.0 / Gradle plugin 6.12.0 |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
 산출물 경로 (로컬 최신 = v0.1.18 빌드 기준 — **단일 정규 위치**. v0.1.19/33 은 `release.yml` CI 러너에서 빌드·업로드돼 로컬 산출물 없음):
@@ -366,3 +366,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-06-29 | **Google Play 프로덕션 정식 출시(LIVE)** — v0.1.18/32 출시·승인(회원님 확인). pre-release 전제(프로덕션 사용자 0·TRUNCATE 허용) 전부 실효 — 룰 5 발효. 원장 `LAST_UPLOADED_VERSION_CODE=32`(2026-07-02 소급 갱신 — 업로드 직후 갱신 원칙의 사람 의존 갭 실례) |
 | 2026-07-02 | **repo public 전환 + 보안 하드닝 + dependabot 전량 정리 + CodeQL 근본수정(INC-2026-07-02-29)**. 사전 보안감사(추적 파일 CRITICAL 0·이력 유출 1건 keystore pw = 회전+local.properties 반영·서명 검증 통과로 종결, 이력 재작성 안함) → 식별자 스크럽 PR #137(`__SUBSCRIPTION_ID__` 런타임 주입·pre-commit GUID 가드·`backend/.dockerignore`) → public 전환 + secret scanning·push protection·CodeQL 기본설정 활성. dependabot 7→0: #138 backend 5종(fastapi 0.139.0·alembic 1.18.5·sentry-sdk 2.64.0) 머지·배포, #139 android 배치(sentry-gradle 6.12.0·BOM 2026.06.00·lifecycle 2.11.0·gradle 9.6.0), #132 checkout v7, #133 kotlin 2.4 deferral 유지 close(6/22 CI 실패 = private artifact quota, 의존성 무관 실증). CodeQL java-kotlin autobuild 실패 → release 서명 keystore 존재-조건부화 + preflight 서명 fail-fast 가드(`845b65c`), java-kotlin 재등록 |
 | 2026-07-03 | **v0.1.19/33 릴리스 = Android CD(P4) 첫 실 e2e + P2 사후게이트 전부 종결**. CI/CD 권장 개선 P1(concurrency #140)·P2(OIDC #141/#142)·P4(release.yml #143) 체인의 최종 검증 — 태그 `v0.1.19` push → 태그↔version 가드·environment `play-release` 승인·preflight(서명 AAB+Sentry 매핑) green → **Play 내부 트랙 업로드 성공 → 원장 자동 갱신 커밋 `32f0ebe`(LAST=33) 실증**(INC-28 사람 의존 갭 자동화 폐쇄). 업로드는 서비스 계정 403 ×2(권한 전파/수준) 후 회원님 Console 권한 조정으로 3차 성공. r0adkll `track`→`tracks` deprecation 픽스(RCA: upstream README 예제 드리프트). **AZURE_CREDENTIALS 완전 제거**(GitHub secret + Entra 앱 비밀번호 — push·cron 양 트리거 OIDC 실측 후 ~07-16 게이트 조기 종결, 폴백 = yml revert + register 스크립트). bump-version.sh 잉여 인자 거부 가드. 같은 날 회원님이 내부 트랙 → **프로덕션 승격**(Console 수동) — 프로덕션 = v0.1.19/33 |
+| 2026-07-10 | **브랜치/PR 점검 + dependabot 6건 triage**. 머지 5건 — #144 uvicorn 0.50.0(자동배포) · #145 androidx.hilt 1.4.0 · #146 Compose BOM 2026.06.01 · #148 Hilt 2.60.1(#145 머지로 충돌 → dependabot rebase[2.60→2.60.1 자동 갱신] 후 CI green 머지) · #149 Sentry Android 8.47.0. close 1건 — #147 kotlin 2.4.0(deferral 유지, CI 실증 = build.gradle.kts script compilation errors 4건 → DSL 마이그레이션 선행 필수; Hilt 2.60 출시로 재개 조건 1 진전, `dependency-deferred.md §1` 갱신). 원격 브랜치 = main + dependabot head 만(정리 대상 stale 브랜치 0). SPEC.md 기술 스택 버전 열 제거 → SSoT 위임(레거시 Ktor 표 잔존 이력) |
