@@ -1,14 +1,14 @@
 # MAL-2026-4750: 0.136.3 was a compromised release (typosquat "fastar>=0.9.0" injected via
 # pyproject.toml; reported 2026-05-23 by Amazon Inspector; 0.136.2 is 404/yanked on PyPI).
 # Pinned to a post-incident clean release (>=0.137.1), unaffected by the 0.136.3 issue.
-fastapi==0.139.0
+fastapi==0.139.2
 # starlette: transitive dep of fastapi. 1.3.1 fixes GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3
 # (2026-06 공개, pip-audit --strict). 1.1.0 already included the PYSEC-2026-161 fix.
 # fastapi 0.136.1 allows starlette>=0.46.0 (no upper bound) so 1.x is permitted. Our
 # app/main.py registers middleware at module level (post INC-2026-05-24-03), unaffected
 # by starlette 1.x's lifespan policy.
 starlette==1.3.1
-uvicorn[standard]==0.50.0
+uvicorn[standard]==0.51.0
 sqlalchemy[asyncio]==2.0.51
 asyncpg==0.31.0
 alembic==1.18.5
@@ -17,7 +17,7 @@ alembic==1.18.5
 pydantic-settings==2.14.2
 PyJWT[crypto]==2.13.0
 httpx==0.28.1
-sentry-sdk[fastapi]==2.64.0
+sentry-sdk[fastapi]==2.66.0
 # Renders legal notices (privacy / account-deletion) md -> HTML for GET /privacy and
 # /account-deletion (Play Store registration URLs). Only our own docs/store/*.md is
 # rendered (never user input), so no injection surface. See routers/legal.py.
