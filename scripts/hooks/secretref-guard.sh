@@ -42,7 +42,7 @@ NEW_SECRETREFS=$({ git diff --cached -- .github/workflows/backend.yml 2>/dev/nul
 
 # 5. Container App 의 등록된 secret 목록 조회 (timeout 10s)
 REGISTERED=$(timeout 10 az containerapp secret list \
-  -n eundunhealth-api -g apps --query "[].name" -o tsv 2>/dev/null)
+  -n eundunhealth-api -g rg-eundunhealth-prod-krc --query "[].name" -o tsv 2>/dev/null)
 
 # 5a. az 실패 시 fail-open (운영 차단 회피)
 if [ -z "$REGISTERED" ]; then
@@ -64,7 +64,7 @@ if [ -n "$MISSING" ]; then
   printf "  - %s\n" $(echo -e "$MISSING" | sed '/^$/d') >&2
   echo "" >&2
   echo "해결: commit 전에 다음을 먼저 실행:" >&2
-  echo "  az containerapp secret set --name eundunhealth-api --resource-group apps \\" >&2
+  echo "  az containerapp secret set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \\" >&2
   echo "    --secrets \"<name>=<value>\"" >&2
   echo "" >&2
   echo "이후 docs/ops/operations-snapshot.md §2 Secrets 목록도 갱신." >&2

@@ -39,7 +39,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(dirname "$SCRIPT_DIR")
 JOB_YAML="$REPO_ROOT/backend/reaper-job.yaml"
 
-RG=apps
+RG="${RG:-rg-eundunhealth-prod-krc}"
 JOB=eundunhealth-reaper
 UAI=id-eundunhealth-reaper
 APP=eundunhealth-api

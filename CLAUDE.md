@@ -73,7 +73,7 @@ gh workflow run backend.yml --ref main
 ```bash
 bash C:/programming/docker/eundunhealth-api/redeploy.sh [tag]
 ```
-FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `apps`, Korea Central) 업데이트 → /health 헬스체크 → timestamp 태그 자동 정리(최근 5개만 보존). 환경변수 변경은 별도 `az containerapp update --set-env-vars` 또는 `secret set`. 자세한 절차는 `docs/ops/migration-runbook.md`.
+FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central) 업데이트 → /health 헬스체크 → timestamp 태그 자동 정리(최근 5개만 보존). 환경변수 변경은 별도 `az containerapp update --set-env-vars` 또는 `secret set`. 자세한 절차는 `docs/ops/migration-runbook.md`.
 
 **Android 출시 (자동 — Play 내부 트랙)** — 태그 `v*` push 로 `release.yml` 이 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB → Play **내부 트랙** 업로드 → 원장 자동 갱신 커밋까지 수행. environment `play-release`(required reviewer) 승인 게이트. 프로덕션 승격은 Play Console 수동. 사전 검증: `gh workflow run release.yml`(dry_run 기본 true = 업로드 생략). 절차·실패 대응: `docs/ops/play-store-release.md` §7. 수동 업로드 폴백 시 원장 수동 갱신 필수(룰 13).
 
@@ -201,8 +201,8 @@ DELETE /account
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure
-- **Container App** `eundunhealth-api` (RG `apps`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포)
-- **Key Vault** `kv-eundunhealth` (RG `apps`, Standard, **Azure RBAC**, 90d soft-delete + purge protection) — 백엔드 secret 4개(KV 참조, 직접값 아님). Container App **system MI** = Secrets User(KV) + AcrPull(ACR), CI SP = Secrets User(KV). audit → Log Analytics `workspace-appsDOlM`
+- **Container App** `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포)
+- **Key Vault** `kv-eundunhealth` (RG `rg-eundunhealth-prod-krc`, Standard, **Azure RBAC**, 90d soft-delete + purge protection) — 백엔드 secret 4개(KV 참조, 직접값 아님). Container App **system MI** = Secrets User(KV) + AcrPull(ACR), CI SP = Secrets User(KV). audit → Log Analytics `workspace-appsDOlM`
 - **ACR** `eundunhealthacr` (Basic SKU — retention 정책 미지원, redeploy.sh가 timestamp 태그 최근 5개만 보존)
 - **Azure PostgreSQL** Flexible Server `healthapp` (B1ms, 32GB, Korea Central). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
 - **Supabase** Korea 리전, project `ttzzbfoksncqazvcsfiu`
@@ -339,7 +339,7 @@ versionCode 는 저장소 로컬 +1(`bump-version.sh`) 만으로는 안전하지
 - versionName 은 Play 유일성 대상이 아니다(자유 문자열). 업로드 충돌은 항상 versionCode 문제.
 
 ### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.8`)
-1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG)인가?
+1. 대상이 운영 리소스(RG `rg-eundunhealth-prod-krc`, `eundunhealthacr`, `healthapp` PG)인가?
 2. `--yes`/`--no-confirm` 플래그가 무엇을 묵시적으로 동의하는가?
 3. 연쇄 영향(manifest 공유, secretref, firewall rule)은?
 4. 롤백 경로(이미지 캐시, git 백업, DB PITR)는?

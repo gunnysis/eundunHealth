@@ -95,7 +95,7 @@
 
 | 구성 요소 | 값 |
 |-----------|---|
-| Container App | `eundunhealth-api` (RG `apps`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종) |
+| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종) |
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret 4 |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU) |
 | Database | Azure PostgreSQL Flexible Server `healthapp` (B1ms, 32GB) |

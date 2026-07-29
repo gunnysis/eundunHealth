@@ -12,7 +12,7 @@ identity:
 location: Korea Central
 name: eundunhealth-api
 properties:
-  managedEnvironmentId: /subscriptions/__SUBSCRIPTION_ID__/resourceGroups/apps/providers/Microsoft.App/managedEnvironments/eundunhealth-env
+  managedEnvironmentId: /subscriptions/__SUBSCRIPTION_ID__/resourceGroups/rg-eundunhealth-prod-krc/providers/Microsoft.App/managedEnvironments/eundunhealth-env
   workloadProfileName: Consumption
   configuration:
     activeRevisionsMode: Single

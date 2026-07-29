@@ -45,7 +45,7 @@
 <!-- 운영 리소스에 영향 주는 명령을 실행했거나 PR이 실행할 가능성이 있으면 체크 -->
 - [ ] 해당 없음
 - [ ] 또는 다음 5문항 모두 통과 (`monitoring-and-cost.md §6.8`):
-  1. 대상이 운영 리소스(RG `apps`, `eundunhealthacr`, `healthapp` PG 등)임을 인지함
+  1. 대상이 운영 리소스(RG `rg-eundunhealth-prod-krc`, `eundunhealthacr`, `healthapp` PG 등)임을 인지함
   2. `--yes` / `--no-confirm` 플래그가 있다면 dry-run 또는 사전 점검을 마침
   3. 연쇄 영향(manifest 공유, secretref 연결, firewall 의존성) 검증함
   4. 롤백 경로(이미지 캐시, git 백업, DB PITR) 있음

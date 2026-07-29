@@ -39,11 +39,11 @@ E3 때문에 역할 부여만 포털/SP 로:
 
 ```bash
 # 실행 이력/상태
-az containerapp job execution list -n eundunhealth-reaper -g apps -o table
+az containerapp job execution list -n eundunhealth-reaper -g rg-eundunhealth-prod-krc -o table
 # 수동 1회 실행
-az containerapp job start -n eundunhealth-reaper -g apps
+az containerapp job start -n eundunhealth-reaper -g rg-eundunhealth-prod-krc
 # 로그(log-analytics 확장 필요)
-WID=$(az containerapp env show -n eundunhealth-env -g apps --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId -o tsv)
+WID=$(az containerapp env show -n eundunhealth-env -g rg-eundunhealth-prod-krc --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId -o tsv)
 az monitor log-analytics query --workspace "$WID" \
   --analytics-query "ContainerAppConsoleLogs_CL | where ContainerGroupName_s startswith 'eundunhealth-reaper' | order by TimeGenerated desc | project Log_s | take 20"
 ```

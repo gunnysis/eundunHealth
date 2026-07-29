@@ -7,7 +7,8 @@
 #
 # 사전 조건:
 #   - az login 완료 (subscription: Azure subscription 1)
-#   - RG `apps` 존재 + Container App `eundunhealth-api` + PG `healthapp`
+#   - RG `rg-eundunhealth-prod-krc` 존재 + Container App `eundunhealth-api` + PG `healthapp`
+#     (RG 는 env `RG=<name>` 로 override 가능 — 구 RG 정리 등 1회성 실행용)
 #   - jq 설치 (Activity Log alert JSON 생성용)
 #
 # 사용법:
@@ -33,7 +34,7 @@ export MSYS_NO_PATHCONV=1
 # ── Constants ──────────────────────────────────────────────
 # 구독 GUID 는 커밋하지 않는다(public repo) — az 로그인 컨텍스트에서 해석, env 로 override 가능.
 SUB_ID="${SUB_ID:-$(az account show --query id -o tsv)}"
-RG="apps"
+RG="${RG:-rg-eundunhealth-prod-krc}"
 LOCATION="koreacentral"
 EMAIL="qkr133456@gmail.com"
 
@@ -231,7 +232,7 @@ DEL_BODY=$(cat <<EOJSON
 {
   "location": "Global",
   "properties": {
-    "description": "RG apps 내 리소스 삭제 감지",
+    "description": "RG ${RG} 내 리소스 삭제 감지",
     "enabled": true,
     "scopes": ["${RG_ID}"],
     "condition": {

@@ -1,7 +1,7 @@
 # Migration Runbook: Ktor → FastAPI
 
 > 작성일: 2026-05-24 (cutover 완료) / 갱신: 2026-05-25 (자동 배포 정착)
-> 대상 환경: Azure Container Apps (`eundunhealth-api`, RG `apps`), Azure PostgreSQL (`healthapp`)
+> 대상 환경: Azure Container Apps (`eundunhealth-api`, RG `rg-eundunhealth-prod-krc`), Azure PostgreSQL (`healthapp`)
 > 기반: 옛 `docs/plans/expected/2026-05-24-implementation-spec.md` §O (현재는 삭제됨)
 > 상태: **cutover 완료**. 본 문서는 historical record 겸 향후 동급 마이그레이션 시 reference.
 
@@ -83,7 +83,7 @@ az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api
 ```bash
 # Azure PostgreSQL Flexible Server에서 PITR 활성화되어 있는지 확인
 az postgres flexible-server backup list \
-  --resource-group apps \
+  --resource-group rg-eundunhealth-prod-krc \
   --name healthapp
 
 # 필요 시 수동 백업 — 로컬 pg_dump (네트워크 허용 필요)
@@ -95,7 +95,7 @@ pg_dump "postgres://<db-admin-user>:<password>@healthapp.postgres.database.azure
 
 ```bash
 # 출력 스냅샷은 로컬 보관 전용 — DB 호스트/계정명이 담기므로 repo 에 커밋 금지(public repo)
-az containerapp show --name eundunhealth-api --resource-group apps \
+az containerapp show --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --query "properties.template.containers[0].env" -o json \
   > containerapp-env-ktor-backup.json
 ```
@@ -174,14 +174,14 @@ az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api
 
 ```bash
 # 1) 새 시크릿 등록
-az containerapp secret set --name eundunhealth-api --resource-group apps \
+az containerapp secret set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --secrets \
     "database-url=postgresql+asyncpg://<db-admin-user>:<password>@healthapp.postgres.database.azure.com:5432/postgres?ssl=require" \
     "supabase-service-role-key=<service_role_key>" \
     "sentry-dsn-backend=<new_or_existing_dsn>"
 
 # 2) 환경변수 교체 + 새 이미지 배포 (Ktor 키 제거, FastAPI 키 추가)
-az containerapp update --name eundunhealth-api --resource-group apps \
+az containerapp update --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --image "eundunhealthacr.azurecr.io/eundunhealth-api:<NEW_TAG>" \
   --set-env-vars \
     "DATABASE_URL=secretref:database-url" \
@@ -200,7 +200,7 @@ az containerapp update --name eundunhealth-api --resource-group apps \
 ### 4.3 헬스체크
 
 ```bash
-FQDN=$(az containerapp show --name eundunhealth-api --resource-group apps \
+FQDN=$(az containerapp show --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --query "properties.configuration.ingress.fqdn" -o tsv)
 
 # 새 revision이 healthy 되기까지 30초~1분 대기
@@ -233,7 +233,7 @@ curl -sf -H "Authorization: Bearer ${TOKEN}" "https://${FQDN}/badges"
 ### 4.5 모니터링 관찰 (전환 후 30분)
 
 - Sentry: 5xx 에러 / `AppException` 핸들러로 가지 않는 예외 발생률
-- Container App 로그: `az containerapp logs show --name eundunhealth-api --resource-group apps --follow`
+- Container App 로그: `az containerapp logs show --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc --follow`
 - Azure Postgres: 활성 커넥션 수가 `pool_size=3` 범위 내인지
 
 ---
@@ -251,7 +251,7 @@ curl -sf -H "Authorization: Bearer ${TOKEN}" "https://${FQDN}/badges"
 
 ```bash
 # 1) 이미지를 ktor-final로 교체 + Ktor 환경변수 복구
-az containerapp update --name eundunhealth-api --resource-group apps \
+az containerapp update --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --image "eundunhealthacr.azurecr.io/eundunhealth-api:ktor-final" \
   --set-env-vars \
     "AZURE_DB_URL=jdbc:postgresql://healthapp.postgres.database.azure.com:5432/postgres?ssl=true&sslmode=require" \
@@ -278,10 +278,10 @@ DB 스키마를 변경하지 않았으므로 별도 데이터 롤백은 불필�
 
 ```bash
 # 현재 revision 확인
-az containerapp revision list --name eundunhealth-api --resource-group apps -o table
+az containerapp revision list --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc -o table
 
 # 이전(Ktor) revision에 100% 트래픽 라우팅
-az containerapp ingress traffic set --name eundunhealth-api --resource-group apps \
+az containerapp ingress traffic set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --revision-weight "<ktor-revision-name>=100"
 ```
 
@@ -321,21 +321,21 @@ PR #15 머지로 GitHub Actions `Build, Scan & Deploy` job이 처음 실제 동�
 
 ### 7.1 Key Vault + MI + RBAC (운영자 1회 — Owner/User Access Administrator 필요)
 ```bash
-az keyvault create -n kv-eundunhealth -g apps -l koreacentral --sku standard \
+az keyvault create -n kv-eundunhealth -g rg-eundunhealth-prod-krc -l koreacentral --sku standard \
   --retention-days 90 --enable-purge-protection true --enable-rbac-authorization true \
   --enabled-for-deployment false --enabled-for-template-deployment false --enabled-for-disk-encryption false
-KV_ID=$(az keyvault show -n kv-eundunhealth -g apps --query id -o tsv)
+KV_ID=$(az keyvault show -n kv-eundunhealth -g rg-eundunhealth-prod-krc --query id -o tsv)
 # RBAC vault 는 Owner 라도 data-plane 자동 부여 X → self-grant Secrets Officer (없으면 secret set 403). 전파 수 분.
 az role assignment create --assignee-object-id $(az ad signed-in-user show --query id -o tsv) \
   --assignee-principal-type User --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 --scope "$KV_ID"
 # 4 secret 저장 (기존 Container App secret 값에서, -o none 으로 값 출력 차단)
 for s in database-url supabase-url supabase-service-role-key sentry-dsn-backend; do
   az keyvault secret set --vault-name kv-eundunhealth --name "$s" \
-    --value "$(az containerapp secret show -n eundunhealth-api -g apps --secret-name "$s" --query value -o tsv)" -o none
+    --value "$(az containerapp secret show -n eundunhealth-api -g rg-eundunhealth-prod-krc --secret-name "$s" --query value -o tsv)" -o none
 done
 # Container App system MI + 역할 (MI=Secrets User@KV + AcrPull@ACR · CI SP=Secrets User@KV)
-az containerapp identity assign -n eundunhealth-api -g apps --system-assigned
-PID=$(az containerapp show -n eundunhealth-api -g apps --query identity.principalId -o tsv)
+az containerapp identity assign -n eundunhealth-api -g rg-eundunhealth-prod-krc --system-assigned
+PID=$(az containerapp show -n eundunhealth-api -g rg-eundunhealth-prod-krc --query identity.principalId -o tsv)
 ACR_ID=$(az acr show -n eundunhealthacr --query id -o tsv)
 az role assignment create --assignee-object-id "$PID" --assignee-principal-type ServicePrincipal --role 4633458b-17de-408a-b874-0445c86b69e6 --scope "$KV_ID"
 az role assignment create --assignee-object-id "$PID" --assignee-principal-type ServicePrincipal --role AcrPull --scope "$ACR_ID"

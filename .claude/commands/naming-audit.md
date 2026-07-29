@@ -31,18 +31,18 @@ build/reports/detekt/detekt.html 의 naming 카테고리 확인. baseline 외 �
 ### 4. Azure CAF 표 sync 안내
 `docs/plans/logs/process-infra.md` 의 `2026-06-02 — naming convention audit` entry (또는 그 후속 audit entry) 의 Azure 리소스 매핑 vs 실측 비교:
 ```bash
-az resource list -g apps -o table
-az containerapp env list -g apps -o tsv
+az resource list -g rg-eundunhealth-prod-krc -o table
+az containerapp env list -g rg-eundunhealth-prod-krc -o tsv
 ```
 또는 Azure MCP (tenant 명시 필수, [[claude-code-mcp-install-gotchas]]):
 - `mcp__azure__group_list --tenant <TENANT_ID>`
-- `mcp__azure__group_resource_list --tenant <TENANT_ID> --resource-group apps`
+- `mcp__azure__group_resource_list --tenant <TENANT_ID> --resource-group rg-eundunhealth-prod-krc`
 
 신규 리소스 발견 시 SSoT (`docs/conventions/naming.md` §5) 체크리스트 적용 + 후속 chore PR 으로 process-infra.md 의 audit entry 보강.
 
 ### 4.1 Azure portal auto-generated 명 탐지 (PR #68 lesson L7)
 
-`az resource list -g apps` 결과에서 아래 패턴 매칭 시 "확인 필요" 경고 (rename 불가 + 신규 deploy 시 명시 권장):
+`az resource list -g rg-eundunhealth-prod-krc` 결과에서 아래 패턴 매칭 시 "확인 필요" 경고 (rename 불가 + 신규 deploy 시 명시 권장):
 
 | 패턴 | Azure 리소스 | 학습 사례 |
 |---|---|---|

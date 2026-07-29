@@ -37,7 +37,7 @@
 | 항목 | 값 |
 |------|---|
 | Container App | `eundunhealth-api` |
-| Resource Group | `apps` |
+| Resource Group | `rg-eundunhealth-prod-krc` (2026-07-29 `apps` 에서 이관 — 이동 7 + 알림/AG/UAI 재생성, RBAC 8건 재부여, LA shared key 갱신, 구 RG 삭제. 상세: `docs/plans/2026-07-29-rg-migration-{design,plan}.md`) |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
 | 활성 revision | latest auto-deploy (100% traffic, **warm — min=1**) |
@@ -75,7 +75,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 
 | 항목 | 값 |
 |------|---|
-| Vault | `kv-eundunhealth` (RG `apps`, Korea Central) |
+| Vault | `kv-eundunhealth` (RG `rg-eundunhealth-prod-krc`, Korea Central) |
 | SKU / 권한 모델 | Standard / **Azure RBAC** (legacy access policy 미사용) |
 | Soft-delete / Purge protection | 90일 / **활성**(생성 후 불변) |
 | Network | public + RBAC/MI 가 실질 차단막 (Container Apps Consumption 동적 IP → VNet 미통합) |
@@ -89,7 +89,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 
 | 항목 | 값 |
 |------|---|
-| Job | `eundunhealth-reaper` (RG `apps`, env `eundunhealth-env`) |
+| Job | `eundunhealth-reaper` (RG `rg-eundunhealth-prod-krc`, env `eundunhealth-env`) |
 | 트리거 / 스케줄 | Schedule cron `0 18 * * 0` (UTC) = **매주 월 03:00 KST** |
 | 커맨드 | `python scripts/reap_orphaned_accounts.py` (ENTRYPOINT 우회 → alembic 미실행) |
 | 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:<SHA>` (앱과 동일, setup 시 치환) |
@@ -99,7 +99,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | IaC | `backend/reaper-job.yaml`(잡 정의) + `scripts/setup-reaper-job.sh`(멱등 오케스트레이션) |
 | 검증 | 수동 실행 `eundunhealth-reaper-g6ngiz7` **Succeeded**(2026-06-17). 현재 0 사용자 → purged 0 |
 
-> 프로비저닝 패턴·함정(E1~E4: az `--args` leading-dash / system MI chicken-egg → UAI-first / 개인 MSA RBAC CLI 불가 → 포털·SP / job `--registry-identity` CLI 문제 → `--yaml`)은 **`docs/ops/azure-container-apps-jobs.md`** 참조. 실행 이력: `az containerapp job execution list -n eundunhealth-reaper -g apps -o table`.
+> 프로비저닝 패턴·함정(E1~E4: az `--args` leading-dash / system MI chicken-egg → UAI-first / 개인 MSA RBAC CLI 불가 → 포털·SP / job `--registry-identity` CLI 문제 → `--yaml`)은 **`docs/ops/azure-container-apps-jobs.md`** 참조. 실행 이력: `az containerapp job execution list -n eundunhealth-reaper -g rg-eundunhealth-prod-krc -o table`.
 
 ---
 
@@ -146,9 +146,9 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 > 운영 중 외부 접근이 필요할 때는 임시 firewall rule 추가 후 즉시 제거:
 > ```bash
 > MY_IP=$(curl -sf https://api.ipify.org)
-> az postgres flexible-server firewall-rule create --resource-group apps --name healthapp --rule-name temp-debug --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
+> az postgres flexible-server firewall-rule create --resource-group rg-eundunhealth-prod-krc --name healthapp --rule-name temp-debug --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
 > # ... 작업 ...
-> az postgres flexible-server firewall-rule delete --resource-group apps --name healthapp --rule-name temp-debug --yes
+> az postgres flexible-server firewall-rule delete --resource-group rg-eundunhealth-prod-krc --name healthapp --rule-name temp-debug --yes
 > ```
 
 ---
@@ -247,8 +247,8 @@ GitHub Actions:
 curl -sf https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/health
 
 # revision 상태 + warm baseline 회귀 감지 (minReplicas 가 1 이어야 — cold start 방지)
-az containerapp revision list --name eundunhealth-api --resource-group apps -o table
-az containerapp show -n eundunhealth-api -g apps --query "properties.template.scale.minReplicas" -o tsv  # 1 이어야
+az containerapp revision list --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc -o table
+az containerapp show -n eundunhealth-api -g rg-eundunhealth-prod-krc --query "properties.template.scale.minReplicas" -o tsv  # 1 이어야
 
 # readiness (DB 연결까지 확인)
 curl -sf https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/health/ready

@@ -36,4 +36,4 @@ jobs:
         run: bash scripts/check-warm-baseline.sh
         env:
           CONTAINER_APP_NAME: eundunhealth-api
-          RESOURCE_GROUP: apps
+          RESOURCE_GROUP: rg-eundunhealth-prod-krc

@@ -1,7 +1,7 @@
 # 모니터링 & 비용 관리 (Azure Free Account)
 
 > 작성일: 2026-05-24
-> 대상: `eundunhealth-api` (Container Apps, RG `apps`), `eundunhealthacr` (ACR)
+> 대상: `eundunhealth-api` (Container Apps, RG `rg-eundunhealth-prod-krc`), `eundunhealthacr` (ACR)
 
 ## 1. Sentry 설정
 
@@ -27,13 +27,13 @@
 2. **Container App secret으로 등록**
    ```bash
    DSN="<위에서 복사한 DSN>"
-   az containerapp secret set --name eundunhealth-api --resource-group apps \
+   az containerapp secret set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
      --secrets "sentry-dsn-backend=${DSN}"
    ```
 
 3. **env var를 secretref로 전환**
    ```bash
-   az containerapp update --name eundunhealth-api --resource-group apps \
+   az containerapp update --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
      --set-env-vars "SENTRY_DSN=secretref:sentry-dsn-backend"
    ```
 
@@ -144,7 +144,7 @@ az consumption budget create \
 - [ ] Container App revision 수 정리: `az containerapp revision list --name eundunhealth-api -o table` → 활성 외 inactive revision 정리
 - [ ] PostgreSQL slow query 확인: Azure Portal → Insights
 - [ ] 월간 비용 actual vs budget 비교
-- [ ] Azure Monitor alert 확인: `az monitor metrics alert list -g apps -o table` + `az monitor activity-log alert list -g apps -o table` (8개 enabled)
+- [ ] Azure Monitor alert 확인: `az monitor metrics alert list -g rg-eundunhealth-prod-krc -o table` + `az monitor activity-log alert list -g rg-eundunhealth-prod-krc -o table` (8개 enabled)
 - [x] ~~(분기별) GitHub Actions `AZURE_CREDENTIALS` service principal 만료 점검~~ — **소멸(2026-07-03)**: OIDC 연합 전환(PR #141/#142) + `AZURE_CREDENTIALS` 완전 제거(GitHub secret + Entra 앱 비밀번호)로 만료되는 장수명 secret 없음. §6.7 참조.
 
 ## 6. Destructive 명령 안전 패턴
@@ -166,15 +166,15 @@ az consumption budget create \
 ```bash
 # 1) secret 등록 (값을 shell history에 안 남기려면 환경변수 경유)
 NEW_VALUE=$(cat /dev/stdin)   # 또는 password manager에서 가져와 NEW_VALUE 변수에 담기
-az containerapp secret set --name eundunhealth-api --resource-group apps \
+az containerapp secret set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --secrets "<secret-name>=${NEW_VALUE}"
 
 # 2) env var를 secretref로 연결 (잊으면 빈 문자열로 작동)
-az containerapp update --name eundunhealth-api --resource-group apps \
+az containerapp update --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --set-env-vars "<ENV_NAME>=secretref:<secret-name>"
 
 # 3) 새 revision이 적용됐는지 확인
-az containerapp show --name eundunhealth-api --resource-group apps \
+az containerapp show --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
   --query "{revision: properties.latestRevisionName, env: properties.template.containers[0].env[?name=='<ENV_NAME>']}"
 
 # 4) /health 헬스체크
@@ -187,7 +187,7 @@ curl -sf https://<FQDN>/health
 # 1) firewall 임시 허용
 MY_IP=$(curl -sf https://api.ipify.org)
 az postgres flexible-server firewall-rule create \
-  --resource-group apps --name healthapp \
+  --resource-group rg-eundunhealth-prod-krc --name healthapp \
   --rule-name temp-$(date +%s) --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
 
 # 2) 작업 (alembic / SQL)
@@ -197,7 +197,7 @@ export DATABASE_URL="postgresql+asyncpg://<db-admin-user>:****@healthapp.postgre
 
 # 3) 반드시 회수 (성공/실패 무관)
 az postgres flexible-server firewall-rule delete \
-  --resource-group apps --name healthapp \
+  --resource-group rg-eundunhealth-prod-krc --name healthapp \
   --rule-name temp-XXX --yes
 ```
 
@@ -225,7 +225,7 @@ backend.yml에 새 `secretref` 라인을 추가하는 PR은 반드시 한 단위
 1. **backend.yml**에 `--set-env-vars`에 새 `<ENV>=secretref:<secret-name>` 추가
 2. **운영자가 Container App에 secret 등록** (PR 머지 *전*에):
    ```bash
-   az containerapp secret set --name eundunhealth-api --resource-group apps \
+   az containerapp secret set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
      --secrets "<secret-name>=<value>"
    ```
 3. **`docs/ops/operations-snapshot.md` §2 Secrets 목록 갱신**
@@ -252,7 +252,7 @@ pwsh -File scripts\register-azure-credentials.ps1 -Verify
 
 명령 입력 직전에:
 
-1. **대상이 운영 리소스인가?** (RG `apps`, registry `eundunhealthacr` 등 — 맞다면 한 번 더 의심)
+1. **대상이 운영 리소스인가?** (RG `rg-eundunhealth-prod-krc`, registry `eundunhealthacr` 등 — 맞다면 한 번 더 의심)
 2. **`--yes` 또는 `--no-confirm` 플래그가 있는가?** 있다면 무엇이 삭제되는지 미리 dry-run.
 3. **연쇄 영향이 있는가?** (manifest 공유, secretref 연결, firewall rule 의존성)
 4. **롤백 경로가 있는가?** (이미지 캐시·git 백업·DB PITR)
@@ -279,7 +279,7 @@ pwsh -File scripts\register-azure-credentials.ps1 -Verify
 |---|---|---|---|
 | `alert-servicehealth-eundunhealth-prod` | ServiceHealth | Korea Central + Container Apps / PostgreSQL 서비스 장애/유지보수 | Sev3 |
 | `alert-resourcehealth-eundunhealth-prod` | ResourceHealth | `eundunhealth-api` 또는 `healthapp` Degraded/Unavailable | Sev1 |
-| `alert-deletion-eundunhealth-prod` | Administrative | RG `apps` 내 리소스 삭제 이벤트 | Sev1 |
+| `alert-deletion-eundunhealth-prod` | Administrative | RG `rg-eundunhealth-prod-krc` 내 리소스 삭제 이벤트 | Sev1 |
 
 **P2 — Metric (~550-700원/월)**
 
@@ -309,8 +309,8 @@ bash scripts/setup-azure-alerts.sh --dry-run
 bash scripts/setup-azure-alerts.sh --delete
 
 # 상태 확인
-az monitor metrics alert list -g apps --query "[?starts_with(name,'alert-')].{name:name,enabled:enabled}" -o table
-az monitor activity-log alert list -g apps --query "[?starts_with(name,'alert-')].{name:name,enabled:enabled}" -o table
+az monitor metrics alert list -g rg-eundunhealth-prod-krc --query "[?starts_with(name,'alert-')].{name:name,enabled:enabled}" -o table
+az monitor activity-log alert list -g rg-eundunhealth-prod-krc --query "[?starts_with(name,'alert-')].{name:name,enabled:enabled}" -o table
 ```
 
 ### 7.4 비용
