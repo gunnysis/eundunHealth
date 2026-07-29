@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 프로덕션 버전 v0.1.19 (versionCode 33) — 2026-07-03 자동 CD(태그 push → `release.yml`, 내부 트랙) 후 같은 날 프로덕션 승격. 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성)
+- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 프로덕션 버전 v0.1.19 (versionCode 33) — 2026-07-03 자동 CD(태그 push → `release.yml`, 내부 트랙) 후 같은 날 프로덕션 승격. 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성). 2026-07-29 Azure RG 이관(`apps` → `rg-eundunhealth-prod-krc`, 단일 RG — 서비스 URL 무영향)
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 

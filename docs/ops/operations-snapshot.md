@@ -1,6 +1,6 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-07-03 — v0.1.19/33 = Android CD(release.yml) 첫 실 e2e 성공(내부 트랙 업로드 + 원장 자동 갱신 실증) + 같은 날 프로덕션 승격(Console 수동) + AZURE_CREDENTIALS 완전 제거(OIDC 전용화)** (이전: 2026-07-02 Play 프로덕션 정식 출시 반영 + repo public 전환 + dependabot 정리 + CodeQL 근본수정)
+> 작성일: 2026-05-25 / 최근 갱신: **2026-07-29 — RG 이관 `apps` → `rg-eundunhealth-prod-krc` 완결**(이동 7 + 알림/AG/UAI 재생성 + RBAC 8 재부여 + LA shared key 갱신 + 구 RG 삭제; backend deploy·warm-baseline·reaper·알림 8/8 전부 green — ledger `logs/process-infra.md` 2026-07-29 entry) (이전: 2026-07-03 v0.1.19/33 Android CD 첫 실 e2e + 프로덕션 승격 + AZURE_CREDENTIALS 완전 제거[OIDC 전용화] / 2026-07-02 Play 프로덕션 정식 출시 + repo public 전환)
 > 작성 기준: v0.1.19 (versionCode 33) — **Google Play 프로덕션 = v0.1.19/33**(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인). v0.1.19 = Android CD 첫 실 e2e(release.yml, 사용자 가시 동작 변화 없음). 이전 v0.1.18: 출시 재업로드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드. 이전 v0.1.17: 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너[Onboarding·Home·Profile] + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 경계 테스트 2 + account_service 로그 구조화 + 문서 드리프트 정정) (이전: v0.1.16 출시 후 심층 감사 개선 A~E + Tier2/3 PR #126·#127 / v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
