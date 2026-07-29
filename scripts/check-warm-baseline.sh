@@ -12,7 +12,7 @@
 set -euo pipefail
 
 APP="${CONTAINER_APP_NAME:-eundunhealth-api}"
-RG="${RESOURCE_GROUP:-apps}"
+RG="${RESOURCE_GROUP:-rg-eundunhealth-prod-krc}"
 EXPECTED_MIN="${EXPECTED_MIN_REPLICAS:-1}"
 
 MIN=$(az containerapp show --name "$APP" --resource-group "$RG" \

@@ -26,7 +26,7 @@ service principal JSON을 생성/패치하고 GitHub repository secret으로 등
   pwsh -File scripts\register-azure-credentials.ps1 -Verify
 
 매개변수:
-  -ResourceGroup    : Container App / PG가 속한 RG (기본 apps)
+  -ResourceGroup    : Container App / PG가 속한 RG (기본 rg-eundunhealth-prod-krc)
   -AcrName          : ACR 이름 (기본 eundunhealthacr)
   -Repo             : GitHub repo owner/name (기본 gunnysis/eundunHealth)
   -SpName           : Service principal 표시 이름 (기본 eundunhealth-github-deploy)
@@ -38,7 +38,7 @@ service principal JSON을 생성/패치하고 GitHub repository secret으로 등
 
 [CmdletBinding()]
 param(
-    [string] $ResourceGroup   = "apps",
+    [string] $ResourceGroup   = "rg-eundunhealth-prod-krc",
     [string] $AcrName         = "eundunhealthacr",
     [string] $Repo            = "gunnysis/eundunHealth",
     [string] $SpName          = "eundunhealth-github-deploy",

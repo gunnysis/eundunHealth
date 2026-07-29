@@ -17,7 +17,7 @@ INC `$ARGUMENTS` 에 대한 Phase 5 운영 검증을 수행합니다.
 ### 1. Alembic head 확인 (운영 Container App)
 `mcp__azure__containerapps` 의 exec 기능으로 다음 실행:
 - subscription: 런타임 조회 — `mcp__azure__subscription_list` 의 단일 구독 (또는 `az account show --query id -o tsv`). 구독 GUID 는 repo 에 커밋하지 않는다(public repo 정찰면 축소).
-- resourceGroup: `apps`
+- resourceGroup: `rg-eundunhealth-prod-krc`
 - containerAppName: `eundunhealth-api`
 - command: `alembic current`
 

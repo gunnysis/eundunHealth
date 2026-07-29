@@ -80,13 +80,16 @@ echo "  UAI=$UAI  principalId=$UAI_PID"
 echo "== 2) 역할 부여(AcrPull + Key Vault Secrets User) — best-effort =="
 ROLE_FAILED=false
 grant_role() {
-  local role="$1" scope="$2"
+  local role="$1" scope="$2" out
   if $DRY_RUN; then echo "+ az role assignment create … --role '$role' --scope $scope"; return 0; fi
-  if az role assignment create --assignee-object-id "$UAI_PID" --assignee-principal-type ServicePrincipal \
-       --role "$role" --scope "$scope" -o none 2>/dev/null; then
+  if out=$(az role assignment create --assignee-object-id "$UAI_PID" --assignee-principal-type ServicePrincipal \
+       --role "$role" --scope "$scope" -o none 2>&1); then
     echo "  ✓ '$role' 부여"
+  elif echo "$out" | grep -qiE 'RoleAssignmentExists|already exists'; then
+    # 멱등 재실행: 기존 부여를 실패로 오인하지 않는다 (2026-07-29 RG 이관 중 실측 — 오해 유발 경고 방지)
+    echo "  ✓ '$role' 이미 부여됨(멱등)"
   else
-    ROLE_FAILED=true; echo "  ⚠ '$role' 부여 실패(권한 없음 추정)."
+    ROLE_FAILED=true; echo "  ⚠ '$role' 부여 실패: $(echo "$out" | head -1)"
   fi
 }
 grant_role "AcrPull" "$ACR_ID"
