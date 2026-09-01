@@ -64,7 +64,7 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Kotlin 2.4.10, Java 17 | KSP 2.3.11 |
-| 빌드 | Gradle 9.6.0, AGP 9.3.2 | Min SDK 26 / Target SDK 37 |
+| 빌드 | Gradle 9.7.1, AGP 9.3.2 | Min SDK 26 / Target SDK 37 |
 | UI | Jetpack Compose (BOM 2026.06.01) | Material 3 |
 | DI | Hilt 2.60.1 | |
 | 비동기 | kotlinx-coroutines + Flow | |
@@ -81,15 +81,15 @@
 
 | 영역 | 선택 | 비고 |
 |------|------|------|
-| 언어 / 런타임 | Python 3.12 | |
+| 언어 / 런타임 | Python 3.14 | |
 | 프레임워크 | FastAPI 0.139.0 + uvicorn 0.50.0 | |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.51 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
 | 마이그레이션 | Alembic 1.18.5 (head: `b78b256c2b20`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
-| Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
+| Auth 검증 | PyJWT 2.13.0 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.64.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 114/114 PASS, coverage ~97% (sysmon core) |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 115/115 PASS, coverage ~97% (sysmon core) |
 
 ### 인프라
 
@@ -131,7 +131,7 @@ di/          # Hilt 모듈 (NetworkModule, DatabaseModule, RepositoryModule, Coi
 app/main.py           # FastAPI 앱 + lifespan(DB / Sentry) + 모듈 레벨 CORS + 글로벌 예외 핸들러
 app/config.py         # pydantic-settings (@lru_cache)
 app/database.py       # DeclarativeBase + get_db() UoW (app.state.session_factory)
-app/dependencies.py   # JWKS 기반 JWT 검증 (ES256)
+app/dependencies.py   # JWKS 기반 JWT 검증 (RS256, Entra External ID)
 app/exceptions.py     # AppException 계층 (NotFound / Conflict / BadRequest)
 app/models/           # SQLAlchemy 2.0 Mapped[T]
 app/schemas/          # Pydantic CamelSchema (alias_generator=to_camel)
@@ -149,12 +149,10 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 |--------|------|------|
 | `GET` | `/health` | 헬스체크 — liveness (Container App probe) |
 | `GET` | `/health/ready` | readiness probe (DB `SELECT 1` → 200/503) |
-| `GET` | `/.well-known/assetlinks.json` | Android App Links 검증 |
-| `GET` | `/auth/confirm` | 이메일 확인 fallback (HTML 응답) |
 | `GET` | `/privacy` | 개인정보 처리방침 (Play 등록 URL, `docs/store/` 렌더) |
 | `GET` | `/account-deletion` | 계정·데이터 삭제 안내 (Play 등록 URL) |
 
-> HTML 브라우저 라우트(`/privacy`·`/account-deletion`·`/auth/confirm`)는 `include_in_schema=False` — openapi.json(Android 생성기 입력)에서 제외해 앱이 호출하지 않는 죽은 클라이언트 메서드 생성을 막는다. 라우트 자체는 정상 동작(브라우저·크롤러 직접 접근).
+> HTML 브라우저 라우트(`/privacy`·`/account-deletion`)는 `include_in_schema=False` — openapi.json(Android 생성기 입력)에서 제외해 앱이 호출하지 않는 죽은 클라이언트 메서드 생성을 막는다. 라우트 자체는 정상 동작(브라우저·크롤러 직접 접근).
 
 **JWT 필요 (14)**
 
@@ -178,7 +176,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ```
 .
 ├── app/                      # Android 앱 (Kotlin / Compose)
-├── backend/                  # FastAPI 백엔드 (Python 3.12)
+├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: b78b256c2b20)
 │   ├── tests/                # pytest (87 PASS, coverage ~97%)

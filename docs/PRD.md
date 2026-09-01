@@ -241,14 +241,12 @@
          └──▶ Sentry (에러 모니터링)
 ```
 
-### Backend API (v0.1.0 — FastAPI Python 3.12)
+### Backend API (FastAPI Python 3.14)
 
 | Method | Path | 설명 | 도입 |
 |--------|------|------|-----|
 | `GET` | `/health` | liveness 헬스 체크 (Container App probe) | v0.1 |
 | `GET` | `/health/ready` | readiness probe (DB `SELECT 1` → 200/503) | v0.1 |
-| `GET` | `/.well-known/assetlinks.json` | Android App Links 검증 | v0.1.3 |
-| `GET` | `/auth/confirm` | 이메일 확인 fallback (HTML 응답) | v0.1.3 |
 | `GET` | `/profile` | 프로필 조회 | v0.1 |
 | `PUT` | `/profile` | 프로필 생성/수정 (restDay 포함, 매 호출마다 history 자동 기록) | v0.1 / v0.3 |
 | `GET` | `/profile/history?limit=50` | 프로필 변경 이력 (체형 진행 차트용) | v0.3 |

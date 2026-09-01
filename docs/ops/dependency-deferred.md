@@ -154,6 +154,68 @@ git diff app/build/generated/openapi/   # 생성 코드 변동 확인
 
 ---
 
+## 3. detekt 1.23.8 → 2.0.0 — ⏸ **보류 (2026-09-02 등재)**
+
+**dependabot PR 아님** — 이 항목은 의존성 번프 요청이 아니라 **AGP 내장 Kotlin 전환의 유일한
+차단 요인**으로서 등재한다. `gradle.properties` 의 `android.builtInKotlin=false` ·
+`android.newDsl=false` 가 이것 때문에 남아 있다.
+
+### 보류 사유
+
+detekt 1.23.8 의 Android 연동은 **레거시 variant API** 위에 있다. AGP 9 새 DSL 을 켜면
+variant 태스크(`detektDebug`/`detektBaselineDebug`)가 **등록되지 않고**, 남는 것은
+`detekt` · `detektBaseline` · `detektGenerateConfig` 3개뿐이다(실측 2026-09-02).
+
+평범한 `detekt` 태스크로 갈아타는 것은 **안 된다** — 타입 해석(type resolution) classpath 를
+받지 못해 일부 룰이 **조용히** 검사를 멈춘다. 게이트는 green 인 채 품질만 내려가는,
+이 저장소가 가장 경계하는 실패 형태다.
+
+의존처 4곳: `.githooks/pre-commit:34` · `.github/workflows/android.yml` ·
+`scripts/preflight-release.sh:98` · `config/detekt/detekt.yml`(generated 제외 전제).
+
+### 재개 조건
+
+**detekt 2.0.0 정식(non-alpha) 릴리스.** AGP 9 새 DSL 지원은 2.0.0 마일스톤이다
+(issue [#8981](https://github.com/detekt/detekt/issues/8981), PR #9100 ·
+built-in Kotlin 은 [#8320](https://github.com/detekt/detekt/issues/8320)).
+
+MEASURED 2026-09-02 — 두 배포 채널 모두 2.x 정식이 **없다**:
+
+```bash
+curl -s https://plugins.gradle.org/m2/io/gitlab/arturbosch/detekt/detekt-gradle-plugin/maven-metadata.xml   | grep -oE '<release>[^<]+</release>'    # → <release>1.23.8</release>
+curl -s https://repo1.maven.org/maven2/io/gitlab/arturbosch/detekt/detekt-gradle-plugin/maven-metadata.xml   | grep -oE '<release>[^<]+</release>'    # → <release>1.23.8</release>
+```
+
+프리릴리스는 채택하지 않는다(Kotlin 2.4.20-RC2 도 같은 이유로 보류 중).
+
+### 검증 절차 (재개 시)
+
+전환 자체는 **이미 검증해 두었다**. 필요한 변경은 다음 3개뿐이다.
+
+```bash
+# 1) 플러그인 제거 — AGP 9 는 Kotlin 이 내장이다
+#    build.gradle.kts + app/build.gradle.kts 에서 alias(libs.plugins.kotlin.android) 삭제
+# 2) generated OpenAPI 소스 등록을 Kotlin 소스셋으로
+#    app/build.gradle.kts:  java.srcDir(...)  →  kotlin.srcDir(...)
+#    (내장 Kotlin 은 java/kotlin 소스셋이 분리돼 java.srcDir 을 Kotlin 컴파일이 못 본다)
+# 3) gradle.properties 에서 builtInKotlin / newDsl 두 줄 삭제
+
+./gradlew :app:tasks --all | grep detekt        # detektDebug 가 다시 보이는지 먼저 확인
+./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleRelease
+```
+
+`detektDebug` 가 목록에 없으면 **거기서 멈춘다.** 그것이 이 항목의 전부다.
+
+### 머지 패턴
+
+detekt 번프 + 위 3개 변경을 **한 PR** 로. baseline 재생성이 필요하면 수치 변화를 커밋
+메시지에 남긴다(baseline drift 는 이 저장소의 만성 CI 실패 원인).
+
+> AGP 10 이 먼저 오면 플래그가 사라져 전환이 강제된다. 그 경우에도 절차는 위와 같다.
+> 상세: `docs/plans/2026-09-02-full-audit-refactor-design.md` §4
+
+---
+
 ## 부록: 보류 항목 재추가 시 절차
 
 새 보류 항목이 생기면 이 문서에 추가:

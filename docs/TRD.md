@@ -17,12 +17,12 @@
 
 본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.19 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
-| 영역 | TRD v1.0 | 현재 (v0.1.19) |
+| 영역 | TRD v1.0 | 현재 (v0.2.0) |
 |------|----------|------------|
-| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.139.0 (Python 3.12)** + uvicorn |
+| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.139.0 (Python 3.14)** + uvicorn |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0 async + asyncpg** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (87 PASS, cov ~97% / coverage core `sysmon`) |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (115 PASS, cov ~97% / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API | RapidAPI ExerciseDB | **OSS** `oss.exercisedb.dev` (인증 불필요) |
 | **인증 제공자** | Supabase Auth (SDK 3.6.0, ES256) | **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` — MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE), **RS256** (2026-09 전환) |
@@ -86,7 +86,7 @@ v0.1.1~v0.1.19 누적 (Android UI + Auth + Backend 안정화):
    ┌──────▼──────┐   │   ┌──────▼──────┐   │
    │  Supabase   │   │   │  ExerciseDB │   │
    │  Auth       │   │   │  (RapidAPI) │   │
-   │  (ES256 JWT)│   │   │  운동 데이터  │   │
+   │  (RS256 JWT)│   │   │  운동 데이터  │   │
    └─────────────┘   │   └─────────────┘   │
                      │                     │
           ┌──────────▼──────────┐   ┌──────▼──────────┐
@@ -171,7 +171,7 @@ v0.1.1~v0.1.19 누적 (Android UI + Auth + Backend 안정화):
 | 인증 서비스 | Supabase Authentication |
 | 인증 방식 | 이메일/비밀번호 |
 | 클라이언트 SDK | Supabase Kotlin SDK 3.6.0 (`auth-kt`) |
-| JWT 알고리즘 | ES256 (ECDSA) — HMAC256이 아님에 주의 |
+| JWT 알고리즘 | **RS256** (Entra External ID, 2026-09 전환). ES256 은 Supabase 시절 값 |
 | 토큰 검증 (백엔드) | JWKS 기반 공개키 검증 |
 | JWKS 엔드포인트 | `{SUPABASE_URL}/auth/v1/.well-known/jwks.json` |
 | JWKS 캐시 | 10키, 24시간 TTL, 분당 10회 제한 |
@@ -488,7 +488,7 @@ Application.kt (EngineMain)
 
 | 항목 | 설정 |
 |------|------|
-| JWT 검증 | JWKS 공개키 기반 ES256 검증 (secret 불필요) |
+| JWT 검증 | JWKS 공개키 기반 **RS256** 검증 (secret 불필요) |
 | 입력 검증 | 프로필 범위, 배지 키 whitelist, 페이지네이션 범위 제한 |
 | DB 보안 | Prepared statement (Exposed ORM), 트랜잭션 격리 |
 | 컨테이너 보안 | Non-root 유저 실행 |

@@ -12,7 +12,7 @@
 - **패키지**: `com.gunnys.eundunhealth`
 - **최소 SDK**: 26 (Android 8.0)
 - **대상 SDK**: 37 (Android 17)
-- **백엔드**: FastAPI(Python 3.12) — 본 문서 v1.0 작성 당시 Ktor였으나 v0.1.0에서 전환됨.
+- **백엔드**: FastAPI(Python 3.14) — 본 문서 v1.0 작성 당시 Ktor였으나 v0.1.0에서 전환됨.
 - **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 인증 불필요).
 - **인증**: Microsoft Entra External ID(외부 테넌트 `eundunhealthciam`, Asia Pacific, JWKS RS256).
 
@@ -41,10 +41,10 @@
 ### Backend (서버)
 | 기술 | 용도 |
 |------|------|
-| FastAPI (Python 3.12) + uvicorn | HTTP 서버 |
+| FastAPI (Python 3.14) + uvicorn | HTTP 서버 |
 | SQLAlchemy 2.0 async + asyncpg | ORM / 데이터베이스 쿼리 |
 | Alembic | 스키마 마이그레이션 |
-| PyJWT (JWKS, ES256) | 인증 토큰 검증 |
+| PyJWT (JWKS, RS256) | 인증 토큰 검증 |
 | Sentry Python SDK | 서버 에러 모니터링 |
 
 ### 빌드 도구

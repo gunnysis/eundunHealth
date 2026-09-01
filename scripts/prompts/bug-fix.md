@@ -10,7 +10,7 @@
 
 ### 인증 관련
 - [ ] 로그인 실패 → `data/auth/AuthRepositoryImpl.kt`의 `mapAuthError()` 확인
-- [ ] JWT 검증 실패 → Backend `plugins/Security.kt` (ES256, JWKS)
+- [ ] JWT 검증 실패 → Backend `app/dependencies.py` (RS256, JWKS — Entra External ID)
 - [ ] userId null → `AuthRepository.getCurrentUserId()` 반환값 확인
 
 ### UI 관련

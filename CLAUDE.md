@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.12)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
+eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastAPI (Python 3.14)** backend. Users input body metrics, receive auto-generated weekly workout plans from the **OSS ExerciseDB** (`oss.exercisedb.dev`, no auth), track completion via Health Connect, set goals (weight / body fat) and earn badges. All UI text is Korean.
 
 **Current state**: versionName `0.2.0` (versionCode `34` — Supabase Auth → **Microsoft Entra External ID** 전환[브라우저 위임 인증]. 직전 v0.1.19/33 = Android CD 첫 실 e2e 릴리스: 태그 push → `release.yml` → Play 내부 트랙 자동 업로드 + 원장 자동 갱신[P4, PR #143] — **2026-07-03 실 업로드 성공·원장 자동 커밋 `32f0ebe` 실증**; 의존성 배치 #139 + release 서명 keystore 존재-조건부화 포함, 사용자 가시 동작 변화 없음). 직전 v0.1.18/32 — 출시 재업로드: v0.1.17/31 이 Play "이미 사용된 버전 코드 31" 로 거부(INC-2026-06-19-28) → versionCode 32 재빌드 + versionCode 단조성 가드(`play-upload-ledger.md` 원장·`check-version-monotonic.sh`·룰 13). 앱 동작 변화 없음=v0.1.17 빌드 동일. 직전 v0.1.17/31 공개 출시 전 전체 감사(브랜치 `fix/pre-release-audit`): Rule 8 inline 에러 배너(OnboardingScreen·HomeScreen·ProfileScreen) + HistoryScreen 완료/미완료 a11y contentDescription + BadgeViewModel 특성화 테스트(3건) + 백엔드 프로필 극단값 경계 테스트(2건) + account_service 로그 구조화 + 문서 버전 드리프트 5건 정정(android @Test 139→142·backend pytest 77→79). 직전 v0.1.16/30 — 출시 후 심층 감사 개선(브랜치 `feature/deep-audit-improvements`): JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`+5s timeout) · RetryInterceptor/Profile/History/Statistics/Onboarding/Goal 테스트(@Test 118→138) · GoalScreen silent-failure→`ErrorContent` · DayPlanCard 포맷팅 `remember` perf · 오늘의활동 a11y(`mergeDescendants`) · 백엔드 `pool_pre_ping`·history COUNT window 1쿼리·`user_profile_history` 복합인덱스(alembic `b78b256c2b20`)·계정삭제 orphan reaper(fail-safe)·sentry-sdk 2.63.0; 공식문서 fact-check 2건 정정(PyJWKClient 기본 timeout 30s · Compose strong skipping 기본활성→stability config Won't-do). 설계 `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md`. **후속 PR #127**: orphan reaper Container Apps Job 프로비저닝(UAI·주간 cron `0 18 * * 0`·수동실행 Succeeded·운영 런북 `docs/ops/azure-container-apps-jobs.md`) + 하드닝(reaper 트랜잭션 사용자단위 commit·스크립트 self-locating·requirements cp949 pre-commit 가드; @Test 139·backend pytest 77). 직전 v0.1.15 = 감사 LOW 후속: ① SideEffect 수집 라이프사이클-aware(`ObserveAsEvents`) + 백엔드(alembic rest_day server_default·CORS 와일드카드 차단) + starlette 1.3.1 CVE, PR #123 `078a24fb`. 직전 v0.1.14 출시 준비 종합: 실기기 제보 2버그 근본수정(① 빈 운동계획 = R8 keep 갭 → 패키지 단위 keep + 자가치유 ② 완료 토글 해제 보존 = 수동 우선 `manuallySet`) + 4-에이전트 전수감사 출시차단 해소(완료 정합성·입력검증 500→400·인증 토큰갱신 견고화·운동상세 GIF/복사/데이터흐름·캐시/파싱/KST·폴리시) + 재발방지 가드, PR #122 squash `e2d7460`; 백엔드 자동배포 완료(`manual`/`manuallySet` live), Android Play 업로드 대기; 직전 v0.1.13 = 코드베이스 리팩토링 #107~#112). 버전 SSoT = 루트 `version.properties`(앱) + `backend/app/__init__.py:__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포). Play Store: **프로덕션 정식 출시(LIVE)** — 프로덕션 = **v0.1.19/33**(2026-07-03 release.yml 내부 트랙 자동 CD → 같은 날 Console 수동 승격; 첫 출시 = v0.1.18/32, 2026-06-29 승인 — preflight 산출물 AAB 8.35MB·Sentry 매핑 `af1a233a`). **출시 후 전제**: 프로덕션 사용자 데이터가 존재할 수 있음 — 룰 5(Auth 제공자 교체 금지) 발효, 사용자 테이블 TRUNCATE 등 파괴적 정리 경로 폐쇄, 스키마 변경은 alembic 마이그레이션 경로만. **저장소 public 전환(2026-07-02)**: 사전 보안감사(이력 keystore pw 유출 1건 = 회전+반영 종결, 이력 재작성 안함) + 인프라 식별자 스크럽(PR #137 — `__SUBSCRIPTION_ID__` 런타임 주입·pre-commit GUID 가드·`backend/.dockerignore`) 후 전환, secret scanning·push protection·CodeQL 기본 설정 활성. CodeQL java-kotlin autobuild 가 clean checkout 에서 release variant 를 빌드하므로 **release 서명은 keystore 존재-조건부**(INC-2026-07-02-29, unsigned 폴백 + preflight 서명 fail-fast 가드). dependabot 정리(#138 backend 5종·#139 android 배치·#132 checkout v7 머지, kotlin 2.4 deferral 유지). 출시 산출물 단일 위치 `app/build/outputs/bundle`(preflight·AS 마법사 동일 경로, stale `app/release/` 삭제). **RG 이관(2026-07-29)**: 운영 리소스 전체를 `apps` → `rg-eundunhealth-prod-krc` 로 이관 완결(이동 7 + 알림/AG/UAI 재생성 + RBAC 8 재부여 + LA shared key 갱신 + 구 RG 삭제 — 단일 RG; FQDN·PG 호스트·KV URI 불변이라 앱/Play URL 무영향. 상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry). Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
@@ -137,13 +137,13 @@ Package: `com.gunnys.eundunhealth`
 - `SentryInitProvider`는 AndroidManifest `tools:node="remove"`로 비활성 — `EundunHealthApplication`에서 DSN blank 검사 후 수동 init.
 - **WeeklyPlanDao.getPlan(userId, weekStart)**: userId 필터링 필수 (v0.1 CRITICAL fix). EundunDatabase version=2 + fallbackToDestructiveMigration.
 
-### Backend (`backend/` — FastAPI / Python 3.12)
+### Backend (`backend/` — FastAPI / Python 3.14)
 Package: `app`
 
 - `app/main.py` — FastAPI 앱 + lifespan(DB 엔진/Sentry) + 모듈 레벨 CORS(`add_middleware`는 lifespan 내부 금지) + 글로벌 exception handler.
 - `app/config.py` — pydantic-settings, `get_settings()` `@lru_cache`.
 - `app/database.py` — `Base = DeclarativeBase`, `get_db()` UoW 패턴 (Request → `app.state.session_factory`).
-- `app/dependencies.py` — JWKS 기반 JWT 검증 (`PyJWKClient` 24h TTL 캐시, ES256, `authenticated` audience).
+- `app/dependencies.py` — JWKS 기반 JWT 검증 (`PyJWKClient` 24h TTL 캐시, **RS256**, audience = Entra 백엔드 client_id). ES256/`authenticated` 는 Supabase 시절 값이다 — 2026-09 Entra 전환으로 바뀌었다.
 - `app/exceptions.py` — `AppException`/`NotFoundException`/`ConflictException`/`BadRequestException`.
 - `app/models/` — SQLAlchemy 2.0 `Mapped[T] = mapped_column(...)` (Postgres UUID).
 - `app/schemas/` — Pydantic `CamelSchema` (alias_generator=to_camel, populate_by_name=True). v0.3에 `goal.py`, `statistics.py` 추가.
@@ -152,9 +152,10 @@ Package: `app`
 - `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py` 신규.
 - `alembic/` — async 엔진 연동. **head: `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)**.
 
-**API Endpoints (14개 JWT 필요 + 공개 6개. 공개 라우트 `/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm`·`/privacy`·`/account-deletion`. 마지막 둘은 `docs/store/*.md` 를 `app/legal/` 로 동기화(sync-legal-docs.sh)해 md→HTML 렌더 — Play 등록 URL. HTML 브라우저 라우트 3종(`/privacy`·`/account-deletion`·`/auth/confirm`)은 `include_in_schema=False` → openapi.json(Android 생성기 입력)에서 제외[죽은 클라이언트 메서드 방지], 라우트는 그대로 동작):**
+**API Endpoints (총 18 = JWT 필요 14 + 공개 4. 공개 라우트 `/health`·`/health/ready`·`/privacy`·`/account-deletion`. 뒤 둘은 `docs/store/*.md` 를 `app/legal/` 로 동기화(sync-legal-docs.sh)해 md→HTML 렌더 — Play 등록 URL이며 `include_in_schema=False` 라 openapi.json[Android 생성기 입력]에서 제외된다[죽은 클라이언트 메서드 방지]. `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 Entra 전환으로 **삭제**됐다 — 검증을 브라우저 안에서 처리해 App Links 경로가 불필요):**
 ```
 GET    /health
+GET    /health/ready                          # 공개 — readiness (DB SELECT 1)
 GET    /privacy                              # 공개 — 개인정보 처리방침 (Play URL)
 GET    /account-deletion                     # 공개 — 계정·데이터 삭제 안내 (Play URL)
 GET    /profile
@@ -177,7 +178,7 @@ DELETE /account
 
 ### Android App
 - **Kotlin 2.4.10**, KSP 2.3.11 (Kotlin과 호환 필요)
-- **Gradle 9.6.0**, AGP 9.3.2
+- **Gradle 9.7.1**, AGP 9.3.2
 - **Min SDK 26**, Target SDK 37, Java 17
 - **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
 - **App version**: versionName **`0.2.0`**, versionCode **`34`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000, **Play 재사용 불가** — 룰 13 원장 가드). 정책 전문: `docs/conventions/versioning.md`
@@ -192,11 +193,11 @@ DELETE /account
 - pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
-- **Python 3.12**, FastAPI 0.139.0, SQLAlchemy 2.0.51 async + asyncpg 0.31.0, Alembic 1.18.5
+- **Python 3.14**, FastAPI 0.139.0, SQLAlchemy 2.0.51 async + asyncpg 0.31.0, Alembic 1.18.5
 - **API version `1.0.0`** — `backend/app/__init__.py:__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
 - **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix 포함; PR #123), PyJWT 2.13.0 (JWKS), httpx 0.28.1 (Microsoft Graph)
 - **Sentry SDK 2.64.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy strict 통과, ruff/bandit clean, pytest 114/114 PASS, coverage ~97% (coverage 측정 코어 = `sysmon`/PEP 669 — 기본 ctrace 는 async `await` 이후 라인 과소측정, `pyproject.toml [tool.coverage.run] core` 참조; mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
+- mypy strict 통과, ruff/bandit clean, pytest 115/115 PASS, coverage ~97% (coverage 측정 코어 = `sysmon`/PEP 669 — 기본 ctrace 는 async `await` 이후 라인 과소측정, `pyproject.toml [tool.coverage.run] core` 참조; mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
 - Alembic head `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
@@ -437,7 +438,7 @@ versionCode 는 저장소 로컬 +1(`bump-version.sh`) 만으로는 안전하지
 - `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
 - `@docs/ops/azure-container-apps-jobs.md` — Container Apps **Job**(private ACR + KV + MI) 프로비저닝 재현 패턴 + 함정 회피(E1~E4: az `--args` leading-dash / system MI chicken-egg → UAI-first / 개인 MSA RBAC CLI 불가 → 포털·SP / job `--registry-identity` CLI 버그 → `--yaml`). orphan reaper 워크드 예시
 - `@docs/ops/play-store-release.md` — 첫 출시 8단계 + 데이터 안전 답변
-- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 남은 항목: kotlin 2.4 (Hilt 대기는 2.60.1 머지[#148, 2026-07-10]로 해소 — 남은 블로커 = build.gradle.kts DSL 마이그레이션; 2026-07-10 #147 재확인, script compilation errors 4건 실증) + openapi-generator 7.23 (13 minor 점프, 생성 코드 diff 검토 필요)
+- `@docs/ops/dependency-deferred.md` — v0.1.0 출시 후 재검토할 의존성 보류 항목. 2026-05-29 starlette 1.1.0 (#54) + healthConnect 1.1.0 stable (#53) 해소. 2026-09-01 kotlin 2.4.10/KSP 2.3.11 + openapi-generator 7.25.0 해소. **남은 항목: detekt 1.23.8 → 2.0.0** — AGP 내장 Kotlin/새 DSL 전환의 유일한 차단 요인(2.x 정식 미출시, 실측 `<release>1.23.8</release>`). 전환 절차는 이미 검증돼 문서에 있다
 - `@docs/conventions/naming.md` — 명명/문서화 SSoT (5종 공식 가이드 + 본 프로젝트 결정 D1~D10)
 - `@docs/conventions/versioning.md` — 버전 관리 SSoT (앱 `version.properties` + 백엔드 `__version__` 독립 / semver 정책 / versionCode 규칙 / bump 절차 / 프론트 표시 / drift 방지)
 
