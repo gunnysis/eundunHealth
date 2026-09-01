@@ -33,7 +33,8 @@ jobs:
           python-version: '3.12'
 
       - name: Install PyYAML + pytest
-        run: pip install 'PyYAML==6.0.3' 'pytest==9.0.3'
+        # pytest 버전은 backend/requirements-dev.txt 와 일치시킨다(저장소 내 단일 버전).
+        run: pip install 'PyYAML==6.0.3' 'pytest==9.1.1'
 
       - name: Run unit tests (parser/validator/renderer)
         run: python -m pytest scripts/test_gen_plans_index.py -v

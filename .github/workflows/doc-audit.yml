@@ -29,7 +29,10 @@ jobs:
           python-version: '3.12'
 
       - name: Install pytest
-        run: pip install 'pytest==9.0.3'
+        # scripts/ 테스트는 백엔드 의존성이 필요 없어 독립 설치한다. 다만 버전은
+        # backend/requirements-dev.txt 와 맞춘다 — 같은 툴이 저장소 안에서 다른 버전으로
+        # 돌면 어느 결과가 진짜인지 알 수 없다.
+        run: pip install 'pytest==9.1.1'
 
       - name: Unit tests (collector / parsers)
         run: python -m pytest scripts/agents/test_doc_audit.py -v
