@@ -347,3 +347,95 @@ async def test_graph_token_is_reused_across_reaper_sweep(db_engine):
 
             assert instance.get.await_count == 3
             assert instance.post.await_count == 1  # 토큰은 1회만
+            # 커넥션도 1회만 — 사용자마다 AsyncClient 를 새로 열면 TLS 핸드셰이크가
+            # 사용자 수에 비례해 늘어난다(httpx 공식 권고: Client 재사용).
+            assert mock_cls.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_delete_account_reuses_one_graph_connection(client, sample_profile):
+    """계정 삭제의 Graph 호출 3건(토큰·사용자삭제·파기)이 클라이언트 하나를 공유한다."""
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    await client.put("/profile", json=sample_profile)
+
+    with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
+        instance = AsyncMock()
+        instance.post = AsyncMock(return_value=graph_token_response())
+        instance.delete = AsyncMock(
+            side_effect=lambda url, **_: httpx.Response(204, request=httpx.Request("DELETE", url))
+        )
+        instance.__aenter__ = AsyncMock(return_value=instance)
+        instance.__aexit__ = AsyncMock(return_value=False)
+        mock_cls.return_value = instance
+        assert (await client.delete("/account")).status_code == 200
+
+    assert mock_cls.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_graph_token_failure_returns_502(client, sample_profile):
+    """토큰 발급 실패(가장 흔한 원인: 클라이언트 시크릿 만료)는 502 로 표면화돼야 한다.
+
+    조용히 500 이 되면 "계정 삭제만 안 되는" 상태를 원인 없이 만나게 된다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    await client.put("/profile", json=sample_profile)
+
+    with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
+        instance = AsyncMock()
+        instance.post = AsyncMock(
+            return_value=httpx.Response(401, json={"error": "invalid_client"},
+                                        request=httpx.Request("POST", "http://mock/token"))
+        )
+        instance.__aenter__ = AsyncMock(return_value=instance)
+        instance.__aexit__ = AsyncMock(return_value=False)
+        mock_cls.return_value = instance
+        resp = await client.delete("/account")
+
+    assert resp.status_code == 502
+    assert resp.json()["code"] == "AUTH_TOKEN_FAILED"
+    # Auth 삭제가 시작되지 않았으므로 앱 데이터는 보존돼야 한다(재로그인 가능).
+    assert (await client.get("/profile")).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_db_purge_failure_after_auth_deletion_is_logged_as_orphan(client, sample_profile, caplog):
+    """Auth 삭제 성공 후 DB purge 가 실패하면 고아 user_id 를 로깅해야 한다.
+
+    reaper 가 후속 청소를 하지만, 어떤 사용자가 고아가 됐는지는 이 로그가 유일한 단서다.
+    """
+    import logging
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    from app.services.account_service import AccountService
+
+    await client.put("/profile", json=sample_profile)
+
+    with patch("app.services.account_service.httpx.AsyncClient") as mock_cls, patch.object(
+        AccountService, "_purge_app_data", side_effect=RuntimeError("db down")
+    ):
+        instance = AsyncMock()
+        instance.post = AsyncMock(return_value=graph_token_response())
+        instance.delete = AsyncMock(
+            side_effect=lambda url, **_: httpx.Response(204, request=httpx.Request("DELETE", url))
+        )
+        instance.__aenter__ = AsyncMock(return_value=instance)
+        instance.__aexit__ = AsyncMock(return_value=False)
+        mock_cls.return_value = instance
+
+        # ServerErrorMiddleware 는 500 응답을 만든 뒤에도 예외를 재전파하고 ASGITransport 가
+        # 그대로 올려보낸다. 사용자가 받는 응답(500 + 일반 메시지)은 test_main_handlers.py 가
+        # 따로 고정하므로 여기서는 **고아 로그**만 검증한다.
+        with caplog.at_level(logging.ERROR, logger="app.services.account_service"):
+            with pytest.raises(RuntimeError, match="db down"):
+                await client.delete("/account")
+
+    assert "orphaned user_id" in " ".join(r.getMessage() for r in caplog.records)

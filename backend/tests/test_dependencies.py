@@ -36,6 +36,10 @@ def _creds() -> HTTPAuthorizationCredentials:
     return HTTPAuthorizationCredentials(scheme="Bearer", credentials="dummy.jwt.token")
 
 
+# autouse 픽스처가 `_get_oidc_config` 를 스텁으로 갈아끼우므로 원본 참조를 미리 잡아 둔다.
+_REAL_GET_OIDC_CONFIG = dependencies._get_oidc_config
+
+
 def _raise(exc: Exception):
     raise exc
 
@@ -269,3 +273,95 @@ def test_jwk_client_uses_short_timeout():
     """느린 JWKS 가 워커를 30초간 점유하지 못하게 기본 30s → 5s."""
     client = dependencies._get_jwk_client(JWKS_URI)
     assert client.timeout == 5
+
+
+# === _get_oidc_config 자체 (autouse 픽스처가 대체하므로 여기서 원본을 복구해 검증한다) ===
+
+
+class _FakeResponse:
+    def __init__(self, payload: object, error: Exception | None = None):
+        self._payload = payload
+        self._error = error
+
+    def raise_for_status(self) -> None:
+        if self._error:
+            raise self._error
+
+    def json(self) -> object:
+        return self._payload
+
+
+@pytest.fixture
+def real_get_oidc_config(monkeypatch):
+    """autouse 픽스처가 스텁으로 갈아끼운 `_get_oidc_config` 원본을 되돌린다."""
+    monkeypatch.setattr(dependencies, "_get_oidc_config", _REAL_GET_OIDC_CONFIG)
+    monkeypatch.setattr(dependencies, "_oidc_config", None)
+    return _REAL_GET_OIDC_CONFIG
+
+
+def test_discovery_reads_issuer_and_jwks_uri_from_document(monkeypatch, real_get_oidc_config):
+    """issuer 는 **문서에서 읽는다**. 조합하면 서브도메인이 tenantId 라서 어긋난다(설계 F4-a)."""
+    monkeypatch.setattr(
+        dependencies.httpx,
+        "get",
+        lambda url, timeout: _FakeResponse({"issuer": ISSUER, "jwks_uri": JWKS_URI}),
+    )
+
+    cfg = real_get_oidc_config(SUBDOMAIN)
+    assert cfg == {"issuer": ISSUER, "jwks_uri": JWKS_URI}
+    assert not cfg["issuer"].startswith(f"https://{SUBDOMAIN}.")
+
+
+def test_discovery_document_is_cached(monkeypatch, real_get_oidc_config):
+    """두 번째 호출은 네트워크를 타지 않는다 — 매 요청 discovery 를 부르면 지연이 붙는다."""
+    calls: list[str] = []
+
+    def _get(url: str, timeout: int) -> _FakeResponse:
+        calls.append(url)
+        return _FakeResponse({"issuer": ISSUER, "jwks_uri": JWKS_URI})
+
+    monkeypatch.setattr(dependencies.httpx, "get", _get)
+
+    real_get_oidc_config(SUBDOMAIN)
+    real_get_oidc_config(SUBDOMAIN)
+    assert len(calls) == 1
+
+
+def test_discovery_http_error_becomes_jwk_client_error(monkeypatch, real_get_oidc_config):
+    """HTTP 오류를 그대로 흘리면 전역 500 이 된다 — 503(인증 서버 장애)으로 환원돼야 한다."""
+    monkeypatch.setattr(
+        dependencies.httpx,
+        "get",
+        lambda url, timeout: _FakeResponse(None, error=dependencies.httpx.HTTPError("boom")),
+    )
+
+    with pytest.raises(PyJWKClientError):
+        real_get_oidc_config(SUBDOMAIN)
+
+
+def test_discovery_missing_key_becomes_jwk_client_error(monkeypatch, real_get_oidc_config):
+    """스펙에 없는 문서(키 누락)도 인증 서버 문제로 다룬다 — KeyError 로 500 이 되면 안 된다."""
+    monkeypatch.setattr(
+        dependencies.httpx, "get", lambda url, timeout: _FakeResponse({"issuer": ISSUER})
+    )
+
+    with pytest.raises(PyJWKClientError):
+        real_get_oidc_config(SUBDOMAIN)
+
+
+def test_discovery_failure_is_not_cached(monkeypatch, real_get_oidc_config):
+    """실패를 캐시하면 일시 장애가 영구 장애가 된다 — 다음 요청은 다시 시도해야 한다."""
+    attempts: list[str] = []
+
+    def _get(url: str, timeout: int) -> _FakeResponse:
+        attempts.append(url)
+        if len(attempts) == 1:
+            return _FakeResponse(None, error=dependencies.httpx.HTTPError("boom"))
+        return _FakeResponse({"issuer": ISSUER, "jwks_uri": JWKS_URI})
+
+    monkeypatch.setattr(dependencies.httpx, "get", _get)
+
+    with pytest.raises(PyJWKClientError):
+        real_get_oidc_config(SUBDOMAIN)
+    assert real_get_oidc_config(SUBDOMAIN)["issuer"] == ISSUER
+    assert len(attempts) == 2

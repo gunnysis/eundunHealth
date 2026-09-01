@@ -32,6 +32,15 @@ class AccountService:
         self._graph_token: str | None = None
         self._graph_token_expires_at: float = 0.0
 
+    # === 공개 진입점 ===
+    #
+    # httpx 공식 문서: Client 인스턴스는 커넥션 풀링을 하므로 같은 호스트로 여러 번 요청할 때
+    # "reuse the underlying TCP connection, instead of recreating one for every single request"
+    # 다. 아래 두 진입점이 각각 **작업 단위로 클라이언트 하나**를 열고 헬퍼에 주입한다 —
+    # 계정 삭제는 3 핸드셰이크 → 1, reaper 스윕은 사용자 N명당 N+1 → 1 이 된다.
+    # 서비스 인스턴스에 보관하지 않는 이유는 수명·이벤트루프 결합으로 커넥션이 새는 것을
+    # 피하기 위해서다. 출처: https://www.python-httpx.org/advanced/clients/
+
     async def delete_account(self, user_id: str) -> None:
         """Entra 사용자 삭제 후 앱 DB 데이터를 순서대로 제거한다.
 
@@ -40,12 +49,13 @@ class AccountService:
         - Auth 성공 후 DB 실패 시 → 고아 DB 데이터만 남음 (무해, 배치 정리 가능)
         반대 순서(DB 먼저)는 Auth 실패 시 빈 프로필 상태가 되어 위험.
         """
-        # Step 1: Graph 로 Entra 사용자 삭제 (실패 시 예외 → DB 보존)
-        await self._delete_entra_user(user_id)
+        async with httpx.AsyncClient(timeout=10) as client:
+            # Step 1: Graph 로 Entra 사용자 삭제 (실패 시 예외 → DB 보존)
+            await self._delete_entra_user(user_id, client)
 
-        # Step 1-b: 소프트 삭제(30일 보관)를 즉시 파기로 승격.
-        # 게시된 방침이 "즉시 영구 삭제" 라고 약속하므로 이 단계가 있어야 문구와 실제가 일치한다.
-        await self._purge_deleted_user(user_id)
+            # Step 1-b: 소프트 삭제(30일 보관)를 즉시 파기로 승격.
+            # 게시된 방침이 "즉시 영구 삭제" 라고 약속하므로 이 단계가 있어야 문구와 실제가 일치한다.
+            await self._purge_deleted_user(user_id, client)
 
         # Step 2: Auth 삭제 성공 후 앱 데이터 삭제.
         try:
@@ -82,21 +92,24 @@ class AccountService:
         """
         candidate_ids = await self.profile_repo.list_all_user_ids()
         reaped: list[str] = []
-        for user_id in candidate_ids:
-            try:
-                if await self._user_exists_in_auth(user_id) is False:  # None(불확실)은 스킵
-                    await self._purge_app_data(user_id)
-                    await self.db.commit()
-                    reaped.append(user_id)
-                    logger.info("Reaped orphaned app data for user_id=%s", user_id)
-            except Exception:
-                await self.db.rollback()
-                logger.exception("Reap 실패(건너뜀) user_id=%s", user_id)
+        # 스윕 전체가 클라이언트 하나를 공유한다 — 사용자마다 새로 열면 TLS 핸드셰이크가
+        # 사용자 수에 비례해 늘어난다.
+        async with httpx.AsyncClient(timeout=10) as client:
+            for user_id in candidate_ids:
+                try:
+                    if await self._user_exists_in_auth(user_id, client) is False:  # None(불확실)은 스킵
+                        await self._purge_app_data(user_id)
+                        await self.db.commit()
+                        reaped.append(user_id)
+                        logger.info("Reaped orphaned app data for user_id=%s", user_id)
+                except Exception:
+                    await self.db.rollback()
+                    logger.exception("Reap 실패(건너뜀) user_id=%s", user_id)
         return reaped
 
     # === Microsoft Graph ===
 
-    async def _get_graph_token(self) -> str:
+    async def _get_graph_token(self, client: httpx.AsyncClient) -> str:
         """Graph 앱 전용 토큰을 client credentials 로 발급받는다(만료 60초 전 갱신).
 
         `data=` 에 dict 를 넘기면 httpx 가 form 인코딩을 처리한다. 시크릿에는 `~`·`-` 같은
@@ -108,17 +121,16 @@ class AccountService:
             return self._graph_token
 
         url = f"https://login.microsoftonline.com/{self.settings.entra_tenant_id}/oauth2/v2.0/token"
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                url,
-                data={
-                    "client_id": self.settings.entra_backend_client_id,
-                    "client_secret": self.settings.entra_backend_client_secret,
-                    "scope": "https://graph.microsoft.com/.default",
-                    "grant_type": "client_credentials",
-                },
-                timeout=10,
-            )
+        resp = await client.post(
+            url,
+            data={
+                "client_id": self.settings.entra_backend_client_id,
+                "client_secret": self.settings.entra_backend_client_secret,
+                "scope": "https://graph.microsoft.com/.default",
+                "grant_type": "client_credentials",
+            },
+            timeout=10,
+        )
         if resp.status_code != 200:
             # 가장 흔한 원인은 클라이언트 시크릿 만료다. 조용히 실패하면 계정 삭제만 망가진다.
             logger.error("Graph token 발급 실패: status=%s", resp.status_code)
@@ -130,15 +142,14 @@ class AccountService:
         self._graph_token_expires_at = now + max(int(body.get("expires_in", 3600)) - 60, 0)
         return token
 
-    async def _graph_headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {await self._get_graph_token()}"}
+    async def _graph_headers(self, client: httpx.AsyncClient) -> dict[str, str]:
+        return {"Authorization": f"Bearer {await self._get_graph_token(client)}"}
 
-    async def _user_exists_in_auth(self, user_id: str) -> bool | None:
+    async def _user_exists_in_auth(self, user_id: str, client: httpx.AsyncClient) -> bool | None:
         """Entra 의 user 존재 여부. 200=True, 404=False, 그 외/오류=None(불확실)."""
         try:
-            headers = await self._graph_headers()
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(f"{GRAPH_BASE}/users/{user_id}", headers=headers, timeout=10)
+            headers = await self._graph_headers(client)
+            resp = await client.get(f"{GRAPH_BASE}/users/{user_id}", headers=headers, timeout=10)
         except (httpx.HTTPError, AppException) as e:
             # 토큰 발급 실패도 '불확실' 이다. 여기서 False 를 반환하면 reaper 가 멀쩡한
             # 사용자 데이터를 지운다 — 절대 안 됨.
@@ -151,16 +162,15 @@ class AccountService:
         logger.warning("Auth 존재 확인 비정상 응답(보존) user_id=%s status=%s", user_id, resp.status_code)
         return None
 
-    async def _delete_entra_user(self, user_id: str) -> None:
-        headers = await self._graph_headers()
-        async with httpx.AsyncClient() as client:
-            resp = await client.delete(f"{GRAPH_BASE}/users/{user_id}", headers=headers, timeout=10)
+    async def _delete_entra_user(self, user_id: str, client: httpx.AsyncClient) -> None:
+        headers = await self._graph_headers(client)
+        resp = await client.delete(f"{GRAPH_BASE}/users/{user_id}", headers=headers, timeout=10)
         # 204=삭제 성공(Graph 는 200 이 아니다), 404=이미 없음 (멱등)
         if resp.status_code not in (204, 404):
             logger.error("Entra user deletion failed: status=%s", resp.status_code)
             raise AppException(502, "AUTH_DELETE_FAILED", "인증 서버 사용자 삭제에 실패했습니다")
 
-    async def _purge_deleted_user(self, user_id: str) -> None:
+    async def _purge_deleted_user(self, user_id: str, client: httpx.AsyncClient) -> None:
         """소프트 삭제된 사용자를 deletedItems 에서 영구 파기한다.
 
         Graph 의 사용자 삭제는 30일 소프트 삭제라 이 단계가 없으면 게시된 방침의
@@ -172,11 +182,10 @@ class AccountService:
         실패시키지 않고 로깅만 한다(30일 후 자동 파기됨). 로그가 유일한 탐지 수단이다.
         """
         try:
-            headers = await self._graph_headers()
-            async with httpx.AsyncClient() as client:
-                resp = await client.delete(
-                    f"{GRAPH_BASE}/directory/deletedItems/{user_id}", headers=headers, timeout=10
-                )
+            headers = await self._graph_headers(client)
+            resp = await client.delete(
+                f"{GRAPH_BASE}/directory/deletedItems/{user_id}", headers=headers, timeout=10
+            )
         except (httpx.HTTPError, AppException) as e:
             logger.error("Deleted user 영구 파기 실패(30일 후 자동 파기) user_id=%s: %s", user_id, e)
             return
