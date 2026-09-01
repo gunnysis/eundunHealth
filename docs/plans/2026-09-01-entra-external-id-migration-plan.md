@@ -32,7 +32,7 @@ tags: [auth, entra-external-id, supabase, migration, ux, rule-5, rule-11, rule-1
 **Task 순서:**
 
 ```
-Phase 0  대표 작업 — 테넌트/앱등록/시크릿/한국어  [게이트: Q1~Q4 확정]
+Phase 0  테넌트 준비 — Claude(프로바이더·테넌트 생성) + 대표(앱등록·동의·브랜딩)  [게이트: Q1~Q4]
 Task 0   branch + 환경 확인
 Phase 1  백엔드 — JWT 검증(TDD) → Graph 계정삭제(TDD) → 인프라 시크릿
 Phase 2  Android — 의존성 → DI → Repository → UI → Manifest
@@ -43,16 +43,79 @@ Phase 5  머지 후 운영 검증 (실기기 E2E)
 
 ---
 
-## Phase 0: 대표 작업 (구현 착수 전 필수)
+## Phase 0: 테넌트 준비
 
 > **이 Phase가 끝나기 전에는 Task 1 이후를 시작할 수 없다.** Q1~Q4의 답이 Task 범위를 바꾼다.
 
-Claude가 대행 불가. 각 항목은 별도로 요청드린다.
+### 0-A. az CLI 자동화 가능 범위 — 재검토 결과 (2026-09-01)
+
+초안은 "전부 대표 작업"으로 적었으나 **틀렸다**. `ciamDirectories`는 ARM 리소스이므로 일부는 az CLI로 자동화된다.
+
+**실측 근거**:
+```
+az provider show -n Microsoft.AzureActiveDirectory \
+  --query "resourceTypes[?resourceType=='ciamDirectories'].apiVersions"
+→ ["2025-08-01-preview", "2023-05-17-preview", "2023-01-18-preview"]
+```
+[CIAM Tenants - Create REST API](https://learn.microsoft.com/en-us/rest/api/activedirectory/ciam-tenants/create?view=rest-activedirectory-2023-05-17-preview) —
+`PUT /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.AzureActiveDirectory/ciamDirectories/{name}`
+
+**결정적 제약(공식)**: *"The API that creates ciamDirectories requires a **delegated user token, not an app-only token**"* — 즉 서비스 주체(SP)로는 못 만들고 **로그인한 사용자 자격**이어야 한다. 현재 `az` 세션은 대표님 계정(`qkr133456@gmail.com`)으로 로그인된 delegated 토큰이므로 **조건을 만족한다**.
+
+| 작업 | Claude 자동화 | 근거 |
+|---|---|---|
+| 프로바이더 등록 | ✅ `az provider register` | 구독 스코프 ARM 작업 |
+| **외부 테넌트 생성** | ✅ `az rest --method PUT` | ARM API + delegated 토큰 조건 충족 |
+| KV secret 등록 | ✅ `az keyvault secret set` | 기존에도 수행 |
+| 앱 등록 2건 | ❌ **대표 필요** | **새 테넌트**에 인증해야 함 → `az login --tenant <new>` 는 대화형 |
+| Graph 관리자 동의 | ❌ **대표 필요** | 새 테넌트 관리자 권한 + 개인 MSA 의 Graph 제약([[azure-cli-rbac-msa-limitation]]) |
+| user flow · 한국어 · 브랜딩 | ❌ **대표 필요** | 새 테넌트 Graph API (`organizationalBranding` 등) |
+
+→ **테넌트 생성까지는 제가 하고, 새 테넌트 내부 설정부터 대표님께 요청**하는 것이 정확한 분담이다.
+
+### 0-B. 명명 설계 (CAF + `docs/conventions/naming.md`)
+
+**이 리소스는 이름이 제품 표면이다.** `resourceName`이 곧 초기 서브도메인이 되어 사용자에게 노출된다:
+- 로그인 URL: `https://<name>.ciamlogin.com/...`
+- 테넌트 도메인: `<name>.onmicrosoft.com`
+
+**제약(공식)**: 최대 **26자**, **alphanumeric only**(하이픈 불가).
+
+**CAF 패턴과의 충돌**: 프로젝트 규칙은 `<type>-<workload>-<env>-<region>`인데 하이픈을 못 쓴다. `naming.md` 체크리스트가 이미 이 경우를 규정한다 — *"ACR/Storage 처럼 alphanumeric only 리소스는 **하이픈 제거 + 압축형**"*(선례: `eundunhealthacr`). 또 **region 토큰을 쓸 수 없다** — 한국 리전 미지원이라 `location='Asia Pacific'`이고 `krc`가 성립하지 않는다.
+
+**CAF 공식 abbreviation 목록에 이 타입은 없다**(신규 리소스). 프로젝트가 정해야 하며, 기존 압축형 선례를 따른다.
+
+| 후보 | 길이 | 평가 |
+|---|---|---|
+| **`eundunhealthciam`** | 16 | **채택** — ACR 선례(`eundunhealthacr`)와 동일 패턴(`<workload><type-abbr>`). 로그인 URL 에 노출돼도 제품명이 읽히고, `ciam` 이 용도를 드러냄 |
+| `eundunhealth` | 12 | 짧지만 타입 정보 0. 향후 다른 디렉터리 추가 시 충돌 |
+| `eundunhealthprod` | 16 | env 는 담지만 타입 누락. 이 구독에 prod 디렉터리가 하나뿐이라 변별력 낮음 |
+| `caeundunhealthprod` | 18 | `ca` 는 Container Apps 약어라 **의미 충돌** |
+
+> **env 접미사를 뺀 이유**: 이 리소스는 사용자에게 보이는 로그인 도메인이다. `eundunhealthciamprod.ciamlogin.com` 은 최종 사용자에게 내부 환경 구분을 노출한다. 별도 dev 테넌트가 필요해지면 그때 `eundunhealthciamdev` 로 구분한다(신규 리소스에만 규칙 적용 원칙).
+
+**등록 후 `/naming-audit` 1회 실행 + `logs/process-infra.md` 에 1행 추가**(naming.md §5 체크리스트).
+
+### 0-C. 실행 절차 (Claude 수행 구간)
+
+```bash
+# 1) 프로바이더 등록 (현재 NotRegistered)
+az provider register -n Microsoft.AzureActiveDirectory --wait
+
+# 2) 외부 테넌트 생성 — location 은 'Asia Pacific'(한국 미지원, design F3)
+az rest --method PUT \
+  --url "https://management.azure.com/subscriptions/{SUB}/resourceGroups/rg-eundunhealth-prod-krc/providers/Microsoft.AzureActiveDirectory/ciamDirectories/eundunhealthciam?api-version=2023-05-17-preview" \
+  --body '{"location":"Asia Pacific","properties":{"createTenantProperties":{"displayName":"eundunHealth","countryCode":"KR"}}}'
+```
+> `countryCode` 는 청구/데이터 정책용 국가 코드로, **데이터 저장 위치(location)와 별개**다. 생성은 **비동기**이며 최대 30분 소요(design §6 Step 0-2).
+> 본문 스키마는 preview API 라 버전별 차이가 있을 수 있으니, 실행 전 `az rest --method GET` 으로 기존 리소스 형태를 확인하거나 실패 시 응답 본문의 스키마 오류를 따라 교정한다.
+
+### 0-D. 대표님께 요청드릴 구간
+
+Claude 가 대행 불가. 각 항목은 해당 시점에 개별 요청드린다.
 
 | # | 작업 | 완료 판정 |
 |---|---|---|
-| 0-1 | `Microsoft.AzureActiveDirectory` 프로바이더 등록 | `az provider show -n Microsoft.AzureActiveDirectory --query registrationState` → `Registered` (현재 **NotRegistered**) |
-| 0-2 | Entra admin center에서 외부 테넌트 생성 (**Asia Pacific**) | 테넌트 subdomain·tenantId 확보. Azure portal 불가, Tenant Creator 역할 필요, 최대 30분 |
 | 0-3 | 앱 등록 ① Android public client | client_id 확보. "Allow public client flows" = Yes. redirect URI **서명 3종**(debug/upload/Play App Signing) 모두 등록 |
 | 0-4 | 앱 등록 ② 백엔드 confidential client | client_id + client secret 확보. Expose an API → scope `access_as_user` |
 | 0-5 | Graph `User.ReadWrite.All`(Application) + **관리자 동의** + User Administrator 역할 | Graph `DELETE /users/{id}` 가 403이 아닌 204/404를 반환 |
