@@ -57,9 +57,31 @@ tags: [azure, naming, caf, legacy-cleanup, acr-retention, cost]
 | --- | --- | --- |
 | 빈 RG `VisualStudioOnline-196FA…` | 리소스 **0개** | southeastasia. VS Online/Codespaces 잔재 |
 | 빈 RG `VisualStudioOnline-E202B…` | 리소스 **0개** | 동일 |
-| ACR 매니페스트 | **68개** (태그 54 + **dangling 14**) | dangling 최초 2026-05-21 |
-| ACR 태그 | **56개** | 필요한 것은 `latest` + 롤백용 1~2개 |
-| ACR 용량 | **2.37 GB / 10 GB** (Basic 포함분의 22%) | 배포마다 증가, 상한 없음 |
+| ACR 매니페스트 | **68개** = 태그 있음 **54** + **dangling 14** | dangling 최초 2026-05-21 |
+| ACR 태그 | **56개** | 아래 "54 vs 56" 참조 |
+| ACR 용량 | **2,372,359,237 / 10,737,418,240 B** = **2.21 / 10 GiB** (22.1%) | 배포마다 증가, 상한 없음 |
+| ACR SKU / 태그 형태 | Basic · sha7 **53** + `latest` 1 + `fastapi-latest` 1 + timestamp 1 | 아래 §5.1 |
+
+> **단위 주의**: 이전 판은 "2.37 GB / 10 GB" 로 적었다. 실제 API 값은 바이트이고 분모
+> 10,737,418,240 은 **10 GiB**(공식 SKU 표의 "Included storage 10 GiB")다. 분자를 십진 GB,
+> 분모를 GiB 로 섞어 적으면 비율이 어긋나 보인다 — **둘 다 GiB 로 통일**한다. 비율 22% 는 동일.
+> 같은 조회의 `MaximumStorageCapacity` 43,980,465,111,040 = **40 TiB** 도 공식 표의 Basic
+> "Storage limit 40 TiB" 와 일치해, 이 레지스트리가 Basic 임을 교차 확인해 준다.
+
+> **"54 vs 56" 은 모순이 아니다 — 그리고 이게 룰 1 의 실물이다.**
+> 매니페스트는 54개가 태그를 갖는데 태그 총합은 56개다. 차이 2는 **태그를 2개씩 가진
+> 매니페스트 2개** 때문이다(MEASURED):
+>
+> | digest | tags | created |
+> | --- | --- | --- |
+> | `sha256:da089cc6dc2a…` | `b74f140`, **`latest`** | 2026-09-01 |
+> | `sha256:1c5c1237d01b…` | `20260524-191501`, **`fastapi-latest`** | 2026-05-24 |
+>
+> 룰 1 이 경고하는 "태그로 지목해 manifest 를 지우면 같은 digest 를 공유하는 다른 태그가
+> 함께 사라진다" 가 **지금 이 레지스트리에 실재하는 상태**다. 다만 룰 1 본문의 예시
+> (`latest`·`fastapi-latest` 가 한 digest 를 공유)는 **현재와 다르다** — `latest` 는
+> `b74f140` 과, `fastapi-latest` 는 Ktor→FastAPI 전환기의 timestamp 태그와 짝을 이룬다.
+> 위험 구조는 그대로이므로 룰 1 은 유효하고, 예시만 낡았다.
 
 ## 3. 왜 대부분 못 바꾸는가
 
@@ -175,22 +197,125 @@ Tier C 는 "언젠가" 가 아니라 **"이 조건이 충족되면"** 으로 적
 CLAUDE.md 의 "redeploy.sh가 timestamp 태그 최근 5개만 보존" 서술은 **CI 경로를 포함하지
 않는다** — 문서가 실제보다 안전해 보이게 적혀 있었다(H7 에서 정정).
 
-### 5.2 설계
+### 5.2 설계 — **개정 (2026-09-01)**: 커스텀 스크립트 → 공식 `acr purge` 스케줄 태스크
 
-`scripts/prune-acr.sh` 신설 + `backend.yml` deploy 성공 **후** 실행.
+> **초안 정정.** 이전 판은 `scripts/prune-acr.sh` 를 신설해 `backend.yml` deploy 뒤에
+> 붙이는 안이었다. 조사 결과 **Microsoft 가 정확히 이 문제에 대한 공식 수단을 문서화**하고
+> 있고, Basic SKU 에서도 동작한다(실측). 우리가 유지보수할 코드를 새로 만들 이유가 없다.
 
-- 보존: `latest` + 최근 **N=10** 개 sha 태그 (롤백 여유). 나머지 태그는 **untag**(룰 1).
-- 그다음 **dangling manifest** 를 digest 로 삭제해 실제 용량을 회수한다.
-- **fail-open**: 정리 실패가 배포를 깨지 않게 한다(`|| true` + 경고 로그). 정리는 배포의
-  성공 조건이 아니다.
-- `--dry-run` 지원 (기존 `setup-azure-alerts.sh` 패턴과 동일).
+**공식 수단**: [`acr purge`](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-auto-purge)
+— ACR **Task** 로 실행되는 정리 명령. Premium 전용인 *retention policy*(§5.1)와 달리 Task 는
+SKU 제한이 없다. `--filter`(리포·태그 정규식) · `--ago`(기간) · `--keep`(최신 N 보존) ·
+`--untagged`(태그 없는 매니페스트까지) · `--dry-run` 을 지원한다.
+
+**MEASURED 2026-09-01 — 이 레지스트리에서 실제로 돌려 확인했다** (dry-run, 비파괴):
+
+```powershell
+$cmd = "acr purge --filter 'eundunhealth-api:.*' --ago 30d --untagged --keep 10 --dry-run"
+az acr run --cmd $cmd --registry eundunhealthacr /dev/null
+# → Run ID de1 successful (5s)
+# → Number of tags to be deleted: 42 / manifests: 45
+# → 보존 14 태그: 05f3021 2ad96a5 2bece6d 2c66a1d 9b75065 a5cad2c b74f140
+#                c020138 c91cb54 c954579 cf0d8f6 de612e9 e71e7a7 latest
+```
+
+즉 태그 56 → 14, 매니페스트 68 → 23 으로 줄어든다.
+
+**채택안**: 주간 스케줄 ACR Task 1개.
+
+```bash
+PURGE_CMD="acr purge --filter 'eundunhealth-api:.*' --ago 30d --untagged --keep 10"
+az acr task create --name purge-eundunhealth-api \
+  --cmd "$PURGE_CMD" --schedule "0 1 * * Sun" \
+  --registry eundunhealthacr --context /dev/null
+```
+
+| 축 | 커스텀 `prune-acr.sh`(초안) | **공식 `acr purge` Task(채택)** |
+| --- | --- | --- |
+| 유지보수 | 우리 코드 | Microsoft 유지(`acr-cli` 이미지) |
+| 실행 위치 | GitHub Actions(배포마다) | ACR 내부(스케줄) — **CI 자격증명 불필요** |
+| 배포 영향 | fail-open 설계가 필요 | **애초에 배포 경로 밖** |
+| 미리보기 | 직접 구현 | `--dry-run` 내장 |
+| 성숙도 | — | **PREVIEW** (공식 고지, 이미지 `acr-cli:0.19`) |
+
+**PREVIEW 인 점은 감수한다.** 정리 실패의 최악은 "용량이 안 줄어든다"이고, 배포 경로 밖이라
+서비스에 영향이 없다. 대신 태스크 실패를 알아채야 하므로 §8 검증에 주기 점검을 넣는다.
+
+#### 5.2.1 ⚠️ 결함 — 나이 기반 정리는 **라이브 참조**를 모른다 (설계 결함 D1)
+
+`acr purge` 든 커스텀 스크립트든 판단 기준은 **나이와 개수**다. "이 이미지를 지금 누가 쓰고
+있는가" 는 보지 않는다. 그런데 이 레지스트리에는 **두 개의 워크로드**가 이미지를 참조한다.
+
+| 참조자 | 참조 태그 | 생성일 | 전체 태그 중 순위 |
+| --- | --- | --- | --- |
+| Container App `eundunhealth-api` (revisionMode **Single**, 리비전 1개) | `b74f140` | 2026-09-01 | **#1** |
+| Container **Job** `eundunhealth-reaper` (주간 cron `0 18 * * 0`) | **`de612e9`** | **2026-07-10** | **#5** |
+| `backend/reaper-job.yaml` 의 하드코딩 값 | `0e6a99d` | — | **삭제 대상(실측)** |
+
+**근본 원인**: `backend.yml`(CI)은 **Container App 만 갱신하고 Job 은 갱신하지 않는다**(실측:
+워크플로에 `containerapp job` 참조 0건). Job 이미지는 수동 `scripts/setup-reaper-job.sh` 로만
+바뀐다. 그래서 **앱과 잡의 이미지가 계속 벌어진다** — 현재 이미 **7주** 차이다.
+
+**언제 터지는가**: `--keep 10` 은 후보군(=`--ago` 를 넘긴 태그) 중 최신 10개를 남긴다.
+`de612e9` 는 현재 #5 라 **오늘은 살아남는다**(위 dry-run 에서 보존 확인). 그러나 배포마다
+새 태그가 쌓이고 기존 태그는 계속 늙는다 — **약 6번의 백엔드 배포 뒤**에는 순위가 10위 밖으로
+밀려 삭제된다. 그러면 **일요일 밤 reaper 잡이 이미지 pull 실패로 조용히 멈춘다.**
+(잡 실패는 앱 헬스체크에 안 잡히고, 현재 잡 실패 알림도 없다.)
+
+**해법은 보존 개수를 늘리는 게 아니다** — 그건 시한폭탄의 타이머를 늘릴 뿐이다.
+**드리프트 자체를 없앤다**:
+
+- **B2-a (선행, 근본)**: `backend.yml` deploy job 에 **reaper Job 이미지 갱신 1스텝** 추가
+  (`az containerapp job update -n eundunhealth-reaper -g <RG> --image <같은 태그>`).
+  앱과 잡이 항상 같은 이미지를 보게 되면 "참조되는 옛 태그" 라는 범주가 사라진다.
+  부수 효과가 더 크다 — 지금 잡은 **7주 전 코드**로 돌고 있다(§5.2.2).
+- **B2-b (정리)**: 위 스케줄 태스크. B2-a 이후에는 `--keep 10` 이 순수한 롤백 여유가 된다.
+- **B2-c (안전망, 선택)**: 그래도 참조 이미지를 지키고 싶으면 공식 [이미지 잠금](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-image-lock)
+  을 쓴다 — `az acr repository update --image <repo>:<tag> --delete-enabled false`.
+  `acr purge` 는 잠긴 아티팩트를 건너뛴다(`--include-locked` 를 주지 않는 한).
+  다만 잠금은 참조가 바뀔 때마다 갱신해야 해 **또 다른 드리프트원**이다. B2-a 가 먼저다.
+
+> **공식 경고 확인**: *"If you have systems that pull images by manifest **digest** (as opposed
+> to image name), don't purge untagged images."* — 본 저장소의 참조는 모두 **태그**다
+> (Container App `…:b74f140`, Job `…:de612e9`, `containerapp.yaml`/`reaper-job.yaml` 모두 태그).
+> 따라서 `--untagged` 는 안전하다. **새 워크로드를 digest 로 pull 하게 만들면 이 전제가 깨진다.**
+
+#### 5.2.2 곁다리로 드러난 것 — reaper 잡이 Supabase 시절 상태로 남아 있다 (D2)
+
+D1 을 조사하다 발견했다. **라이브 잡의 설정이 전환 이전 그대로다**(MEASURED):
+
+```
+secrets: database-url, supabase-url, supabase-service-role-key
+env    : ENVIRONMENT, DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+image  : eundunhealth-api:de612e9   (2026-07-10 = Entra 전환 이전)
+```
+
+Entra 전환 브랜치는 `backend/reaper-job.yaml` **파일**을 Entra 시크릿으로 바꿨지만, 그건
+**라이브 잡에 적용되지 않았다**(적용 경로 = 수동 스크립트). 그 결과 머지 후:
+
+1. 앱은 Entra 로 넘어가는데 **잡은 Supabase Admin API 로 사용자를 지우려 한다.**
+2. Entra 쪽 orphan 은 아무도 치우지 않는다 — 방금 부여한 `User.DeleteRestore.All` 의
+   효과가 **잡 경로에서는 나타나지 않는다.**
+3. Entra plan 의 **R-5(Supabase 프로젝트 삭제)** 를 실행하면 잡이 확실히 깨진다.
+
+→ 이건 본 설계가 아니라 **Entra 전환 계획의 갭**이다. 그쪽 Phase 5 는 "reaper 수동 1회 실행"
+만 적고 **잡 재배포를 시키지 않는다**. 해당 문서에 별도로 기록했다.
 
 ### 5.3 왜 untag 만으로는 부족한가
 
 `untag` 는 태그만 떼고 manifest 는 남긴다 — **용량은 그대로다.** 그래서 두 단계여야 한다.
 룰 1 의 금지 대상은 "태그로 지목해 manifest 삭제" 이고, 여기서 하는 것은 "태그가 **없는**
 manifest 를 digest 로 삭제" 라 공유 digest 를 날릴 경로가 없다. 이 구분을 룰 1 본문에
-한 줄 덧붙여 다음 사람이 헷갈리지 않게 한다.
+한 줄 덧붙여 다음 사람이 헷갈리지 않게 한다(N2 에서 반영 완료).
+
+`acr purge` 는 이 두 단계를 한 명령으로 한다 — 태그를 지운 뒤 `--untagged` 로 태그가 없어진
+매니페스트를 지운다. 위 dry-run 이 "tags 42 / manifests 45" 로 **매니페스트가 더 많은** 이유가
+이것이다(원래 dangling 14 + 이번에 태그를 잃는 31).
+
+> **도구 성숙도 메모**: 조사에 쓴 `az acr manifest list-metadata` 도 CLI 경고가 붙는다 —
+> *"Command group 'acr manifest' is in preview and under development."* 실측·검증에는 써도
+> 되지만 **자동화에 하드 의존시키지 말 것.** 이것이 커스텀 스크립트(=이 preview 명령에
+> 의존)보다 `acr purge`(=Microsoft 가 유지하는 컨테이너) 를 고른 이유이기도 하다.
 
 ## 6. Tier C 해제 조건 — "언젠가" 를 조건으로 바꾼다
 
@@ -217,19 +342,46 @@ manifest 를 digest 로 삭제" 라 공유 digest 를 날릴 경로가 없다. �
 
 ## 8. 검증
 
+**PowerShell 주의**: `az` 는 `.cmd` 래퍼라 JMESPath `--query "[?…]"` 가 cmd 파서에 먹혀
+`].name was unexpected at this time` 로 깨진다(실측). PowerShell 에서는 `-o json |
+ConvertFrom-Json` 뒤 `Where-Object` 로 거른다. Bash 에서는 `--query` 를 그대로 써도 된다.
+
 | # | 검증 |
 | --- | --- |
-| A1 | `az group list` 에 `VisualStudioOnline-*` 부재 |
-| A2 | `az acr manifest list-metadata … [?tags==null] \| length(@)` == 0, `az acr show-usage` 용량 감소 |
-| B1 | `az resource list -g … --query "[?starts_with(name,'alert-')]"` 에 `psql` 부재 · 알림 8건 유지 · 테스트 발화 1건 |
-| B2 | 배포 2회 후 태그 수가 11(=latest+10) 이하 유지 · dangling 0 |
+| A1 | `az group list` 에 `VisualStudioOnline-*` 부재. **삭제 직전** 각 RG 의 리소스 수가 0 임을 재확인(실측은 시점이 지나면 무효) |
+| A2 | 태그 없는 매니페스트 0건 · `az acr show-usage` 의 `Size` 감소(**바이트 값으로** 비교 — 단위 혼용 금지) |
+| B1 | 알림 8건 유지 · 이름에 `psql` 부재 · 테스트 발화 1건 |
+| B2-a | `az containerapp job show -n eundunhealth-reaper --query "properties.template.containers[0].image"` 가 **Container App 과 같은 태그** |
+| B2-b | 스케줄 태스크 등록 확인(`az acr task show -n purge-eundunhealth-api --registry eundunhealthacr`) · 최초 1회는 반드시 **`--dry-run` 먼저** |
+| B2-c | 태스크 **실행 결과** 주기 확인 — `az acr task list-runs --registry eundunhealthacr -o table`. PREVIEW 기능이라 조용히 실패할 수 있다 |
+| 공통 | 실행 후 `docs/ops/operations-snapshot.md` 인벤토리 갱신 |
 
 ## 9. 리스크
 
 | # | 리스크 | 대응 |
 | --- | --- | --- |
-| R1 | A2 에서 **참조 중인** manifest 를 지움 | dangling(태그 없음)만 대상. 현재 배포 중인 이미지는 `<sha7>` 태그가 있어 대상 밖 |
+| R1 | A2 에서 **참조 중인** manifest 를 지움 | dangling(태그 없음)만 대상. 라이브 참조는 모두 **태그**로 pull 하므로 대상 밖(§5.2.1 공식 경고 확인) |
 | R2 | B1 재생성 중 알림 공백 | 스크립트가 삭제→생성을 연속 수행(수 초). 그 사이 장애 확률 무시 가능. RG 이관 때 동일 경로 검증됨 |
-| R3 | B2 가 롤백 대상 이미지를 지움 | 보존 N=10. 이 저장소의 롤백 사례는 모두 직전 1~2개였다 |
-| R4 | 정리 스크립트 실패가 배포를 깨뜨림 | fail-open (§5.2) |
+| **R3** | **정리가 reaper Job 이 참조하는 이미지를 지움** | **초안의 "보존 N=10 이면 충분" 은 틀렸다.** 롤백만 보고 **두 번째 워크로드**를 못 봤다. 현재 `de612e9`(#5)는 살아남지만 **약 6회 배포 뒤 삭제**된다(§5.2.1). 대응은 보존 수 증가가 아니라 **B2-a 로 드리프트 제거** — B2-a 없이 B2-b 를 켜지 말 것 |
+| ~~R4~~ | ~~정리 스크립트 실패가 배포를 깨뜨림~~ | **소멸.** `acr purge` 는 ACR 내부 스케줄 태스크라 애초에 배포 경로 밖이다(§5.2) |
 | R5 | 빈 RG 삭제가 `alert-deletion-*` 을 발화 | 예상된 발화. 실행 전 회원님에게 고지 |
+| **R6** | `acr purge` 가 **PREVIEW** 라 동작·플래그가 바뀔 수 있음 | 실패해도 최악은 "용량이 안 준다" — 서비스 영향 없음. 대신 B2-c 로 실행 결과를 주기 점검. `az acr manifest` 도 preview 라 **자동화의 하드 의존 대상에서 제외**했다 |
+| **R7** | 머지 후 reaper 가 **Supabase 코드**로 돌아 Entra orphan 을 못 치움 | §5.2.2. 본 설계 범위 밖이지만 여기서 발견 — Entra plan 에 별도 기록. **R-5(Supabase 삭제) 전에 잡 재배포** 필수 |
+
+## 10. 이 검토에서 정정한 것 (2026-09-01 재검증)
+
+초안을 실측·공식문서와 대조해 아래를 바꿨다. **모두 "그럴듯했지만 틀린" 것들이다.**
+
+| # | 초안 | 재검증 결과 |
+| --- | --- | --- |
+| 1 | 정리는 커스텀 `scripts/prune-acr.sh` + CI 스텝 | **공식 `acr purge` 스케줄 태스크**가 있고 Basic 에서 동작(dry-run 실증). 새 코드 불필요 |
+| 2 | 보존 N=10 이면 안전(R3) | **아님.** 나이·개수 기준은 라이브 참조를 모른다. reaper Job 이 #5 태그를 참조 중이고 ~6회 배포 뒤 삭제된다 |
+| 3 | "2.37 GB / 10 GB" | 분자 십진 GB · 분모 GiB 혼용. **2.21 / 10 GiB** 로 통일(비율 22% 는 동일) |
+| 4 | "매니페스트 68(태그 54) · 태그 56" | 모순처럼 보이나 **복수 태그 매니페스트 2개** 때문. 그게 룰 1 위험의 실물이라 표로 명시 |
+| 5 | 룰 1 예시 `latest`·`fastapi-latest` 가 digest 공유 | **현재는 아님.** `latest`↔`b74f140`, `fastapi-latest`↔timestamp. 위험 구조는 유효, 예시만 낡음 |
+| 6 | (없음) | `az acr manifest` 가 **preview** 라는 CLI 경고 — 자동화 의존 금지 근거 |
+| 7 | (없음) | PowerShell 에서 `az --query "[?…]"` 가 cmd 파서에 깨짐 — §8 에 회피법 명시 |
+
+**공통 교훈**: 정리 대상을 "오래된 것" 으로 정의하면 **"오래됐지만 아직 쓰이는 것"** 을 놓친다.
+보존 규칙은 나이가 아니라 **참조 관계**에서 출발해야 하고, 참조가 여러 곳이면 먼저
+**참조를 하나로 모으는 것**(B2-a)이 규칙을 늘리는 것보다 낫다.

@@ -71,8 +71,49 @@ Phase 5  머지 후 운영 검증 (실기기 E2E)
 | R-2 | push + PR | ⏸ **보류 (회원님 명시 지시, 2026-09-01)**. 이 브랜치 위에 `feature/tech-debt-runtime-modernization`(T0~T7 + H1~H10)이 **stacked** 로 쌓여 있다 — 재개 시 **이 브랜치를 먼저 push** 해 PR base 를 확보해야 위쪽 PR diff 에 여기 커밋 10건이 섞이지 않는다 |
 | R-3 | 로컬 `main` 잉여 커밋 2건(`c8d7600`·`c7d4cd3`) | 브랜치 생성 전 main 에 직접 커밋됨. 둘 다 feature 브랜치의 조상이라 `git branch -f main origin/main` 으로 정리해도 **아무것도 잃지 않는다**. 대표 판단 대기 |
 | R-4 | 테스트용 redirect URI `http://localhost` 제거 | Phase 5 완료 후 |
-| R-5 | Supabase 정리(KV secret 2종 → 프로젝트 삭제) | Phase 5 통과 후. **순서를 바꾸면 롤백 경로가 먼저 사라진다** |
+| **R-7** | **라이브 reaper Job 재배포 (신규, 2026-09-01 발견)** | **R-5 보다 먼저.** 아래 참조 |
+| R-5 | Supabase 정리(KV secret 2종 → 프로젝트 삭제) | Phase 5 통과 후 **그리고 R-7 이후**. **순서를 바꾸면 롤백 경로가 먼저 사라진다** |
 | ~~R-6~~ | `doc_audit.py` off-by-one | ✅ **해소** — `tech-debt-runtime-modernization` T5 에서 처리(parametrize 확장분 가산). 실측: 수집기 **114** == pytest **114** |
+
+#### R-7 — 라이브 reaper Job 이 **Supabase 시절 그대로**다 (2026-09-01 발견)
+
+Azure 정리 설계를 재검증하다 드러났다. Task 1-5 는 `backend/reaper-job.yaml` **파일**을 Entra
+시크릿으로 바꿨지만, 그 파일이 **라이브 잡에 적용되는 경로는 수동 스크립트뿐**이다
+(`scripts/setup-reaper-job.sh`). CI 는 Container App 만 갱신한다(실측: `backend.yml` 에
+`containerapp job` 참조 0건). 그래서 잡은 아직 이렇다 —
+
+```
+image  : eundunhealth-api:de612e9   ← 2026-07-10, Entra 전환 이전 코드
+secrets: database-url, supabase-url, supabase-service-role-key
+env    : ENVIRONMENT, DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+```
+
+**머지하면 무슨 일이 일어나나**
+
+1. 앱은 Entra 로 넘어가는데 **주간 잡은 Supabase Admin API 로 사용자를 지우려 한다.**
+2. Entra 쪽 orphan 은 아무도 치우지 않는다 — 방금 부여한 `User.DeleteRestore.All`
+   (R-1)의 효과가 **잡 경로에서는 나타나지 않는다.**
+3. **R-5(Supabase 프로젝트 삭제)를 먼저 하면 잡이 확실히 깨진다.** 그것도 일요일 18:00 UTC 에
+   조용히 — 잡 실패는 앱 `/health` 에 안 잡히고 별도 알림도 없다.
+
+**Phase 5 의 갭이기도 하다.** 현재 Phase 5 E2E 4번은 "reaper 수동 1회 실행해 orphan 0" 인데,
+**지금 잡을 그대로 돌리면 Supabase 를 본다** — 그 검증은 Entra 경로를 전혀 확인하지 못한다.
+
+**조치 (순서 고정)**
+
+```bash
+# 1) 백엔드 자동 배포 완료 후 (새 이미지가 ACR 에 있어야 한다)
+bash scripts/setup-reaper-job.sh          # yaml 의 Entra 시크릿 + 현재 앱 이미지로 재배포
+# 2) 수동 1회 실행 → Phase 5 E2E 4번을 이 상태에서 수행
+az containerapp job start -n eundunhealth-reaper -g rg-eundunhealth-prod-krc
+az containerapp job execution list -n eundunhealth-reaper -g rg-eundunhealth-prod-krc -o table
+# 3) 그 다음에야 R-5(Supabase 정리)
+```
+
+**근본 원인과 재발 방지**: 앱과 잡이 **같은 이미지를 쓰는데 갱신 경로가 다르다**. 이번엔
+7주 벌어졌다. 구조적 해결은 CI 가 잡 이미지도 같이 갱신하는 것 —
+`2026-09-01-azure-resource-naming-and-legacy-plan.md` **B2-a**. 그쪽에서 다루되,
+**B2-a 를 먼저 켜면 안 된다**(새 이미지 + 옛 시크릿 조합이 된다). 순서는 **R-7 → B2-a**.
 
 ### 설계 대비 실제 (전환 중 발견해 정정한 것)
 
@@ -553,6 +594,9 @@ curl -s https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontaine
 2. 로그아웃 → 재로그인 → 세션 복원
 3. 401 → `TokenAuthenticator` silent refresh 회귀 없음
 4. 계정 삭제 → Graph 204 + `deletedItems` 퍼지 + 앱 DB purge + reaper 수동 1회 실행해 orphan 0
+   > **선행 필수 — R-7**: 라이브 reaper Job 은 아직 **Supabase 시절 이미지·시크릿**이다.
+   > 재배포(`bash scripts/setup-reaper-job.sh`) 없이 돌리면 Supabase 를 보므로 이 검증이
+   > **Entra 경로를 전혀 확인하지 못한다.** 잔여작업 R-7 참조.
 5. **R8 회귀 확인** — 릴리스 빌드에서 1~4가 전부 동작해야 한다(룰 12: 디버그로는 못 잡음)
 
 ---
