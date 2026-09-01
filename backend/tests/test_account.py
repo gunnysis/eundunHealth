@@ -3,16 +3,17 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.database import Base
+from tests.conftest import graph_token_response
 
 
 @pytest.mark.asyncio
-async def test_delete_account(client, sample_profile, supabase_delete_mock):
+async def test_delete_account(client, sample_profile, entra_delete_mock):
     # 프로필 생성 → 존재 확인
     await client.put("/profile", json=sample_profile)
     assert (await client.get("/profile")).status_code == 200
 
-    # Supabase Admin API 호출을 mock → 계정 삭제
-    with supabase_delete_mock(status_code=200):
+    # Graph 호출을 mock → 계정 삭제
+    with entra_delete_mock(status_code=204):
         resp = await client.delete("/account")
         assert resp.status_code == 200
 
@@ -32,7 +33,7 @@ def _user_id_models() -> list:
 
 @pytest.mark.asyncio
 async def test_delete_account_purges_all_user_data(
-    client, db_engine, sample_profile, sample_plan, supabase_delete_mock
+    client, db_engine, sample_profile, sample_plan, entra_delete_mock
 ):
     """계정 삭제는 user_id 를 가진 *모든* 테이블에서 사용자 데이터를 제거해야 한다 (회귀 가드).
 
@@ -63,7 +64,7 @@ async def test_delete_account_purges_all_user_data(
     for model in models:
         assert await count(model) > 0, f"seed 누락: {model.__tablename__}"
 
-    with supabase_delete_mock(status_code=200):
+    with entra_delete_mock(status_code=204):
         assert (await client.delete("/account")).status_code == 200
 
     # 삭제 후 전 per-user 테이블 0건
@@ -73,7 +74,7 @@ async def test_delete_account_purges_all_user_data(
 
 @pytest.mark.asyncio
 async def test_reap_orphaned_data_purges_only_auth_missing_users(db_engine):
-    """reap_orphaned_data 는 Supabase Auth 에 없는(404) user 의 데이터만 purge, 존재(200)는 보존.
+    """reap_orphaned_data 는 Entra 에 없는(404) user 의 데이터만 purge, 존재(200)는 보존.
 
     fail-safe 가드: orphan-user(404)만 청소되고 valid-user(200)는 그대로 남아야 한다.
     """
@@ -87,8 +88,6 @@ async def test_reap_orphaned_data_purges_only_auth_missing_users(db_engine):
 
     settings = Settings(
         database_url="sqlite+aiosqlite:///:memory:",
-        supabase_url="https://test.supabase.co",
-        supabase_service_role_key="k",
     )
     session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -107,6 +106,7 @@ async def test_reap_orphaned_data_purges_only_auth_missing_users(db_engine):
         with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
             instance = AsyncMock()
             instance.get = AsyncMock(side_effect=fake_get)
+            instance.post = AsyncMock(return_value=graph_token_response())
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
             mock_cls.return_value = instance
@@ -138,8 +138,6 @@ async def test_reap_orphaned_data_preserves_on_uncertain_auth(db_engine):
 
     settings = Settings(
         database_url="sqlite+aiosqlite:///:memory:",
-        supabase_url="https://test.supabase.co",
-        supabase_service_role_key="k",
     )
     session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -159,6 +157,7 @@ async def test_reap_orphaned_data_preserves_on_uncertain_auth(db_engine):
         with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
             instance = AsyncMock()
             instance.get = AsyncMock(side_effect=fake_get)
+            instance.post = AsyncMock(return_value=graph_token_response())
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
             mock_cls.return_value = instance
@@ -189,8 +188,6 @@ async def test_reap_orphaned_data_isolates_per_user_failure(db_engine):
 
     settings = Settings(
         database_url="sqlite+aiosqlite:///:memory:",
-        supabase_url="https://test.supabase.co",
-        supabase_service_role_key="k",
     )
     session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -215,6 +212,7 @@ async def test_reap_orphaned_data_isolates_per_user_failure(db_engine):
         with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
             instance = AsyncMock()
             instance.get = AsyncMock(side_effect=fake_get)
+            instance.post = AsyncMock(return_value=graph_token_response())
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
             mock_cls.return_value = instance
@@ -250,3 +248,102 @@ def test_reaper_script_imports_resolve_when_run_directly():
     )
     assert "No module named 'app'" not in result.stderr
     assert "ModuleNotFoundError" not in result.stderr
+
+
+@pytest.mark.asyncio
+async def test_delete_account_purges_soft_deleted_user(client, sample_profile):
+    """Graph 사용자 삭제는 30일 소프트 삭제다 — deletedItems 파기까지 해야 방침과 일치한다.
+
+    게시된 방침(docs/store/account-deletion.md)이 "즉시 영구 삭제" 를 약속하므로
+    이 두 번째 호출이 빠지면 문구와 실제 동작이 어긋난다.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    await client.put("/profile", json=sample_profile)
+    called: list[str] = []
+
+    def fake_delete(url: str, **_: object) -> httpx.Response:
+        called.append(url)
+        return httpx.Response(204, request=httpx.Request("DELETE", url))
+
+    with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
+        instance = AsyncMock()
+        instance.post = AsyncMock(return_value=graph_token_response())
+        instance.delete = AsyncMock(side_effect=fake_delete)
+        instance.__aenter__ = AsyncMock(return_value=instance)
+        instance.__aexit__ = AsyncMock(return_value=False)
+        mock_cls.return_value = instance
+        assert (await client.delete("/account")).status_code == 200
+
+    assert any("/users/" in u for u in called), called
+    assert any("/directory/deletedItems/" in u for u in called), called
+
+
+@pytest.mark.asyncio
+async def test_delete_account_succeeds_even_if_purge_forbidden(client, sample_profile):
+    """deletedItems 파기가 403(권한 누락)이어도 요청은 성공해야 한다.
+
+    사용자 계정 자체는 이미 삭제됐으므로 실패시키면 사용자만 혼란스럽다. 30일 후
+    자동 파기되며, 로그가 유일한 탐지 수단이다(User.DeleteRestore.All 권한 필요).
+    """
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    await client.put("/profile", json=sample_profile)
+
+    def fake_delete(url: str, **_: object) -> httpx.Response:
+        status = 403 if "deletedItems" in url else 204
+        return httpx.Response(status, request=httpx.Request("DELETE", url))
+
+    with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
+        instance = AsyncMock()
+        instance.post = AsyncMock(return_value=graph_token_response())
+        instance.delete = AsyncMock(side_effect=fake_delete)
+        instance.__aenter__ = AsyncMock(return_value=instance)
+        instance.__aexit__ = AsyncMock(return_value=False)
+        mock_cls.return_value = instance
+        assert (await client.delete("/account")).status_code == 200
+
+    # 앱 데이터는 정상 삭제됐어야 한다
+    assert (await client.get("/profile")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_graph_token_is_reused_across_reaper_sweep(db_engine):
+    """reaper 가 사용자마다 토큰을 재발급하지 않는다(인스턴스 수명 캐시)."""
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    from app.config import Settings
+    from app.repositories.profile_repo import ProfileRepository
+    from app.services.account_service import AccountService
+
+    settings = Settings(database_url="sqlite+aiosqlite:///:memory:")
+    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with session_factory() as session:
+        repo = ProfileRepository(session)
+        for uid in ("u1", "u2", "u3"):
+            await repo.upsert(uid, {"height_cm": 175.0, "weight_kg": 70.0})
+        await session.commit()
+
+    def fake_get(url: str, **_: object) -> httpx.Response:
+        return httpx.Response(200, request=httpx.Request("GET", url))  # 전원 존재 → purge 없음
+
+    async with session_factory() as session:
+        service = AccountService(session, settings)
+        with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
+            instance = AsyncMock()
+            instance.get = AsyncMock(side_effect=fake_get)
+            instance.post = AsyncMock(return_value=graph_token_response())
+            instance.__aenter__ = AsyncMock(return_value=instance)
+            instance.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = instance
+            await service.reap_orphaned_data()
+
+            assert instance.get.await_count == 3
+            assert instance.post.await_count == 1  # 토큰은 1회만

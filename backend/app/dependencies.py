@@ -1,8 +1,6 @@
 import asyncio
-import json
-import urllib.error
-import urllib.request
 
+import httpx
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -37,10 +35,11 @@ def _get_oidc_config(subdomain: str) -> dict[str, str]:
             f"{subdomain}.onmicrosoft.com/v2.0/.well-known/openid-configuration"
         )
         try:
-            with urllib.request.urlopen(url, timeout=5) as resp:  # noqa: S310 - https 고정 URL
-                doc = json.load(resp)
+            resp = httpx.get(url, timeout=5)
+            resp.raise_for_status()
+            doc = resp.json()
             _oidc_config = {"issuer": doc["issuer"], "jwks_uri": doc["jwks_uri"]}
-        except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as e:
+        except (httpx.HTTPError, ValueError, KeyError) as e:
             # 인증 실패(401)가 아니라 인증 서버 장애(503)로 다뤄야 한다.
             raise PyJWKClientError(f"OIDC discovery 실패: {e}") from e
     return _oidc_config

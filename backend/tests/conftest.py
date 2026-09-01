@@ -4,8 +4,6 @@ import os
 # pydantic-settings의 필수 필드를 환경변수로 미리 채워둔다. dependency_overrides는
 # 라우터 레벨 의존성만 갈아끼우므로 import-time 호출은 영향받지 않는다.
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
-os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
 os.environ.setdefault("ENTRA_TENANT_ID", "c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8")
 os.environ.setdefault("ENTRA_SUBDOMAIN", "eundunhealthciam")
 os.environ.setdefault("ENTRA_BACKEND_CLIENT_ID", "903bf44d-d73a-40b5-9601-e9c362699c38")
@@ -58,8 +56,6 @@ async def client(db_engine):
     def override_get_settings() -> Settings:
         return Settings(
             database_url="sqlite+aiosqlite:///:memory:",
-            supabase_url="https://test.supabase.co",
-            supabase_service_role_key="test-service-role-key",
         )
 
     app.dependency_overrides[get_db] = override_get_db
@@ -115,8 +111,6 @@ async def client_no_auth(db_engine):
     def override_get_settings() -> Settings:
         return Settings(
             database_url="sqlite+aiosqlite:///:memory:",
-            supabase_url="https://test.supabase.co",
-            supabase_service_role_key="test-service-role-key",
         )
 
     app.dependency_overrides[get_db] = override_get_db
@@ -128,25 +122,39 @@ async def client_no_auth(db_engine):
     app.dependency_overrides.clear()
 
 
-# === Supabase Admin API mock ===
+# === Microsoft Graph mock ===
+
+
+def graph_token_response() -> httpx.Response:
+    """client credentials 토큰 응답 스텁. Graph 를 부르는 모든 경로가 먼저 이걸 통과한다."""
+    return httpx.Response(
+        200,
+        json={"access_token": "fake-graph-token", "expires_in": 3599},
+        request=httpx.Request("POST", "http://mock/token"),
+    )
+
 
 @pytest.fixture
-def supabase_delete_mock():
-    """app.services.account_service.httpx.AsyncClient를 패치해서
-    DELETE /auth/v1/admin/users/{id} 응답을 흉내내는 컨텍스트 매니저를 반환한다.
+def entra_delete_mock():
+    """app.services.account_service.httpx.AsyncClient 를 패치해 Graph 응답을 흉내낸다.
+
+    토큰 발급(POST) + 사용자 삭제(DELETE /users/{id}) + 영구 파기
+    (DELETE /directory/deletedItems/{id}) 를 모두 덮는다.
 
     사용법:
-        with supabase_delete_mock(status_code=200):
+        with entra_delete_mock(status_code=204):
             await client.delete("/account")
     """
 
     @contextmanager
-    def _mock(status_code: int = 200):
+    def _mock(status_code: int = 204):
+        # Graph 의 삭제 성공은 200 이 아니라 204 다(Supabase 와 다름).
         mock_response = httpx.Response(
             status_code, request=httpx.Request("DELETE", "http://mock")
         )
         with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
             instance = AsyncMock()
+            instance.post = AsyncMock(return_value=graph_token_response())
             instance.delete = AsyncMock(return_value=mock_response)
             mock_cls.return_value = instance
             instance.__aenter__ = AsyncMock(return_value=instance)

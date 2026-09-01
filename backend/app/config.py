@@ -14,10 +14,6 @@ class Settings(BaseSettings):
     entra_backend_client_id: str  # 백엔드 앱 등록 appId = 액세스 토큰의 audience
     entra_backend_client_secret: str  # Graph client credentials 용 (회원 탈퇴)
 
-    # TODO(Task 1-3): 계정 삭제를 Graph 로 옮긴 뒤 제거
-    supabase_url: str = ""
-    supabase_service_role_key: str = ""
-
     sentry_dsn: str = ""
     environment: str = "production"
     cors_origins: list[str] = []  # 기본 차단 — 네이티브 앱은 CORS 비적용. 웹 표면 필요 시 CORS_ORIGINS 로 명시
