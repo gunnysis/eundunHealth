@@ -13,6 +13,7 @@ tags: [refactoring, upgrade, kotlin, gradle-dsl, dependabot, backlog]
 
 - **작성일**: 2026-09-01
 - **상태**: 작성 중 (승인 대기)
+- **상위 프로그램**: `2026-09-01-legacy-modernization-program-design.md` (WS2)
 - **연관 작업**: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md` — **같은 파일(`app/build.gradle.kts`, `gradle/libs.versions.toml`)을 건드리므로 순서 결정 필요**(§3)
 - **대상 버전**: Android 빌드 설정 변경 → versionCode 34+
 - **선행 작업**: 없음

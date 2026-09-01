@@ -194,13 +194,84 @@ git commit -m "infra: Container App/Job/CI 시크릿을 Entra 로 교체 (룰 6 
 ./gradlew :app:assembleDebug
 ```
 
-### Task 2-2: DI — MSAL 초기화 게이트
+### Task 2-2: DI — MSAL 초기화
 
-**Files:** `app/src/main/java/com/gunnys/eundunhealth/di/SupabaseModule.kt` → `MsalModule.kt`
+**Files:** `app/src/main/java/com/gunnys/eundunhealth/di/SupabaseModule.kt` → `MsalModule.kt`, `app/src/{debug,release}/res/raw/auth_config_ciam.json`
 
-MSAL 초기화가 **비동기 콜백**이라 Hilt `@Provides`(동기)와 맞지 않는다. 이번 교체의 최대 난점이므로 여기서 먼저 해결한다.
-- `ISingleAccountPublicClientApplication`을 `account_mode: SINGLE`로 생성(현행 Supabase 단일 세션 모델과 등가)
-- 설정값(client_id, redirect_uri, authority)은 **BuildConfig 주입** — 기존 `SUPABASE_URL`/`APP_LINKS_HOST` 패턴 유지. res/raw 정적 JSON은 buildType 분기가 번거로움
+> **정정 (2026-09-01)**: 이전 초안은 "MSAL 초기화가 비동기 콜백이라 Hilt와 불일치 — 최대 난점"이라고 적었다. **틀렸다.** 공식 CIAM 샘플은 코루틴 안에서 **동기 오버로드**를 호출한다:
+> ```kotlin
+> withContext(Dispatchers.IO) {
+>     PublicClientApplication.createSingleAccountPublicClientApplication(context, R.raw.auth_config_ciam)
+> }
+> ```
+> 콜백 지옥이 아니라 **IO 디스패처에서 부르면 되는 blocking 호출**이다. 난점 등급을 하향한다.
+
+**설계**: Hilt `@Provides`는 동기여야 하므로 `ISingleAccountPublicClientApplication`을 직접 제공하지 않고, **초기화를 감싼 홀더**를 제공한다.
+
+```kotlin
+@Singleton
+class MsalClientProvider @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
+    private val mutex = Mutex()
+    @Volatile private var client: ISingleAccountPublicClientApplication? = null
+
+    suspend fun get(): ISingleAccountPublicClientApplication =
+        client ?: mutex.withLock {
+            client ?: withContext(Dispatchers.IO) {
+                PublicClientApplication.createSingleAccountPublicClientApplication(
+                    context, R.raw.auth_config_ciam,
+                )
+            }.also { client = it }
+        }
+}
+```
+
+`AuthRepositoryImpl`·`EntraSessionRefresher`가 `provider.get()`을 suspend로 호출한다. `TokenAuthenticator`는 OkHttp `Authenticator`(동기)이므로 기존처럼 `runBlocking` 경계를 유지한다 — **현재 `SupabaseSessionRefresher`도 같은 구조라 패턴 변화 없음**.
+
+**설정 파일 — buildType 소스셋 분리**: MSAL은 `R.raw.<resId>`를 받으므로 BuildConfig 문자열 주입이 아니라 **소스셋으로 나눈다**(Android 관용). `redirect_uri`의 signature hash가 서명 키마다 다르기 때문이다.
+
+```
+app/src/debug/res/raw/auth_config_ciam.json     ← debug 키 hash
+app/src/release/res/raw/auth_config_ciam.json   ← release 키 hash
+```
+
+공식 샘플 기준 스키마(**검증됨**):
+```json
+{
+  "client_id": "<Android 앱 client_id>",
+  "authorization_user_agent": "DEFAULT",
+  "redirect_uri": "msauth://com.gunnys.eundunhealth/<base64-url-encoded-signature>",
+  "account_mode": "SINGLE",
+  "broker_redirect_uri_registered": true,
+  "authorities": [
+    { "type": "CIAM",
+      "authority_url": "https://<subdomain>.ciamlogin.com/<subdomain>.onmicrosoft.com/" }
+  ]
+}
+```
+
+> **열린 항목 — 서명 3종 vs config 1개**: 이 앱은 서명 키가 3종(debug / upload / **Play App Signing**)인데 config의 `redirect_uri`는 문자열 1개다. release 소스셋 하나로 upload 키와 Play 재서명 키를 모두 커버할 수 있는지 확인이 필요하다. Manifest의 `<data>`는 3개 모두 선언하면 되지만 config는 단일 값이다.
+> **릴리스 빌드에서만 드러나는 유형**이므로 Phase 5에서 Play 내부 트랙 배포본으로 반드시 확인한다.
+
+### Task 2-2b: MSAL API 계약 (구현 참조)
+
+공식 CIAM 샘플(`Azure-Samples/ms-identity-ciam-browser-delegated-android-sample`)에서 **실측 확인한** 호출 형태. 이대로 쓰면 된다.
+
+| 동작 | 코드 |
+|---|---|
+| 대화형 로그인 | `AcquireTokenParameters.Builder().startAuthorizationFromActivity(activity).withScopes(scopes).withCallback(cb).build()` → `client.acquireToken(params)` |
+| 무음 갱신 | `AcquireTokenSilentParameters.Builder().forAccount(account).fromAuthority(account.authority).withScopes(scopes).forceRefresh(false).withCallback(cb).build()` → `client.acquireTokenSilentAsync(params)` |
+| 현재 계정 | `client.getCurrentAccountAsync(callback)` |
+| 로그아웃 | `client.signOut(callback)` |
+| 액세스 토큰 | `authenticationResult.accessToken` |
+| **`oid` 추출** | `authenticationResult.account.claims?.get("oid") as? String` — **수동 JWT 디코드 불필요** |
+
+**scopes**: 백엔드 API scope(`api://<backend-client-id>/access_as_user`) + **`profile`**. `profile`이 없으면 `oid` claim이 발급되지 않는다(design F1) → 계정 삭제가 깨진다.
+
+**콜백**: `AuthenticationCallback`은 `onSuccess(IAuthenticationResult)` / `onError(MsalException)` / `onCancel()`. **`onCancel()`을 에러로 처리하지 말 것**(design §5.3) — 조용히 Idle 복귀.
+
+> 샘플은 `msal:5.+`를 쓰지만 우리는 **8.4.2**를 pin한다(design F5). 5.x → 8.x 사이 시그니처 변경 가능성이 있으므로, Task 2-1 빌드 직후 위 표의 호출부가 컴파일되는지 먼저 확인하고 어긋나면 8.4.2 소스로 대조한다.
 
 ### Task 2-3: Repository + SessionRefresher
 
@@ -308,7 +379,7 @@ curl -s https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontaine
 
 | # | 리스크 | 대응 |
 |---|---|---|
-| R1 | MSAL 초기화(비동기) ↔ Hilt(동기) 불일치 | Task 2-2에서 선결. 막히면 여기서 멈추고 설계 재검토 |
+| R1 | config `redirect_uri` 1개 vs 서명 키 3종(upload·Play 재서명) | **릴리스 빌드에서만** 리다이렉트 실패 가능. Phase 5 Play 내부 트랙 배포본으로 확인 |
 | R2 | MSAL × R8 릴리스 전용 회귀 (룰 12) | Phase 5 릴리스 빌드 검증 필수. 디버그 통과는 근거가 안 됨 |
 | R3 | client secret 만료 | 만료일 기록. Graph 토큰 발급 실패를 Sentry로 감지 |
 | R4 | Q1~Q4 미확정 상태로 착수 | Phase 0 게이트로 차단 |

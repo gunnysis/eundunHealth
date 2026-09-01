@@ -13,6 +13,7 @@ tags: [auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11
 
 - **작성일**: 2026-09-01
 - **상태**: 작성 중 (승인 대기)
+- **상위 프로그램**: `2026-09-01-legacy-modernization-program-design.md` (WS1)
 - **연관 작업**: INC-2026-05-24-14(룰 5 근거) · `entra-external-id-cost-review`(2026-06-09 전환 보류 결정 — 본 문서가 뒤집음) · **`2026-09-01-build-modernization-design.md`(같은 빌드 파일을 건드림 — 현대화를 먼저 하는 것을 권장)**
 - **구현 플랜**: `docs/plans/2026-09-01-entra-external-id-migration-plan.md`
 - **대상 버전**: Android versionCode 34+ / 백엔드·문서는 앱 버전 무관
@@ -182,14 +183,16 @@ user_id = payload.get("oid")                    # F1
 
 | 파일 | 변경 |
 |---|---|
-| `di/SupabaseModule.kt` → `MsalModule.kt` | MSAL 초기화가 **비동기 콜백**이라 Hilt `@Provides`(동기)와 불일치 — 초기화 게이트 설계가 최대 난점 |
+| `di/SupabaseModule.kt` → `MsalModule.kt` | MSAL 초기화는 **동기 오버로드를 IO 디스패처에서 호출**(공식 CIAM 샘플 실측). Hilt `@Provides`가 동기이므로 suspend 홀더로 감싼다 — plan Task 2-2 코드 참조 |
 | `data/auth/AuthRepositoryImpl.kt` | `signIn`/`signUp` → `acquireToken()` 단일 경로. `resendConfirmation`/`resetPassword`/`SignupResult` 폐기(호스팅 페이지가 흡수) |
 | `data/remote/interceptor/SessionRefresher.kt` | 구현체만 `EntraSessionRefresher`로 |
 | `MainActivity.kt` | `handleDeeplinks`·`consumedDeepLinkUri` 가드 삭제(MSAL `BrowserTabActivity`가 흡수) |
 | `AndroidManifest.xml` | App Links intent-filter 제거, `BrowserTabActivity` + `msauth://` 추가 |
-| `gradle/libs.versions.toml` | `supabase-auth`·`ktor-client-okhttp` 제거, **`msal = "8.4.2"`** 추가 (F5) |
+| `gradle/libs.versions.toml` | `supabase-auth`·`ktor-client-okhttp` 제거, **`msal = "8.4.2"`** 추가 (F5). **Ktor는 앱 코드 사용 0곳**(MEASURED: `git grep -ln "ktor" -- 'app/src/**'` → 0) — supabase-kt 엔진 전용이라 **의존성이 통째로 소멸** |
 
 **기존 설계가 값을 회수하는 지점**: `AuthRepository` 인터페이스와 `SessionRefresher` 추상화 덕에 **`TokenAuthenticator`·`NetworkModule` 인터셉터·4개 ViewModel이 무변경**으로 살아남는다.
+
+**함께 사라지는 레거시** (프로그램 문서 §2 참조): 이 전환은 제공자 교체에 그치지 않고 **supabase-kt 3.6.0 SDK 버그 우회 코드 2곳**을 함께 제거한다 — `MainActivity.kt:83`(`handleDeeplinks`의 에러 URL silent 처리 우회), `AuthRepositoryImpl.kt:81`(`Email.decodeResult` 디코딩 실패를 정상 흐름으로 흡수). 이런 코드는 근거를 아는 사람이 없으면 손댈 수 없게 되므로, **지우기 전 주석의 근거를 커밋 메시지로 옮긴다**. `MOCK_AUTH_ERROR` 디버그 스캐폴딩도 Supabase 에러 문자열 mock이라 함께 무의미해진다.
 
 **UI 축소**: 브라우저 위임이라 인증 화면 **836줄이 삭제**되고 단일 진입 화면으로 대체된다. 상세 설계·상태 전이·브랜딩은 **§5** 참조.
 
@@ -421,7 +424,7 @@ MSAL은 내부적으로 Custom Tab을 연다. Custom Tabs API가 제공하는 �
 | Manifest에서 hash URL-encode | 리다이렉트 매칭 실패 | `auth_config.json`은 encode, **Manifest는 금지** |
 | issuer 미검증 유지 | 타 테넌트 토큰 통과 | F4 |
 | 룰 6 3종 중 누락 | 첫 deploy에서 `ContainerAppSecretRefNotFound` | §4.3 |
-| MSAL 초기화 ↔ Hilt 불일치 | DI 배관 막힘 | 구현 착수 전 초기화 게이트 확정 |
+| MSAL 초기화 ↔ Hilt 불일치 | DI 배관 막힘 | **해소됨** — 동기 오버로드를 IO 디스패처에서 호출(plan Task 2-2). suspend 홀더로 감싸면 끝 |
 | **MSAL × R8** (F8) | **릴리스 빌드에서만** 인증 실패 — 디버그는 통과 | 릴리스 빌드 실기기 검증 필수(룰 12). INC 2026-06-15와 동일 패턴 |
 | Maven 검색 API로 버전 확인 (F5) | 15개월 낡은 6.0.1을 pin | `maven-metadata.xml`을 1차 출처로 |
 
