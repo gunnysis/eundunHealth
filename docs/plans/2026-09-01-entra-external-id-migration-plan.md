@@ -281,12 +281,14 @@ git commit -m "infra: Container App/Job/CI 시크릿을 Entra 로 교체 (룰 6 
 
 **Step 1:** 제거 `supabase-auth(3.6.0)` · `ktor-client-okhttp(3.5.0)`. 추가 `msal = "8.4.2"`.
 - **버전 근거**: `repo1.maven.org/.../msal/maven-metadata.xml`의 `<release>` (MEASURED). **Maven Central 검색 API는 6.0.1로 응답하니 신뢰하지 말 것**
-- **별도 Maven 저장소 불필요** — MSAL 공식 문서는 Azure DevOps DuoSDK 피드 추가를 지시하지만, 전이 의존성 `com.microsoft.identity:common:24.6.0`이 Maven Central에 존재함을 확인(HTTP 200). 현 `settings.gradle.kts`의 `mavenCentral()`로 충분하며, **공개 저장소에 서드파티 저장소를 추가하지 않는다**
+- **별도 Maven 저장소가 필요하다(초안 정정)** — `display-mask`(Surface Duo SDK)가 Maven Central·Google Maven 모두 404 라 해석이 실패한다. `settings.gradle.kts` 에 DuoSDK 피드를 추가하되 `content { includeGroup("com.microsoft.device.display") }` 로 그룹을 좁힌다(설계 F7 정정)
 - minSdk 26 ≥ MSAL 요구 16+ → 호환
 
 **Step 2:** 빌드 확인 (bash)
 ```bash
-./gradlew :app:assembleDebug
+# 소스가 아직 Supabase 를 참조하므로 컴파일은 Task 2-4 까지 실패한다.
+# 이 단계에서 볼 것은 **의존성 해석**이다 — 저장소 누락은 여기서만 드러난다.
+./gradlew :app:dependencies --configuration debugRuntimeClasspath
 ```
 
 ### Task 2-2: DI — MSAL 초기화

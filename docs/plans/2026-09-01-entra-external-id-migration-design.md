@@ -162,15 +162,46 @@ curl -sS https://repo1.maven.org/maven2/com/microsoft/identity/client/msal/maven
 
 MSAL 요구사항은 **Min SDK 16+ / Target SDK 33+**(공식). 본 앱은 `minSdk 26`(`app/build.gradle.kts:88`) → **호환**.
 
-### F7. 별도 Maven 저장소는 **불필요** — 공식 문서가 낡았다
+### F7. 별도 Maven 저장소가 **필요하다** — 초안 F7 은 틀렸다 (2026-09-01 정정)
 
-MSAL 공식 문서는 Azure DevOps DuoSDK 피드 추가를 지시한다:
-```gradle
-maven { url 'https://pkgs.dev.azure.com/MicrosoftDeviceSDK/DuoSDK-Public/.../maven/v1' }
+**초안 주장**: "MSAL 공식 문서는 Azure DevOps DuoSDK 피드 추가를 지시하지만, 전이 의존성
+`com.microsoft.identity:common:24.6.0` 이 Maven Central 에 존재하므로 불필요하다."
+
+**왜 틀렸나 — 검증 대상 아티팩트를 잘못 골랐다.** `common` 이 Maven Central 에 있는 것은
+사실이지만, 막히는 것은 그 **아래 단계**다. 실제 의존성 트리는 이렇다:
+
 ```
-그러나 전이 의존성 `com.microsoft.identity:common:24.6.0`이 **Maven Central에 존재함을 확인**(HTTP 200, `lastUpdated 20260821215122`). 현 `settings.gradle.kts`의 `FAIL_ON_PROJECT_REPOS` + `mavenCentral()`로 충분하다.
+com.microsoft.identity.client:msal:8.4.2
+ +--- com.microsoft.identity:common:24.6.0          (Maven Central 있음)
+ |     +--- com.microsoft.identity:common4j:24.6.0  (Maven Central 있음)
+ |     +--- com.microsoft.device.display:display-mask:0.3.0   <-- FAILED
+```
 
-→ **공개 저장소에 불필요한 서드파티 저장소를 추가하지 않는다**(공급망 표면 확대 회피).
+`display-mask`(Surface Duo SDK) 소재 실측 (MEASURED, 2026-09-01):
+
+| 저장소 | 결과 |
+|---|---|
+| Maven Central | **404** |
+| Google Maven | **404** |
+| DuoSDK 피드 | **200** |
+
+→ 공식 문서의 저장소 추가 지시는 **낡은 것이 아니라 지금도 유효**하다.
+
+**채택 — 저장소를 추가하되 `content` 로 그룹을 좁힌다** (`settings.gradle.kts`):
+```kotlin
+maven("https://pkgs.dev.azure.com/MicrosoftDeviceSDK/DuoSDK-Public/_packaging/Duo-SDK-Feed/maven/v1") {
+    content { includeGroup("com.microsoft.device.display") }
+}
+```
+`content` 필터가 있으면 이 피드는 **그 그룹의 아티팩트만** 제공하고 나머지는 계속
+mavenCentral 에서만 해석된다. 저장소를 통째로 여는 것과 달리 공급망 표면이 실질적으로
+늘지 않는다. 배제(`exclude`)는 택하지 않았다 — MSAL 이 런타임에 참조하면
+`NoClassDefFoundError` 가 나는데 이는 **릴리스 실기기에서만** 드러난다.
+
+**교훈**: "전이 의존성이 Maven Central 에 있는가" 를 확인할 때는 **1단계만 보면 안 된다.**
+확인 수단은 HTTP 200 조회가 아니라 **실제 해석**이다 —
+`./gradlew :app:dependencies --configuration debugRuntimeClasspath` 한 줄이 정답을 준다.
+이 오류는 F5-a(검색 API 대신 `maven-metadata.xml`)와 같은 계열이다: 근거의 층위를 잘못 골랐다.
 
 ### F8. MSAL × R8 — 룰 12 직접 적용 대상
 
