@@ -1,12 +1,13 @@
 package com.gunnys.eundunhealth.data.remote.interceptor
 
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
+import com.gunnys.eundunhealth.data.auth.MsalClientProvider
+import com.gunnys.eundunhealth.data.auth.acquireSilent
 
 /**
- * 세션 갱신 추상화 — [TokenAuthenticator] 가 Supabase SDK 에 직접 의존하지 않도록 분리한다.
+ * 세션 갱신 추상화 — [TokenAuthenticator] 가 인증 SDK 에 직접 의존하지 않도록 분리한다.
  *
- * 갱신 동시성·타임아웃 결정 로직을 Supabase 없이 단위 테스트할 수 있게 하는 seam 이기도 하다.
+ * 갱신 동시성·타임아웃 결정 로직을 SDK 없이 단위 테스트할 수 있게 하는 seam 이기도 하다.
+ * IdP 를 Supabase 에서 Entra 로 바꿀 때 이 seam 덕분에 [TokenAuthenticator] 는 무수정이었다.
  */
 fun interface SessionRefresher {
     /**
@@ -18,12 +19,14 @@ fun interface SessionRefresher {
     suspend fun refresh(): String?
 }
 
-/** Supabase 백엔드 구현. */
-class SupabaseSessionRefresher(
-    private val supabaseClient: SupabaseClient,
+/**
+ * Microsoft Entra External ID 구현.
+ *
+ * `forceRefresh = true` 인 이유: 이 경로는 401 을 받은 뒤에만 불린다. 기본값(false)이면
+ * MSAL 이 방금 거부당한 캐시 토큰을 그대로 돌려줘 무한 401 루프가 된다.
+ */
+class EntraSessionRefresher(
+    private val msalProvider: MsalClientProvider,
 ) : SessionRefresher {
-    override suspend fun refresh(): String? {
-        supabaseClient.auth.refreshCurrentSession()
-        return supabaseClient.auth.currentSessionOrNull()?.accessToken
-    }
+    override suspend fun refresh(): String? = msalProvider.acquireSilent(forceRefresh = true)?.accessToken
 }

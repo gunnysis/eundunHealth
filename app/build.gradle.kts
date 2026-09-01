@@ -94,8 +94,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "SUPABASE_URL", "\"${localProperties.getProperty("SUPABASE_URL", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\"")
         // EXERCISEDB_API_KEY 제거 — OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 불필요
         buildConfigField("String", "BACKEND_BASE_URL", "\"${localProperties.getProperty("BACKEND_BASE_URL", "http://10.0.2.2:8080/")}\"")
         // Android 클라이언트 DSN. 새 키(eundunhealth-app_SENTRY_DSN) 우선, 옛 키(SENTRY_DSN) 폴백.
@@ -103,37 +101,24 @@ android {
             localProperties.getProperty("eundunhealth-app_SENTRY_DSN")
                 ?: localProperties.getProperty("SENTRY_DSN", "")
         buildConfigField("String", "SENTRY_DSN", "\"$androidSentryDsn\"")
-        // App Links 호스트 — Task 1 에서 az containerapp show 로 조회한 FQDN.
-        // 기본값을 실제 운영 FQDN으로 둬서 local.properties 미설정 환경(CI 등)도 동일 도메인 사용.
-        // 다른 환경 가리키려면 local.properties 에 APP_LINKS_HOST=... 로 override.
-        // manifestPlaceholders 와 buildConfigField 를 동일 source 로 묶어
-        // AndroidManifest(${appLinksHost}) 와 BuildConfig.APP_LINKS_HOST 의 drift 방지.
-        val appLinksHost =
-            localProperties.getProperty(
-                "APP_LINKS_HOST",
-                "eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io",
-            )
-        manifestPlaceholders["appLinksHost"] = appLinksHost
-        buildConfigField("String", "APP_LINKS_HOST", "\"$appLinksHost\"")
+        // Entra 백엔드 API scope. MSAL 이 요청할 scope 이며 client_id/authority 는
+        // res/raw/auth_config_ciam.json(buildType 별)에 있다.
+        buildConfigField(
+            "String",
+            "ENTRA_API_SCOPE",
+            "\"${localProperties.getProperty(
+                "ENTRA_API_SCOPE",
+                "api://903bf44d-d73a-40b5-9601-e9c362699c38/access_as_user",
+            )}\"",
+        )
     }
 
     buildTypes {
-        debug {
-            // D11: 수동 검증 reproducibility. ./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit
-            // 같은 field 가 release 에도 명시되어야 AuthRepositoryImpl 의 분기가 compile 됨.
-            buildConfigField(
-                "String",
-                "MOCK_AUTH_ERROR",
-                "\"${project.findProperty("MOCK_AUTH_ERROR") ?: ""}\"",
-            )
-        }
         release {
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // D11 double-guard: release 는 항상 빈 string (compile 통과 + DEBUG=false 로 분기 미발동).
-            buildConfigField("String", "MOCK_AUTH_ERROR", "\"\"")
         }
     }
     compileOptions {
@@ -174,8 +159,7 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
 
     // Supabase (Auth only)
-    implementation(libs.supabase.auth)
-    implementation(libs.ktor.client.okhttp)
+    implementation(libs.msal)
 
     // Hilt
     implementation(libs.hilt.android)

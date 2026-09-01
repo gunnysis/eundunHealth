@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference
  * 단일 backend OkHttpClient 를 5개 API 가 공유하므로 토큰 만료 직후 여러 요청이 동시에 401 을
  * 받는다. 공식 OkHttp Authenticator 패턴대로 처리한다:
  *  1) [refreshLock] 으로 갱신을 직렬화 — 동시 401 이 각자 refresh 를 호출하는 thundering-herd 를
- *     막는다(Supabase refresh-token 회전 충돌로 인한 간헐 강제 로그아웃 회귀 차단).
+ *     막는다(refresh-token 회전 충돌로 인한 간헐 강제 로그아웃 회귀 차단 — Supabase 시절 실제 발생).
  *  2) 잠금 안에서 "이미 다른 스레드가 갱신했는지"(요청이 들고 온 토큰 != 현재 토큰) 먼저 확인 →
  *     그렇다면 refresh 없이 새 토큰으로 바로 재시도한다.
  *  3) 타임아웃/네트워크 실패는 일시적이므로 토큰을 무효화하지 않고 401 만 표면화 → 다음 요청이

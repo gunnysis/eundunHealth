@@ -1,0 +1,13 @@
+{
+  "client_id": "2bf6134f-6066-48e6-81b0-9f5ddfd0398e",
+  "authorization_user_agent": "DEFAULT",
+  "redirect_uri": "msauth://com.gunnys.eundunhealth/zUYkGo2kG8%2FCAW3QPXU%2FTM8o2o8%3D",
+  "account_mode": "SINGLE",
+  "broker_redirect_uri_registered": true,
+  "authorities": [
+    {
+      "type": "CIAM",
+      "authority_url": "https://eundunhealthciam.ciamlogin.com/eundunhealthciam.onmicrosoft.com/"
+    }
+  ]
+}

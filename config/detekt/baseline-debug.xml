@@ -2,7 +2,6 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>CyclomaticComplexMethod:AuthRepositoryImpl.kt$internal fun mapAuthError(rawMessage: String, email: String, isLogin: Boolean): AppError</ID>
     <ID>EmptyClassBlock:BadgeResponse.kt$BadgeResponse${ }</ID>
     <ID>EmptyClassBlock:CompletionRequest.kt$CompletionRequest${ }</ID>
     <ID>EmptyClassBlock:GoalResponse.kt$GoalResponse${ }</ID>
@@ -27,26 +26,21 @@
     <ID>MaxLineLength:OffsetDateTimeAdapter.kt$OffsetDateTimeAdapter$class</ID>
     <ID>MaxLineLength:WeeklyPlanApi.kt$WeeklyPlanApi$suspend</ID>
     <ID>RedundantSuspendModifier:HealthConnectDataSource.kt$HealthConnectDataSource$suspend</ID>
-    <ID>TooGenericExceptionCaught:AuthRepositoryImpl.kt$AuthRepositoryImpl$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:UserRepositoryImpl.kt$UserRepositoryImpl$e: Exception</ID>
     <ID>TooGenericExceptionCaught:WorkoutRepositoryImpl.kt$WorkoutRepositoryImpl$e: Exception</ID>
     <ID>TooGenericExceptionThrown:ApiClient.kt$ApiClient$throw RuntimeException("auth name $authName already in api authorizations")</ID>
     <ID>TooGenericExceptionThrown:ApiClient.kt$ApiClient$throw RuntimeException("auth name $authName not found in available auth names")</ID>
     <ID>UnnecessaryAbstractClass:RepositoryModule.kt$RepositoryModule$RepositoryModule</ID>
-    <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$Result.success(userId)</ID>
-    <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$tokenHolder.set(supabaseClient.auth.currentSessionOrNull()?.accessToken)</ID>
-    <ID>UnreachableCode:AuthRepositoryImpl.kt$AuthRepositoryImpl$val userId = supabaseClient.auth.currentUserOrNull()?.id ?: throw IllegalStateException("로그인 후 사용자 정보를 가져올 수 없습니다")</ID>
     <ID>UnusedParameter:WorkoutDetailScreen.kt$exerciseId: String</ID>
     <ID>UnusedPrivateMember:AuthErrorBanner.kt$@Preview(showBackground = true) @Composable private fun AuthErrorBannerPreview()</ID>
+    <ID>UnusedPrivateMember:AuthGateScreen.kt$@Preview(showBackground = true) @Composable private fun AuthGateFailedPreview()</ID>
+    <ID>UnusedPrivateMember:AuthGateScreen.kt$@Preview(showBackground = true) @Composable private fun AuthGateIdlePreview()</ID>
     <ID>UnusedPrivateMember:EmptyContent.kt$@Preview(showBackground = true) @Composable private fun EmptyContentPreview()</ID>
     <ID>UnusedPrivateMember:ErrorContent.kt$@Preview(showBackground = true) @Composable private fun ErrorContentPreview()</ID>
     <ID>UnusedPrivateMember:GoalRepositoryImpl.kt$GoalRepositoryImpl$private fun ProfileHistoryEntry.toDomain(): ProfileHistoryPoint</ID>
     <ID>UnusedPrivateMember:ProfileSlider.kt$@Preview(showBackground = true) @Composable private fun ProfileSliderPreview()</ID>
     <ID>UnusedPrivateMember:ProfileSummaryCard.kt$@Preview(showBackground = true) @Composable private fun ProfileSummaryCardPreview()</ID>
     <ID>UnusedPrivateMember:SkeletonUi.kt$@Preview(showBackground = true) @Composable private fun SkeletonHomeContentPreview()</ID>
-    <ID>UseCheckOrError:AuthRepositoryImpl.kt$AuthRepositoryImpl$throw IllegalStateException("로그인 후 사용자 정보를 가져올 수 없습니다")</ID>
     <ID>UseOrEmpty:AppNavigation.kt$backStackEntry.arguments?.getString("exerciseId") ?: ""</ID>
-    <ID>UseOrEmpty:AuthRepositoryImpl.kt$AuthRepositoryImpl$e.message ?: ""</ID>
     <ID>UseOrEmpty:AuthRepositoryImpl.kt$e.message ?: ""</ID>
     <ID>UseOrEmpty:BadgeCatalog.kt$BadgeCatalog$template?.description ?: ""</ID>
     <ID>WildcardImport:AccountApi.kt$import com.gunnys.eundunhealth.api.generated.infrastructure.CollectionFormats.*</ID>
