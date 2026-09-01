@@ -1,6 +1,6 @@
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "D"]
@@ -34,7 +34,7 @@ convention = "pep257"
 core = "sysmon"
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 plugins = ["pydantic.mypy"]
 

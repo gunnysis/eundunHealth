@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # OS 보안 패치 — base 이미지에 미반영된 fixed-available OS CVE 해소(예: openssl CVE-2026-45447,
 # libssl3t64 3.5.6-1~deb13u1 → deb13u2). Trivy(CRITICAL/HIGH 차단)가 fixed CVE 를 막으므로
