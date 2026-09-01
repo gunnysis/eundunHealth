@@ -95,8 +95,9 @@ git grep -Il "[Ss]upabase" | wc -l                                              
 
 **Step 1:** 기존 monkeypatch 구조(`_get_jwk_client` / `dependencies.jwt.decode` 스텁)를 유지한 채 케이스 교체·추가.
 - RS256 서명 검증 성공 → `oid` 반환
-- **`oid` 누락 시 401** (기존 `sub` 누락 케이스 대체)
+- **`oid` 누락 시 401** (기존 `sub` 누락 케이스 대체). 실제 원인은 대개 `profile` scope 누락이므로 로그로 구분 가능하게
 - **issuer 불일치 시 401** — 신규. Entra 멀티테넌트 구조상 이게 없으면 타 테넌트 토큰이 통과한다
+- **`scp`에 `access_as_user` 없으면 401** — 신규(design F1-b, 공식 권장). app-only 토큰(`roles` 보유) 차단 효과 포함
 - audience 불일치 시 401
 - `PyJWKClientError` → 503, 기타 예외 → 500 전파 (기존 유지)
 - JWKS client `timeout == 5` 고정 확인 (기존 유지)
@@ -112,7 +113,7 @@ cd backend && .venv/Scripts/python.exe -m pytest tests/test_dependencies.py -q
 
 **Step 1:** `config.py` — `supabase_url`/`supabase_service_role_key` 제거, `entra_tenant_id`/`entra_subdomain`/`entra_backend_client_id`/`entra_backend_client_secret` 추가.
 
-**Step 2:** `dependencies.py` — JWKS URL·`algorithms=["RS256"]`·`audience`·`issuer`·`payload["oid"]`. **캐시(24h)·`timeout=5`·`asyncio.to_thread`·예외 분기는 건드리지 않는다**(IdP 무관 로직).
+**Step 2:** `dependencies.py` — JWKS URL·`algorithms=["RS256"]`·`audience`·`issuer`·**`scp` 검증**·`payload["oid"]`. **캐시(24h)·`timeout=5`·`asyncio.to_thread`·예외 분기는 건드리지 않는다**(IdP 무관 로직). 코드 형태는 design §4.1.
 
 **Step 3:** green 확인 + 정적 검사 (bash)
 ```bash

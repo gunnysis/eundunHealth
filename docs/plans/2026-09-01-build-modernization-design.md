@@ -104,8 +104,32 @@ kotlinOptions {
 
 ### Task A — DSL 마이그레이션 + Kotlin 2.4 해금 (리팩토링)
 
-1. `kotlinOptions { jvmTarget = "17" }` → `compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }` (정확한 시그니처는 AGP 9.3 + Kotlin 2.4 문서로 확인)
+1. **DSL 교체 — 공식 문법 확정** ([Kotlin Gradle compiler options](https://kotlinlang.org/docs/gradle-compiler-options.html))
+
+   현재 (`app/build.gradle.kts`, **`android {}` 블록 안** L142):
+   ```kotlin
+   android {
+       kotlinOptions { jvmTarget = "17" }
+   }
+   ```
+   대체 (**최상위 `kotlin {}` 블록 — `android {}` 밖으로 이동**):
+   ```kotlin
+   import org.jetbrains.kotlin.gradle.dsl.JvmTarget   // 파일 상단 import 필수
+
+   kotlin {
+       compilerOptions {
+           jvmTarget = JvmTarget.fromTarget("17")
+       }
+   }
+   ```
+   - **단순 rename이 아니라 블록 위치 이동**이다. `android {}` 안에 두면 안 된다
+   - `compilerOptions`는 **문자열을 받지 않는다** — `jvmTarget = "17"`은 컴파일 실패. `JvmTarget.fromTarget("17")` 필수
+   - `import org.jetbrains.kotlin.gradle.dsl.JvmTarget` 누락이 가장 흔한 실수
+
+   > **버전 표기 주의**: Kotlin 공식 문서는 `kotlinOptions {}`가 "2.0.0부터 deprecated, 2.2.0에서 사용 불가"라고 적는다. 그런데 **본 프로젝트는 Kotlin 2.2.10에서 이 블록을 쓰고도 CI가 green이다.** 모순처럼 보이지만, 우리 것은 `android {}` 안의 **AGP 제공 `kotlinOptions`**로 KGP 최상위 블록과 별개이며 AGP 자체 폐기 일정을 따른다. 보류 문서가 기록한 "Kotlin 2.4 + AGP 9에서 에러 승격"이 바로 그 AGP 쪽 일정이다. **이 구분을 모르면 엉뚱한 블록을 고치게 된다.**
 2. Kotlin 2.4.10 + KSP 2.3.10 + coroutines-test 1.11.0 적용(#154 재활용 또는 수동 bump)
+
+   > **KSP 정렬 확인 필요**: 현재 `kotlin = "2.2.10"` / `ksp = "2.3.2"`로, KSP 고전 표기(`<kotlin>-<ksp>`)를 따르지 않는다. 따라서 "KSP 2.3.10이 Kotlin 2.4.10과 맞는가"를 **버전 문자열만 보고 추론할 수 없다**. dependabot(#154)이 둘을 한 그룹으로 묶어 올린 것이 간접 증거이지만, **KSP 릴리스 노트에서 지원 Kotlin 버전을 직접 확인**하고 진행한다. 어긋나면 KSP 처리(Hilt·Room) 전체가 깨진다.
 3. **script compilation errors 4건이 실제로 무엇인지 확인** — 남은 것이 있으면 개별 대응
 4. `dependency-deferred.md` §1 항목을 **해소로 종결** 또는 새 블로커로 갱신
 

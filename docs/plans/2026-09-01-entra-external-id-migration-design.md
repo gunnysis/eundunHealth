@@ -74,12 +74,29 @@ tags: [auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11
 
 ### F1. DB `user_id`는 `oid` claim이어야 한다 (선택 아님)
 
-| claim | 공식 정의 |
-|---|---|
-| `oid` | "immutable identifier... uniquely identifies the user **across applications**. **Microsoft Graph returns this ID as the `id` property** for a user account." (`profile` scope 필요) |
-| `sub` | "**pairwise identifier and is unique to an application ID.**" 앱마다 다른 값 |
+> **출처 정정 (최종 검토)**: 초안은 **ID 토큰** claims 레퍼런스를 근거로 삼았다. 그러나 백엔드가 검증하는 것은 Bearer로 오는 **액세스 토큰**이고 둘은 claim 집합이 다르다. [access-token-claims-reference](https://learn.microsoft.com/en-us/entra/identity-platform/access-token-claims-reference)로 다시 확인했고, **결론은 동일하되 근거가 더 강해졌다**.
 
-Graph가 `oid`를 사용자 `id`로 반환하므로, `sub`를 저장하면 **로그인은 되는데 계정 삭제만 조용히 실패**한다.
+액세스 토큰 payload claims (공식):
+
+| claim | 정의 | Authorization considerations |
+|---|---|---|
+| `oid` | "The immutable identifier for the requestor... uniquely identifies the requestor **across applications**... The `oid` can be used when making queries to Microsoft online services, such as the Microsoft Graph. **The Microsoft Graph returns this ID as the `id` property**... to receive this claim for users use the **`profile` scope**." | "can be used to perform authorization checks... and **can be used as a key in database tables**" |
+| `sub` | "pairwise identifier that's unique to a particular application ID... See also the `oid` claim, which **does remain the same across applications** within a tenant." | 동일 |
+
+**Microsoft가 명시적으로 "DB 테이블의 키로 써도 된다"고 적어둔 claim이 `oid`다.** `sub`를 저장하면 Graph `DELETE /users/{sub}`가 매칭되지 않아 **로그인은 되는데 계정 삭제만 조용히 실패**한다.
+
+**claim 부재 처리** — 공식 경고: *"Claims are present only if a value exists to fill it. **An application shouldn't take a dependency on a claim being present.**"*
+→ 현 설계의 `payload.get("oid")` → 없으면 401은 **올바른 fail-safe**다. 다만 디버깅 시 알아둘 것: **`oid` 부재의 가장 흔한 원인은 공격이 아니라 `profile` scope 누락**(클라이언트 설정 실수)이다.
+
+### F1-b. `scp` 검증 — 현 설계의 누락 (최종 검토에서 발견)
+
+공식 문서가 `scp` claim에 대해 명시한다:
+
+> "The set of scopes exposed by the application for which the client application has requested (and received) consent. **The application should verify that these scopes are valid ones exposed by the application, and make authorization decisions based on the value of these scopes.**"
+
+**현 설계는 서명·`aud`·`iss`만 검증하고 `scp`를 보지 않는다.** 단일 scope API라 실질 위험은 낮지만 문서화된 권장 사항을 건너뛰는 것이므로 **`scp`에 `access_as_user`가 포함되는지 확인을 추가한다**.
+
+부수 효과로 **app-only 토큰 차단**도 된다 — client credentials로 발급된 토큰은 `scp` 대신 `roles`를 갖고 `oid`도 사용자 것이 아니다. 현 코드도 `oid` 부재로 401이 나 fail-safe이긴 하나, `scp` 검증이 있으면 **의도가 코드에 드러난다**.
 
 ### F2. Graph 사용자 삭제는 30일 소프트 삭제, 성공은 204
 
@@ -171,7 +188,10 @@ payload = jwt.decode(
     audience=settings.entra_backend_client_id,  # "authenticated" → 백엔드 앱 client_id
     issuer=f"https://{settings.entra_subdomain}.ciamlogin.com/{settings.entra_tenant_id}/v2.0",  # F4 신규
 )
-user_id = payload.get("oid")                    # F1
+# F1-b: scp 검증 (공식 권장). app-only 토큰(roles 보유) 차단 효과도 있다.
+if "access_as_user" not in (payload.get("scp") or "").split():
+    raise InvalidTokenError("missing required scope")
+user_id = payload.get("oid")                    # F1 — 부재 시 401(대개 profile scope 누락)
 ```
 `PyJWKClient` 24h 캐시 · `timeout=5` · `asyncio.to_thread` 오프로딩 · 401/503/500 분기는 **IdP 무관이라 그대로 존치**.
 
@@ -427,6 +447,8 @@ MSAL은 내부적으로 Custom Tab을 연다. Custom Tabs API가 제공하는 �
 | MSAL 초기화 ↔ Hilt 불일치 | DI 배관 막힘 | **해소됨** — 동기 오버로드를 IO 디스패처에서 호출(plan Task 2-2). suspend 홀더로 감싸면 끝 |
 | **MSAL × R8** (F8) | **릴리스 빌드에서만** 인증 실패 — 디버그는 통과 | 릴리스 빌드 실기기 검증 필수(룰 12). INC 2026-06-15와 동일 패턴 |
 | Maven 검색 API로 버전 확인 (F5) | 15개월 낡은 6.0.1을 pin | `maven-metadata.xml`을 1차 출처로 |
+| `profile` scope 미요청 | **`oid` claim 자체가 발급 안 됨** → 전 API 401. 인증은 됐는데 앱이 안 도는 혼란스러운 증상 | Android scopes에 `profile` 포함(F1). 401 로그에서 `oid` 부재를 별도 사유로 기록 |
+| ID 토큰 claim 문서로 액세스 토큰 설계 | 두 토큰의 claim 집합이 다름 | 백엔드는 **액세스 토큰** 레퍼런스를 근거로(F1 출처 정정) |
 
 ---
 
@@ -448,7 +470,8 @@ MSAL은 내부적으로 Custom Tab을 연다. Custom Tabs API가 제공하는 �
 
 - [External Tenant Overview](https://learn.microsoft.com/en-us/entra/external-id/customers/overview-customers-ciam) · [Create an External Tenant](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-create-external-tenant-portal) · [Quickstart](https://learn.microsoft.com/en-us/entra/external-id/customers/quickstart-tenant-setup)
 - [Data residency](https://github.com/MicrosoftDocs/entra-docs/blob/main/docs/fundamentals/data-residency.md) — F3 근거
-- [ID token claims reference](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference) — F1 근거
+- [**Access** token claims reference](https://learn.microsoft.com/en-us/entra/identity-platform/access-token-claims-reference) — **F1·F1-b 근거**(백엔드가 검증하는 토큰)
+- [ID token claims reference](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference) — Android `account.claims` 근거
 - [Delete a user (Graph v1.0)](https://learn.microsoft.com/en-us/graph/api/user-delete?view=graph-rest-1.0) — F2 근거
 - [External ID Pricing](https://azure.microsoft.com/en-us/pricing/details/microsoft-entra-external-id/)
 - [Expose scopes in a protected web API](https://learn.microsoft.com/en-us/entra/identity-platform/scenario-protected-web-api-expose-scopes) · [Client credentials flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-client-creds-grant-flow)
