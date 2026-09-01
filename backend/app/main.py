@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -21,6 +22,12 @@ logger = logging.getLogger(__name__)
 # 요청 상관관계 ID — 미들웨어가 요청마다 설정, 로그 포맷(%(request_id)s)에 포함해
 # 다중 replica(min/max 1/3) 환경에서 한 요청의 로그를 추적할 핸들을 제공한다.
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
+
+# 클라이언트가 보낸 X-Request-ID 를 채택할 조건. 이 값은 로그 포맷 `[%(request_id)s]` 에
+# 그대로 들어가므로 개행을 허용하면 **로그에 가짜 줄을 삽입**할 수 있고(CWE-117), 길이 제한이
+# 없으면 로그 볼륨 증폭에 쓰인다. 흔한 추적 ID(W3C traceparent 의 trace-id, UUID hex,
+# `req_42` 같은 형태)는 전부 이 문자 집합 안에 들어간다.
+_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 class _RequestIdLogFilter(logging.Filter):
@@ -88,7 +95,10 @@ app.add_middleware(
 async def request_id_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+    supplied = request.headers.get("X-Request-ID")
+    # 형식 위반이면 400 이 아니라 조용히 자체 생성으로 대체한다 — 중간 프록시가 붙인 헤더
+    # 때문에 정상 요청이 깨지면 안 된다. 추적성보다 로그 무결성이 우선이다.
+    rid = supplied if supplied and _REQUEST_ID_RE.match(supplied) else uuid.uuid4().hex[:12]
     token = request_id_ctx.set(rid)
     try:
         response = await call_next(request)
@@ -109,14 +119,25 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    # 422 응답 시 어떤 필드/값이 거부됐는지 console 로그로 즉시 진단 가능하게 한다.
-    # 응답 body 는 fastapi default 와 동일하므로 클라이언트 호환성 영향 없음.
+    """422 를 **값 없이** 로깅한다.
+
+    Pydantic 의 `ErrorDetails` 는 `input`("The input provided for validation")을 포함하고
+    `exc.body` 는 요청 원문이다. 그대로 남기면 `PUT /profile` 의 키·몸무게·체지방·근육량이
+    Log Analytics 로 흘러간다 — 건강 데이터를 진단 편의로 축적할 이유가 없다.
+
+    진단에 필요한 것은 **어느 필드가 어떤 규칙을 어겼는지**이므로 `loc`·`type`·`msg` 만 남긴다.
+    응답 body 는 그대로 둔다 — 받는 주체가 자기 자신이고, 바꾸면 API 호환성이 깨진다.
+
+    출처: https://pydantic.dev/docs/validation/latest/errors/errors/
+    """
+    redacted = [
+        {"loc": e.get("loc"), "type": e.get("type"), "msg": e.get("msg")} for e in exc.errors()
+    ]
     logger.warning(
-        "Request validation failed | path=%s method=%s body=%r errors=%s",
+        "Request validation failed | path=%s method=%s errors=%s",
         request.url.path,
         request.method,
-        exc.body,
-        exc.errors(),
+        redacted,
     )
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
