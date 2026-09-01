@@ -1,7 +1,7 @@
 ---
 type: design
 status: in-progress
-pr: null
+pr: 165
 related_inc: null
 supersedes: null
 target_version: docs/infra-only (앱 버전 무관)

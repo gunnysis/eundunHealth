@@ -1,7 +1,7 @@
 ---
 type: plan
 status: in-progress
-pr: null
+pr: 165
 related_inc: INC-2026-05-24-14
 supersedes: null
 target_version: versionCode 34+ (Android) / 백엔드·문서는 앱 버전 무관
