@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.1.19` / `33`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
+| versionName / versionCode | **`0.2.0` / `34`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | 2.2.10 / 9.2.1 / 9.6.0 |
 | Compose BOM | 2026.06.01 |

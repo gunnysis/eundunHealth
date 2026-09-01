@@ -4,6 +4,48 @@
 
 ---
 
+## [v0.2.0] — 2026-09-01 — 인증 제공자 전환: Supabase Auth → Microsoft Entra External ID
+
+> **사용자 가시 변화가 큰 릴리스.** 로그인 화면이 앱 안의 폼에서 **브라우저 페이지**로 바뀐다. 가입·이메일 검증·비밀번호 재설정이 전부 Entra 호스팅 페이지에서 처리되며, 앱에는 CTA 하나만 남는다.
+> 전환 배경은 Supabase 무료 티어의 저사용량 자동 일시중지 — 인증 가용성이 외부 정책에 종속되던 구조를 Azure 로 일원화했다. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`.
+> **실사용자 0명을 확인하고 룰 5 예외를 1회 소진**했다(감사 추적: `incident-log.md` INC-2026-05-24-14).
+
+### 🔐 인증
+- Supabase Auth → **Microsoft Entra External ID** 외부 테넌트(`eundunhealthciam`, Asia Pacific). MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE).
+- JWT **ES256 → RS256**. `issuer` 검증 신규 추가 — Entra 는 발급자 URL 패턴을 테넌트 간 공유하므로 미검증 시 **타 테넌트 토큰이 통과**한다.
+- `scp` 에 `access_as_user` 검증 추가(공식 권장). app-only 토큰 차단 효과 포함.
+- 사용자 식별자 `sub` → **`oid`**. `sub` 는 앱마다 다른 pairwise 값이라 저장하면 **로그인은 되는데 계정 삭제만 조용히 실패**한다.
+- `issuer`/`jwks_uri` 는 문자열 조합이 아니라 **OIDC discovery 에서 읽는다** — 조합식은 서명·audience 를 통과시키고 issuer 에서만 어긋나 추적이 매우 어렵다(실제로 초안이 틀렸다).
+
+### 🗑️ 계정 삭제
+- Supabase Admin API → **Microsoft Graph**. 성공 코드 200 → **204**.
+- `deletedItems` 즉시 파기 추가 — Graph 의 사용자 삭제는 30일 소프트 삭제라, 이 단계가 없으면 게시된 방침의 "즉시 영구 삭제" 문구와 실제가 어긋난다.
+
+### 🧹 레거시 제거
+- 인증 화면 3종(Login/Signup/ForgotPassword) + VM 3종 + 재발송 컨트롤러 삭제 → **`AuthGateScreen` 하나**(ui/auth 959줄 → 283줄).
+- App Links(`autoVerify` intent-filter) · `/.well-known/assetlinks.json` · `/auth/confirm` · `MainActivity` 딥링크 처리 **전부 삭제** — Entra 는 검증 코드를 브라우저 안에서 입력받아 링크가 없다.
+- `MOCK_AUTH_ERROR` 디버그 스캐폴딩 제거(Supabase 에러 문자열 mock 이라 무의미).
+- supabase-kt 3.6.0 SDK 버그 우회 코드 2곳(`handleDeeplinks` 에러 silent 처리, `Email.decodeResult` 디코딩 실패 흡수) 제거.
+
+### 📄 방침 (Play Store 게시본)
+- 처리자 Supabase → Microsoft Entra External ID. 보관 위치 "한국 리전" → **아시아·태평양**(Entra 외부 테넌트가 한국 리전 미지원).
+- **§3-1 개인정보 국외 이전 고지 신설.** 건강 데이터는 Korea Central 에 그대로 남는다는 점도 명시.
+
+### 📏 룰
+- **룰 5** 를 "Supabase 프로젝트" → "Auth 제공자/테넌트" 로 **일반화**. IdP 이름으로 못 박으면 다음 교체 때 가드가 조용히 사라진다.
+- **룰 11 항목 5** 갱신 — per-screen 인증 로직이 소멸해 규칙의 전제가 사라졌다(무시가 아니라 개정).
+
+### 🛠️ 빌드 / 인프라
+- MSAL 의 전이 의존성 `display-mask` 가 Maven Central·Google Maven 모두 **404** → DuoSDK 피드를 `content { includeGroup }` 로 **그룹만 좁혀** 추가.
+- R8: `nimbus-jose-jwt` 가 참조하는 Google Tink 미존재로 `minifyReleaseWithR8` 실패 → `-dontwarn`(없는 클래스는 keep 할 수 없다). Ktor 제거로 무의미해진 규칙 2줄 정리.
+- Container App / Job / CI 시크릿 `SUPABASE_*` → `ENTRA_*` 4종(룰 6 3종 동시 변경).
+- `scripts/alembic-autogen.sh` 가 `SUPABASE_*` 만 export 해 **Settings 검증에서 죽던 상태** 수정.
+
+### 🔢 버전
+- versionName 0.1.19 → **0.2.0**(user-facing 동작 변화 = MINOR), versionCode 33 → **34**.
+
+---
+
 ## [v0.1.19] — 2026-07-03 — Android CD 첫 자동 출시(내부 트랙) + 의존성 배치
 
 > P4 Android CD(`release.yml`, PR #143)의 첫 실 e2e 릴리스 — 태그 `v*` push → environment `play-release` 승인 → preflight 전체 게이트(룰 2·13·Sentry 매핑) → Play **내부 트랙** 자동 업로드 → 원장 자동 갱신 커밋. 사용자 가시 동작 변화 없음(의존성 업데이트 + 빌드/파이프라인). **같은 날(2026-07-03) Console 수동 승격으로 프로덕션 반영.**
