@@ -1,10 +1,28 @@
 # detekt 프로젝트 override — buildUponDefaultConfig=true이므로 기본 규칙에 덮어쓰기만 작성.
+#
+# ── 생성 코드 제외 (`excludes: ['**/generated/**']`) ────────────────────────────
+# openapi-generator 산출물(`build/generated/openapi/**`)은 우리가 쓴 코드가 아니므로 분석 대상이
+# 아니다. 그런데 AGP variant task(detektDebug 등)는 `android.sourceSets.main` 을 source 로 가져가고
+# 거기에 그 디렉터리가 srcDir 로 들어 있어 함께 분석된다 — task 레벨의 source filter /
+# exclude predicate / extension `source.setFrom` 은 AGP variant task 에 먹지 않는다
+# (`app/build.gradle.kts` 상단 주석 참조).
+#
+# 그래서 detekt **설정 레벨**의 path filter 를 쓴다. 공식 문서: "Fine grained path filters can be
+# defined for each rule or rule set through globbing patterns."
+# 개별 룰이 아니라 **룰셋 단위**로 거는 이유: 생성기 버전을 올리면 지금과 다른 룰이 걸린다.
+# 룰 단위로 두면 업그레이드마다 baseline 이 다시 오염된다.
+#
+# MEASURED 2026-09-01: 이 설정 이전 baseline 55건 중 36건(65%)이 생성 코드였다
+# (EmptyClassBlock 14 · WildcardImport 14 · MaxLineLength 3 · EnumNaming 2 ·
+#  TooGenericExceptionThrown 2 · EmptyDefaultConstructor 1).
+# 다른 룰셋에서 생성 코드 위반이 새로 나오면 여기에 같은 방식으로 한 줄 추가한다.
 
 build:
   maxIssues: 0
   excludeCorrectable: false
 
 complexity:
+  excludes: ['**/generated/**']
   LongMethod:
     threshold: 150
     # @Composable 함수는 UI 트리 선언이라 자연스레 길어짐
@@ -19,7 +37,14 @@ complexity:
   CyclomaticComplexMethod:
     threshold: 20
 
+empty-blocks:
+  excludes: ['**/generated/**']
+
+exceptions:
+  excludes: ['**/generated/**']
+
 naming:
+  excludes: ['**/generated/**']
   FunctionNaming:
     # @Composable 함수는 PascalCase (Compose 컨벤션)
     ignoreAnnotated: ['Composable']
@@ -27,6 +52,7 @@ naming:
     constantPattern: '[A-Z][_A-Z0-9]*'
 
 style:
+  excludes: ['**/generated/**']
   MagicNumber:
     active: false
   ReturnCount:
@@ -35,7 +61,7 @@ style:
     # TODO/FIXME 주석 검출 비활성 — 추적용으로 의도적으로 사용
     active: false
   WildcardImport:
-    excludes: ['**/*Test.kt', '**/*Spec.kt']
+    excludes: ['**/*Test.kt', '**/*Spec.kt', '**/generated/**']
   MaxLineLength:
     maxLineLength: 140
     excludeCommentStatements: true
