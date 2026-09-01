@@ -101,7 +101,26 @@ git checkout -b verify/kotlin-2.3 origin/dependabot/gradle/kotlin-XXXX
 
 ---
 
-## 2. openapi-generator 7.10.0 → 7.23.0
+## 2. openapi-generator 7.10.0 → 7.25.0 — ✅ **해소 (2026-09-01)**
+
+> **종결**: **7.25.0** 적용 완료. 15 minor 점프였으나 생성 코드는 계약이 유지됐다.
+>
+> **게이트로 확인한 것**(버전만 올리고 생성물을 먼저 읽음):
+> - `suspend fun getProfile(): Response<UserProfileResponse>` — **`Response<T>` 유지**.
+>   소비부 `ResponseExt.bodyOrThrow()`/`bodyOrNull404()` 가 이 형태를 전제하고 5개
+>   Repository 가 전부 쓰므로, 깨졌다면 데이터 계층 전체가 무너졌을 지점이다.
+> - 패키지 구조 `api/auth/infrastructure/model` 동일
+> - 모델의 gson `@SerializedName` 유지 — **룰 12**. 빠졌다면 R8 이 릴리스에서만 필드를 지운다
+>
+> 검증: `:app:testDebugUnitTest` · `:app:detektDebug` · **`:app:assembleRelease`(R8)** 전부 green.
+>
+> **선행 작업이 있었다**: detekt 가 생성 코드를 분석하던 구조를 먼저 걷어냈다
+> (baseline 55 → 19, 생성 코드 36 → 0). 그 덕에 생성기를 올렸는데도 **baseline 이 1건도
+> 흔들리지 않았다** — 순서를 바꿨다면 36건 churn 으로 CI 가 깨졌을 것이다.
+
+### (이하 보류 당시 기록)
+
+## 2-old. openapi-generator 7.10.0 → 7.23.0
 
 원본 dependabot PR: `dependabot/gradle/org.openapi.generator-7.23.0` **#119** (close됨, 2026-06-16)
 
