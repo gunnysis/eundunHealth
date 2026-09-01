@@ -213,7 +213,7 @@ Supabase → Microsoft Entra External ID 전환으로 **룰 5 가 금지하는 �
 | 확인 방법 | 전환 시점 프로덕션 사용자 수 0 |
 | 대가 | 인증 데이터가 국외(Asia Pacific)로 이전됨 — Entra 외부 테넌트가 한국 리전을 제공하지 않는다. 방침에 국외이전 고지 추가(`docs/store/privacy-policy.md` §3-1) |
 | 이후 | **예외는 소진됐다.** Entra 테넌트에 대해 룰 5 가 다시 완전히 발효한다. 다음 교체 시엔 매핑 테이블 + 백필 + 사용자 공지가 필수다 |
-| 설계 | `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md` |
+| 설계 | `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) |
 
 > 룰 5 의 문언은 이때 **"Supabase 프로젝트" → "Auth 제공자/테넌트"** 로 일반화했다. IdP 이름으로 못 박아 두면 다음 교체 때 가드가 조용히 사라지기 때문이다.
 
@@ -542,6 +542,43 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 **재발 방지**:
 - unsigned 폴백이 출시 경로로 새는 것 차단 — `preflight-release.sh` 에 서명 자료(keystore + `RELEASE_STORE_PASSWORD`/`RELEASE_KEY_PASSWORD`) fail-fast 가드 추가(빌드 수 분 전에 실패). 룰 2 "출시 빌드는 preflight 경로" 가 이 가드를 태운다.
 - 패턴 일반화: **로컬 시크릿을 참조하는 빌드 설정은 존재-조건부**여야 clean checkout 이 깨지지 않는다(BuildConfig 필드들이 이미 쓰는 `getProperty(key, default)` 패턴과 동일 원칙).
+
+---
+
+## INC-2026-09-01-30 — Trivy 가 배포 차단: 런타임 이미지가 싣고 다니던 패키지 설치 도구
+
+**증상**: PR #165 머지 후 첫 자동 배포(`backend.yml` deploy job)가 **Trivy 이미지 스캔
+(CRITICAL/HIGH 차단)** 에서 실패. 이미지 빌드·ACR push 이전 단계라 배포 자체가 진행되지 않음.
+프로덕션은 직전 이미지(`b74f140`, Supabase 코드)로 계속 서비스 — 다운타임 0.
+
+**근본 원인**: 지적된 2건이 전부 `requirements.txt` **밖**의 것이었다.
+
+| 패키지 | 취약점 | 출처 |
+|---|---|---|
+| `setuptools 70.3.0` | CVE-2025-47273 (path traversal) | base 이미지(`python:3.14-slim`) 동봉분 |
+| `msgpack 1.1.2` | GHSA-6v7p-g79w-8964 (OOB read/crash) | **pip 의 vendored 사본**(`pip/_vendor/`) |
+
+Debian 계층은 **0건**이었다 — Dockerfile 의 `apt-get upgrade` 자가치유 레이어가 정상 동작했고,
+남은 것은 전부 Python 계층이었다. `msgpack` 은 pip 안에 번들돼 있어 우리가 버전을 올릴 수단이
+없다(pip 최신도 같은 사본을 싣는다). 즉 **pip 가 이미지에 있는 한 매 스캔 재현**되는 구조적 차단이다.
+
+`ignore-unfixed: true` 설정이라 "fix 없음" 으로 넘어갈 수 있는 건도 아니었다 — 둘 다 fix 가 있다.
+
+**복구**: 런타임 이미지에서 설치 도구를 제거 —
+`pip install -r requirements.txt` 직후 `python -m pip uninstall -y pip setuptools wheel`.
+런타임은 셋 중 무엇도 쓰지 않는다(`entrypoint.sh` = `alembic upgrade head` → uvicorn exec).
+
+로컬 실증 후 push: site-packages 잔존 0 · `docker compose up -d --build` 로 alembic 실행 +
+`/health`·`/health/ready` 200(룰 7) · **CI 와 동일 플래그의 trivy exit code 0**.
+재배포 성공 → revision `0000058`, 이미지 `786692a`.
+
+**재발 방지**:
+- **프로덕션 런타임 이미지에 패키지 설치 도구를 남기지 않는다.** 게이트 우회가 아니라 공급망
+  표면 축소다. 부수 효과로 이미지도 작아진다.
+- 트레이드오프를 Dockerfile 주석에 명시 — 이 뒤로 컨테이너 안 `pip install` 은 불가능하고,
+  의존성 추가는 `requirements.txt` 수정 + 재빌드 경로만 남는다(원래 그래야 하는 방향).
+- 일반화: **스캐너가 잡는 것이 우리 의존성 목록에 없으면 "이미지가 왜 그걸 싣고 있는지" 를 먼저 묻는다.**
+  버전을 올릴 수 없는 vendored 사본은 제거 외에 해법이 없다.
 
 ---
 

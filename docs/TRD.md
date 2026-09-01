@@ -13,7 +13,7 @@
 > ⚠️ **인증 관련 본문 주의:** 아래 v1.0 본문의 인증 서술(Supabase SDK·`supabaseClient.auth.*`·
 > `SupabaseModule`·App Links 자동 로그인·AUTH-01~05 매핑)은 **2026-09 전환으로 전부 대체**됐다.
 > 현행은 바로 아래 변경 사항 표의 "인증 제공자"~"App Links / `/auth/confirm`" 행 + `CLAUDE.md` +
-> `docs/plans/2026-09-01-entra-external-id-migration-design.md` 를 본다.
+> `docs/plans/2026-09-01-entra-external-id-migration-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) 를 본다.
 
 본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.19 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 

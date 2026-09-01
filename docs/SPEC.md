@@ -3,7 +3,7 @@
 > **문서 버전:** v1.0 (초기 설계) — 본문은 그대로 보존.
 > **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스(v0.2·v0.3 spec 모두 구현 완료). 본문(기능 명세)은 초기 설계 그대로 보존하며, 버전 스냅샷은 여기에 하드코딩하지 않는다(릴리스마다 drift 방지 — 과거 v0.1.7 에 고착된 이력 있음). 자세한 차이는 [TRD.md](./TRD.md) 참조.
 >
-> **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트, 브라우저 위임). IdP 는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계이며 현재 구현과 다르다** — 현행은 `docs/plans/2026-09-01-entra-external-id-migration-design.md` §5 참조.
+> **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트, 브라우저 위임). IdP 는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계이며 현재 구현과 다르다** — 현행은 `docs/plans/2026-09-01-entra-external-id-migration-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) §5 참조.
 
 ## 프로젝트 개요
 

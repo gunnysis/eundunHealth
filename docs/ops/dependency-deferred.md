@@ -212,7 +212,7 @@ detekt 번프 + 위 3개 변경을 **한 PR** 로. baseline 재생성이 필요�
 메시지에 남긴다(baseline drift 는 이 저장소의 만성 CI 실패 원인).
 
 > AGP 10 이 먼저 오면 플래그가 사라져 전환이 강제된다. 그 경우에도 절차는 위와 같다.
-> 상세: `docs/plans/2026-09-02-full-audit-refactor-design.md` §4
+> 상세: `docs/plans/2026-09-02-full-audit-refactor-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) §4
 
 ---
 

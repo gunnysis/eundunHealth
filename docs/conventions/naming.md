@@ -100,14 +100,14 @@ Container App URL 이 Android `BuildConfig.BACKEND_BASE_URL` 에 baked 되어 �
 
 - **신규 리소스에만 적용**한다.
 - 예외 검토가 필요하면 반드시 design+plan 페어를 먼저 쓴다 →
-  `docs/plans/2026-09-01-azure-resource-naming-and-legacy-design.md`
+  `docs/plans/2026-09-01-azure-resource-naming-and-legacy-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수)
 - 실측은 `/naming-audit` 슬래시 명령 또는 `docs/plans/logs/process-infra.md` 의 audit entry 참조
   (SSoT inline 시 drift 위험).
 
 ### 3.6 현행 준수 현황과 정리 계획
 
 전수 대조·재명명 가능성 판정·레거시 정리 계획은 설계 문서 한 곳에 둔다(여기 inline 시 drift):
-`docs/plans/2026-09-01-azure-resource-naming-and-legacy-design.md`.
+`docs/plans/2026-09-01-azure-resource-naming-and-legacy-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수).
 
 ## 4. 신규 코드 추가 시 체크리스트
 

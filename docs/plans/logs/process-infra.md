@@ -4,6 +4,27 @@
 
 ## Recent (last 90 days)
 
+### 2026-09-02 — PR #165: Entra 전환(v0.2.0) + 기술부채 T0~T7 + 하드닝 H1~H10 + Azure 정리 + 전수 점검 리팩토링
+
+- **PR**: [#165](https://github.com/gunnysis/eundunHealth/pull/165) (merge commit `049b643`, 42커밋) + main 직접 `786692a`(배포 차단 해소)
+- **Why**: 5개 작업 사이클이 같은 브랜치에 누적됐다. 인증 전환이 스키마·시크릿·문서를 동시에 건드려 쪼개면 중간 상태가 깨지고, 이후 사이클이 같은 파일(`build.gradle.kts`·`config/detekt/`·문서)을 공유했다. squash 대신 **merge commit** 으로 커밋별 근거를 보존했다(ledger 가 인용할 해시 유지).
+- **What**:
+  ① **Entra 전환(v0.2.0/34)** — JWT ES256→**RS256** + issuer(OIDC discovery)·`scp` 검증, 식별자 `sub`→**`oid`**, 계정삭제 Graph 이관(204 + `deletedItems` 파기), Android 인증화면 3종 폐기 → MSAL 브라우저 위임(ui/auth 959→283줄), App Links·`/auth/confirm` 삭제, 룰 5 일반화 + 룰 11 항목 5 개정.
+  ② **기술부채 T0~T7** — 툴 버전 정본 단일화 · detekt 생성코드 제외(baseline 55→19→3→0) · openapi-generator 7.25 · **Python 3.14** · Gradle 9.7.1.
+  ③ **하드닝 H1~H10** — 프로필 '실패'→'없음' 오판 제거 · 배지 캐시 3결함 · 422 로그 건강데이터 제거 + `request_id` 위조 차단 · Graph 커넥션 작업단위 재사용 · **R8 릴리스를 PR 게이트에 추가**.
+  ④ **Azure 정리** — 빈 RG 삭제(단일 RG) · `acr purge` Task 2개(2.21→**0.60 GiB**) · alert CAF 재명명(생성→검증→삭제로 공백 0) · reaper Job 갱신을 `--yaml` 전체 적용으로.
+  ⑤ **전수 점검** — AGP 폐기 플래그 6→2(APK −153 KB) · `android.yml` paths 구멍 · Sentry 보고 정본화 + 컨벤션 테스트 · `.venv` 3.13→3.14 · 422→500 뒤집힘 · 문서 드리프트 8종 + 수집기 확장.
+- **Outcome**: CI 9체크 green(Android R8·CodeQL 3종 포함). 배포는 **Trivy 에서 1회 차단**(INC-2026-09-01-30) → 런타임 이미지에서 pip/setuptools/wheel 제거로 해소 후 성공. **라이브 실증**: revision `0000058`·이미지 `786692a`·**reaper Job == 앱 이미지**(B2-a 불변식 첫 작동, 직전 7주간 `de612e9` 로 드리프트)·secret `supabase-*`→`entra-*` 완전 교체·`/health`·`/health/ready` 200·위조토큰 401·삭제 라우트 404. 게이트: android @Test **131** · backend pytest **115** · coverage 97%.
+- **Lessons**:
+  ① **"게이트 green" 이 "건강함" 은 아니다.** 통상 지표가 전부 정상인 상태에서 6건이 나왔고 공통점은 **전부 빌드가 성공하는 상태로 잘못돼 있었다**는 것 — 폐기 플래그의 틀린 사유, CI 를 우회하는 paths 구멍, 잊을 수 있는 2단 보고, 잘못된 인터프리터의 측정값.
+  ② **측정은 "무엇 위에서 쟀는가" 까지가 측정이다.** 3.13 `.venv` 에서 잰 coverage 98% 를 근거로 옳은 문서("~97%")를 고칠 뻔했다. 룰 9 의 MEASURED 라벨에 런타임을 포함해야 한다.
+  ③ **차단 사유 주석은 실측으로 갱신하지 않으면 다음 사람을 잘못 보낸다.** "Hilt 미지원" 이라 적혀 있었지만 실제로는 detekt(1.23.8 이 AGP 9 새 DSL 에서 variant 태스크 미등록)였다. 전환을 직접 시도해 `kotlin.srcDir` 한 줄이면 컴파일이 통과함까지 확인해 재개 절차로 남겼다.
+  ④ **가드는 자기 표기의 사각지대를 갖는다.** 전날 만든 링크 가드가 저장소에서 가장 많이 쓰는 `{design,plan}` 축약형을 정규식에 넣지 않아 죽은 참조 7건을 놓치고 있었다. 가드 도입 후 **그 가드가 무엇을 못 보는지**를 한 번 더 물어야 한다.
+  ⑤ **스캐너가 우리 의존성 목록 밖의 것을 잡으면 "왜 이미지가 그걸 싣고 있는지" 를 먼저 묻는다.** vendored 사본은 버전 상향이 불가능해 제거 외 해법이 없다.
+  ⑥ **IaC 파일이 "희망사항" 이 되는 경로** — `setup-reaper-job.sh` 가 갱신 시 `--image` 만 적용해 yaml 을 고쳐도 라이브에 전파되지 않았고, 잡이 7주간 옛 시크릿을 들고 있었다. 생성·갱신 **양쪽 다** 전체 적용이어야 파일이 단일 출처가 된다.
+- **Files touched**: `gradle.properties`, `app/build.gradle.kts`, `app/src/**`(AppError 정본화·컨벤션 테스트), `backend/{Dockerfile,app/main.py,tests/**}`, `.github/workflows/{android,backend}.yml`, `scripts/{check-plans-links.sh,agents/doc_audit.py,agents/test_doc_audit.py,setup-reaper-job.sh,setup-azure-alerts.sh}`, `backend/{containerapp,reaper-job}.yaml`, CLAUDE.md/README/TRD/SPEC/PRD/CHANGELOG, `docs/ops/{operations-snapshot,incident-log,dependency-deferred,monitoring-and-cost}.md`, `docs/conventions/naming.md`, `version.properties`
+- **설계 원문**: `2026-09-01-entra-external-id-migration-{design,plan}.md` · `2026-09-01-tech-debt-runtime-modernization-{design,plan}.md` · `2026-09-01-codebase-hardening-{design,plan}.md` · `2026-09-01-azure-resource-naming-and-legacy-{design,plan}.md` · `2026-09-01-legacy-modernization-program-design.md` · `2026-09-02-full-audit-refactor-{design,plan}.md` (본 entry 로 흡수, git rm)
+
 ### 2026-07-29 — RG 이관 apps → rg-eundunhealth-prod-krc (이동 7 + 재생성 9 + RBAC 8 + 구 RG 삭제)
 
 - **PR**: main 직접 (`c954579` 이관 본체 + 후속 점검·개선 커밋)

@@ -7,7 +7,7 @@
 ## [v0.2.0] — 2026-09-01 — 인증 제공자 전환: Supabase Auth → Microsoft Entra External ID
 
 > **사용자 가시 변화가 큰 릴리스.** 로그인 화면이 앱 안의 폼에서 **브라우저 페이지**로 바뀐다. 가입·이메일 검증·비밀번호 재설정이 전부 Entra 호스팅 페이지에서 처리되며, 앱에는 CTA 하나만 남는다.
-> 전환 배경은 Supabase 무료 티어의 저사용량 자동 일시중지 — 인증 가용성이 외부 정책에 종속되던 구조를 Azure 로 일원화했다. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`.
+> 전환 배경은 Supabase 무료 티어의 저사용량 자동 일시중지 — 인증 가용성이 외부 정책에 종속되던 구조를 Azure 로 일원화했다. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수).
 > **실사용자 0명을 확인하고 룰 5 예외를 1회 소진**했다(감사 추적: `incident-log.md` INC-2026-05-24-14).
 
 ### 🔐 인증

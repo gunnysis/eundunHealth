@@ -46,7 +46,7 @@
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
 | API version | `1.0.0` (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — bump 시 `sync-openapi.sh` 재싱크) |
-| Dockerfile | **`python:3.14-slim`** + `apt-get upgrade` 레이어(base-image OS CVE 자가치유, Trivy HIGH 차단 회피) |
+| Dockerfile | **`python:3.14-slim`** + `apt-get upgrade` 레이어 + **설치 도구 제거**(`pip`/`setuptools`/`wheel` — INC-2026-09-01-30, Trivy 차단 근본 해소)(base-image OS CVE 자가치유, Trivy HIGH 차단 회피) |
 
 ### env vars
 
@@ -202,7 +202,7 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 
 ## 5-A. Microsoft Entra External ID
 
-> 현행 인증 제공자. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`.
+> 현행 인증 제공자. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수).
 
 | 항목 | 값 |
 |------|---|
@@ -509,3 +509,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-09-01 | **기술부채 청산 T0~T7 + 코드베이스 하드닝 H1~H10** (같은 PR). T0 툴 버전 정본을 `requirements-dev.txt` 한 곳으로 · T1 detekt 생성코드 제외(baseline 55→19) · T2 openapi-generator 7.10→**7.25.0** · T3 **Python 3.12→3.14** · T4 Gradle 9.6→**9.7.1** · T7 손작성 위반 19→3. H1 프로필 조회 '실패'를 '없음'으로 오판하던 경로 제거 · H2 배지 캐시 되살아나는 무효화/시계역행/동시성 · H3 422 로그에서 건강데이터 제거 + `request_id` 로그위조 차단(CWE-117) · H4·H5 Graph 커넥션 작업단위 재사용(삭제 3핸드셰이크→1, reaper N+1→1) · **H6 R8 릴리스 빌드를 PR 게이트에 추가**(룰 12 — 이 저장소 릴리스 사고는 전부 R8 에서만 재현) |
 | 2026-09-01 | **Azure 리소스 정리** (같은 PR). 빈 RG 2개 삭제 → 단일 RG. **`acr purge` 스케줄 ACR Task 2개** 도입(§3) — 태그 56→14 · 매니페스트 68→13 · dangling 14→0 · 용량 2.21→**0.60 GiB**. alert 8개 CAF 재명명(`psql`→`pgsql`, **생성→검증→삭제** 순으로 알림 공백 0). reaper Job 갱신 경로를 `--image` → **`--yaml` 전체 적용**으로 교체 — IaC 파일을 고쳐도 라이브에 전파되지 않아 잡이 7주간 Supabase 시크릿을 들고 있던 근본 원인 해소 |
 | 2026-09-02 | **전수 점검 리팩토링 — 게이트가 보지 않던 6건** (같은 PR). ① AGP 폐기 플래그 6→2(APK **−153 KB**, 앱 리소스 손실 0) + 남은 2개의 **틀린 사유**("Hilt 미지원")를 실측 사유(detekt 1.23.8 이 AGP 9 새 DSL 에서 `detektDebug` 미등록)와 해제 조건(detekt 2.0.0 정식)으로 교체 ② `android.yml` paths 가 루트 `gradle.properties` 를 안 잡아 **빌드 설정 변경이 CI 를 우회**하던 구멍 봉합 ③ Sentry 보고 2단 호출(철자 3종) → `toReportedAppError()` 정본 + 컨벤션 테스트 ④ 로컬 `.venv` 3.13 vs 대상 3.14 스큐 해소(잘못 잰 coverage 로 옳은 문서를 고칠 뻔함) ⑤ 422 가 500 으로 뒤집히는 경로(`jsonable_encoder` 누락) + 회귀 테스트 ⑥ 문서 드리프트 8종 정정 + `doc_audit.py` 수집기에 `python_runtime`(3출처 대조)·`jwt_algorithms` 추가로 재발 차단. 게이트: android @Test **131** · backend pytest **115** · coverage 97% · CI 7체크 전부 green |
+| 2026-09-02 | **PR #165 머지 + 백엔드 배포 실증**(merge commit `049b643`). 머지 후 첫 배포가 **Trivy 에서 차단**(INC-2026-09-01-30) — 지적 2건이 전부 requirements 밖이었다: `setuptools 70.3.0`(base 동봉) · `msgpack 1.1.2`(**pip vendored**, 버전 상향 불가). 런타임 이미지에서 `pip`/`setuptools`/`wheel` 제거로 근본 해소(`786692a`) 후 재배포 성공. **라이브 검증**: revision `0000058` · 이미지 `786692a` · **reaper Job 이미지 == 앱 이미지**(B2-a 불변식 첫 실증 — 직전까지 `de612e9` 로 7주 어긋나 있었다) · Container App/Job secret 이 `supabase-*` → **`entra-*` 로 완전 교체**(잔존 0) · `/health`·`/health/ready` **200** · 무토큰/위조토큰 `/profile` **401**(RS256 검증 동작) · `/privacy`·`/account-deletion` 200 · 삭제된 `/auth/confirm`·`/.well-known/assetlinks.json` **404**. **남음**: 실기기 골든패스(회원님) → Android v0.2.0 태그 push |

@@ -232,7 +232,7 @@ untag → dangling 삭제 2단계여야 한다.
 **CI 는 정리하지 않는다** (실측 2026-09-01): `backend.yml` 은 배포마다 `<sha7>`+`latest` 를
 push 하지만 untag/delete 단계가 없다. `redeploy.sh` 의 "최근 5개 보존" 은 **로컬 수동 경로
 전용**이다. 그 결과 매니페스트 68개(태그 54 + dangling 14)·2.37GB/10GB 가 쌓였다.
-보존 정책 설계: `docs/plans/2026-09-01-azure-resource-naming-and-legacy-{design,plan}.md`.
+보존 정책 설계: `docs/plans/2026-09-01-azure-resource-naming-and-legacy-{design,plan}.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수).
 
 ### 룰 2 — 릴리스 산출물은 `releaseArtifacts` 하나로만 (INC-04)
 AAB와 APK를 따로 빌드하면 사이에 versionCode가 바뀌어 어긋날 수 있다. **반드시**:
@@ -257,7 +257,7 @@ starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeEr
 ### 룰 5 — Auth 제공자/테넌트는 실사용자 확보 후 절대 교체 금지 (INC-14, 2026-09 문언 일반화)
 Auth 제공자 또는 그 테넌트/프로젝트를 교체하면 user_id namespace 가 바뀌어 기존 사용자가 모두 orphan 이 된다. **이 룰은 IdP 가 무엇이든 동일하게 적용된다** — "Supabase 한정" 으로 두면 다음 교체 때 가드가 사라지므로 일반화했다.
 
-2026-06-29 프로덕션 출시로 최초 발효. **2026-09 Supabase → Entra External ID 전환은 "실사용자 0명" 을 확인한 예외 상황에서 1회 한정 수행**됐다(설계 `docs/plans/2026-09-01-entra-external-id-migration-design.md`). 이 예외는 소진됐으며, 그 시점부터 Entra 테넌트에 대해 다시 완전히 발효한다. 불가피하면 매핑 테이블 + 백필 + 사용자 공지 절차 필수.
+2026-06-29 프로덕션 출시로 최초 발효. **2026-09 Supabase → Entra External ID 전환은 "실사용자 0명" 을 확인한 예외 상황에서 1회 한정 수행**됐다(설계 `docs/plans/2026-09-01-entra-external-id-migration-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수)). 이 예외는 소진됐으며, 그 시점부터 Entra 테넌트에 대해 다시 완전히 발효한다. 불가피하면 매핑 테이블 + 백필 + 사용자 공지 절차 필수.
 
 ### 룰 6 — backend.yml `secretref` 추가는 항상 세 가지 동시 변경 (INC-18)
 `.github/workflows/backend.yml`의 `--set-env-vars`에 새 `<ENV>=secretref:<name>`을 넣으면 같은 PR에서 반드시:
