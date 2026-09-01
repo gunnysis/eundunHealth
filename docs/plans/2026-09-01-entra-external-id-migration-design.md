@@ -218,6 +218,38 @@ GET /v1.0/users/d2540ae9-916a-465d-b0ed-f364a767ed23  → HTTP 200
 
 > **재현 스크립트**: 세션 scratchpad `verify_token.py`. 저장소에 두지 않는다 — 실행에 실토큰이 필요하고, 값이 자격증명이다.
 
+### F11. Q1 확정 — 코드 입력 방식. 그리고 **검증 메일은 영어이며 브랜딩으로 못 고친다**
+
+**Q1 = (a) 브라우저 내 코드 입력** (실물 확인, 2026-09-01). 수신 메일 원문:
+
+```
+eundunHealth
+Account verification code
+... please use the code below for account verification.
+The code will only work for 30 minutes.
+Account verification code:  92680384
+```
+
+**링크가 없다.** 따라서 다음을 **삭제**할 수 있다 — `assetlinks.json` · App Links intent-filter · 백엔드 `/auth/confirm` 라우트 · 앱의 `SignupResult.AwaitingConfirmation`/`resendConfirmation` 경로. 가입·검증 전 과정이 브라우저 안에서 완결된다.
+
+**부수 발견 — 메일이 영어다.** 한국어 전용 제품에서 유일하게 영어가 노출되는 지점이다. 공식 문서로 확인한 구조:
+
+| 요소 | 출처 | 한국어화 |
+|---|---|---|
+| 메일 상단 `eundunHealth` | **테넌트 이름** — *"The new tenant name also appears in the verification email sent to the user."* | ✅ 테넌트 이름 변경으로 가능 |
+| 메일 본문·제목 | Microsoft 내장 OTP 템플릿 | ❌ **Company branding 범위 밖** (브랜딩 문서는 sign-in/up/out **페이지**만 다룬다) |
+| 본문 한국어화 경로 | `OnOtpSend` 커스텀 인증 확장 → 자체 REST API → ACS/SendGrid | ⚠️ *"send the one-time passcode with your custom email template... while also supporting localization"* |
+
+> **내장 템플릿이 브라우저 로케일을 따르는지는 미검증**이다. 관측된 것은 "영어로 왔다" 뿐이며, 로케일 무시인지 로케일 판정 실패인지는 확인하지 않았다. 단정하지 말 것.
+
+**판단 — 현 시점 Won't-do.** 한국어 메일 하나를 위해 ACS/SendGrid + Function/API + 인증 확장 등록을 새로 운영해야 한다. 운영 표면·비용·장애 지점이 모두 늘고, 내용은 8자리 숫자 코드가 전부라 영어여도 이해에 지장이 없다. **사용자 유입 후 이탈 신호가 관측되면 재검토**한다.
+
+- 단기 개선(저비용): 테넌트 이름을 `은둔헬스` 로 바꾸면 메일 상단만이라도 한국어가 된다. 단 **로그인 페이지 배너에도 같은 이름이 쓰이므로** 함께 바뀐다 — 시각 확인 후 결정.
+
+**참고**:
+- [Customize branding (external tenants)](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-customize-branding-customers)
+- [Configure a custom email provider for OTP send events](https://learn.microsoft.com/en-us/entra/identity-platform/custom-extension-email-otp-get-started)
+
 ### 참고: 요금 (2026-06-09 메모리 수치 정정)
 
 무료 구간 **0–50,000 MAU $0**는 유지. 초과 구간은 메모리의 세분 구간제($0.0055/$0.0046/…)가 아니라 **P1 $0.00325 / P2 $0.01625** 구조로 바뀌었다. 현 규모에선 양쪽 다 $0이라 결정에 무영향이나, 메모리 수치는 인용하지 말 것.
