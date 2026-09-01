@@ -270,22 +270,26 @@ Account verification code:  92680384
 
 ### 4.1 백엔드
 
-**`app/dependencies.py`** — 교체 범위는 URL·알고리즘·claim 3가지로 좁다:
+**`app/dependencies.py`** — 교체 범위는 JWKS 출처·알고리즘·claim 3가지로 좁다:
 ```python
 # JWKS: {supabase_url}/auth/v1/.well-known/jwks.json
-#    →  https://{subdomain}.ciamlogin.com/{tenant_id}/discovery/v2.0/keys
+#    →  discovery 문서의 jwks_uri (조합 금지 — F4-a)
+cfg = _get_oidc_config(settings.entra_subdomain)   # issuer·jwks_uri 를 1회 조회 후 캐시
 payload = jwt.decode(
     credentials.credentials, signing_key.key,
     algorithms=["RS256"],                       # F4
     audience=settings.entra_backend_client_id,  # "authenticated" → 백엔드 앱 client_id
-    issuer=f"https://{settings.entra_subdomain}.ciamlogin.com/{settings.entra_tenant_id}/v2.0",  # F4 신규
+    issuer=cfg["issuer"],                       # F4 신규 · F4-a: 조합하지 말고 읽을 것
 )
 # F1-b: scp 검증 (공식 권장). app-only 토큰(roles 보유) 차단 효과도 있다.
 if "access_as_user" not in (payload.get("scp") or "").split():
     raise InvalidTokenError("missing required scope")
 user_id = payload.get("oid")                    # F1 — 부재 시 401(대개 profile scope 누락)
 ```
-`PyJWKClient` 24h 캐시 · `timeout=5` · `asyncio.to_thread` 오프로딩 · 401/503/500 분기는 **IdP 무관이라 그대로 존치**.
+
+> **`issuer` 를 문자열로 조합하지 말 것.** 초안은 `{subdomain}.ciamlogin.com/...` 으로 조합했고 이는 **틀렸다**(F4-a 실측: 서브도메인이 tenantId 다). 조합식은 서명·audience 를 통과시키고 issuer 에서만 어긋나기 때문에 **전 API 401 인데 원인 추적이 매우 어렵다.** discovery 문서에서 읽으면 이 오류가 원천적으로 불가능하다.
+
+`PyJWKClient` 24h 캐시 · `timeout=5` · `asyncio.to_thread` 오프로딩 · 401/503/500 분기는 **IdP 무관이라 그대로 존치**. discovery 조회도 같은 워커 스레드 오프로딩·실패 시 503 경로를 따른다.
 
 **`app/config.py`** — `supabase_url`/`supabase_service_role_key` 제거, `entra_tenant_id`/`entra_subdomain`/`entra_backend_client_id`/`entra_backend_client_secret` 추가.
 

@@ -6,6 +6,10 @@ import os
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
 os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
+os.environ.setdefault("ENTRA_TENANT_ID", "c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8")
+os.environ.setdefault("ENTRA_SUBDOMAIN", "eundunhealthciam")
+os.environ.setdefault("ENTRA_BACKEND_CLIENT_ID", "903bf44d-d73a-40b5-9601-e9c362699c38")
+os.environ.setdefault("ENTRA_BACKEND_CLIENT_SECRET", "test-client-secret")
 
 from contextlib import contextmanager  # noqa: E402
 from unittest.mock import AsyncMock, patch  # noqa: E402
