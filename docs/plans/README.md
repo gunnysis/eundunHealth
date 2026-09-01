@@ -5,13 +5,14 @@
 > 컨벤션: 본 README 의 "워크플로" 섹션 + memory `plans-folder-archive-preference.md` + `design-plan-docs-convention.md`.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
-## 활성 작업 (페어 파일, 1)
+## 활성 작업 (페어 파일, 2)
 
-### 대기 (proposed / approved) (1)
+### 대기 (proposed / approved) (2)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-09-01 | entra-external-id-migration | design | proposed | auth, entra-external-id, supabase, migration, rule-5 |
+| 2026-09-01 | build-modernization | design | proposed | refactoring, upgrade, kotlin, gradle-dsl, dependabot, backlog |
+| 2026-09-01 | entra-external-id-migration | design + plan | proposed | auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11 |
 
 ## Topic Ledgers (완료 작업 history)
 
