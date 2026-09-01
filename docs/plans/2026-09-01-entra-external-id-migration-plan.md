@@ -49,7 +49,7 @@ Phase 5  머지 후 운영 검증 (실기기 E2E)
 
 | Phase | 상태 |
 |---|---|
-| 0 테넌트 준비 | ✅ (잔여: `User.DeleteRestore.All` 관리자 동의 1건) |
+| 0 테넌트 준비 | ✅ **완결** (`User.DeleteRestore.All` 관리자 동의 2026-09-01 부여) |
 | 1 백엔드 | ✅ `5f9f515` `3c1cd05` `c4dbe38` `b3d46bb` |
 | 2 Android | ✅ `4c01daf` |
 | 3 문서·룰 | ✅ `23a3bfc` |
@@ -67,7 +67,7 @@ Phase 5  머지 후 운영 검증 (실기기 E2E)
 
 | # | 항목 | 성격 |
 |---|---|---|
-| R-1 | `User.DeleteRestore.All` 관리자 동의 | **대표 수행** — 포털 클릭 1회. 없으면 `deletedItems` 파기가 403 → 30일 소프트 삭제로 남아 게시된 "즉시 영구 삭제" 문구와 어긋난다 |
+| ~~R-1~~ | `User.DeleteRestore.All` 관리자 동의 | ✅ **완료 (2026-09-01)** — assignmentId `jG3EzFY6sEKcCByMb-fvijaXM5dyw7RLvsxTRZLio-k`. 없었다면 `deletedItems` 파기가 403 → 30일 소프트 삭제로 남아 게시된 "즉시 영구 삭제" 문구와 어긋났다. 상세·정정은 아래 0-A |
 | R-2 | push + PR | ⏸ **보류 (회원님 명시 지시, 2026-09-01)**. 이 브랜치 위에 `feature/tech-debt-runtime-modernization`(T0~T7 + H1~H10)이 **stacked** 로 쌓여 있다 — 재개 시 **이 브랜치를 먼저 push** 해 PR base 를 확보해야 위쪽 PR diff 에 여기 커밋 10건이 섞이지 않는다 |
 | R-3 | 로컬 `main` 잉여 커밋 2건(`c8d7600`·`c7d4cd3`) | 브랜치 생성 전 main 에 직접 커밋됨. 둘 다 feature 브랜치의 조상이라 `git branch -f main origin/main` 으로 정리해도 **아무것도 잃지 않는다**. 대표 판단 대기 |
 | R-4 | 테스트용 redirect URI `http://localhost` 제거 | Phase 5 완료 후 |
@@ -113,10 +113,43 @@ az provider show -n Microsoft.AzureActiveDirectory \
 | **외부 테넌트 생성** | ✅ `az rest --method PUT` | ARM API + delegated 토큰 조건 충족 |
 | KV secret 등록 | ✅ `az keyvault secret set` | 기존에도 수행 |
 | 앱 등록 2건 | ❌ **대표 필요** | **새 테넌트**에 인증해야 함 → `az login --tenant <new>` 는 대화형 |
-| Graph 관리자 동의 | ❌ **대표 필요** | 새 테넌트 관리자 권한 + 개인 MSA 의 Graph 제약([[azure-cli-rbac-msa-limitation]]) |
+| Graph 관리자 동의 | ✅ **자동화 가능** (2026-09-01 정정) | 아래 "0-A 정정" 참조 |
 | user flow · 한국어 · 브랜딩 | ❌ **대표 필요** | 새 테넌트 Graph API (`organizationalBranding` 등) |
 
 → **테넌트 생성까지는 제가 하고, 새 테넌트 내부 설정부터 대표님께 요청**하는 것이 정확한 분담이다.
+
+#### 0-A 정정 (2026-09-01) — "Graph 관리자 동의 = 대표 필요" 는 틀렸다
+
+위 표는 관리자 동의를 ❌ 로 적었다. 근거는 두 가지였는데 **둘 다 이 건에는 해당하지 않았다.**
+
+| 적어 둔 근거 | 실측 |
+|---|---|
+| "새 테넌트에 인증해야 함 → `az login --tenant` 는 대화형" | **불필요.** 기존 세션이 이미 그 테넌트를 포함한다. `az account get-access-token --tenant <ciam> --resource https://graph.microsoft.com` 가 **비대화형으로 성공**하고 `/v1.0/me` 가 200 을 준다(테넌트는 `az rest .../tenants?api-version=2022-12-01` 로 열거되며 `eundunhealthciam.onmicrosoft.com` 이 목록에 있다) |
+| "개인 MSA 의 Graph 제약([[azure-cli-rbac-msa-limitation]])" | **다른 문제를 끌어왔다.** 그 메모는 **ARM RBAC**(`az role assignment` → MissingSubscription) 제약이다. 관리자 동의는 ARM 이 아니라 **Graph 디렉터리 작업**이라 무관하다. 실제 역할은 `/me/transitiveMemberOf` 조회 결과 **Global Administrator** — 공식 요구치(Privileged Role Administrator)를 충족한다 |
+
+**실제 상태도 표와 달랐다**: 앱 등록은 `User.ReadWrite.All`·`User.DeleteRestore.All` 을 **둘 다
+선언**하고 있었고, 서비스 주체에는 `User.ReadWrite.All` **하나만** 부여돼 있었다. 즉 "권한을
+추가"할 필요는 없고 **선언된 것에 동의만** 하면 되는 상태였다.
+
+**사용한 경로** — [공식 문서](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-admin-consent)
+의 Graph API 방식(포털 클릭과 동등):
+
+```powershell
+$t = az account get-access-token --tenant <ciam-tenant-id> --resource https://graph.microsoft.com --query accessToken -o tsv
+Invoke-RestMethod -Method POST -Headers @{Authorization="Bearer $t"} -ContentType "application/json" `
+  -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/<graph-sp-id>/appRoleAssignedTo" `
+  -Body '{"principalId":"<backend-sp-id>","resourceId":"<graph-sp-id>","appRoleId":"<User.DeleteRestore.All>"}'
+```
+
+되돌리기: 같은 컬렉션에 `DELETE .../appRoleAssignedTo/{assignmentId}`.
+
+> **교훈 — 제약을 라벨로 옮겨 적지 말 것.** "개인 MSA 는 Graph 가 막힌다" 는 요약이
+> ARM RBAC 사례에서 만들어져 **성격이 다른 작업에 그대로 재사용**됐고, 그 결과 자동화
+> 가능한 일이 3주 가까이 "대표 대기" 로 남았다. 제약을 인용할 때는 **원 사례의 대상 API**
+> 까지 함께 확인한다.
+>
+> **부수 교훈**: 셸 지시는 실행될 셸에 맞춰 준다. 이 저장소의 `!` 프리픽스는 **PowerShell**
+> 로 라우팅되므로 bash 줄바꿈(`\`)과 bash 변수를 쓴 명령은 그대로 깨진다.
 
 ### 0-B. 명명 설계 (CAF + `docs/conventions/naming.md`)
 
