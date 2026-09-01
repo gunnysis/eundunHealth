@@ -115,6 +115,46 @@ def count_routes_in_text(text: str) -> list[dict[str, str]]:
     ]
 
 
+_DOCKER_PY_RE = re.compile(r"^FROM\s+python:(\d+\.\d+)", re.MULTILINE)
+_RUFF_TARGET_RE = re.compile(r"""^target-version\s*=\s*["']py(\d)(\d+)["']""", re.MULTILINE)
+_MYPY_PY_RE = re.compile(r"""^python_version\s*=\s*["'](\d+\.\d+)["']""", re.MULTILINE)
+
+
+def parse_python_runtime(dockerfile_text: str, pyproject_text: str) -> dict[str, Any]:
+    """백엔드 Python 런타임을 **3개 출처**에서 읽고 서로 일치하는지까지 본다.
+
+    왜 3개인가: 2026-09-02 감사에서 로컬 `.venv` 만 3.13 이고 나머지는 3.14 인 스큐가 나왔다.
+    그때 문서 9곳이 "Python 3.12" 로 남아 있었는데도 이 수집기가 못 잡았다 — 항목 자체가
+    없었기 때문이다. 값 하나만 내보내면 "어느 출처가 옳은가" 를 감사관이 판단할 수 없으므로
+    출처별로 내보내고 `mismatch` 를 함께 계산한다.
+    """
+    docker = m.group(1) if (m := _DOCKER_PY_RE.search(dockerfile_text)) else None
+    ruff = f"{m.group(1)}.{m.group(2)}" if (m := _RUFF_TARGET_RE.search(pyproject_text)) else None
+    mypy = m.group(1) if (m := _MYPY_PY_RE.search(pyproject_text)) else None
+    found = [v for v in (docker, ruff, mypy) if v]
+    return {
+        "dockerfile": docker,
+        "ruff_target_version": ruff,
+        "mypy_python_version": mypy,
+        "mismatch": len(set(found)) > 1,
+    }
+
+
+_JWT_ALGS_RE = re.compile(r"algorithms\s*=\s*\[([^\]]*)\]")
+
+
+def parse_jwt_algorithms(dependencies_text: str) -> list[str]:
+    """JWT 검증 알고리즘 리터럴.
+
+    Supabase(ES256) → Entra External ID(RS256) 전환 후에도 문서 7곳이 ES256 으로 남아 있었다.
+    알고리즘은 IdP 를 바꾸면 반드시 바뀌는 값이라 수집 대상으로 삼을 가치가 있다.
+    """
+    m = _JWT_ALGS_RE.search(dependencies_text)
+    if not m:
+        return []
+    return re.findall(r"""["']([^"']+)["']""", m.group(1))
+
+
 def _parametrize_factor(decorator: ast.expr) -> int:
     """`@pytest.mark.parametrize(names, [...])` 가 만들어내는 케이스 수. 셀 수 없으면 1.
 
@@ -213,6 +253,12 @@ def collect_facts(repo_root: Path) -> dict[str, Any]:
     for p in sorted(routers_dir.glob("*.py")):
         routes.extend(count_routes_in_text(_read(p)))
 
+    py_runtime = parse_python_runtime(
+        _read(repo_root / "backend" / "Dockerfile"),
+        _read(repo_root / "backend" / "pyproject.toml"),
+    )
+    jwt_algs = parse_jwt_algorithms(_read(repo_root / "backend" / "app" / "dependencies.py"))
+
     tests_dir = repo_root / "backend" / "tests"
     test_files = sorted(tests_dir.rglob("test_*.py")) if tests_dir.is_dir() else []
     test_count = count_test_functions([_read(p) for p in test_files])
@@ -222,6 +268,8 @@ def collect_facts(repo_root: Path) -> dict[str, Any]:
         "backend_api_version": api_ver,
         "alembic": alembic,
         "cors_origins_default": cors,
+        "python_runtime": py_runtime,
+        "jwt_algorithms": jwt_algs,
         "api_routes": {
             "total": len(routes),
             "by_method": _by_method(routes),
@@ -262,6 +310,12 @@ _SYSTEM_PROMPT = """\
 - "현재 상태/운영 기준/SSoT/배지/스냅샷 작성 기준" 처럼 **현 시점 사실을 주장**하는 서술만 대상.
 - 확신이 없으면 보고하지 말고 note 에 사유를 남겨라. 추정 금지(룰 9).
 - 너는 Read/Grep/Glob 만 쓸 수 있다. 각 문서 사본을 직접 읽고 근거(인용/라인 힌트)를 들어라.
+- `python_runtime` · `jwt_algorithms` 는 **런타임·IdP 를 바꿀 때마다 문서에 잔존물이 남는**
+  값이라 넣었다(2026-09-02 감사 실측: "Python 3.12" 9곳 · "ES256" 7곳이 그런 식으로 남았다).
+  `python_runtime.mismatch=true` 면 문서가 아니라 **설정 파일끼리** 어긋난 것이니 그 자체를
+  보고하라 — Dockerfile / ruff `target-version` / mypy `python_version` 중 어느 것이 뒤처졌는지 짚어라.
+- `api_routes` 에 **없는** 경로를 문서가 현재형으로 안내하면 드리프트다(삭제된 엔드포인트가
+  남는 흔한 형태). 반대로 이력 서술에 남는 것은 정상이다.
 
 출력: 사람이 읽을 분석을 먼저 쓰고, **마지막에 단 하나의 ```json 블록**으로 아래 스키마를 채워라.
 findings 가 없으면 clean=true, findings=[] 로.
