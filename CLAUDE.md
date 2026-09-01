@@ -49,7 +49,7 @@ docker compose down -v                # 정리
 .venv/Scripts/ruff check app/ tests/
 .venv/Scripts/mypy app/
 .venv/Scripts/bandit -r app -ll
-.venv/Scripts/pip-audit -r requirements.txt --strict --ignore-vuln PYSEC-2026-161
+.venv/Scripts/pip-audit -r requirements.txt --strict   # ignore-vuln 사용 금지 (CI와 동일 — backend.yml:169 주석 참조)
 
 # Alembic 마이그레이션 (현재 head: b78b256c2b20)
 .venv/Scripts/alembic upgrade head
