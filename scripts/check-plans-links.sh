@@ -5,8 +5,9 @@
 #   docs/plans/ 는 hybrid 구조다 — 활성 작업은 페어 파일, 완료 작업은 topic ledger entry.
 #   컨벤션(`docs/plans/README.md` 워크플로 3항)은 머지 후 "ledger entry 추가 + 페어 git rm"
 #   까지만 정한다. **다른 문서가 그 페어를 참조하고 있어도 아무도 고치지 않는다.**
-#   그래서 이관할 때마다 링크가 조용히 죽는다. 실측 2026-09-01: 10개 파일에 38건이
-#   이미 끊겨 있었다(CHANGELOG 24 · operations-snapshot 5 · CLAUDE.md 5 …).
+#   그래서 이관할 때마다 링크가 조용히 죽는다. 본 가드 도입 시점 실측(2026-09-01):
+#   10개 파일에 **26건**이 이미 끊겨 있었다 — CHANGELOG 11 · CLAUDE.md 3 ·
+#   operations-snapshot 3 · incident-log 2 · migration-runbook 2 · 기타 5.
 #   죽은 링크는 "그 근거를 읽을 수 없다" 는 뜻이라 문서의 추적성이 통째로 무너진다.
 #
 # 무엇을 검사하는가:
@@ -89,7 +90,7 @@ echo
 echo "끊긴 참조 ${violations}건."
 echo "페어를 ledger 로 이관했다면 참조도 함께 리다이렉트해야 한다:"
 echo "  docs/plans/<날짜>-<주제>-design.md  →  docs/plans/logs/<topic>.md (<날짜> entry)"
-echo "컨벤션: docs/plans/README.md 워크플로 3항."
+echo "컨벤션: docs/plans/README.md 워크플로 4항(참조 리다이렉트)."
 
 [ "$LIST_ONLY" -eq 1 ] && exit 0
 exit 1
