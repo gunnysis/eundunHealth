@@ -84,7 +84,7 @@
 
 ## [v0.1.17] — 2026-06-18 — 공개 출시 전 전체 감사
 
-> 7-도메인 공개 출시 전 전체 점검(보안·성능·에러UX·테스트·의존성·Play 컴플라이언스·코드품질). 출시 차단 없음. 브랜치 `fix/pre-release-audit`. 설계: `docs/plans/2026-06-18-pre-release-full-audit-{design,plan}.md`.
+> 7-도메인 공개 출시 전 전체 점검(보안·성능·에러UX·테스트·의존성·Play 컴플라이언스·코드품질). 출시 차단 없음. 브랜치 `fix/pre-release-audit`. 설계: `docs/plans/2026-06-18-pre-release-full-audit-{design,plan}.md` → `docs/plans/logs/process-infra.md` 2026-06-18 entry 로 흡수.
 
 ### 🛠️ Android — Rule 8 inline 에러 배너 완전 적용
 - **OnboardingScreen**: 프로필 저장 실패 시 `Snackbar` → `AuthErrorBanner`(inline persistent + `liveRegion=Polite` + Sentry breadcrumb). `OnboardingUiState.error: AppError?` 신설.
@@ -110,7 +110,7 @@
 
 ## [v0.1.16] — 2026-06-17 — 출시 후 심층 감사 개선
 
-> v0.1.15 출시 사이클 후 5-도메인 심층 재감사(Android/Backend/테스트/의존성/UX). 공식 문서 fact-check 로 감사 발견 2건 정정. 코드 건강·출시 차단 0건 — 신뢰성·성능·접근성·테스트 폴리시. 브랜치 `feature/deep-audit-improvements`. 설계: `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md`.
+> v0.1.15 출시 사이클 후 5-도메인 심층 재감사(Android/Backend/테스트/의존성/UX). 공식 문서 fact-check 로 감사 발견 2건 정정. 코드 건강·출시 차단 0건 — 신뢰성·성능·접근성·테스트 폴리시. 브랜치 `feature/deep-audit-improvements`. 설계: `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md` (→ `docs/plans/logs/process-infra.md` 2026-06-17 entry 로 흡수).
 
 ### 🛠️ Tier 1 — 개선 (A~E)
 - **A (Backend)**: JWKS 서명키 동기 조회를 `asyncio.to_thread` 로 이벤트 루프 밖으로 오프로드 + `PyJWKClient` timeout 30s→5s. 콜드스타트·키 로테이션 시 루프 정지 리스크 제거. (공식 PyJWT API 확인: 기본 timeout 은 무한대가 아니라 30s — 감사 보고 정정)
@@ -264,7 +264,7 @@
 - **불변** — 활동 HC(걸음·칼로리·심박·운동), 목표 "체중 추이"/체지방 차트(백엔드 이력), `bmi`/`fitnessLevel` 알고리즘, 백엔드.
 
 ### 근거 / 연구
-HC 체성분 가져오기는 **구조적으로 무용**: HC에 골격근량 타입 부재(공식), 체지방 삼성헬스→HC 동기화 flaky, 스마트체중계 없는 대다수 무데이터 → 영구 "기록 없음". 공식·외부 문서 분석([HC 데이터타입](https://developer.android.com/health-and-fitness/health-connect/data-types) · [Samsung Developer HC 동기화](https://developer.samsung.com/health/blog/en/accessing-samsung-health-data-through-health-connect) · [Google Health Help](https://support.google.com/android/answer/13770320)) 후 제거 결론. 삼성헬스 Data SDK 직접 연동은 파트너 부재로 기각, HC-only 유지. design+plan: `docs/plans/2026-06-10-body-composition-data-{design,plan}.md` (B안).
+HC 체성분 가져오기는 **구조적으로 무용**: HC에 골격근량 타입 부재(공식), 체지방 삼성헬스→HC 동기화 flaky, 스마트체중계 없는 대다수 무데이터 → 영구 "기록 없음". 공식·외부 문서 분석([HC 데이터타입](https://developer.android.com/health-and-fitness/health-connect/data-types) · [Samsung Developer HC 동기화](https://developer.samsung.com/health/blog/en/accessing-samsung-health-data-through-health-connect) · [Google Health Help](https://support.google.com/android/answer/13770320)) 후 제거 결론. 삼성헬스 Data SDK 직접 연동은 파트너 부재로 기각, HC-only 유지. design+plan: `docs/plans/2026-06-10-body-composition-data-{design,plan}.md` (→ `docs/plans/logs/android.md` 2026-06-10 entry 로 흡수) (B안).
 
 ### 📁 주요 Files
 - 삭제: `domain/usecase/ImportBodyCompositionUseCase.kt`(+테스트), `domain/model/BodyComposition.kt`

@@ -54,15 +54,43 @@ while IFS= read -r file; do
   # 한 줄에 여러 참조가 있을 수 있으므로 -o 로 전부 뽑는다
   while IFS= read -r ref; do
     [ -n "$ref" ] || continue
-    [ -f "$ref" ] && continue
+
+    # `{a,b}` 축약형은 여러 파일을 가리키는 한 표기다(`…-{design,plan}.md`,
+    # `logs/{android,backend}.md`). 이 저장소가 가장 많이 쓰는 형태인데 예전 정규식이
+    # `{`,`,`,`}` 를 문자 클래스에 넣지 않아 **통째로 보이지 않았다** — 그 사각지대에
+    # 죽은 참조가 숨어 있었다(2026-09-02 발견, 실측 7건).
+    # 판정은 확장한 경로 **전부**를 본다: 하나라도 없으면 그 표기는 깨진 것이다.
+    if case "$ref" in *"{"*"}"*) true ;; *) false ;; esac; then
+      prefix="${ref%%\{*}"
+      rest="${ref#*\{}"
+      alts="${rest%%\}*}"
+      suffix="${rest#*\}}"
+      all_present=1
+      old_ifs=$IFS
+      IFS=','
+      for alt in $alts; do
+        [ -f "${prefix}${alt}${suffix}" ] || all_present=0
+      done
+      IFS=$old_ifs
+      [ "$all_present" -eq 1 ] && continue
+    else
+      [ -f "$ref" ] && continue
+    fi
 
     line=$(grep -n -F -- "$ref" "$file" | head -1 | cut -d: -f1)
 
-    # 예외: 같은 줄이 실재하는 ledger 를 함께 가리키면 리다이렉트가 있는 것으로 본다
+    # 예외: 같은 줄이 실재하는 ledger 를 함께 가리키면 리다이렉트가 있는 것으로 본다.
+    # 상대형(`logs/android.md`)도 받는다 — 문장 안에서는 그렇게 쓰는 것이 자연스럽고,
+    # 절대형만 받으면 리다이렉트를 제대로 달아 둔 줄이 위반으로 잡힌다(2026-09-02 실측 2건).
     if [ -n "$line" ]; then
-      redirect=$(sed -n "${line}p" "$file" | grep -oE 'docs/plans/logs/[a-z-]+\.md' | head -1)
-      if [ -n "$redirect" ] && [ -f "$redirect" ]; then
-        continue
+      redirect=$(sed -n "${line}p" "$file" \
+        | grep -oE '(docs/plans/)?logs/[a-z-]+\.md' | head -1)
+      if [ -n "$redirect" ]; then
+        case "$redirect" in
+          docs/plans/*) redirect_path="$redirect" ;;
+          *)            redirect_path="docs/plans/$redirect" ;;
+        esac
+        [ -f "$redirect_path" ] && continue
       fi
     fi
 
@@ -78,7 +106,8 @@ while IFS= read -r file; do
     fi
 
     echo "$file:${line:-?}: 존재하지 않는 페어 참조 '$ref'$hint"
-  done < <(grep -oE 'docs/plans/[A-Za-z0-9._/-]+\.md' -- "$file" 2>/dev/null | sort -u)
+    # `{design,plan}` 축약형을 함께 뽑도록 `{`,`,`,`}` 를 문자 클래스에 포함한다.
+  done < <(grep -oE 'docs/plans/[A-Za-z0-9._/{},-]+\.md' -- "$file" 2>/dev/null | sort -u)
 done < <(git ls-files '*.md')
 
 if [ "$violations" -eq 0 ]; then
