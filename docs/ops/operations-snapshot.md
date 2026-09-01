@@ -200,9 +200,22 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | `eundunhealth-api` (백엔드, confidential) | `903bf44d-d73a-40b5-9601-e9c362699c38` | `api://903bf44d-...` · scope `access_as_user`(id `16f0a6ff-c5ff-46d5-aadf-8481038e7003`) · SP `ccc46d8c-3a56-42b0-9c08-1c8c6fe7ef8a` |
 | Android public client | (미생성) | redirect URI = `msauth://com.gunnys.eundunhealth/<base64 sig hash>` × 서명 3종 |
 
-**권한 상태 — 미완결**
+**권한 상태 — ✅ 동의 완료·기능 검증 통과 (2026-09-01)**
 
-`eundunhealth-api` 매니페스트에 Graph `User.ReadWrite.All`(Application, id `741f803b-c850-494e-b5df-cde7c675a1ca`) 이 **요청만 기재**되어 있고 **관리자 동의 미부여**다. 동의 전까지 계정 삭제 기능은 동작하지 않는다.
+Graph `User.ReadWrite.All`(Application, id `741f803b-c850-494e-b5df-cde7c675a1ca`) **관리자 동의 부여 완료**(`09:48:56Z`, 포털 수행).
+
+**설정 존재가 아니라 실동작으로 검증했다**:
+1. 클라이언트 시크릿 발급(`backend-graph`, **만료 2028-09-01**)
+2. client credentials 로 토큰 발급 성공 (`scope=https://graph.microsoft.com/.default`)
+3. `GET https://graph.microsoft.com/v1.0/users?$top=1` → **HTTP 200**
+
+> **트러블슈팅 기록 — 시크릿의 `~` 문자**: 1차 시도가 `AADSTS7000215: Invalid client secret provided` 로 실패했다. 원인은 시크릿이 아니라 **form body 인코딩**이었다. 발급된 시크릿에 `~`·`-` 가 포함되는데 `curl -d` 로 날것 전달 시 깨진다 → `--data-urlencode` 로 해결.
+> **백엔드 구현 시**: `httpx` 의 `data={...}` dict 형태는 자동 URL 인코딩하므로 안전하다. 문자열을 직접 조립해 body 를 만들지 말 것.
+
+**Key Vault 등록 완료** (`kv-eundunhealth`): `entra-tenant-id` · `entra-subdomain` · `entra-backend-client-id` · `entra-backend-client-secret`
+> 구 Supabase secret 2종(`supabase-url`·`supabase-service-role-key`)은 롤백 여지를 위해 **아직 삭제하지 않았다**(전환 완료 후 정리).
+
+> ⚠️ **시크릿 만료 2028-09-01** — 만료 시 계정 삭제가 조용히 실패한다(토큰 발급 단계). 캘린더 등록 + Sentry 로 Graph 토큰 발급 실패 감지 필요(plan R3).
 
 - **왜 이 권한인가**: [Delete a user](https://learn.microsoft.com/en-us/graph/api/user-delete?view=graph-rest-1.0) 공식 표에서 Application 유형의 **least privileged 가 `User.ReadWrite.All`** 이다. 더 좁은 대안이 없다.
 - **영향 범위**: 테넌트 전역 사용자 읽기·쓰기·삭제. 계정 삭제 외 용도로 쓰지 않는다.
