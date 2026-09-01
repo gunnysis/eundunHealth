@@ -12,7 +12,23 @@ RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 의존성 설치 후 **패키지 설치 도구를 런타임 이미지에서 제거**한다.
+#
+# 왜: Trivy(CRITICAL/HIGH 차단)가 2026-09-01 배포를 막았는데, 걸린 2건이 전부 우리
+# requirements.txt 밖의 것이었다 —
+#   setuptools 70.3.0  CVE-2025-47273 (path traversal)   ← base 이미지 동봉분
+#   msgpack    1.1.2   GHSA-6v7p-g79w-8964               ← **pip 의 vendored 사본**
+# msgpack 은 `pip/_vendor/` 안에 있어 우리가 버전을 올릴 수단이 없다(pip 최신도 동일 사본).
+# 즉 pip 가 이미지에 남아 있는 한 이 지적은 매 스캔 재현된다.
+#
+# 런타임은 이 셋 중 무엇도 쓰지 않는다 — entrypoint.sh 는 `alembic upgrade head` 후
+# uvicorn 을 exec 할 뿐이다. 설치 도구를 빼는 것이 우회가 아니라 정석이며(공급망 표면 축소),
+# 부수적으로 이미지도 작아진다.
+#
+# 주의: 이 뒤로는 컨테이너 안에서 `pip install` 이 불가능하다. 의존성 추가는
+# requirements.txt 를 고쳐 **재빌드**하는 경로만 남는다(원래 그래야 한다).
+RUN pip install --no-cache-dir -r requirements.txt \
+ && python -m pip uninstall -y pip setuptools wheel 2>/dev/null || true
 
 COPY . .
 
