@@ -20,6 +20,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.net.UnknownHostException
 
 /**
  * AuthViewModel 테스트 — 세션 복원 + 인증 게이트 상태 전이.
@@ -66,11 +67,59 @@ class AuthViewModelTest {
 
     @Test
     fun `세션 복원 성공 + 프로필 있음 → 온보딩 불필요`() = runTest {
-        val vm = createViewModel(restoreSessionUserId = "user-1", profile = sampleProfile())
+        val vm = createViewModel(restoreSessionUserId = "user-1", profileResult = Result.success(sampleProfile()))
         advanceUntilIdle()
 
         val session = vm.sessionState.value
         assertEquals(false, (session as SessionState.Authenticated).needsOnboarding)
+    }
+
+    @Test
+    fun `세션 복원 시 프로필 조회 실패는 온보딩으로 보내지 않는다`() = runTest {
+        // A1 회귀 가드. `getOrNull()` 로 되돌리면 실패가 "프로필 없음"과 같아져 기존 사용자가
+        // 온보딩으로 라우팅되고, 온보딩을 마치면 PUT /profile 이 신체정보를 덮어쓴다(비가역).
+        // 신규 사용자를 홈으로 보내는 반대 방향은 홈 에러 + 재시도로 회복 가능하다.
+        val vm = createViewModel(
+            restoreSessionUserId = "user-1",
+            profileResult = Result.failure(UnknownHostException("offline")),
+        )
+        advanceUntilIdle()
+
+        val session = vm.sessionState.value
+        assertTrue(session is SessionState.Authenticated)
+        assertEquals(false, (session as SessionState.Authenticated).needsOnboarding)
+    }
+
+    @Test
+    fun `authenticate 직후 프로필 조회 실패도 온보딩으로 보내지 않는다`() = runTest {
+        // checkSession 과 authenticate 두 경로가 같은 규칙을 쓰는지 고정 — 한쪽만 고쳐지는 회귀 방지.
+        val vm = createViewModel(
+            authenticateResult = Result.success("user-9"),
+            profileResult = Result.failure(UnknownHostException("offline")),
+        )
+        advanceUntilIdle()
+
+        vm.authenticate(activity)
+        advanceUntilIdle()
+
+        val session = vm.sessionState.value as SessionState.Authenticated
+        assertEquals("user-9", session.userId)
+        assertEquals(false, session.needsOnboarding)
+    }
+
+    @Test
+    fun `authenticate 직후 프로필이 진짜 없으면 온보딩으로 보낸다`() = runTest {
+        // 정상 경로는 그대로여야 한다 — 404(success(null))는 여전히 온보딩.
+        val vm = createViewModel(
+            authenticateResult = Result.success("user-9"),
+            profileResult = Result.success(null),
+        )
+        advanceUntilIdle()
+
+        vm.authenticate(activity)
+        advanceUntilIdle()
+
+        assertEquals(true, (vm.sessionState.value as SessionState.Authenticated).needsOnboarding)
     }
 
     // ---- 인증 게이트 상태 전이 (설계 §5.3) ----
@@ -182,11 +231,11 @@ class AuthViewModelTest {
 
     private fun createViewModel(
         restoreSessionUserId: String? = null,
-        profile: UserProfile? = null,
+        profileResult: Result<UserProfile?> = Result.success(null),
         authenticateResult: Result<String> = Result.failure(IllegalStateException("not stubbed")),
     ): AuthViewModel = AuthViewModel(
         FakeAuthRepository(restoreSessionUserId, authenticateResult),
-        FakeUserRepository(profile),
+        FakeUserRepository(profileResult),
     )
 
     private class FakeAuthRepository(
@@ -213,10 +262,14 @@ class AuthViewModelTest {
         override suspend fun restoreSession(): String? = restoreSessionUserId
     }
 
+    /**
+     * `getProfile()` 은 3분기다 — success(프로필) / success(null, 404) / failure(조회 불가).
+     * 세 번째를 표현할 수 있어야 A1 회귀(실패를 "프로필 없음"으로 오판)를 테스트로 고정할 수 있다.
+     */
     private class FakeUserRepository(
-        private val profile: UserProfile? = null,
+        private val profileResult: Result<UserProfile?> = Result.success(null),
     ) : UserRepository {
-        override suspend fun getProfile(): Result<UserProfile?> = Result.success(profile)
+        override suspend fun getProfile(): Result<UserProfile?> = profileResult
         override suspend fun saveProfile(profile: UserProfile): Result<Unit> = Result.success(Unit)
     }
 }

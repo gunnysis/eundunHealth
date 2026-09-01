@@ -5,10 +5,15 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.reportToSentry
+import com.gunnys.eundunhealth.domain.model.toAppError
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,12 +66,44 @@ class AuthViewModel @Inject constructor(
         checkSession()
     }
 
+    /**
+     * 온보딩이 필요한지 판정한다. `getProfile()` 은 **3분기**다 — 이 구분이 무너지면 데이터를 잃는다.
+     *
+     * | 반환 | 판정 |
+     * | --- | --- |
+     * | `success(profile)` | 온보딩 불필요 |
+     * | `success(null)` (404) | 온보딩 필요 |
+     * | `failure(e)` | **판정 불가 → 온보딩으로 보내지 않는다** |
+     *
+     * 세 번째를 `getOrNull()` 로 두 번째와 뭉개면(과거 코드) 일시적 네트워크 오류 한 번에
+     * 기존 사용자가 온보딩으로 라우팅되고, 온보딩을 마치면 `PUT /profile` 이 키·몸무게·
+     * 체지방·근육량·휴식일을 덮어쓴다 — **비가역**. 반대 방향(신규 사용자를 홈으로)은
+     * 홈이 에러 + 재시도를 보여주고 TopAppBar 로 프로필 화면(`ProfileUiState.Empty`)에도
+     * 갈 수 있어 회복 가능하다. 두 오판의 대가가 비대칭이므로 안전한 쪽을 명시적으로 고른다.
+     *
+     * 조용히 넘기지 않는다 — breadcrumb 로 남겨 이후 크래시 타임라인에서 원인 추적이 되게 한다.
+     */
+    private suspend fun resolveNeedsOnboarding(): Boolean = userRepo.getProfile().fold(
+        onSuccess = { profile -> profile == null },
+        onFailure = { e ->
+            Sentry.addBreadcrumb(
+                Breadcrumb().apply {
+                    category = "auth.profile_check_failed"
+                    level = SentryLevel.WARNING
+                    message = "프로필 조회 실패 — 온보딩 라우팅 보류(홈으로)"
+                    setData("error", e::class.java.simpleName)
+                },
+            )
+            e.toAppError().reportToSentry()
+            false
+        },
+    )
+
     private fun checkSession() = viewModelScope.launch {
         runCatching {
             val userId = authRepo.restoreSession()
             if (userId != null) {
-                val hasProfile = userRepo.getProfile().getOrNull() != null
-                SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
+                SessionState.Authenticated(userId, needsOnboarding = resolveNeedsOnboarding())
             } else {
                 SessionState.Unauthenticated
             }
@@ -87,10 +124,10 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             authRepo.authenticate(activity)
                 .onSuccess { userId ->
-                    val hasProfile = userRepo.getProfile().getOrNull() != null
+                    val needsOnboarding = resolveNeedsOnboarding()
                     _uiState.value = AuthGateUiState.Idle
                     _sessionState.value =
-                        SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
+                        SessionState.Authenticated(userId, needsOnboarding = needsOnboarding)
                 }
                 .onFailure { e ->
                     // 사용자가 브라우저를 닫은 것은 실패가 아니다 — 배너 없이 조용히 복귀(설계 §5.3).
