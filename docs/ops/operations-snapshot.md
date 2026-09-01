@@ -168,6 +168,48 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 
 ---
 
+## 5-A. Microsoft Entra External ID (전환 중 — WS1)
+
+> Supabase Auth 대체 진행 중. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`.
+> **전환 완료 시 §5(Supabase)를 이 절로 대체한다.**
+
+| 항목 | 값 |
+|------|---|
+| 테넌트 리소스 | `eundunhealthciam` (ARM: `Microsoft.AzureActiveDirectory/ciamDirectories`, RG `rg-eundunhealth-prod-krc`) |
+| **tenantId** | `c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8` |
+| 도메인 | `eundunhealthciam.onmicrosoft.com` |
+| location / countryCode | `Asia Pacific` / `KR` — **한국 리전 미지원**(ciamDirectories locations 에 Korea 없음) |
+| SKU | `Base` / `A0` (요청은 `Standard`, 서비스가 정규화) · billingType `MAU` |
+| 생성일 | 2026-09-01, `provisioningState: Succeeded` |
+
+**OIDC 엔드포인트 (실측 — 조합하지 말고 discovery 에서 읽을 것)**
+
+| 항목 | 값 |
+|---|---|
+| discovery | `https://eundunhealthciam.ciamlogin.com/eundunhealthciam.onmicrosoft.com/v2.0/.well-known/openid-configuration` |
+| **issuer** | `https://c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8.ciamlogin.com/c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8/v2.0` |
+| jwks_uri | `https://eundunhealthciam.ciamlogin.com/c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8/discovery/v2.0/keys` |
+| 서명 알고리즘 | `RS256` |
+
+> **함정**: `jwks_uri` 는 친숙한 서브도메인(`eundunhealthciam`)을 쓰는데 **`issuer` 만 tenantId 를 서브도메인으로 쓴다.** 조합식으로 만들면 issuer 만 어긋나 전 API 401 이 된다(서명·audience 는 통과하므로 추적이 어렵다). 설계 F4-a 참조.
+
+**앱 등록**
+
+| 앱 | appId | 비고 |
+|---|---|---|
+| `eundunhealth-api` (백엔드, confidential) | `903bf44d-d73a-40b5-9601-e9c362699c38` | `api://903bf44d-...` · scope `access_as_user`(id `16f0a6ff-c5ff-46d5-aadf-8481038e7003`) · SP `ccc46d8c-3a56-42b0-9c08-1c8c6fe7ef8a` |
+| Android public client | (미생성) | redirect URI = `msauth://com.gunnys.eundunhealth/<base64 sig hash>` × 서명 3종 |
+
+**권한 상태 — 미완결**
+
+`eundunhealth-api` 매니페스트에 Graph `User.ReadWrite.All`(Application, id `741f803b-c850-494e-b5df-cde7c675a1ca`) 이 **요청만 기재**되어 있고 **관리자 동의 미부여**다. 동의 전까지 계정 삭제 기능은 동작하지 않는다.
+
+- **왜 이 권한인가**: [Delete a user](https://learn.microsoft.com/en-us/graph/api/user-delete?view=graph-rest-1.0) 공식 표에서 Application 유형의 **least privileged 가 `User.ReadWrite.All`** 이다. 더 좁은 대안이 없다.
+- **영향 범위**: 테넌트 전역 사용자 읽기·쓰기·삭제. 계정 삭제 외 용도로 쓰지 않는다.
+- **한계**: 공식 문서상 app-only 로는 **관리자 역할 보유 사용자를 삭제할 수 없다**. 본 앱 사용자는 일반 소비자라 무관.
+
+---
+
 ## 6. Sentry
 
 | Project | 용도 | tracesSampleRate |
