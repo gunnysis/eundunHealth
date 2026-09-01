@@ -13,7 +13,15 @@ on:
       - 'app/**'
       - 'build.gradle.kts'
       - 'settings.gradle.kts'
+      # `gradle/**` 는 디렉터리 gradle/ 만 매칭한다 — 루트의 gradle.properties 는 안 걸린다.
+      # AGP 호환 플래그·JVM 힙이 여기 있으므로 빠지면 빌드 설정 변경이 CI 를 통째로 우회한다
+      # (2026-09-02 실측 구멍). version.properties 는 versionCode/Name 의 SSoT 이고,
+      # gradlew 는 과거 CRLF 로 실제 사고가 났던 파일이다(INC 2026-06-19).
       - 'gradle/**'
+      - 'gradle.properties'
+      - 'version.properties'
+      - 'gradlew'
+      - 'gradlew.bat'
       - 'config/detekt/**'
       - '.github/workflows/android.yml'
   pull_request:
@@ -22,7 +30,15 @@ on:
       - 'app/**'
       - 'build.gradle.kts'
       - 'settings.gradle.kts'
+      # `gradle/**` 는 디렉터리 gradle/ 만 매칭한다 — 루트의 gradle.properties 는 안 걸린다.
+      # AGP 호환 플래그·JVM 힙이 여기 있으므로 빠지면 빌드 설정 변경이 CI 를 통째로 우회한다
+      # (2026-09-02 실측 구멍). version.properties 는 versionCode/Name 의 SSoT 이고,
+      # gradlew 는 과거 CRLF 로 실제 사고가 났던 파일이다(INC 2026-06-19).
       - 'gradle/**'
+      - 'gradle.properties'
+      - 'version.properties'
+      - 'gradlew'
+      - 'gradlew.bat'
       - 'config/detekt/**'
       - '.github/workflows/android.yml'
 
