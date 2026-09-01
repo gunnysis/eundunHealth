@@ -117,10 +117,27 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | Untagged manifests | 12 (OCI artifact 메타 충돌로 Basic SKU에선 직접 삭제 불가, 운영 무관) |
 
 태그:
-- `latest` — 현재 운영 (manifest `sha256:04fe…`)
-- `20260524-191501` + `fastapi-latest` — 같은 manifest (`sha256:1c5c…`)
+- `latest` — 현재 운영 (manifest `sha256:da08…`, `b74f140` 과 공유)
+- `20260524-191501` + `fastapi-latest` — ~~같은 manifest~~ → **2026-09-01 정리로 삭제됨**
 
-자동 정리 후크: `redeploy.sh`가 헬스체크 통과 후 timestamp 태그(`YYYYMMDD-HHMMSS`) 최근 5개 + 운영 중 태그만 보존하고 나머지를 untag.
+**정기 정리 (2026-09-01~)**: `acr purge` **스케줄 ACR Task 2개**가 담당한다.
+Basic SKU 는 [retention policy 를 지원하지 않아](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus)(Premium 전용) Task 로 한다.
+
+| 태스크 | cmd | 스케줄(UTC) |
+| --- | --- | --- |
+| `purge-eundunhealth-api` | `acr purge --filter 'eundunhealth-api:.*' --ago 30d --untagged --keep 10` | `0 1 * * Sun` |
+| `purge-eundunhealth-api-untagged` | `acr purge --filter 'eundunhealth-api:^$' --ago 0d --untagged` | `30 1 * * Sun` |
+
+두 번째가 필요한 이유: `--keep` 은 **태그와 매니페스트에 독립 적용**되어 `--keep 10` 만으로는
+dangling 이 10개 영구 잔존한다(공식 문서). 이 저장소는 digest 로 pull 하지 않아 잔존분이 무가치.
+
+도입 실적(2026-09-01): 태그 **56→14** · 매니페스트 **68→13** · dangling **14→0** ·
+용량 **2.21→0.60 GiB**. `redeploy.sh` 의 timestamp 5개 보존은 **로컬 수동 경로 전용**이며,
+CI(`backend.yml`)는 정리하지 않는다(룰 1).
+
+**주의**: 정리는 나이·개수 기준이라 **라이브 참조를 모른다.** Container App 과 reaper Job 이
+같은 레지스트리를 참조하므로, 둘의 이미지가 벌어지면 옛 태그가 삭제 대상이 된다.
+그래서 CI 가 잡 이미지를 앱과 동기화한다(`backend.yml` 의 `Sync reaper Job`).
 
 ---
 
@@ -358,8 +375,14 @@ az containerapp show -n eundunhealth-api -g rg-eundunhealth-prod-krc --query "pr
 # readiness (DB 연결까지 확인)
 curl -sf https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/health/ready
 
-# ACR 태그 (timestamp 태그가 redeploy.sh 후크로 최근 5개만 유지되는지)
+# ACR 태그/용량 + 정리 태스크 실행 이력
 az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api --orderby time_desc -o tsv
+az acr show-usage --name eundunhealthacr -o table
+az acr task list-runs --registry eundunhealthacr -o table   # purge 태스크가 조용히 죽지 않았는지
+
+# 앱과 reaper Job 이 같은 이미지를 보는가 (드리프트 = 정리가 잡 이미지를 지울 위험)
+az containerapp     show -n eundunhealth-api    -g rg-eundunhealth-prod-krc --query "properties.template.containers[0].image" -o tsv
+az containerapp job show -n eundunhealth-reaper -g rg-eundunhealth-prod-krc --query "properties.template.containers[0].image" -o tsv
 
 # Key Vault secret 목록 (4개여야 함 — KeyVault 참조 전환 후)
 az keyvault secret list --vault-name kv-eundunhealth --query "[].name" -o tsv
@@ -435,10 +458,10 @@ Claude Code MCP 서버 4종 운영 활용:
 | `alert-servicehealth-eundunhealth-prod` | Activity Log (ServiceHealth) | Sev3 | True |
 | `alert-resourcehealth-eundunhealth-prod` | Activity Log (ResourceHealth) | Sev1 | True |
 | `alert-deletion-eundunhealth-prod` | Activity Log (Administrative) | Sev1 | True |
-| `alert-psql-firewall-eundunhealth-prod` | Activity Log (Administrative) | Sev3 | True |
-| `alert-psql-cpu-eundunhealth-prod` | Metric (cpu_percent avg > 80%) | Sev2 | True |
-| `alert-psql-storage-eundunhealth-prod` | Metric (storage_percent avg > 80%) | Sev1 | True |
-| `alert-psql-connections-eundunhealth-prod` | Metric (active_connections avg > 20) | Sev2 | True |
+| `alert-pgsql-firewall-eundunhealth-prod` | Activity Log (Administrative) | Sev3 | True |
+| `alert-pgsql-cpu-eundunhealth-prod` | Metric (cpu_percent avg > 80%) | Sev2 | True |
+| `alert-pgsql-storage-eundunhealth-prod` | Metric (storage_percent avg > 80%) | Sev1 | True |
+| `alert-pgsql-connections-eundunhealth-prod` | Metric (active_connections avg > 20) | Sev2 | True |
 | `alert-ca-5xx-eundunhealth-prod` | Metric (Requests 5xx total > 3) | Sev1 | True |
 
 비용: metric 4개 × ~$0.10/월 = ~$0.40/월 (~550-700원). Activity Log 4개 무료.

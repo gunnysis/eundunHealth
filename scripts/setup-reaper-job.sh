@@ -104,18 +104,26 @@ if $ROLE_FAILED && ! $DRY_RUN; then
 EOF
 fi
 
-# ---------- 3) 잡 생성/갱신 (생성=--yaml: E4 CLI 버그 회피, 갱신=--image) ----------
-echo "== 3) 잡 생성/갱신 =="
+# ---------- 3) 잡 생성/갱신 — 생성·갱신 **둘 다 `--yaml`** ----------
+#
+# 2026-09-01 수정: 예전에는 "존재하면 --image 만 갱신(registry/secret/identity 는 기존 유지)"
+# 이었다. 그 결과 **YAML 을 고쳐도 라이브 잡에 전파되지 않았다** — Entra 전환이 이 파일의
+# secrets 를 entra-* 로 바꿨는데도 라이브 잡은 7주간 supabase-* 를 들고 있었다(설계 D2).
+# IaC 파일이 "희망사항" 이 되는 전형적 경로다. 갱신도 --yaml 로 전체를 적용해
+# **이 파일이 실제 단일 출처**가 되게 한다. (`--yaml` 사용 시 다른 인자는 무시된다 — 공식)
+echo "== 3) 잡 생성/갱신 (both --yaml) =="
+render_yaml() {  # $1 = 출력 경로
+  sed -e "s|__IMAGE__|$IMAGE|g" -e "s|__SUBSCRIPTION_ID__|$SUB_ID|g" "$JOB_YAML" > "$1"
+}
 if $DRY_RUN; then
-  echo "+ (create: az containerapp job create -n $JOB -g $RG --yaml <$JOB_YAML, image=$IMAGE 치환>)"
+  echo "+ (az containerapp job create|update -n $JOB -g $RG --yaml <$JOB_YAML, __IMAGE__=$IMAGE 치환>)"
 elif az containerapp job show -n "$JOB" -g "$RG" >/dev/null 2>&1; then
-  echo "  존재 → 이미지만 갱신(registry/secret/identity 는 YAML 로 설정된 기존 유지)"
-  run az containerapp job update -n "$JOB" -g "$RG" --image "$IMAGE" -o none
+  echo "  존재 → YAML 전체 적용(이미지 + registry/secret/identity 동시 정합)"
+  TMP_YAML="$(mktemp)"; render_yaml "$TMP_YAML"
+  run az containerapp job update -n "$JOB" -g "$RG" --yaml "$TMP_YAML" -o none
+  rm -f "$TMP_YAML"
 else
-  TMP_YAML="$(mktemp)"
-  # YAML 의 image 를 현재 앱 이미지로 + __SUBSCRIPTION_ID__ 를 로그인 구독으로 치환
-  sed -e "s|image: eundunhealthacr.azurecr.io/eundunhealth-api:[^[:space:]]*|image: $IMAGE|" \
-      -e "s|__SUBSCRIPTION_ID__|$SUB_ID|g" "$JOB_YAML" > "$TMP_YAML"
+  TMP_YAML="$(mktemp)"; render_yaml "$TMP_YAML"
   n=0
   until az containerapp job create -n "$JOB" -g "$RG" --yaml "$TMP_YAML" -o none; do
     n=$((n + 1))

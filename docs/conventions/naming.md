@@ -67,11 +67,17 @@ Global 범위 리소스는 **이름 = 공개 DNS 이름**이라, 이름을 바�
 | Log Analytics workspace | `Microsoft.OperationalInsights/workspaces` | `log` (포털 자동생성 `workspace-*` 회피) |
 | Managed identity | `Microsoft.ManagedIdentity/userAssignedIdentities` | `id` |
 | Azure Monitor action group | `Microsoft.Insights/actionGroups` | `ag` |
+| ACR **Task** | `Microsoft.ContainerRegistry/registries/tasks` | (CAF 표에 **없음**) — 하우스: `<동작>-<대상repo>` |
 
 > **정정 이력 (2026-09-01)**: 이 표는 이전에 PostgreSQL 을 `psql` 로 적고 있었다. 공식 표의 값은
 > **`pgsql`** 이다(`psql` 은 Postgres **CLI 클라이언트** 이름이라 혼동하기 쉽다). 그 틀린 값이
 > 이미 배포된 알림 이름(`alert-psql-*` 4건)에 박혔다 — **약어는 기억이 아니라 공식 표에서
 > 복사할 것.** 알림 규칙은 재생성이 싸므로 정리 대상에 포함한다(§3.6).
+>
+> **ACR Task 도 CAF 표에 없다.** 레지스트리의 **자식 리소스**라 유일성 범위가 부모 안이고,
+> 이름에 workload(`eundunhealth`)를 다시 넣으면 중복이다. 그래서 접두 약어 대신
+> **동작-대상** 서술형으로 짓는다 — 실례: `purge-eundunhealth-api` ·
+> `purge-eundunhealth-api-untagged`(2026-09-01 도입). 하우스 결정이며 공식이 아니다.
 >
 > CAF 표에 "알림 규칙(alert rule)" 자체의 약어는 **없다**. 본 프로젝트의 `alert-<type>-<workload>-<env>`
 > 는 하우스 컨벤션이며, 그 사실을 여기 명시해 둔다(공식으로 오인 금지).

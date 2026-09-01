@@ -17,6 +17,13 @@
 #   bash scripts/setup-azure-alerts.sh --delete      # 전체 삭제 (롤백)
 #   bash scripts/setup-azure-alerts.sh --help
 #
+# 명명 (2026-09-01 정정):
+#   PostgreSQL flexible server 의 CAF 공식 약어는 `pgsql` 이다. 이 스크립트는 이전에
+#   `psql` 로 적고 있었고(그건 Postgres **CLI 클라이언트** 이름이다), 그 틀린 값이 배포된
+#   알림 4건의 이름에 박혔다. 공식 표에서 복사할 것 — 기억으로 쓰지 말 것.
+#   정본: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations
+#   재명명 절차는 **생성 → 삭제** 순으로 한다(삭제 → 생성은 그 사이 알림 공백이 생긴다).
+#
 # 참고:
 #   - Activity Log alert (Service/Resource Health, Deletion, PG Firewall) 은
 #     az monitor activity-log alert CLI 가 multi-service/region/resourceType
@@ -107,9 +114,9 @@ if [ "$DELETE" -eq 1 ]; then
 
     # Metric alerts
     for name in \
-        alert-psql-cpu-eundunhealth-prod \
-        alert-psql-storage-eundunhealth-prod \
-        alert-psql-connections-eundunhealth-prod \
+        alert-pgsql-cpu-eundunhealth-prod \
+        alert-pgsql-storage-eundunhealth-prod \
+        alert-pgsql-connections-eundunhealth-prod \
         alert-ca-5xx-eundunhealth-prod; do
         echo "Deleting metric alert: ${name}"
         run az monitor metrics alert delete -n "${name}" -g "${RG}" || true
@@ -120,7 +127,7 @@ if [ "$DELETE" -eq 1 ]; then
         alert-servicehealth-eundunhealth-prod \
         alert-resourcehealth-eundunhealth-prod \
         alert-deletion-eundunhealth-prod \
-        alert-psql-firewall-eundunhealth-prod; do
+        alert-pgsql-firewall-eundunhealth-prod; do
         echo "Deleting activity log alert: ${name}"
         run az monitor activity-log alert delete -n "${name}" -g "${RG}" || true
     done
@@ -260,7 +267,7 @@ run_str "az rest --method PUT --uri '${DEL_URI}' --body '$(echo "$DEL_BODY" | tr
 # Step 5: PostgreSQL CPU alert (Metric)
 step "PostgreSQL CPU metric alert 생성"
 run az monitor metrics alert create \
-    --name "alert-psql-cpu-eundunhealth-prod" \
+    --name "alert-pgsql-cpu-eundunhealth-prod" \
     --resource-group "${RG}" \
     --scopes "${PG_ID}" \
     --condition "avg cpu_percent > 80" \
@@ -274,7 +281,7 @@ run az monitor metrics alert create \
 # Step 6: PostgreSQL Storage alert (Metric)
 step "PostgreSQL Storage metric alert 생성"
 run az monitor metrics alert create \
-    --name "alert-psql-storage-eundunhealth-prod" \
+    --name "alert-pgsql-storage-eundunhealth-prod" \
     --resource-group "${RG}" \
     --scopes "${PG_ID}" \
     --condition "avg storage_percent > 80" \
@@ -288,7 +295,7 @@ run az monitor metrics alert create \
 # Step 7: PostgreSQL Active Connections alert (Metric)
 step "PostgreSQL Active Connections metric alert 생성"
 run az monitor metrics alert create \
-    --name "alert-psql-connections-eundunhealth-prod" \
+    --name "alert-pgsql-connections-eundunhealth-prod" \
     --resource-group "${RG}" \
     --scopes "${PG_ID}" \
     --condition "avg active_connections > 20" \
@@ -340,7 +347,7 @@ FW_BODY=$(cat <<EOJSON
 EOJSON
 )
 
-FW_ALERT_NAME="alert-psql-firewall-eundunhealth-prod"
+FW_ALERT_NAME="alert-pgsql-firewall-eundunhealth-prod"
 FW_URI="https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${RG}/providers/Microsoft.Insights/activityLogAlerts/${FW_ALERT_NAME}?api-version=${ACTIVITY_LOG_ALERT_API}"
 
 run_str "az rest --method PUT --uri '${FW_URI}' --body '$(echo "$FW_BODY" | tr -d '\n')' --output none"

@@ -13,8 +13,8 @@ tags: [azure, naming, caf, legacy-cleanup, acr-retention, cost]
 
 설계: `2026-09-01-azure-resource-naming-and-legacy-design.md`
 
-> **실행 게이트**: 이 계획의 A·B 티어는 **운영 리소스를 변경**한다.
-> 회원님 승인 전에는 어떤 단계도 실행하지 않는다. 저장소 변경(N1·N2)만 승인 없이 진행 가능.
+> **상태: 실행 완료 (2026-09-01)** — 회원님이 A1·B2-a·B2-b·B1 을 승인해 순서대로 수행했다.
+> **A2 는 실행하지 않았다**(B2-b 의 `--untagged` 가 흡수). 결과·실행 중 발견은 설계 §11.
 
 ## 순서
 
@@ -70,7 +70,7 @@ digest 삭제 안전" 구분과 "CI 는 정리하지 않는다" 실측을 넣었
 
 ---
 
-### A1 — 빈 RG 2개 삭제
+### A1 — 빈 RG 2개 삭제 ✅ **완료 (2026-09-01)**
 
 ```bash
 # 1) 비어 있음을 실행 직전에 재확인 (실측은 시점이 지나면 무효)
@@ -86,9 +86,10 @@ az group delete -n <name> --yes
   있다. 예상된 발화임을 알고 있어야 오탐 대응에 시간을 쓰지 않는다.
 - 되돌리기: 빈 RG 이므로 필요 시 같은 이름으로 재생성하면 끝(내용물 없음).
 
-**완료 판정**: `az group list` 결과가 `rg-eundunhealth-prod-krc` 단 1개.
+**완료 판정**: `az group list` 결과가 `rg-eundunhealth-prod-krc` 단 1개. → **달성.**
+삭제 직전 각 RG 의 리소스 0 · lock 0 · tag 없음을 재확인한 뒤 실행했다.
 
-### A2 — ACR dangling manifest 14개 삭제 *(B2-b 채택 시 생략 가능 — 위 주 참조)*
+### A2 — ACR dangling manifest 14개 삭제 — ⏭ **실행 안 함 (B2-b 가 흡수)**
 
 ```bash
 az acr manifest list-metadata --registry eundunhealthacr --name eundunhealth-api \
@@ -104,7 +105,7 @@ az acr manifest list-metadata --registry eundunhealthacr --name eundunhealth-api
 
 **완료 판정**: `[?tags==null] | length(@)` == 0 · 용량 감소 실측.
 
-### B2 — ACR 보존 정책 — **개정 (2026-09-01 재검증)**
+### B2 — ACR 보존 정책 — ✅ **완료 (2026-09-01)**
 
 > **초안 폐기**: `scripts/prune-acr.sh` + CI 스텝 안은 **쓰지 않는다.** 공식 `acr purge`
 > 스케줄 태스크가 같은 일을 하고 Basic 에서 동작함을 실측했다(설계 §5.2).
@@ -112,7 +113,7 @@ az acr manifest list-metadata --registry eundunhealthacr --name eundunhealth-api
 
 **B2 는 두 단계이고 순서가 강제된다.** B2-a 없이 B2-b 를 켜면 시한폭탄을 심는 것이다.
 
-#### B2-a — reaper Job 이미지를 CI 가 갱신하게 한다 (**선행, 근본**)
+#### B2-a — reaper Job 이미지를 CI 가 갱신하게 한다 ✅ **완료(저장소 변경 — 다음 배포에 발효)**
 
 **문제**: `backend.yml` 은 Container App 만 갱신하고 Job 은 갱신하지 않는다(실측: 워크플로에
 `containerapp job` 참조 0건). 그래서 앱(`b74f140`, 09-01)과 잡(`de612e9`, 07-10)이 **7주**
@@ -120,24 +121,32 @@ az acr manifest list-metadata --registry eundunhealthacr --name eundunhealth-api
 
 `.github/workflows/backend.yml` 의 deploy job, Container App 갱신 **직후**:
 
-```yaml
-- name: Reaper Job 이미지 동기화 (앱과 같은 태그 유지)
-  # 잡은 앱과 같은 이미지를 다른 entrypoint 로 쓴다. CI 가 앱만 갱신하면 잡 이미지가
-  # 계속 뒤처져 ① 옛 코드로 돌고 ② ACR 정리 대상이 된다(설계 §5.2.1 D1·D2).
-  run: |
-    az containerapp job update -n eundunhealth-reaper -g $RG \
-      --image $ACR.azurecr.io/eundunhealth-api:$SHA -o none
-```
+**구현은 초안의 `--image` 가 아니라 `--yaml` 이다.** 초안은 `job update --image` 였고, 그래서
+"이미지만 새것 + 시크릿은 옛것" 이 되는 위험 때문에 *"B2-a 전에 잡을 수동 재배포"* 라는 순서
+제약이 붙어 있었다. 구현 중 `setup-reaper-job.sh` 를 읽다 **더 깊은 원인**을 찾았다 — 그
+스크립트는 잡이 이미 존재하면 `--image` 만 갱신하고 `registry/secret/identity` 는 "기존 유지"
+했다. 그래서 **`reaper-job.yaml` 을 고쳐도 라이브에 전파되지 않았다.** D2 의 진짜 원인이 이것이고,
+IaC 파일이 희망사항이 되는 전형적 경로다.
 
-**주의 — 잡은 앱과 시크릿 스키마가 다를 수 있다.** 현재 라이브 잡은 **Supabase 시절 시크릿**
-(`supabase-url` 등)을 들고 있다(설계 §5.2.2). 이미지만 새것으로 바꾸면 **새 코드가 없는
-환경변수를 찾는다.** 따라서 B2-a 이전에 **잡을 `backend/reaper-job.yaml` 로 한 번 재배포**해
-시크릿을 Entra 로 맞춰야 한다(= Entra plan 의 후속. 그 문서에 기록).
+→ **생성·갱신 양쪽 모두 `--yaml`** 로 바꿨다. 이미지와 시크릿이 한 번에 정합되므로 **위 순서
+제약이 소멸**했고, Entra plan 의 R-7(잡 재배포)도 첫 머지 후 배포에서 CI 가 자동 해결한다.
 
-**완료 판정**: 배포 1회 후 `az containerapp job show … --query
-"properties.template.containers[0].image"` 가 앱과 **동일 태그**.
+| 파일 | 변경 |
+| --- | --- |
+| `backend/reaper-job.yaml` | 하드코딩 `…:0e6a99d` → **`__IMAGE__`**(`containerapp.yaml` 과 동일 패턴). 그 하드코딩 태그는 purge 삭제 대상이었다(실측) |
+| `.github/workflows/backend.yml` | Health check **뒤에** `Sync reaper Job` 스텝 — yaml 렌더 후 `job update --yaml` + **잡 이미지 == 앱 이미지 불변식 검사**(어긋나면 `::error::`). env 에 `REAPER_JOB_NAME` 추가 |
+| `scripts/setup-reaper-job.sh` | 갱신 경로를 `--yaml` 전체 적용으로 교체. `render_yaml()` 로 생성·갱신이 같은 렌더 공유 |
 
-#### B2-b — 주간 `acr purge` 스케줄 태스크
+**실패를 삼키지 않는다**(`continue-on-error` 미사용). Health check 뒤라 서비스는 이미 정상이고,
+조용한 드리프트가 애초의 사고 원인이었으므로 실패는 run 을 빨갛게 만들어 드러내는 편이 낫다.
+
+**완료 판정**: 배포 1회 후 잡 이미지 == 앱 이미지 → **다음 배포에 검증**. 현재는 저장소 변경만
+반영했다 — 라이브 잡은 지금 Supabase 코드 + Supabase 시크릿으로 **내부 정합** 상태이므로
+일부러 건드리지 않았고, 첫 머지 후 배포에서 이미지·시크릿이 **동시에** 맞춰진다.
+사전 검증: `bash -n` OK · dry-run 이 새 `--yaml` 경로와 현재 앱 이미지(`b74f140`) 픽업 확인 ·
+렌더된 yaml 파싱 OK(placeholder 잔존 0 · secrets 5개 전부 `entra-*`) · 워크플로 YAML 파싱 OK.
+
+#### B2-b — 주간 `acr purge` 스케줄 태스크 ✅ **완료 (태스크 2개)**
 
 ```bash
 # 1) 반드시 dry-run 먼저 (비파괴). 보존 목록에 라이브 참조 태그가 있는지 눈으로 확인한다.
@@ -154,19 +163,41 @@ az acr task create --name purge-eundunhealth-api \
 `--ago 30d` = 30일 이상 된 것만 후보, `--keep 10` = 그 후보 중 최신 10개 보존,
 `--untagged` = 태그를 잃은 매니페스트까지 삭제(용량 회수는 이 단계에서 일어난다).
 
-**MEASURED 2026-09-01 dry-run**: 태그 42 · 매니페스트 45 삭제 대상 →
-태그 56→14, 매니페스트 68→23. 보존 목록에 `b74f140`(앱)·`de612e9`(잡)·`latest` 포함 확인.
+**실행 결과 — 태스크는 결국 2개가 됐다.** 1회 실행 후 dangling 이 10개 남아 완료 판정
+("dangling 0")과 어긋났다. 원인은 공식 문서에 명시된 **`--keep` 이 태그와 매니페스트에 독립
+적용**되는 동작이다(설계 §11.1). 한 명령으로 "태그 10 보존 + 매니페스트 0 보존" 을 표현할 수
+없어 분리했다.
 
-3. `CLAUDE.md` 룰 1 에 "정기 정리는 `acr purge` 스케줄 태스크가 담당" 1줄 + 스크립트 섹션 정리
-4. `docs/ops/operations-snapshot.md` · `monitoring-and-cost.md §6.1` 갱신
+| 태스크 | cmd | 스케줄 |
+| --- | --- | --- |
+| `purge-eundunhealth-api` | `acr purge --filter 'eundunhealth-api:.*' --ago 30d --untagged --keep 10` | `0 1 * * Sun` |
+| `purge-eundunhealth-api-untagged` | `acr purge --filter 'eundunhealth-api:^$' --ago 0d --untagged` | `30 1 * * Sun` |
 
-**완료 판정**: dry-run 출력의 보존 목록에 **라이브 참조 태그가 전부 포함** · 태스크 등록 확인
-(`az acr task show`) · 1주 뒤 `az acr task list-runs` 에 성공 run 1건 · 용량(바이트) 감소.
+`:^$` 는 어떤 태그 이름과도 매칭되지 않는 정규식으로, 태그는 두고 매니페스트만 평가하게 하는
+공식 문서의 관용이다.
+
+**MEASURED 2026-09-01** — dry-run 예측(태그 42·매니페스트 45)과 실제가 정확히 일치:
+
+| | before | after |
+| --- | --- | --- |
+| 태그 | 56 | **14** |
+| 매니페스트 | 68 | **13** |
+| dangling | 14 | **0** |
+| 용량 | 2.21 GiB | **0.60 GiB** (−73%) |
+
+라이브 참조 `b74f140`·`de612e9`·`latest` 전부 보존 확인, 전 과정 `/health`·`/health/ready` 200.
+저장된 태스크 정의를 base64 디코드해 `--dry-run` 이 남지 않았음도 확인했다.
+
+3. `CLAUDE.md` 룰 1/ACR 항목에 "정기 정리는 `acr purge` 스케줄 태스크 2개가 담당" 반영 ✅
+4. `docs/ops/operations-snapshot.md` · `monitoring-and-cost.md` 갱신 ✅
+
+**완료 판정**: 보존 목록에 라이브 참조 전부 포함 ✅ · 태스크 등록 ✅(둘 다 Enabled) ·
+수동 run **Succeeded**(de3·de5) ✅ · 용량 감소 ✅.
 
 > **PREVIEW 주의**: `acr purge` 와 `az acr manifest` 는 공식 고지상 preview 다. 실패해도
 > 서비스 영향은 없지만(배포 경로 밖) **조용히 안 돌 수 있으므로** run 이력을 주기 점검한다.
 
-### B1 — `alert-psql-*` → `alert-pgsql-*` (4건)
+### B1 — `alert-psql-*` → `alert-pgsql-*` (4건) ✅ **완료 (2026-09-01)**
 
 ```bash
 bash scripts/setup-azure-alerts.sh --dry-run   # 먼저 계획 확인
@@ -179,7 +210,9 @@ bash scripts/setup-azure-alerts.sh --dry-run   # 먼저 계획 확인
 
 - 알림 공백은 삭제→생성 사이 수 초. 그 사이 장애 확률은 무시 가능.
 
-**완료 판정**: 알림 8건 유지 · 이름에 `psql` 부재 · 테스트 발화 1건 확인.
+**완료 판정**: 알림 8건 유지 · 이름에 `psql` 부재. → **달성**(8건 / psql 0건).
+**계획을 바꿔 생성 → 삭제 순으로 했다** — 계획서의 삭제 → 생성은 그 사이 알림 공백이 생긴다.
+신 이름 4건이 구 이름 스냅샷과 임계값·심각도·주기·윈도·집계·액션그룹까지 일치함을 대조한 뒤 구 이름을 지웠다. 별도 테스트 발화는 하지 않았다(등가성 대조로 대체 — 실제 발화는 운영 알림 노이즈).
 
 ---
 
@@ -195,7 +228,7 @@ bash scripts/setup-azure-alerts.sh --dry-run   # 먼저 계획 확인
 
 ```bash
 az group list -o table                       # RG 1개
-az resource list -g rg-eundunhealth-prod-krc --query "[].name" -o tsv | sort   # 18개
+az resource list -g rg-eundunhealth-prod-krc --query "[].name" -o tsv | sort   # 20개(=18 + ACR Task 2)
 az acr show-usage --name eundunhealthacr -o table            # Size 바이트값 감소
 az acr manifest list-metadata --registry eundunhealthacr --name eundunhealth-api \
   --query "[?tags==null] | length(@)" -o tsv                 # 0

@@ -12,7 +12,7 @@ tags: [azure, naming, caf, legacy-cleanup, acr-retention, cost]
 # Azure 리소스 재명명 · 레거시 정리 설계
 
 - **작성일**: 2026-09-01
-- **상태**: **진행 중** — N1(naming.md 정정)·N2(룰 1 문언) 완료. **Tier A/B 는 회원님 승인 대기**(운영 리소스 변경)
+- **상태**: **실행 완료 (2026-09-01)** — N1·N2 + 승인된 A1·B2-a·B2-b·B1 전부 수행. 결과는 §11
 - **연관**: `docs/conventions/naming.md` §3(본 문서를 참조) · `2026-09-01-codebase-hardening-{design,plan}.md`
 - **선행**: 없음. 단 Tier B 이상은 **회원님 승인 후에만** 실행한다.
 
@@ -385,3 +385,62 @@ ConvertFrom-Json` 뒤 `Where-Object` 로 거른다. Bash 에서는 `--query` 를
 **공통 교훈**: 정리 대상을 "오래된 것" 으로 정의하면 **"오래됐지만 아직 쓰이는 것"** 을 놓친다.
 보존 규칙은 나이가 아니라 **참조 관계**에서 출발해야 하고, 참조가 여러 곳이면 먼저
 **참조를 하나로 모으는 것**(B2-a)이 규칙을 늘리는 것보다 낫다.
+
+## 11. 실행 결과 (2026-09-01, 회원님 승인 후)
+
+A1 · B2-a · B2-b · B1 전부 수행. **A2 는 실행하지 않았다** — B2-b 의 `--untagged` 가 흡수했다.
+
+| # | 결과 (MEASURED) |
+| --- | --- |
+| **A1** | 빈 RG 2개 삭제. 삭제 직전 각 RG 리소스 0 · lock 0 · tag 없음 재확인 후 실행. `az group list` = `rg-eundunhealth-prod-krc` 1개 |
+| **B2-a** | 저장소 변경만(다음 배포에 발효). `reaper-job.yaml` 의 하드코딩 태그 → `__IMAGE__`, `backend.yml` 에 잡 동기화 스텝 + 이미지 일치 불변식 검사, `setup-reaper-job.sh` 의 갱신 경로를 `--image` → **`--yaml` 전체 적용**으로 교체 |
+| **B2-b** | ACR Task **2개** 등록·수동 1회 실행. 태그 **56 → 14** · 매니페스트 **68 → 13** · dangling **14 → 0** · 용량 **2.21 → 0.60 GiB**(−73%). 라이브 참조 `b74f140`·`de612e9`·`latest` 전부 보존 확인 |
+| **B1** | 알림 **8건 유지** · `psql` 잔존 **0**. **생성 → 삭제** 순으로 수행해 알림 공백 0. 신 이름 4건이 스냅샷과 임계값·심각도·주기·윈도·집계·액션그룹까지 완전 일치함을 대조 |
+| 서비스 | 전 과정 중 `/health` · `/health/ready` **200** 유지 |
+
+### 11.1 실행 중 드러난 것 — `--keep` 은 매니페스트에도 걸린다
+
+`--ago 30d --untagged --keep 10` 1회 실행 후 dangling 이 **10개 남았다.** 본 계획의 완료 판정은
+"dangling 0" 이었으므로 **판정이 설정과 모순**이었다. 공식 문서를 다시 읽으니 명시돼 있다 —
+
+> "`--keep` … The keep count applies to manifests only when you specify `--untagged` or
+> `--untagged-only`, and it applies **independently to tags and manifests**."
+
+즉 `--keep 10` 은 "태그 10개 보존" 이자 "**태그 없는 매니페스트도 10개 보존**" 이다. 태그 쪽
+10 은 롤백 여유로 의도한 값이지만, **매니페스트 쪽 10 은 우리에게 가치가 없다** — 이 저장소는
+어디서도 digest 로 pull 하지 않으므로(§5.2.1 확인) 태그 없는 매니페스트는 순수 저장 비용이다.
+한 명령으로 "태그는 10 보존, 매니페스트는 0 보존" 을 표현할 수 없어 **태스크를 2개로 분리**했다.
+
+| 태스크 | cmd | 스케줄 |
+| --- | --- | --- |
+| `purge-eundunhealth-api` | `acr purge --filter 'eundunhealth-api:.*' --ago 30d --untagged --keep 10` | `0 1 * * Sun` |
+| `purge-eundunhealth-api-untagged` | `acr purge --filter 'eundunhealth-api:^$' --ago 0d --untagged` | `30 1 * * Sun` |
+
+두 번째의 `:^$` 는 **어떤 태그 이름과도 매칭되지 않는 정규식**으로, 태그는 건드리지 않고
+매니페스트만 평가하게 하는 공식 문서의 관용이다. 30분 간격을 둬 첫 태스크가 끝난 뒤 돈다.
+
+> **교훈**: 완료 판정을 쓸 때 **그 판정이 선택한 설정으로 달성 가능한지**를 같이 확인해야
+> 한다. "dangling 0" 은 목표로는 옳았지만 `--keep 10` 과 양립 불가였고, 실행해 보기 전까지
+> 그 모순이 드러나지 않았다. 플래그의 의미를 **요약이 아니라 원문으로** 읽을 것.
+
+### 11.2 B2-a 를 `--image` 가 아니라 `--yaml` 로 바꾼 이유 (설계 §5.2.1 보강)
+
+초안의 B2-a 는 `az containerapp job update --image` 였고, 그래서 "**B2-a 를 먼저 켜면 안 된다**
+(새 이미지 + 옛 시크릿 조합이 된다)" 는 순서 제약을 달았다. 구현하며 `setup-reaper-job.sh` 를
+읽다가 **더 깊은 원인**을 찾았다 — 스크립트가 잡이 이미 존재하면 `--image` 만 갱신하고
+`registry/secret/identity` 는 "기존 유지" 했다. 그래서 **`reaper-job.yaml` 을 고쳐도 라이브에
+전파되지 않았다.** IaC 파일이 희망사항이 되는 전형적 경로이고, 이것이 D2(잡이 7주간 Supabase
+시크릿 유지)의 진짜 원인이다.
+
+생성·갱신 **양쪽 모두 `--yaml`** 로 바꾸면 이미지와 시크릿이 **한 번에** 정합되므로,
+위 순서 제약이 **소멸한다**. Entra plan 의 R-7(잡 재배포)도 첫 머지 후 배포에서 CI 가
+자동으로 해결한다 — 수동 실행이 필요 없다.
+
+### 11.3 새 리소스 2개의 명명
+
+`purge-eundunhealth-api` · `purge-eundunhealth-api-untagged`
+(`Microsoft.ContainerRegistry/registries/tasks`). CAF 공식 약어 표에 ACR Task 항목은 **없다**.
+레지스트리의 자식 리소스라 이름의 유일성 범위가 부모 안이고 workload 접두가 중복이므로,
+**동작-대상** 서술형으로 지었다(하우스 결정 — `naming.md` §3.3 에 1행 추가).
+
+운영 RG 리소스는 18 → **20** 이 됐다(§2.1 표 + ACR Task 2).

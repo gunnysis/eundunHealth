@@ -37,7 +37,10 @@ properties:
         identity: "/subscriptions/__SUBSCRIPTION_ID__/resourceGroups/rg-eundunhealth-prod-krc/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
   template:
     containers:
-      - image: eundunhealthacr.azurecr.io/eundunhealth-api:0e6a99d
+      # CI (backend.yml) and scripts/setup-reaper-job.sh substitute `__IMAGE__` with the
+      # image just deployed to the Container App, so app and job always share one image.
+      # A hardcoded tag used to live here; it drifted and became a purge target (design D1).
+      - image: __IMAGE__
         name: reaper
         command:
           - python
