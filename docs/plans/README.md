@@ -5,7 +5,7 @@
 > 컨벤션: 본 README 의 "워크플로" 섹션 + memory `plans-folder-archive-preference.md` + `design-plan-docs-convention.md`.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
-## 활성 작업 (페어 파일, 4)
+## 활성 작업 (페어 파일, 5)
 
 ### 진행 중 (1)
 
@@ -13,10 +13,11 @@
 |---|---|---|---|---|
 | 2026-09-01 | build-modernization | design | in-progress | refactoring, upgrade, kotlin, gradle-dsl, dependabot, backlog |
 
-### 대기 (proposed / approved) (3)
+### 대기 (proposed / approved) (4)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
+| 2026-09-01 | codebase-hardening | design + plan | approved | hardening, silent-failure, concurrency, privacy, log-injection, ci-gate, doc-drift |
 | 2026-09-01 | entra-external-id-migration | design + plan | proposed | auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11 |
 | 2026-09-01 | legacy-modernization-program | design | proposed | legacy-cleanup, modernization, program, entra, kotlin, dependabot |
 | 2026-09-01 | tech-debt-runtime-modernization | design + plan | proposed | tech-debt, modernization, detekt, openapi-generator, python-runtime, toolchain |
