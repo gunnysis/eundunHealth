@@ -5,8 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.UserProfile
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,9 +54,7 @@ class OnboardingViewModel @Inject constructor(
         }
             .onSuccess { _sideEffect.send(OnboardingSideEffect.NavigateToHome) }
             .onFailure {
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
-                _uiState.value = OnboardingUiState(isLoading = false, error = appErr)
+                _uiState.value = OnboardingUiState(isLoading = false, error = it.toReportedAppError())
                 return@launch
             }
         _uiState.value = OnboardingUiState(isLoading = false)

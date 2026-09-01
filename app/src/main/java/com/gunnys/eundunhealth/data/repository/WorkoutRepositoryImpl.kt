@@ -20,8 +20,7 @@ import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.WeeklyRate
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.WeeklyPlanGenerator
@@ -57,7 +56,7 @@ class WorkoutRepositoryImpl @Inject constructor(
             weeklyPlanDao.insertPlan(WeeklyPlanEntity(dto.id, dto.userId, weekStart.toString(), dto.dayPlans))
             return@runCatching dto.toDomain()
         } catch (e: Exception) {
-            // 네트워크 실패 → 캐시 폴백. Sentry는 ViewModel.reportToSentry()가 처리
+            // 네트워크 실패 → 캐시 폴백. Sentry 보고는 ViewModel 의 toReportedAppError() 가 처리
             val userId = authRepo.getCurrentUserId()
             if (userId != null) {
                 val cached = weeklyPlanDao.getPlan(userId, weekStart.toString())
@@ -225,7 +224,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         // 손상된 day_plans JSON 을 silent 하게 빈 계획으로 폴백하면 R8 keep 갭(INC-2026-06-15-25)과
         // 같은 무관측 데이터 손실이 된다 → 폴백 전에 Sentry 로 보고해 관측 가능하게 둔다.
         // (정상적으로 빈 "[]" 는 예외가 없어 여기 오지 않으므로 노이즈가 되지 않는다.)
-        e.toAppError().reportToSentry()
+        e.toReportedAppError()
         emptyList()
     }
 }

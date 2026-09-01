@@ -5,8 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
@@ -94,7 +93,7 @@ class AuthViewModel @Inject constructor(
                     setData("error", e::class.java.simpleName)
                 },
             )
-            e.toAppError().reportToSentry()
+            e.toReportedAppError()
             false
         },
     )
@@ -134,7 +133,7 @@ class AuthViewModel @Inject constructor(
                     _uiState.value = if (e is AuthCancelledException) {
                         AuthGateUiState.Idle
                     } else {
-                        AuthGateUiState.Failed(e.toAppErrorReporting())
+                        AuthGateUiState.Failed(e.toReportedAppError())
                     }
                 }
         }

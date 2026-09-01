@@ -5,8 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,9 +54,7 @@ class HistoryViewModel @Inject constructor(
                     )
                 }
                 .onFailure {
-                    val appErr = it.toAppError()
-                    appErr.reportToSentry()
-                    _uiState.value = current.copy(isLoading = false, error = appErr)
+                    _uiState.value = current.copy(isLoading = false, error = it.toReportedAppError())
                 }
         }
     }

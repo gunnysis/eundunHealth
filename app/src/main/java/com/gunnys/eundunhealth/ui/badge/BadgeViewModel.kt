@@ -5,8 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.BadgeCatalog
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.BadgeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,9 +71,7 @@ class BadgeViewModel @Inject constructor(
                 }
             }
             .onFailure {
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
-                _uiState.value = BadgeUiState.Error(appErr)
+                _uiState.value = BadgeUiState.Error(it.toReportedAppError())
             }
     }
 }

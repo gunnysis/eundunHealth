@@ -5,8 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.UserProfile
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -69,8 +68,7 @@ class ProfileViewModel @Inject constructor(
                 } ?: ProfileUiState.Empty
             }
             .onFailure {
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
+                val appErr = it.toReportedAppError()
                 _uiState.value = ProfileUiState.Error(appErr)
             }
     }
@@ -104,8 +102,7 @@ class ProfileViewModel @Inject constructor(
                 return@launch
             }
             .onFailure {
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
+                val appErr = it.toReportedAppError()
                 if (current is ProfileUiState.Loaded) {
                     _uiState.value = current.copy(isSaving = false, saveError = appErr)
                 }
@@ -124,8 +121,7 @@ class ProfileViewModel @Inject constructor(
         authRepo.deleteAccount()
             .onSuccess { _sideEffect.send(ProfileSideEffect.NavigateToLogin) }
             .onFailure {
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
+                val appErr = it.toReportedAppError()
                 if (current is ProfileUiState.Loaded) {
                     _uiState.value = current.copy(isDeleting = false, deleteError = appErr)
                 }

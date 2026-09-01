@@ -3,6 +3,7 @@ package com.gunnys.eundunhealth.data.auth
 import android.app.Activity
 import com.gunnys.eundunhealth.api.generated.api.AccountApi
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.AppErrorException
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.microsoft.identity.client.AcquireTokenParameters
@@ -16,13 +17,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import kotlin.coroutines.resume
-
-/**
- * Repository 내부에서 catch 한 예외를 [AppError] 로 분류해 흘려보내는 보조 예외.
- *
- * ViewModel 은 `Throwable` 의 message 가 아니라 이 예외의 [appError] 에서 sealed 타입을 꺼낸다.
- */
-internal class AppErrorException(val appError: AppError) : Exception(appError.userMessage)
 
 /**
  * MSAL 예외를 한국어 [AppError] 로 매핑한다.

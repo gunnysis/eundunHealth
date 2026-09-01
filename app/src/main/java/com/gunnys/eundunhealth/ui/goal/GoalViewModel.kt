@@ -7,8 +7,7 @@ import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.Goal
 import com.gunnys.eundunhealth.domain.model.GoalType
 import com.gunnys.eundunhealth.domain.model.ProfileHistoryPoint
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -66,8 +65,7 @@ class GoalViewModel @Inject constructor(
             },
             onFailure = {
                 // goals 로드 실패 = 핵심 콘텐츠 실패 → 전체 에러 상태(ErrorContent + 재시도).
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
+                val appErr = it.toReportedAppError()
                 _uiState.value = _uiState.value.copy(isLoading = false, error = appErr)
             },
         )
@@ -87,8 +85,7 @@ class GoalViewModel @Inject constructor(
     }
 
     private fun handleError(t: Throwable) {
-        val appErr = t.toAppError()
-        appErr.reportToSentry()
+        val appErr = t.toReportedAppError()
         _sideEffect.trySend(GoalSideEffect.ShowSnackbar(appErr.userMessage))
     }
 }

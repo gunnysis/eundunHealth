@@ -5,8 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.Statistics
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,9 +48,7 @@ class StatisticsViewModel @Inject constructor(
                 }
             }
             .onFailure {
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
-                _uiState.value = StatisticsUiState.Error(appErr)
+                _uiState.value = StatisticsUiState.Error(it.toReportedAppError())
             }
     }
 }

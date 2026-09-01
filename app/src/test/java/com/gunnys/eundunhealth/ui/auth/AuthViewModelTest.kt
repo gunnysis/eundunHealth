@@ -1,8 +1,8 @@
 package com.gunnys.eundunhealth.ui.auth
 
 import android.app.Activity
-import com.gunnys.eundunhealth.data.auth.AppErrorException
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.AppErrorException
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
