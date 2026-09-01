@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 val localProperties =
@@ -139,9 +140,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -150,6 +148,15 @@ android {
         jniLibs {
             useLegacyPackaging = false
         }
+    }
+}
+
+// AGP 의 android { kotlinOptions {} } 는 폐기 경로다(Kotlin 2.4 + AGP 9 에서 에러로 승격).
+// KGP 최상위 kotlin { compilerOptions {} } 가 대체이며, 문자열 대입은 불가 —
+// JvmTarget 열거형이어야 한다. 출처: https://kotlinlang.org/docs/gradle-compiler-options.html
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.fromTarget("17")
     }
 }
 
