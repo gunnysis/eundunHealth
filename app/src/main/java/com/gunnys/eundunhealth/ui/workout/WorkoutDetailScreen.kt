@@ -51,10 +51,15 @@ private fun buildCopyText(ex: Exercise): String = buildString {
     ex.instructions.forEachIndexed { i, step -> append("${i + 1}. $step\n") }
 }.trimEnd()
 
+/**
+ * 운동 상세 화면.
+ *
+ * `exerciseId` 는 파라미터로 받지 않는다 — `WorkoutDetailViewModel` 이 `SavedStateHandle` 로
+ * 네비 인자에서 직접 읽으므로, 여기서 또 받으면 미사용 인자가 된다.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutDetailScreen(
-    exerciseId: String,
     onBack: () -> Unit,
     viewModel: WorkoutDetailViewModel = hiltViewModel(),
 ) {

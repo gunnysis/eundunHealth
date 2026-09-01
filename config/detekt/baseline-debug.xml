@@ -5,21 +5,5 @@
     <ID>MaxLineLength:DatabaseModule.kt$DatabaseModule$fun</ID>
     <ID>MaxLineLength:ExerciseDbDataSource.kt$ExerciseDbDataSource$suspend fun getStrengthExercises(bodyPart: String, limit: Int = 5): List&lt;ExerciseDto&gt;</ID>
     <ID>MaxLineLength:HealthRepositoryImpl.kt$HealthRepositoryImpl$override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result&lt;List&lt;LocalDate&gt;&gt;</ID>
-    <ID>RedundantSuspendModifier:HealthConnectDataSource.kt$HealthConnectDataSource$suspend</ID>
-    <ID>TooGenericExceptionCaught:WorkoutRepositoryImpl.kt$WorkoutRepositoryImpl$e: Exception</ID>
-    <ID>UnnecessaryAbstractClass:RepositoryModule.kt$RepositoryModule$RepositoryModule</ID>
-    <ID>UnusedParameter:WorkoutDetailScreen.kt$exerciseId: String</ID>
-    <ID>UnusedPrivateMember:AuthErrorBanner.kt$@Preview(showBackground = true) @Composable private fun AuthErrorBannerPreview()</ID>
-    <ID>UnusedPrivateMember:AuthGateScreen.kt$@Preview(showBackground = true) @Composable private fun AuthGateFailedPreview()</ID>
-    <ID>UnusedPrivateMember:AuthGateScreen.kt$@Preview(showBackground = true) @Composable private fun AuthGateIdlePreview()</ID>
-    <ID>UnusedPrivateMember:EmptyContent.kt$@Preview(showBackground = true) @Composable private fun EmptyContentPreview()</ID>
-    <ID>UnusedPrivateMember:ErrorContent.kt$@Preview(showBackground = true) @Composable private fun ErrorContentPreview()</ID>
-    <ID>UnusedPrivateMember:GoalRepositoryImpl.kt$GoalRepositoryImpl$private fun ProfileHistoryEntry.toDomain(): ProfileHistoryPoint</ID>
-    <ID>UnusedPrivateMember:ProfileSlider.kt$@Preview(showBackground = true) @Composable private fun ProfileSliderPreview()</ID>
-    <ID>UnusedPrivateMember:ProfileSummaryCard.kt$@Preview(showBackground = true) @Composable private fun ProfileSummaryCardPreview()</ID>
-    <ID>UnusedPrivateMember:SkeletonUi.kt$@Preview(showBackground = true) @Composable private fun SkeletonHomeContentPreview()</ID>
-    <ID>UseOrEmpty:AppNavigation.kt$backStackEntry.arguments?.getString("exerciseId") ?: ""</ID>
-    <ID>UseOrEmpty:AuthRepositoryImpl.kt$e.message ?: ""</ID>
-    <ID>UseOrEmpty:BadgeCatalog.kt$BadgeCatalog$template?.description ?: ""</ID>
   </CurrentIssues>
 </SmellBaseline>

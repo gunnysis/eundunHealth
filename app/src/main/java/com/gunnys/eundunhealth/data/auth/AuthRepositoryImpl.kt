@@ -47,7 +47,7 @@ internal fun mapMsalError(e: Throwable): AppError = when {
         AppError.Network()
 
     else -> {
-        val msg = (e.message ?: "").lowercase()
+        val msg = e.message.orEmpty().lowercase()
         if (msg.contains("network") || msg.contains("timeout") || msg.contains("connect")) {
             AppError.Network()
         } else {

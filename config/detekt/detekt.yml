@@ -53,6 +53,15 @@ naming:
 
 style:
   excludes: ['**/generated/**']
+  UnusedPrivateMember:
+    # @Preview 함수는 IDE 프리뷰 렌더러가 호출한다 — 코드상 호출부가 없는 것이 정상이라
+    # 부채가 아니다. baseline 에 두면 프리뷰를 추가/삭제할 때마다 baseline 을 재생성해야 해
+    # 만성 drift(=CI 실패) 원인이 된다. 설정으로 영구 제외한다.
+    ignoreAnnotated: ['Preview']
+  UnnecessaryAbstractClass:
+    # Dagger/Hilt @Binds 는 abstract 선언을 요구한다("@Binds methods must be abstract").
+    # 즉 @Module abstract class 는 불필요한 추상화가 아니라 DI 관용이다.
+    ignoreAnnotated: ['Module']
   MagicNumber:
     active: false
   ReturnCount:

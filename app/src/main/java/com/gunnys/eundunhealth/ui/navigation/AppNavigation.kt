@@ -81,11 +81,9 @@ fun AppNavigation(
         composable(
             Screen.WorkoutDetail.route,
             arguments = listOf(navArgument("exerciseId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            WorkoutDetailScreen(
-                exerciseId = backStackEntry.arguments?.getString("exerciseId") ?: "",
-                onBack = { navController.popBackStack() },
-            )
+        ) {
+            // exerciseId 는 WorkoutDetailViewModel 이 SavedStateHandle 로 읽는다 — 중복 전달하지 않는다.
+            WorkoutDetailScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.Profile.route) {
             ProfileScreen(

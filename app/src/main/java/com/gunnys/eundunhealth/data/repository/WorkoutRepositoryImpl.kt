@@ -43,6 +43,10 @@ class WorkoutRepositoryImpl @Inject constructor(
     // 주 시작(월요일)은 KST 고정 — 디바이스 타임존과 무관하게 plan/통계 key(weekStart)가 흔들리지 않도록.
     private fun currentWeekStart(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul")).with(DayOfWeek.MONDAY)
 
+    // 광역 catch 는 의도다 — 원격 조회가 *어떤* 이유로 실패하든(IO·HTTP·JSON 파싱) 캐시로
+    // 폴백해야 하고, 예외 종류를 좁히면 새 실패 유형이 생길 때 조용히 폴백을 잃는다.
+    // 삼키지 않는다: 캐시가 없으면 원래 예외를 그대로 rethrow 한다(아래).
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun getCurrentWeekPlan(): Result<WeeklyPlan?> = runCatching {
         val weekStart = currentWeekStart()
         try {

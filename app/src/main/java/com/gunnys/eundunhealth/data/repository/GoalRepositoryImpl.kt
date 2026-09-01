@@ -50,7 +50,9 @@ class GoalRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getProfileHistory(limit: Int): Result<List<ProfileHistoryPoint>> = runCatching {
-        profileApi.getProfileHistory(limit).bodyOrThrow().map { it.toDomain() }
+        // 람다 파라미터를 `it` 로 두면 detekt 가 수신자 타입을 못 풀어 아래 private
+        // `ProfileHistoryEntry.toDomain()` 을 미사용으로 오탐한다(MEASURED 2026-09-01). 명시할 것.
+        profileApi.getProfileHistory(limit).bodyOrThrow().map { entry: ProfileHistoryEntry -> entry.toDomain() }
     }
 
     private fun GoalResponse.toDomain(): Goal? {

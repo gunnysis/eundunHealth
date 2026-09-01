@@ -20,6 +20,6 @@ object BadgeCatalog {
 
     fun getInfo(key: String): Pair<String, String> {
         val template = all.find { it.key == key }
-        return (template?.name ?: key) to (template?.description ?: "")
+        return (template?.name ?: key) to template?.description.orEmpty()
     }
 }
