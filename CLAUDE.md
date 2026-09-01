@@ -101,7 +101,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 호환성 (MEASURED 2026-06-08, 블로커 0):
 - 디바이스 **API 30+ 필수** — 본 앱 `minSdk=26` 이므로 **API 30+ 에뮬레이터/기기로 배포**해야 Live Edit 활성 (API 26~29 기기는 비활성).
-- `kotlinOptions.moduleName` 커스텀 금지 → `app/build.gradle.kts:132-134` 는 `jvmTarget` 만 설정 (위반 없음). AGP 9.2.1 / Compose BOM 2026.06.01 모두 요구치 상회. `android.builtInKotlin=false` 는 Live Edit 가 Gradle 미경유라 무관.
+- `kotlinOptions.moduleName` 커스텀 금지 → 최상위 `kotlin { compilerOptions }` 블록은 `jvmTarget` 만 설정 (위반 없음). AGP 9.3.2 / Compose BOM 2026.06.01 모두 요구치 상회. `android.builtInKotlin=false` 는 Live Edit 가 Gradle 미경유라 무관.
 
 적용 범위 — **Composable 함수 *바디* 만** 핫스왑:
 - ✅ `Modifier`(padding/spacing), `Color`/`dp` 상수, 애니메이션 튜닝, 레이아웃 미세조정 → `ui/theme/`·`ui/components/` 시각 마감 작업의 inner-loop 가속.
@@ -176,14 +176,14 @@ DELETE /account
 ## Key Technical Details
 
 ### Android App
-- **Kotlin 2.2.10**, KSP 2.3.2 (Kotlin과 호환 필요)
-- **Gradle 9.6.0**, AGP 9.2.1
+- **Kotlin 2.4.10**, KSP 2.3.11 (Kotlin과 호환 필요)
+- **Gradle 9.6.0**, AGP 9.3.2
 - **Min SDK 26**, Target SDK 37, Java 17
 - **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
 - **App version**: versionName **`0.1.19`**, versionCode **`33`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000, **Play 재사용 불가** — 룰 13 원장 가드). 정책 전문: `docs/conventions/versioning.md`
-- **Sentry Android 8.47.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
-- **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트
-- **OkHttp 5.3.2** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
+- **Sentry Android 8.54.0** (eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
+- **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트
+- **OkHttp 5.5.0** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
 - **Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0**
 - Supabase JWT algorithm: **ES256 (ECDSA)** — backend uses JWKS public key verification
 - Network security config disables cleartext except localhost/10.0.2.2 in debug

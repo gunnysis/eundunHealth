@@ -10,7 +10,29 @@ v0.1.0 Internal Testing 직전 안정성 우선으로 보류한 dependabot 의�
 
 ---
 
-## 1. kotlin 2.2.10 → 2.4.0 (+ KSP 2.3.2 → ?)
+## 1. kotlin 2.2.10 → 2.4.0 (+ KSP 2.3.2 → ?) — ✅ **해소 (2026-09-01)**
+
+> **종결**: Kotlin **2.4.10** + KSP **2.3.11** + coroutines-test **1.11.0** 적용 완료.
+> 브랜치 `chore/build-modernization-kotlin-2.4`, 설계 `docs/plans/2026-09-01-build-modernization-design.md`.
+>
+> **막고 있던 것의 정체**: 재개 조건 1(Hilt)은 2.60.1(#148, 2026-07-10)로 이미 해소돼 있었고,
+> 남은 조건 2의 실제 크기는 **`kotlinOptions` 블록 하나**였다. "script compilation errors 4건"은
+> 전부 그 한 블록에서 나온 것으로, DSL 교체 후 Kotlin 2.4.10 빌드가 에러 0으로 통과했다.
+>
+> **왜 3개월이 걸렸나**: 연기 사유가 "외부 대기"에서 "우리 작업"으로 바뀐 시점(2026-07-10)에
+> 큐로 옮겨지지 않아, dependabot 이 PR 을 다시 낼 때마다 "deferral 유지"로 close 하는
+> **자기지속 루프**가 됐다. → 재발 방지: 보류 사유가 '대기'가 아니게 되면 **즉시 작업 큐로 이동**하고
+> 이 문서에 그 전환을 날짜와 함께 기록한다.
+>
+> **적용된 DSL 교체** (단순 rename 아님 — 블록 위치 이동):
+> ```kotlin
+> import org.jetbrains.kotlin.gradle.dsl.JvmTarget   // 필수
+> kotlin {                                            // android {} 밖 최상위
+>     compilerOptions { jvmTarget = JvmTarget.fromTarget("17") }   // 문자열 대입 불가
+> }
+> ```
+> 검증: compileDebugKotlin · spotlessCheck · detektDebug · testDebugUnitTest ·
+> **assembleRelease(R8 minify)** 전부 PASS + 컴파일 산출물 class major version 61(Java 17) 실측.
 
 원본 dependabot PR:
 - `dependabot/gradle/kotlin-25c43d7fa9` (close됨, 2026-05-25)
