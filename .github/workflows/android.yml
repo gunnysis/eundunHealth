@@ -81,12 +81,21 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest
 
-      # NOTE: assembleDebug 는 R8 미적용 → 실제 R8 stripping(룰 12, Gson keep 갭/INC-2026-06-15-25)은
-      # CI 에서 실행되지 않는다. Rule 12 가드는 위 Unit tests 의 ProguardKeepRulesTest(keep 규칙 박제) +
-      # 출시 빌드 실기기 계측(룰 2/12, preflight-release.sh)으로 분담한다. 릴리스 빌드는 서명 키가
-      # 필요해 CI 에 포함하지 않는다.
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug
+
+      # 이 저장소의 릴리스 사고는 전부 R8 에서만 재현됐다 — 룰 12(2026-06-15 빈 운동계획,
+      # Gson 래퍼 keep 누락)·INC-2026-07-02-29. debug 빌드와 단위 테스트는 R8 을 타지 않으므로
+      # 이 스텝이 없으면 minify/keep/`-dontwarn` 설정 회귀가 **출시 빌드에서야** 드러난다.
+      # (실제로 Entra 전환의 `Missing class com.google.crypto.tink.subtle.**` 도 로컬 릴리스
+      #  빌드를 직접 돌려서야 발견됐다.)
+      #
+      # 서명 키 없이 돌아간다 — INC-2026-07-02-29 수정으로 release 서명이 keystore 존재-조건부가
+      # 되어 clean checkout 에서는 unsigned 로 빌드된다(CodeQL autobuild 도 같은 경로).
+      # 목적은 R8 설정 검증이지 배포물 생산이 아니므로 **산출물은 업로드하지 않는다** —
+      # 출시 산출물의 유일한 경로는 preflight-release.sh 다(룰 2).
+      - name: Build release (R8) — 룰 12 회귀 가드
+        run: ./gradlew :app:assembleRelease
 
       - name: Upload debug APK artifact
         if: github.event_name == 'pull_request'
