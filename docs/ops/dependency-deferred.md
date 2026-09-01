@@ -13,7 +13,7 @@ v0.1.0 Internal Testing 직전 안정성 우선으로 보류한 dependabot 의�
 ## 1. kotlin 2.2.10 → 2.4.0 (+ KSP 2.3.2 → ?) — ✅ **해소 (2026-09-01)**
 
 > **종결**: Kotlin **2.4.10** + KSP **2.3.11** + coroutines-test **1.11.0** 적용 완료.
-> 브랜치 `chore/build-modernization-kotlin-2.4`, 설계 `docs/plans/2026-09-01-build-modernization-design.md`.
+> 브랜치 `chore/build-modernization-kotlin-2.4`, 설계는 완결 후 ledger 로 이관됨 → `docs/plans/logs/dependencies.md` 2026-09-01 entry.
 >
 > **막고 있던 것의 정체**: 재개 조건 1(Hilt)은 2.60.1(#148, 2026-07-10)로 이미 해소돼 있었고,
 > 남은 조건 2의 실제 크기는 **`kotlinOptions` 블록 하나**였다. "script compilation errors 4건"은
@@ -130,7 +130,11 @@ git checkout -b verify/kotlin-2.3 origin/dependabot/gradle/kotlin-XXXX
 - CI 빌드 실패 확인 (2026-06-16)
 
 ### 재개 조건
-1. [openapi-generator CHANGELOG](https://github.com/openapi-api/openapi-generator/blob/master/CHANGELOG.md) 에서 `jvm-retrofit2` 템플릿 breaking change 여부 확인
+1. [openapi-generator 릴리스](https://github.com/OpenAPITools/openapi-generator/releases) 에서 `jvm-retrofit2` 템플릿 breaking change 여부 확인
+   > **URL 정정 (2026-09-01)**: 이 줄은 이전에 `github.com/openapi-api/openapi-generator/...`
+   > 를 가리켰다. 그런 org 는 존재하지 않는다 — 공식은 **`OpenAPITools/openapi-generator`**
+   > (2026-09-01 저장소 헤더 실측: "OpenAPITools / openapi-generator Public", 최신 안정판
+   > 7.25.0). 죽은 링크라 재개 조건 1번을 실제로 수행할 수 없었다.
 2. PR branch checkout 후 `./gradlew :app:openApiGenerate` 실행 → 생성 결과물 diff 검토
 3. `./gradlew :app:testDebugUnitTest` 통과 + 빌드 green 확인
 

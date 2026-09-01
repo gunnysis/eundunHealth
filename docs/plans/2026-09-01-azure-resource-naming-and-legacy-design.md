@@ -1,6 +1,6 @@
 ---
 type: design
-status: proposed
+status: in-progress
 pr: null
 related_inc: null
 supersedes: null
@@ -12,7 +12,7 @@ tags: [azure, naming, caf, legacy-cleanup, acr-retention, cost]
 # Azure 리소스 재명명 · 레거시 정리 설계
 
 - **작성일**: 2026-09-01
-- **상태**: 제안 (실행 전 승인 필요)
+- **상태**: **진행 중** — N1(naming.md 정정)·N2(룰 1 문언) 완료. **Tier A/B 는 회원님 승인 대기**(운영 리소스 변경)
 - **연관**: `docs/conventions/naming.md` §3(본 문서를 참조) · `2026-09-01-codebase-hardening-{design,plan}.md`
 - **선행**: 없음. 단 Tier B 이상은 **회원님 승인 후에만** 실행한다.
 
@@ -164,7 +164,13 @@ Tier C 는 "언젠가" 가 아니라 **"이 조건이 충족되면"** 으로 적
   워크플로에 untag/delete 단계 없음).
 - `redeploy.sh` 는 timestamp 태그를 5개만 남기지만 **로컬 수동 경로 전용**이다. 주 경로는 CI 다.
 - 결과: 태그 56 · 매니페스트 68(dangling 14) · **2.37 GB / 10 GB**.
-- Basic SKU 는 **retention policy 를 지원하지 않는다**(Premium 기능) → 스크립트로 해야 한다.
+- Basic SKU 는 **retention policy 를 지원하지 않는다** → 스크립트로 해야 한다.
+
+  > **공식 확인 (2026-09-01)**: [ACR SKU features and limits](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus)
+  > 의 기능 표에서 **"Retention policy for untagged manifests"** 행은 Basic **N/A** ·
+  > Standard **N/A** · Premium **Supported** 다. 즉 Premium 전용이며, Standard 로 한 단계만
+  > 올려도 얻을 수 없다 — **"승급하면 되지 않나" 를 검토할 때 Standard 는 답이 아니다.**
+  > 같은 표가 Basic 의 **Included storage = 10 GiB** 도 확정한다(위 "2.37 GB / 10 GB" 의 분모).
 
 CLAUDE.md 의 "redeploy.sh가 timestamp 태그 최근 5개만 보존" 서술은 **CI 경로를 포함하지
 않는다** — 문서가 실제보다 안전해 보이게 적혀 있었다(H7 에서 정정).

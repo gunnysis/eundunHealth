@@ -9,7 +9,10 @@ on:
       - 'scripts/gen_plans_index.py'
       - 'scripts/gen-plans-index.sh'
       - 'scripts/test_gen_plans_index.py'
+      - 'scripts/check-plans-links.sh'
       - '.github/workflows/docs-plans-index.yml'
+      # 페어 참조는 저장소 어디서든 깨질 수 있다 — plans/ 밖의 .md 도 트리거에 넣는다
+      - '**/*.md'
   push:
     branches: [main]
     paths:
@@ -17,7 +20,10 @@ on:
       - 'scripts/gen_plans_index.py'
       - 'scripts/gen-plans-index.sh'
       - 'scripts/test_gen_plans_index.py'
+      - 'scripts/check-plans-links.sh'
       - '.github/workflows/docs-plans-index.yml'
+      # 페어 참조는 저장소 어디서든 깨질 수 있다 — plans/ 밖의 .md 도 트리거에 넣는다
+      - '**/*.md'
 
 jobs:
   check-index:
@@ -58,3 +64,9 @@ jobs:
             fi
           done
           if [ $shipped_found -eq 1 ]; then exit 1; fi
+
+      - name: 페어 참조 링크 가드 (ledger 이관 시 dead link 방지)
+        # 이관 컨벤션은 "ledger entry 추가 + 페어 git rm" 까지만 정하고, 그 페어를
+        # 참조하던 다른 문서는 아무도 고치지 않는다 → 링크가 조용히 죽는다.
+        # 실측 2026-09-01: 도입 시점에 10개 파일 26건이 이미 끊겨 있었다.
+        run: bash scripts/check-plans-links.sh

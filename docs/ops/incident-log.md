@@ -468,7 +468,7 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 - **runbook §3.4 신설**: "stamp 이후의 모델 변경 자동 적용 책임은 entrypoint" 명시.
 - **Cosmetic drift 잔존**: `text→varchar`, `timestamp→timestamptz`, `real→double precision`, 인덱스 이름 차이는 런타임 영향 0 + 변환 위험 ↑ + 가치 0 → v1.0 이후 데이터 마이그레이션 윈도우에서 별도 검토 (의도적 tolerate).
 
-**참조**: `docs/plans/2026-05-27-schema-drift-recovery-design.md` (전체 분석 + 공식 문서 인용), `docs/plans/2026-05-27-schema-drift-recovery-plan.md` (구현 계획).
+**참조**: `docs/plans/logs/backend.md` (전체 분석 + 공식 문서 인용), `docs/plans/logs/backend.md` (구현 계획).
 
 ---
 

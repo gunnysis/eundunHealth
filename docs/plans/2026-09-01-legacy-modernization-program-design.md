@@ -1,6 +1,6 @@
 ---
 type: design
-status: proposed
+status: in-progress
 pr: null
 related_inc: INC-2026-05-24-14
 supersedes: null
@@ -12,7 +12,7 @@ tags: [legacy-cleanup, modernization, program, entra, kotlin, dependabot]
 # 레거시 제거 · 최신화 프로그램 설계
 
 - **작성일**: 2026-09-01
-- **상태**: 작성 중 (승인 대기)
+- **상태**: **진행 중** — WS2 완료(PR #164 머지·ledger 이관), WS1·WS3 구현 완료·머지 대기
 - **성격**: **프로그램(우산) 문서** — 개별 실행은 아래 워크스트림 문서가 담당
 - **대상 버전**: Android versionCode 34+ / 백엔드·문서는 앱 버전 무관
 
@@ -21,7 +21,7 @@ tags: [legacy-cleanup, modernization, program, entra, kotlin, dependabot]
 | # | 문서 | 범위 |
 |---|---|---|
 | WS1 | `2026-09-01-entra-external-id-migration-{design,plan}.md` | Auth 제공자 교체 + 그에 딸린 레거시 제거 |
-| WS2 | `2026-09-01-build-modernization-design.md` | Gradle DSL 리팩토링 + 의존성 백로그 |
+| WS2 | ✅ 완료 → `docs/plans/logs/dependencies.md` 2026-09-01 entry (PR #164) | Gradle DSL 리팩토링 + 의존성 백로그 |
 | WS3 | 본 문서 §4 | 위 둘에 속하지 않는 잔여 정리 |
 
 ---
@@ -80,9 +80,43 @@ Supabase → Entra 전환을 처음엔 **제공자 교체 1건**으로 봤다. �
 | dependabot 열린 PR | 10건 | 0 (또는 근거 있는 보류만) |
 | 문서-코드 정합 | 룰 5·11 전제 붕괴, doc_audit 오탐 | 문언 갱신 + 수집기 정정 |
 
+**도달 판정 (MEASURED 2026-09-01)** — 전 항목 목표 달성. WS1 은 브랜치 상태(미머지).
+
+| 축 | 목표 | 실측 결과 |
+|---|---|---|
+| Auth | Entra External ID | ✅ MSAL 브라우저 위임. `AuthGateScreen` 단일 |
+| Auth SDK 우회 코드 | 0 | ✅ 0 (supabase-kt 소멸과 함께 근거 자체가 사라짐) |
+| Android HTTP 스택 | OkHttp 단일 | ✅ Ktor 의존성 제거 |
+| 인증 화면 | ~123줄 / 1화면 / VM 1개 | ✅ 화면 10개 중 auth 1개, VM **9개**(3종 폐기) |
+| Kotlin | 2.4.x | ✅ **2.4.10** (+ AGP 9.3.2 / Gradle 9.7.1) |
+| deprecated Gradle DSL | 0 | ✅ 0 |
+| dependabot 열린 PR | 0 | ✅ 0 |
+| 문서-코드 정합 | 문언 갱신 + 수집기 정정 | ✅ 룰 5·11 갱신, 수집기 114 == pytest 114 |
+
+**목표에 없었는데 딸려 온 것**: L10(openapi-generator)은 §6 에서 "감수하지 않는 것" 으로
+빼 두었으나 **7.25.0 으로 해소**됐다. 제외 사유였던 "생성 코드 diff 를 읽기 어렵다" 가
+L11(detekt baseline 생성코드 오염)을 먼저 걷어내면서 사라졌기 때문이다.
+→ **제외 항목의 사유가 다른 작업의 부산물로 소멸할 수 있다.** §6 같은 "하지 않는 것" 표는
+프로그램 종료 시 한 번 재평가할 것 — 아니면 여전히 못 하는 일로 남는다.
+
 ---
 
 ## 4. WS3 — 잔여 정리 (다른 워크스트림에 속하지 않는 것)
+
+> **WS3 결과 (2026-09-01, 전 항목 완료)** — 실행은 `2026-09-01-tech-debt-runtime-modernization-{design,plan}.md`
+> 의 T1·T5·T7 로 옮겨 수행했다(본 §4 는 문제 정의, 그쪽이 실행 계획).
+>
+> | 항목 | 계획 | 실제 |
+> |---|---|---|
+> | 4.1 수집기 | pytest 실측과 일치 | ✅ 수집기 **114** == pytest **114** |
+> | 4.2 baseline | "줄일 수 있는지 확인" | ✅ **61 → 3** (생성코드 제외 + 오탐 근본수정) |
+> | 4.3 룰 정합 | 룰 5·11 문언 갱신 | ✅ 갱신 완료 (CLAUDE.md) |
+>
+> **§4.2 의 판단("WS2 후에 하면 두 번 일 안 한다")은 맞았지만 이유는 예상과 달랐다.**
+> Kotlin 2.4 가 baseline 을 흔들어서가 아니라, **61건 중 대부분이 애초에 부채가 아니었다** —
+> detekt 가 `build/generated/openapi` 를 분석하던 구조 때문이었다. 그것을 걷어내니
+> openapi-generator 를 15 minor 올렸는데도 baseline 이 1건도 흔들리지 않았다.
+> → **"박제된 위반 N건"을 부채로 세기 전에, 그중 몇 건이 *우리 코드*인지 먼저 나눠라.**
 
 ### 4.1 `doc_audit.py` 수집기 off-by-one (L13)
 
@@ -128,7 +162,7 @@ WS2 (빌드 현대화)  →  WS1 (Entra 전환)  →  WS3 (잔여 정리)
 |---|---|
 | 단계별 롤백 절차 | 깨져도 잃을 게 없음 |
 | 사용자 공지·마이그레이션 배치 | 영향받을 사용자 없음 |
-| openapi-generator 업그레이드(L10) | 13 minor 점프. WS1이 라우터를 건드리므로 **전환 후 openapi.json이 안정된 뒤**가 diff 읽기 쉬움 |
+| ~~openapi-generator 업그레이드(L10)~~ → **해소됨** | 원 사유: 13 minor 점프 + WS1이 라우터를 건드려 diff 를 읽기 어려움. **실제**: L11(baseline 생성코드 오염)을 먼저 제거하자 생성물 diff 가 깨끗하게 읽혔고 **7.25.0**(15 minor) 적용 완료. 제외 사유가 다른 작업의 부산물로 사라진 사례 — §3 참조 |
 | 백엔드 아키텍처 리팩토링 | 현재 구조에 문제 없음. **범위를 넓히지 않는다** |
 
 ---
@@ -147,7 +181,7 @@ WS2 (빌드 현대화)  →  WS1 (Entra 전환)  →  WS3 (잔여 정리)
 ## 8. 참고 자료
 
 - WS1: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`
-- WS2: `docs/plans/2026-09-01-build-modernization-design.md`
+- WS2: ✅ 완료 → `docs/plans/logs/dependencies.md` 2026-09-01 entry (PR #164 머지, 페어 이관 완료)
 - `docs/ops/dependency-deferred.md` — L8·L10 보류 이력
 - `docs/ops/incident-log.md` — INC-2026-05-24-14(룰 5), INC 2026-06-15(R8 silent 회귀)
 - `CLAUDE.md` 룰 2 · 5 · 9 · 11 · 12

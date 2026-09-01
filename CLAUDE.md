@@ -453,7 +453,8 @@ versionCode 는 저장소 로컬 +1(`bump-version.sh`) 만으로는 안전하지
 - `scripts/sync-openapi.sh` — FastAPI 스펙을 `backend/openapi.json`으로 추출. 라우터/스키마 변경 시 필수 실행 + 같은 PR에 커밋. backend.yml의 drift detection step이 미커밋을 fast-fail로 차단.
 - `scripts/sync-legal-docs.sh` — 법적 고지 SSoT `docs/store/*.md` → `backend/app/legal/` 동기화 (Docker 빌드 컨텍스트 안으로). 백엔드가 이 사본을 md→HTML 렌더해 `/privacy`·`/account-deletion` 서빙 (Play 등록 URL). 정책 변경 시 SSoT 편집 → 스크립트 실행 → 같은 커밋 포함. drift 가드: `backend/tests/test_legal.py`.
 - `scripts/gen-plans-index.sh` (+ `gen_plans_index.py`) — `docs/plans/*.md` frontmatter 기반 `docs/plans/README.md` 자동 생성. **root-only scan** (`glob`, not `rglob`) — 하위 디렉토리(`_staging/`, `logs/` 등) 무시. status: `proposed`/`approved`/`in-progress`/`holding`/`deferred`/`shipped`/`superseded`/`abandoned`. active 섹션은 status 그룹별 하위 섹션 (진행 중/대기/보류) 렌더링. `docs/plans/_staging/` 은 gitignored scratch 폴더. pre-commit hook 자동 호출 + 별도 CI workflow (`docs-plans-index.yml`) 가 drift 차단. **D5**: missing frontmatter 는 silent skip (점진 도입 + 다중 PR coordination 안전), malformed 만 fail.
-- `scripts/setup-azure-alerts.sh` — Azure Monitor alert 8개 idempotent 프로비저닝 (`--dry-run`, `--delete`). Action Group + Activity Log 4 + Metric 4. 설계: `docs/plans/2026-06-03-azure-monitor-alerts-design.md`
+- `scripts/check-plans-links.sh` — `docs/plans/` 페어 참조 링크 가드. ledger 이관(`git rm`) 시 그 페어를 참조하던 **다른 문서**의 링크가 조용히 죽는 것을 차단한다(도입 시점 26건 적체 실측). 같은 줄에 실재하는 `docs/plans/logs/<topic>.md` 가 있으면 통과 — 이력 기록은 원문을 보존하고 리다이렉트만 병기하기 위한 예외. ledger 자신은 흡수한 페어를 출처로 인용하므로 검사 제외. pre-commit + `docs-plans-index.yml` 양쪽 배선. 조사용 `--list`(exit 0).
+- `scripts/setup-azure-alerts.sh` — Azure Monitor alert 8개 idempotent 프로비저닝 (`--dry-run`, `--delete`). Action Group + Activity Log 4 + Metric 4. 설계: `docs/plans/logs/process-infra.md`
 - `scripts/check-warm-baseline.sh` — Container App minReplicas < 1 (scale-to-zero 회귀) 감지. scale-to-zero 는 metric 미emit → Azure Monitor alert 사각지대라 스케줄드 CI(`warm-baseline-check.yml`, 매일 KST 09:17)로 확인. 실패 시 GitHub 워크플로 실패 알림 = 무료 alert.
 - `scripts/setup-reaper-job.sh` — orphan reaper Container Apps Job(주간 cron `0 18 * * 0`) idempotent 프로비저닝. UAI + `backend/reaper-job.yaml` `--yaml` 생성 (az CLI 함정 E1~E4 회피). 런북: `docs/ops/azure-container-apps-jobs.md`.
 - `scripts/setup-sentry-alerts.ps1` — Sentry Issue/Metric Alert 8개 idempotent 프로비저닝 (`-DryRun`). Issue Alert 6(Android·Backend 신규·회귀·빈도급증) + Metric Alert 2(Backend p95·에러율). B1~B5 재발방지 주석(PS case-insensitive 변수충돌·environment 404·interval 무효·dataset deprecated·team targetType) 포함.
@@ -488,10 +489,10 @@ backend/.venv/Scripts/python.exe -m pytest scripts/agents/test_doc_audit.py -q
 
 - `/verify-deploy <inc-id>` — MCP (Sentry/Azure) 로 Phase 5 운영 검증 자동화 (alembic head
   + 스키마 컬럼 + Sentry 신규 issue). INC 별 검증 1-command. 자세한 내용:
-  `docs/plans/2026-05-28-mcp-integration-setup-design.md` §3.3.
+  `docs/plans/logs/process-infra.md` §3.3.
 - `/naming-audit` — 명명/문서화 컨벤션 drift 점검 (ruff D + detekt naming + Azure CAF 표 sync).
   자세한 룰: `docs/conventions/naming.md`. 결정 기록:
-  `docs/plans/2026-06-02-naming-convention-audit-design.md`. 분기당 1~2회 권장.
+  `docs/plans/logs/process-infra.md`. 분기당 1~2회 권장.
 
 ### OpenAPI Generator (Android)
 - 입력: `backend/openapi.json` (git checked-in, `sync-openapi.sh`로 갱신)

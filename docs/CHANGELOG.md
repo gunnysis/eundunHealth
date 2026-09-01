@@ -457,9 +457,9 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
 ### ✅ Changes
 
 #### _staging → docs/plans/ 승격 (3건 shipped 문서)
-- **Added** `docs/plans/2026-06-05-frontend-major-improvement-design.md` — 프론트엔드 대규모 개선 설계 (Rev.2, 613줄)
-- **Added** `docs/plans/2026-06-05-frontend-major-improvement-plan.md` — 실행 계획 (Rev.2, 244줄)
-- **Added** `docs/plans/2026-06-06-frontend-regression-prevention-design.md` — 회귀 방지 설계 (90줄)
+- **Added** `docs/plans/2026-06-05-frontend-major-improvement-design.md` — 프론트엔드 대규모 개선 설계 (Rev.2, 613줄) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- **Added** `docs/plans/2026-06-05-frontend-major-improvement-plan.md` — 실행 계획 (Rev.2, 244줄) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- **Added** `docs/plans/2026-06-06-frontend-regression-prevention-design.md` — 회귀 방지 설계 (90줄) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 - 본문 상태 텍스트 frontmatter `shipped`와 동기화, 내부 `_staging/` 경로 참조 수정
 
 #### gen_plans_index.py shipped pr:null 검증 버그 수정
@@ -471,9 +471,9 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
 - **Modified** `docs/plans/logs/android.md` — `_staging/` → `docs/plans/` 경로 3건 수정
 
 ### 📁 Files Modified
-- `docs/plans/2026-06-05-frontend-major-improvement-design.md` (+613, new)
-- `docs/plans/2026-06-05-frontend-major-improvement-plan.md` (+244, new)
-- `docs/plans/2026-06-06-frontend-regression-prevention-design.md` (+90, new)
+- `docs/plans/2026-06-05-frontend-major-improvement-design.md` (+613, new) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- `docs/plans/2026-06-05-frontend-major-improvement-plan.md` (+244, new) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- `docs/plans/2026-06-06-frontend-regression-prevention-design.md` (+90, new) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 - `docs/plans/logs/android.md` (+3, -3)
 - `scripts/gen_plans_index.py` (+2, -2)
 - `scripts/test_gen_plans_index.py` (+21, -5)
@@ -598,7 +598,7 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
 - **Added** CLAUDE.md **룰 11** — ViewModel UDF-Enhanced 패턴 5개 체크리스트 + 허용 예외 + baseline.
 - **Added** `.github/workflows/android.yml` "Check collectAsState anti-pattern" CI step — import `$` anchor + 호출부 `grep -v` 필터, false positive 0.
 - **Modified** `.githooks/pre-commit` — collectAsState grep check 섹션 추가 (staged `.kt` 파일 한정, 룰 11).
-- **Added** `docs/plans/_staging/2026-06-06-frontend-regression-prevention-design.md` — 설계 문서 (D1~D6 결정 테이블 + 잔여 리스크).
+- **Added** `docs/plans/_staging/2026-06-06-frontend-regression-prevention-design.md` — 설계 문서 (D1~D6 결정 테이블 + 잔여 리스크). *(`_staging/` 은 gitignored scratch — 이후 루트 페어로 승격 후 ledger 이관 → `docs/plans/logs/android.md`)*
 
 #### 문서 동기화
 - **Modified** `CLAUDE.md` — Key patterns 섹션 UDF-Enhanced 반영, stale 버전 수정 (Sentry 8.16→8.42, Vico 2.1→3.1, Spotless 7.0→8.5, OkHttp/Coil 추가), pre-commit 설명 갱신.
@@ -700,7 +700,7 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
   - P1 Activity Log alerts 3개: ServiceHealth, ResourceHealth, Deletion (무료)
   - P2 Metric alerts 4개: PG CPU/Storage/Connections, CA 5xx (~$0.40/월)
   - P2 Activity Log alert 1개: PG Firewall 변경 (무료)
-- **Added**: `docs/plans/2026-06-03-azure-monitor-alerts-design.md` — 설계 문서 (D1~D8 의사결정, 옵션 비교, 검증 계획, 롤백 절차)
+- **Added**: `docs/plans/2026-06-03-azure-monitor-alerts-design.md` — 설계 문서 (D1~D8 의사결정, 옵션 비교, 검증 계획, 롤백 절차) *(이후 ledger 이관 → `docs/plans/logs/process-infra.md`)*
 - **Modified**: `docs/ops/monitoring-and-cost.md` — §7 Alert 섹션 신설, §4 비용 갱신 (+~700원), §5 체크리스트에 alert 확인 항목 추가
 - **Modified**: `docs/ops/operations-snapshot.md` — §12 Alert 인벤토리 신설 (8개 alert 테이블), §9 비용 갱신, §13 변경 이력 추가
 - **Modified**: `CLAUDE.md` — 자동화 스크립트 섹션에 `setup-azure-alerts.sh` 항목 추가
@@ -712,7 +712,7 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
 
 ### 📁 Files Modified
 - `scripts/setup-azure-alerts.sh` (+385 lines, new)
-- `docs/plans/2026-06-03-azure-monitor-alerts-design.md` (+149 lines, new)
+- `docs/plans/2026-06-03-azure-monitor-alerts-design.md` (+149 lines, new) *(이후 ledger 이관 → `docs/plans/logs/process-infra.md`)*
 - `docs/ops/monitoring-and-cost.md` (+65, -2 lines)
 - `docs/ops/operations-snapshot.md` (+33, -2 lines)
 - `docs/plans/README.md` (+4, -2 lines, auto-generated)
@@ -785,7 +785,7 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 ### Refs
 - PR: #58
 - Design + Plan: `docs/plans/2026-05-29-signup-error-banner-{design,plan}.md` (머지 후 `logs/android.md` entry 로 흡수 + git rm)
-- Supersedes RFC: `docs/plans/2026-05-27-signup-failed-ux-visibility-rfc.md`
+- Supersedes RFC: `docs/plans/2026-05-27-signup-failed-ux-visibility-rfc.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 - INC: `docs/ops/incident-log.md` INC-2026-05-26-01
 
 ---
@@ -803,7 +803,7 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 
 ### Refs
 - PRs: #52 vico migration / #53 healthConnect 1.1.0 stable / #54 starlette 1.1.0 / #55 kotlin docs
-- Design+plan: `docs/plans/2026-05-28-vico-3-migration-design.md` + `-plan.md`
+- Design+plan: `docs/plans/2026-05-28-vico-3-migration-design.md` + `-plan.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 - 트리거: 2026-05-28 dependabot 8 PR triage 세션 (PR #50 plan)
 - 보류 정책: `docs/ops/dependency-deferred.md`
 
@@ -825,7 +825,7 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 
 ### Refs
 - 진단: v0.1.3 Phase 5 Step 4 디바이스 검증 중 발견
-- 원본 design: `docs/plans/2026-05-26-applinks-deep-link-design.md`
+- 원본 design: `docs/plans/2026-05-26-applinks-deep-link-design.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 
 ---
 
@@ -852,8 +852,8 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 - assetlinks.json 의 SHA256 fingerprint 가 release keystore 와 일치하는지 디바이스에서 `adb shell pm get-app-links --user 0 com.gunnys.eundunhealth` 로 확인 (`verified` 표시).
 
 ### Refs
-- Design: `docs/plans/2026-05-26-applinks-deep-link-design.md`
-- Plan: `docs/plans/2026-05-26-applinks-deep-link-plan.md`
+- Design: `docs/plans/2026-05-26-applinks-deep-link-design.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- Plan: `docs/plans/2026-05-26-applinks-deep-link-plan.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 
 ---
 
@@ -890,8 +890,8 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 - 단위 테스트 케이스 추가: AppErrorTest +1, AuthErrorMappingTest +6 (신규), AuthViewModelTest +8
 
 ### Refs
-- Design: `docs/plans/2026-05-26-signup-confirmation-flow-design.md`
-- Plan: `docs/plans/2026-05-26-signup-confirmation-flow-plan.md`
+- Design: `docs/plans/2026-05-26-signup-confirmation-flow-design.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- Plan: `docs/plans/2026-05-26-signup-confirmation-flow-plan.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 
 ---
 

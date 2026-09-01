@@ -1,6 +1,6 @@
 ---
 type: plan
-status: proposed
+status: in-progress
 pr: null
 related_inc: null
 supersedes: null
@@ -20,7 +20,7 @@ tags: [azure, naming, caf, legacy-cleanup, acr-retention, cost]
 
 ```
 N1 (naming.md 정정)          ─── 저장소만. 완료
-N2 (룰 1 문언 보강)          ─── 저장소만
+N2 (룰 1 문언 보강)          ─── 저장소만. 완료
 ────────────────── 승인 게이트 ──────────────────
 A1 (빈 RG 삭제)     ─┐  무료·무위험
 A2 (dangling 정리)  ─┘
@@ -40,9 +40,9 @@ B1 (alert 재명명)   ─── 마지막 (미관)
 - `alert-*` 접두가 하우스 컨벤션임을 명시(공식 오인 방지).
 - 체크리스트 3항 추가: 공식 표에서 복사 / 태그 활용 / Global 범위 확인.
 
-**완료 판정**: 문서 내 `psql` 잔존 0건(정정 이력 서술 제외).
+**완료 판정**: 문서 내 `psql` 잔존 0건(정정 이력 서술 제외). → **달성**(커밋 `afe77c0`).
 
-### N2 — 룰 1(ACR untag) 문언 보강 (저장소만)
+### N2 — 룰 1(ACR untag) 문언 보강 (저장소만) ✅ 완료
 
 `CLAUDE.md` 룰 1 은 "untag 만 사용" 이라고만 적혀 있어, **dangling manifest 정리**를
 금지하는 것처럼 읽힌다. 실제 금지 대상은 "태그로 지목한 manifest 삭제" 다.
@@ -53,6 +53,8 @@ B1 (alert 재명명)   ─── 마지막 (미관)
   `redeploy.sh` 의 5개 보존만 적어 실제보다 안전해 보인다.
 
 **완료 판정**: 룰 1 을 읽고 dangling 정리 가능 여부를 판단할 수 있다.
+→ **달성**(커밋 `afe77c0`). 룰 1 에 "태그 있는 manifest = untag 만 / 태그 없는 manifest =
+digest 삭제 안전" 구분과 "CI 는 정리하지 않는다" 실측을 넣었다.
 
 ---
 

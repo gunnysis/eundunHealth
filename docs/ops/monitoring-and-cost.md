@@ -260,7 +260,7 @@ pwsh -File scripts\register-azure-credentials.ps1 -Verify
 
 ## 7. Azure Monitor Alerts
 
-> 설계 문서: `docs/plans/2026-06-03-azure-monitor-alerts-design.md`
+> 설계 문서: `docs/plans/logs/process-infra.md`
 > 프로비저닝 스크립트: `scripts/setup-azure-alerts.sh`
 
 ### 7.1 Action Group

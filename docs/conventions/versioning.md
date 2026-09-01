@@ -1,6 +1,6 @@
 # 버전 관리 컨벤션 (SSoT)
 
-> 근거: [Android Versioning](https://developer.android.com/studio/publish/versioning) · [Semantic Versioning 2.0.0](https://semver.org/) · [FastAPI version](https://fastapi.tiangolo.com/reference/fastapi/). 설계: `docs/plans/2026-06-10-app-version-spec-design.md`.
+> 근거: [Android Versioning](https://developer.android.com/studio/publish/versioning) · [Semantic Versioning 2.0.0](https://semver.org/) · [FastAPI version](https://fastapi.tiangolo.com/reference/fastapi/). 설계: `docs/plans/logs/process-infra.md`.
 
 ## 1. 두 개의 독립 버전
 

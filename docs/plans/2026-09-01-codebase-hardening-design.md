@@ -1,6 +1,6 @@
 ---
 type: design
-status: approved
+status: in-progress
 pr: null
 related_inc: null
 supersedes: null
@@ -12,7 +12,7 @@ tags: [hardening, silent-failure, concurrency, privacy, log-injection, ci-gate, 
 # 코드베이스 전수 점검 · 하드닝 설계
 
 - **작성일**: 2026-09-01
-- **상태**: 승인됨 (사용자 자율 권한 부여)
+- **상태**: **진행 중** — H1~H10 구현·커밋 완료, 머지 대기
 - **연관 작업**: `2026-09-01-entra-external-id-migration-{design,plan}.md`(선행) · `2026-09-01-tech-debt-runtime-modernization-{design,plan}.md`(T0~T7 완료)
 - **대상 버전**: v0.2.0 (사용자 가시 동작 변화: A1 라우팅 · A2 배지 표시)
 

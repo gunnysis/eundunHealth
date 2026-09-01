@@ -5,29 +5,23 @@
 > 컨벤션: 본 README 의 "워크플로" 섹션 + memory `plans-folder-archive-preference.md` + `design-plan-docs-convention.md`.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
-## 활성 작업 (페어 파일, 6)
+## 활성 작업 (페어 파일, 5)
 
-### 진행 중 (1)
-
-| 날짜 | 주제 | type | status | tags |
-|---|---|---|---|---|
-| 2026-09-01 | build-modernization | design | in-progress | refactoring, upgrade, kotlin, gradle-dsl, dependabot, backlog |
-
-### 대기 (proposed / approved) (5)
+### 진행 중 (5)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-09-01 | azure-resource-naming-and-legacy | design + plan | proposed | azure, naming, caf, legacy-cleanup, acr-retention, cost |
-| 2026-09-01 | codebase-hardening | design + plan | approved | hardening, silent-failure, concurrency, privacy, log-injection, ci-gate, doc-drift |
-| 2026-09-01 | entra-external-id-migration | design + plan | proposed | auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11 |
-| 2026-09-01 | legacy-modernization-program | design | proposed | legacy-cleanup, modernization, program, entra, kotlin, dependabot |
-| 2026-09-01 | tech-debt-runtime-modernization | design + plan | proposed | tech-debt, modernization, detekt, openapi-generator, python-runtime, toolchain |
+| 2026-09-01 | azure-resource-naming-and-legacy | design + plan | in-progress | azure, naming, caf, legacy-cleanup, acr-retention, cost |
+| 2026-09-01 | codebase-hardening | design + plan | in-progress | hardening, silent-failure, concurrency, privacy, log-injection, ci-gate, doc-drift |
+| 2026-09-01 | entra-external-id-migration | design + plan | in-progress | auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11 |
+| 2026-09-01 | legacy-modernization-program | design | in-progress | legacy-cleanup, modernization, program, entra, kotlin, dependabot |
+| 2026-09-01 | tech-debt-runtime-modernization | design + plan | in-progress | tech-debt, modernization, detekt, openapi-generator, python-runtime, toolchain |
 
 ## Topic Ledgers (완료 작업 history)
 
 - [Android](logs/android.md) — recent 16, older 5
 - [Backend](logs/backend.md) — recent 3, older 1
-- [Dependencies](logs/dependencies.md) — recent 2, older 4
+- [Dependencies](logs/dependencies.md) — recent 3, older 4
 - [Process & Infra](logs/process-infra.md) — recent 17, older 6
 
 ## 워크플로
@@ -35,6 +29,7 @@
 1. **새 작업 시작**: `_templates/{design,plan}.md` 복사 → `docs/plans/YYYY-MM-DD-<topic>-{design,plan}.md` 페어 작성. frontmatter 의 `ledger_topic` 필드에 `android` / `backend` / `dependencies` / `process-infra` 중 하나.
 2. **작업 진행**: 페어 파일 update. PR 작성 시 페어 link.
 3. **PR 머지 후**: 해당 topic ledger (`logs/<ledger_topic>.md`) 의 `## Recent (last 90 days)` 섹션 맨 위에 압축 entry 추가 (~15-30줄). 페어 파일 `git rm`. 같은 commit 또는 후속 mechanical commit.
-4. **(자동)** `gen-plans-index.sh` 가 매 commit 시 ledger 의 Recent/Older 자동 재정렬 (90일 기준) + 본 INDEX 갱신.
-5. **(가드)** shipped frontmatter 인 페어가 루트에 남아있으면 CI fail (`docs-plans-index.yml`).
+4. **(같은 commit) 참조 리다이렉트**: `git rm` 한 페어를 참조하던 문서가 있으면 함께 고친다 — 길잡이 참조는 경로를 ledger 로 **교체**, 이력 기록(CHANGELOG 의 "Added")은 원문을 두고 **리다이렉트를 병기**한다. 빠뜨리면 링크가 조용히 죽는다(2026-09-01 도입 시점 26건 적체). 검사: `bash scripts/check-plans-links.sh`
+5. **(자동)** `gen-plans-index.sh` 가 매 commit 시 ledger 의 Recent/Older 자동 재정렬 (90일 기준) + 본 INDEX 갱신.
+6. **(가드)** shipped frontmatter 인 페어가 루트에 남아있으면 CI fail (`docs-plans-index.yml`). 같은 워크플로가 끊긴 페어 참조도 차단한다(pre-commit 에도 배선).
 

@@ -316,7 +316,7 @@ GitHub Actions:
   - `workflow_dispatch` 지원 — 수동 실행 가능 (`gh workflow run backend.yml --ref main`)
   - Azure 로그인 = **OIDC federated**(P2, PR #142 — secrets `AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID`). 구 `AZURE_CREDENTIALS` 는 **2026-07-03 완전 제거**(GitHub secret + Entra 앱 비밀번호 credential 모두 — push deploy·schedule cron 양 트리거 OIDC 실측 green 후 조기 종결, CI/CD design §6.2 사후②). OIDC 장애 시 롤백 = 워크플로 yml revert + `pwsh -File scripts/register-azure-credentials.ps1`(SP credential 재생성+재등록, 기존 secret 불요)
 - **`.github/workflows/android.yml`** — `app/**` 변경 시 spotlessCheck + **collectAsState anti-pattern 검사** (룰 11) + detektDebug + testDebugUnitTest + assembleDebug + PR이면 APK artifact 업로드
-- **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`update-upload-ledger.sh`, 룰 13). 프로덕션 승격은 Console 수동. 설계: `docs/plans/2026-07-02-android-cd-play-upload-design.md`
+- **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`update-upload-ledger.sh`, 룰 13). 프로덕션 승격은 Console 수동. 설계: `docs/plans/logs/process-infra.md`
 - **`.github/dependabot.yml`** — pip + github-actions + gradle 주간 PR (KST 월 06:00, 보안 패치는 단일 PR로 그룹화)
 
 로컬 자동화:
@@ -414,7 +414,7 @@ Claude Code MCP 서버 4종 운영 활용:
 - `scripts/hooks/secretref-guard.sh` — 룰 6 commit-time 가드 (PreToolUse hook)
 - `scripts/claude-context.sh` — SessionStart 보류 검증 리마인더
 
-자세한 설계: `docs/plans/2026-05-28-mcp-integration-setup-design.md`.
+자세한 설계: `docs/plans/logs/process-infra.md`.
 
 ---
 
@@ -422,7 +422,7 @@ Claude Code MCP 서버 4종 운영 활용:
 
 > 프로비저닝: `bash scripts/setup-azure-alerts.sh` (idempotent)
 > 롤백: `bash scripts/setup-azure-alerts.sh --delete`
-> 설계: `docs/plans/2026-06-03-azure-monitor-alerts-design.md`
+> 설계: `docs/plans/logs/process-infra.md`
 
 ### Action Group
 

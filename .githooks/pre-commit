@@ -63,6 +63,20 @@ if [ -n "$CHANGED_PLANS" ]; then
     git add "$REPO_ROOT/docs/plans/README.md"
 fi
 
+# 페어 참조 링크 가드 — 어느 .md 든 staged 면 검사한다.
+# 페어를 ledger 로 이관하면서 `git rm` 하면, 그 페어를 참조하던 **다른 문서**의 링크가
+# 조용히 죽는다(이관 컨벤션에 리다이렉트 단계가 없었다). 여기서 잡지 않으면 CI 까지 간다.
+CHANGED_MD=$(git diff --cached --name-only --diff-filter=ACMD \
+    | grep -E '\.md$' || true)
+
+if [ -n "$CHANGED_MD" ]; then
+    echo "[pre-commit] *.md changes detected → docs/plans 참조 링크 검사"
+    if ! bash "$REPO_ROOT/scripts/check-plans-links.sh"; then
+        echo "[pre-commit] 끊긴 페어 참조가 있습니다. 위 안내대로 ledger 로 리다이렉트하세요."
+        exit 1
+    fi
+fi
+
 # ---------- 3) Backend Python ----------
 CHANGED_PY=$(git diff --cached --name-only --diff-filter=ACM \
     | grep -E '^backend/.*\.py$' || true)

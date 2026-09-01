@@ -1,6 +1,6 @@
 ---
 type: design
-status: proposed
+status: in-progress
 pr: null
 related_inc: null
 supersedes: null
@@ -12,7 +12,7 @@ tags: [tech-debt, modernization, detekt, openapi-generator, python-runtime, tool
 # 기술부채 청산 · 런타임 최신화 설계
 
 - **작성일**: 2026-09-01
-- **상태**: 작성 중 (승인 대기)
+- **상태**: **진행 중** — T0~T5·T7 완료, T6(plans ledger 이관) 진행 중
 - **연관 작업**: `2026-09-01-legacy-modernization-program-design.md`(WS3 흡수) · `2026-09-01-entra-external-id-migration-{design,plan}.md`(선행)
 - **대상 버전**: 앱 버전 무관 (빌드·툴체인·백엔드 런타임·문서)
 - **선행 작업**: Entra 전환 브랜치 main 머지 (§6 예외 항목 제외)

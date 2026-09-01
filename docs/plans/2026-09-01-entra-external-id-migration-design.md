@@ -1,6 +1,6 @@
 ---
 type: design
-status: proposed
+status: in-progress
 pr: null
 related_inc: INC-2026-05-24-14
 supersedes: null
@@ -12,9 +12,9 @@ tags: [auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11
 # Supabase Auth → Microsoft Entra External ID 전환 설계
 
 - **작성일**: 2026-09-01
-- **상태**: 작성 중 (승인 대기)
+- **상태**: **진행 중** — 구현 완료(브랜치 `feature/entra-external-id-migration`), 머지 대기
 - **상위 프로그램**: `2026-09-01-legacy-modernization-program-design.md` (WS1)
-- **연관 작업**: INC-2026-05-24-14(룰 5 근거) · `entra-external-id-cost-review`(2026-06-09 전환 보류 결정 — 본 문서가 뒤집음) · **`2026-09-01-build-modernization-design.md`(같은 빌드 파일을 건드림 — 현대화를 먼저 하는 것을 권장)**
+- **연관 작업**: INC-2026-05-24-14(룰 5 근거) · `entra-external-id-cost-review`(2026-06-09 전환 보류 결정 — 본 문서가 뒤집음) · **빌드 현대화(WS2, PR #164 머지 완료 — `docs/plans/logs/dependencies.md` 2026-09-01 entry)** — 같은 빌드 파일을 건드리므로 현대화를 먼저 했다
 - **구현 플랜**: `docs/plans/2026-09-01-entra-external-id-migration-plan.md`
 - **대상 버전**: Android versionCode 34+ / 백엔드·문서는 앱 버전 무관
 - **선행 작업**: §6 Step 0 (프로바이더 등록 + 테넌트 생성 + 한국어·브랜딩 설정)

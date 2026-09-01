@@ -68,11 +68,11 @@ Phase 5  머지 후 운영 검증 (실기기 E2E)
 | # | 항목 | 성격 |
 |---|---|---|
 | R-1 | `User.DeleteRestore.All` 관리자 동의 | **대표 수행** — 포털 클릭 1회. 없으면 `deletedItems` 파기가 403 → 30일 소프트 삭제로 남아 게시된 "즉시 영구 삭제" 문구와 어긋난다 |
-| R-2 | push + PR | 대표 승인 대기 |
+| R-2 | push + PR | ⏸ **보류 (회원님 명시 지시, 2026-09-01)**. 이 브랜치 위에 `feature/tech-debt-runtime-modernization`(T0~T7 + H1~H10)이 **stacked** 로 쌓여 있다 — 재개 시 **이 브랜치를 먼저 push** 해 PR base 를 확보해야 위쪽 PR diff 에 여기 커밋 10건이 섞이지 않는다 |
 | R-3 | 로컬 `main` 잉여 커밋 2건(`c8d7600`·`c7d4cd3`) | 브랜치 생성 전 main 에 직접 커밋됨. 둘 다 feature 브랜치의 조상이라 `git branch -f main origin/main` 으로 정리해도 **아무것도 잃지 않는다**. 대표 판단 대기 |
 | R-4 | 테스트용 redirect URI `http://localhost` 제거 | Phase 5 완료 후 |
 | R-5 | Supabase 정리(KV secret 2종 → 프로젝트 삭제) | Phase 5 통과 후. **순서를 바꾸면 롤백 경로가 먼저 사라진다** |
-| R-6 | `doc_audit.py` off-by-one | 본 전환과 무관, 별도 PR |
+| ~~R-6~~ | `doc_audit.py` off-by-one | ✅ **해소** — `tech-debt-runtime-modernization` T5 에서 처리(parametrize 확장분 가산). 실측: 수집기 **114** == pytest **114** |
 
 ### 설계 대비 실제 (전환 중 발견해 정정한 것)
 
@@ -304,12 +304,19 @@ bash scripts/sync-openapi.sh   # openapi.json 재생성 — drift 가드가 CI�
 
 **Files:** `backend/containerapp.yaml`, `backend/reaper-job.yaml`, `.github/workflows/backend.yml`, `docs/ops/operations-snapshot.md`, `backend/.env.example`, `backend/docker-compose.yml`
 
-- [ ] KV에 `entra-*` 4종 등록 완료 (Phase 0-8) — **선행 확인 필수**
-- [ ] `containerapp.yaml` secrets/env 교체 (**주석은 ASCII만** — cp949 함정)
-- [ ] `reaper-job.yaml` 동일 교체. UAI `id-eundunhealth-reaper`의 KV RBAC 범위가 vault 단위인지 확인
-- [ ] `backend.yml:239` `REQUIRED="database-url entra-tenant-id entra-subdomain entra-backend-client-id entra-backend-client-secret sentry-dsn-backend"`
-- [ ] `backend.yml` dummy env (L72-73, L125-126) 교체
-- [ ] `operations-snapshot.md` §2 Secrets 갱신
+전건 완료 (실측 2026-09-01 — 아래 근거는 파일에서 직접 확인한 값):
+
+- [x] KV에 `entra-*` 4종 등록 완료 (Phase 0-8) — `operations-snapshot.md:219`
+- [x] `containerapp.yaml` secrets/env 교체 — `:35-45` KV 참조 4종 + `:62` `secretRef`
+- [x] `reaper-job.yaml` 동일 교체 — `:26-36` KV 참조 4종 + `:55` `secretRef`
+- [x] `backend.yml` `REQUIRED` 6종 — **`:246`**(계획서의 `:239` 는 작성 시점 줄번호. 이후
+      변경으로 이동했다 — **줄번호는 검증 기준이 못 된다. 문자열로 확인할 것**)
+- [x] `backend.yml` dummy env 교체
+- [x] `operations-snapshot.md` §2 Secrets 갱신 — `:56` `:69` `:86` `:102`
+
+> **구 Supabase secret 2종은 의도적으로 남아 있다**(`supabase-url`·`supabase-service-role-key`,
+> `operations-snapshot.md:168`). 롤백 여지 확보용이며 R-5 에서 Phase 5 통과 후 삭제한다 —
+> **순서를 바꾸면 롤백 경로가 먼저 사라진다.**
 
 **Step: commit**
 ```bash

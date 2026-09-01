@@ -1,6 +1,6 @@
 ---
 type: plan
-status: proposed
+status: in-progress
 pr: null
 related_inc: null
 supersedes: null
@@ -42,6 +42,56 @@ T5 doc_audit    ─┤
 T6 plans 이관   ─┘
                                       T7 손작성 위반 분류·정리 ──▶ 마지막
 ```
+
+---
+
+## 진행 현황 (MEASURED 2026-09-01)
+
+| T | 결과 | 실측 |
+|---|---|---|
+| T0 툴체인 정본 일원화 | ✅ | `backend.yml` 별도 핀 제거 → `requirements-dev.txt` 단일 정본. mypy **1.13 → 2.3.1** 정합 후 전 게이트 green |
+| T1 detekt 생성코드 제외 | ✅ | baseline **55 → 19**(생성코드 36 → 0). rule 별 `excludes: ['**/generated/**']` |
+| T2 openapi-generator | ✅ **해소** (보류 아님) | **7.10.0 → 7.25.0**(15 minor). `Response<T>` 계약·패키지 구조·gson `@SerializedName` 유지 확인 후 진행 |
+| T3 Python 3.12 → 3.14 | ✅ | `python:3.14-slim` · CI 2곳 · ruff `py314` · mypy `3.14` |
+| T4 Gradle 9.6.0 → 9.7.1 | ✅ | wrapper 갱신, AGP 9.3.2 호환 |
+| T5 doc_audit 수집기 | ✅ | parametrize 확장분 가산 → 수집기 **114** == pytest **114** |
+| T6 plans ledger 이관 | 🔄 부분 | `build-modernization`(PR #164 머지) 이관 완료. 나머지는 머지 대기 |
+| T7 손작성 위반 정리 | ✅ | baseline **19 → 3**. 오탐 5건은 **억제가 아니라 근본수정** |
+
+**최종 게이트 (2026-09-01)**: Android `spotlessCheck`·`detektDebug`·`testDebugUnitTest`
+(**129 tests / 0 failure / 27 files**)·`assembleRelease`(R8) 전부 green.
+Backend `pytest 114 passed` / coverage **98%** / `ruff` clean / `mypy` 42 files clean /
+`bandit` no issues / `pip-audit --strict` no vulnerabilities.
+
+### T7 에서 얻은 것 — baseline 은 발견을 숨긴다
+
+**detekt baseline 은 같은 baseline ID 를 가진 복수 findings 를 한 줄로 합친다.**
+T7 착수 시 "19건 중 손작성 ~10건" 으로 알고 있었으나, baseline 을 **비우고** 다시 돌리자
+`RedundantSuspendModifier` 한 줄 뒤에 **4건**이 숨어 있었다.
+
+그 4건은 억제 대상이 아니라 **타입 추론 문제**였다:
+
+- `HealthConnectDataSource` — `private val client by lazy { ... }` 의 **타입을 명시하지 않아**
+  detekt 가 그 프로퍼티를 통한 호출의 수신자를 못 풀었다. `connect-client-1.1.0.aar` 를
+  `javap` 로 열어 해당 API 가 `Continuation` 을 받는 **진짜 suspend** 임을 확인한 뒤,
+  타입 명시 하나로 **4건 → 0건**.
+- `GoalRepositoryImpl` — 람다 파라미터가 암묵 `it` 이라 수신자를 못 풀어 private 확장 함수를
+  미사용으로 오탐. `{ entry: ProfileHistoryEntry -> ... }` 로 명시해 해소.
+  (중간에 "지역 변수에 타입을 붙이면 되겠다" 는 가설을 세웠는데 **틀렸다** — 문제는 변수가
+  아니라 **람다 수신자**였다. 가설이 빗나가면 갈아끼우지 말고 다시 측정할 것.)
+
+→ **재발 방지 2가지**: ① 오탐을 `@Suppress` 로 덮기 전에 **왜 못 푸는지**를 본다. 타입
+명시로 사라지면 그건 오탐이 아니라 **우리 코드의 모호성**이다. ② `@Preview`(9건)·Hilt
+`@Binds`(1건)처럼 **구조적으로 영원히 발생하는 것은 baseline 이 아니라 설정**으로 뺀다
+(`ignoreAnnotated`). baseline 에 두면 프리뷰를 추가할 때마다 재생성해야 해 만성 drift 가 된다.
+
+### 남은 판단 (회원님 결정 필요)
+
+`MaxLineLength` 3건(`DatabaseModule`·`ExerciseDbDataSource`·`HealthRepositoryImpl`)이
+baseline 에 남아 있다. **줄바꿈으로 고칠 수 없다** — ktlint 의 `function-signature` /
+`function-expression-body` 규칙이 `spotlessApply` 때 되돌린다. `.editorconfig` 에
+`max_line_length` 를 넣어 두 도구를 맞추면 해결되지만, 실측 결과 **55 파일 / -184 줄**의
+무관한 재포맷이 함께 일어난다(T7 범위 밖). 현재는 **A안(baseline 3건 유지)** 상태다.
 
 ---
 
@@ -197,18 +247,32 @@ cd backend && .venv/Scripts/python.exe -m pytest tests/ --collect-only -q | tail
 
 ---
 
-## T6 — plans 문서 ledger 이관
+## T6 — plans 문서 ledger 이관 (부분 완료)
 
-**Files:** `docs/plans/logs/process-infra.md`, 완료된 페어 파일
+**Files:** `docs/plans/logs/{dependencies,process-infra}.md`, 완료된 페어 파일
 
-Entra 머지 후 수행. 컨벤션(`docs/plans/README.md` 워크플로 3항):
-1. 완료 페어의 핵심 결정 + outcome 을 15~30줄 entry 로 `logs/process-infra.md` 의
+컨벤션(`docs/plans/README.md` 워크플로 3항):
+1. 완료 페어의 핵심 결정 + outcome 을 15~30줄 entry 로 해당 topic ledger 의
    `## Recent (last 90 days)` 맨 위에 추가
 2. 페어 파일 `git rm`
 3. `bash scripts/gen-plans-index.sh` (pre-commit 이 자동 호출)
 
-대상: `entra-external-id-migration-{design,plan}` · `build-modernization-design` ·
-`legacy-modernization-program-design`(WS1·WS2 완료 반영 후)
+**이관 기준을 "작업 완료" 가 아니라 "머지 완료" 로 못 박는다.** 코드가 브랜치에만 있는데
+ledger 에 완료로 적으면 문서가 실제보다 앞선 상태를 주장하게 된다. `gen_plans_index.py` 도
+같은 전제다 — `status: shipped` 페어가 루트에 남으면 CI 가 fail 시킨다(워크플로 5항).
+
+| 대상 | ledger | 상태 |
+|---|---|---|
+| `build-modernization-design` | `logs/dependencies.md` | ✅ **이관 완료** — PR [#164](https://github.com/gunnysis/eundunHealth/pull/164) **머지됨** |
+| `entra-external-id-migration-{design,plan}` | `process-infra` | ⏸ 머지 대기 (브랜치 상태) |
+| `codebase-hardening-{design,plan}` | `process-infra` | ⏸ 머지 대기 |
+| 본 페어(`tech-debt-runtime-modernization`) | `process-infra` | ⏸ 머지 대기 |
+| `legacy-modernization-program-design` | `process-infra` | ⏸ WS1 머지 후(우산 문서라 마지막) |
+| `azure-resource-naming-and-legacy-{design,plan}` | `process-infra` | ⏸ Tier A/B **승인·실행 후** |
+
+> **함정**: 페어를 `git rm` 하면 다른 문서의 참조가 **조용히 깨진다**. #164 이관 때 실제로
+> 4곳이 끊겼다(`dependency-deferred.md` · Entra design · 우산 문서 2곳). 이관 커밋에서
+> `grep -rn '<제거한 파일명>' --include=*.md .` 로 전수 확인하고 ledger entry 로 리다이렉트할 것.
 
 ---
 

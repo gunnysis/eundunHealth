@@ -189,7 +189,7 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 **자동 경로 (권장)**: 태그 `v*` push → `.github/workflows/release.yml` 이 environment `play-release`
 (required reviewer 승인) 게이트 후 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB 빌드 →
 **Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`scripts/update-upload-ledger.sh`)까지 수행.
-프로덕션 승격은 Play Console 수동 유지. 설계: `docs/plans/2026-07-02-android-cd-play-upload-design.md`.
+프로덕션 승격은 Play Console 수동 유지. 설계: `docs/plans/logs/process-infra.md`.
 
 ```bash
 bash scripts/bump-version.sh 0.1.19          # 버전 bump (+원장 단조 가드)
