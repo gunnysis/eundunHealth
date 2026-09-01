@@ -1,6 +1,6 @@
 ---
 type: plan
-status: proposed
+status: in-progress
 pr: null
 related_inc: INC-2026-05-24-14
 supersedes: null
@@ -40,6 +40,51 @@ Phase 3  문서 — 방침/스냅샷/README/CLAUDE.md 룰 5·11
 Phase 4  전체 회귀 + PR
 Phase 5  머지 후 운영 검증 (실기기 E2E)
 ```
+
+---
+
+## 진행 상황 (2026-09-01 기준)
+
+**Phase 0~4(Step 3)까지 완료. 푸시하지 않았다 — 브랜치는 로컬에만 있다.**
+
+| Phase | 상태 |
+|---|---|
+| 0 테넌트 준비 | ✅ (잔여: `User.DeleteRestore.All` 관리자 동의 1건) |
+| 1 백엔드 | ✅ `5f9f515` `3c1cd05` `c4dbe38` `b3d46bb` |
+| 2 Android | ✅ `4c01daf` |
+| 3 문서·룰 | ✅ `23a3bfc` |
+| 4 회귀 | ✅ Step 1~3. **Step 4(push + PR) 보류 — 대표 지시** |
+| 5 운영 검증 | 미착수 (머지 필요) |
+
+### 재개 시 첫 번째로 읽을 것
+
+**머지하면 현재 Play 배포본(v0.1.19)이 즉시 401 이 된다.** main 머지 → `backend.yml`
+자동 배포 → 백엔드가 Entra 토큰만 검증하는데 배포본은 Supabase 토큰을 보낸다.
+실사용자 0명 전제로 수용된 결과지만 **되돌리기 어려운 지점**이므로, 머지와
+새 앱 버전(versionCode 34) 업로드를 붙여서 계획한다.
+
+### 잔여 작업
+
+| # | 항목 | 성격 |
+|---|---|---|
+| R-1 | `User.DeleteRestore.All` 관리자 동의 | **대표 수행** — 포털 클릭 1회. 없으면 `deletedItems` 파기가 403 → 30일 소프트 삭제로 남아 게시된 "즉시 영구 삭제" 문구와 어긋난다 |
+| R-2 | push + PR | 대표 승인 대기 |
+| R-3 | 로컬 `main` 잉여 커밋 2건(`c8d7600`·`c7d4cd3`) | 브랜치 생성 전 main 에 직접 커밋됨. 둘 다 feature 브랜치의 조상이라 `git branch -f main origin/main` 으로 정리해도 **아무것도 잃지 않는다**. 대표 판단 대기 |
+| R-4 | 테스트용 redirect URI `http://localhost` 제거 | Phase 5 완료 후 |
+| R-5 | Supabase 정리(KV secret 2종 → 프로젝트 삭제) | Phase 5 통과 후. **순서를 바꾸면 롤백 경로가 먼저 사라진다** |
+| R-6 | `doc_audit.py` off-by-one | 본 전환과 무관, 별도 PR |
+
+### 설계 대비 실제 (전환 중 발견해 정정한 것)
+
+| # | 초안 | 실제 |
+|---|---|---|
+| F4-a | issuer = `{subdomain}.ciamlogin.com/...` | **틀림.** 서브도메인이 tenantId. discovery 에서 읽도록 변경 + 인자 계약 테스트로 박제 |
+| F7 | 별도 Maven 저장소 불필요 | **틀림.** `display-mask` 가 Maven Central·Google Maven 모두 404. DuoSDK 피드를 `content` 로 좁혀 추가 |
+| F11 | (없음) | 검증 메일이 영어. 브랜딩 범위 밖이며 한국어화는 `OnOtpSend` 커스텀 확장 필요 → 현 시점 Won't-do |
+| 권한 | `User.ReadWrite.All` 로 충분 | **부족.** `deletedItems` 삭제는 `User.DeleteRestore.All` 필요(공식 권한표) |
+| §5.3 | `Launching` / `AwaitingReturn` 2상태 | **1개로 합침.** MSAL 이 "Custom Tab 표시됨" 콜백을 주지 않아 전이 근거가 없다 |
+| 룰 12 | MSAL keep 필요 여부 미정 | keep 불필요. 대신 **nimbus-jose-jwt → Tink 미존재로 R8 실패** → `-dontwarn` |
+| 태스크 분할 | 2-1(의존성)을 단독 커밋 | 불가. pre-commit 이 컴파일을 요구해 2-1~2-5 를 한 커밋으로 합침 |
 
 ---
 
