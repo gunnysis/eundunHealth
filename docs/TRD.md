@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-07-03, v0.1.19 — Play 프로덕션 = v0.1.19/33[2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29]):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-09-01, 저장소 v0.2.0/34 = Supabase → Entra External ID 전환[미출시] — Play 프로덕션 = v0.1.19/33[2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29]):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -36,7 +36,7 @@
 | 차트 라이브러리 | 미사용 | **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix — v0.1.5 #54 에서 1.1.0 도입 → 1.2.1 → PR #123 에서 1.3.1) |
-| versionCode / versionName | (미정) | **33 / 0.1.19** — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| versionCode / versionName | (미정) | **34 / 0.2.0** (저장소 SSoT — Play 프로덕션은 33 / 0.1.19) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
 | Alembic head | (미정) | `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |

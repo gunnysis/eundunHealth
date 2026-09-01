@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 프로덕션 버전 v0.1.19 (versionCode 33) — 2026-07-03 자동 CD(태그 push → `release.yml`, 내부 트랙) 후 같은 날 프로덕션 승격. 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성). 2026-07-29 Azure RG 이관(`apps` → `rg-eundunhealth-prod-krc`, 단일 RG — 서비스 URL 무영향)
+- **현재 단계** — **프로덕션 정식 출시(LIVE)**. 저장소 버전과 스토어 버전이 다르다 — **저장소 = v0.2.0 (versionCode 34, Entra 전환, 미출시)** / **Play 프로덕션 = v0.1.19 (versionCode 33)**. Google Play 프로덕션 출시·승인 완료(2026-06-29) — 2026-07-03 자동 CD(태그 push → `release.yml`, 내부 트랙) 후 같은 날 프로덕션 승격. 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성). 2026-07-29 Azure RG 이관(`apps` → `rg-eundunhealth-prod-krc`, 단일 RG — 서비스 URL 무영향)
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -89,7 +89,7 @@
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.64.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 87/87 PASS, coverage ~97% (sysmon core) |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 114/114 PASS, coverage ~97% (sysmon core) |
 
 ### 인프라
 
@@ -165,7 +165,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 | `GET` / `POST` | `/weekly-plan` | 주간 운동 계획 |
 | `PATCH` | `/weekly-plan/complete` | 일자별 완료 표시 |
 | `GET` | `/weekly-plan/history?page=&size=` | 페이지네이션 |
-| `GET` | `/weekly-plan/previous?week_start=` | v0.2 알고리즘 입력 |
+| `GET` | `/weekly-plan/previous?weekStart=` | v0.2 알고리즘 입력 |
 | `GET` | `/weekly-plan/statistics?weeks=12` | v0.2 완료율 + 스트릭 |
 | `GET` / `POST` | `/badges`, `/badges/{key}` | 9 종 |
 | `GET` / `PUT` | `/goals` | v0.3 |
@@ -382,7 +382,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.19` (versionCode `33`) — **Google Play 프로덕션 정식 출시(LIVE)** — 프로덕션 = v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인). v0.1.19 = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
+**현재 버전** — 저장소 `0.2.0` (versionCode `34`, Supabase → Entra External ID 전환, **미출시**) / Play 프로덕션 `0.1.19` (versionCode `33`) — **Google Play 프로덕션 정식 출시(LIVE)** — 프로덕션 = v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인). v0.1.19 = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
 
 ### 마일스톤 진행
 

@@ -252,11 +252,11 @@
 | `GET` | `/profile` | 프로필 조회 | v0.1 |
 | `PUT` | `/profile` | 프로필 생성/수정 (restDay 포함, 매 호출마다 history 자동 기록) | v0.1 / v0.3 |
 | `GET` | `/profile/history?limit=50` | 프로필 변경 이력 (체형 진행 차트용) | v0.3 |
-| `GET` | `/weekly-plan?week_start=` | 주간 계획 조회 | v0.1 |
+| `GET` | `/weekly-plan?weekStart=` | 주간 계획 조회 | v0.1 |
 | `POST` | `/weekly-plan` | 주간 계획 생성 | v0.1 |
 | `PATCH` | `/weekly-plan/complete` | 운동 완료 토글 | v0.1 |
 | `GET` | `/weekly-plan/history?page=&size=` | 히스토리 조회 (페이지네이션) | v0.1 |
-| `GET` | `/weekly-plan/previous?week_start=` | 직전 주 plan (excludeIds 알고리즘 입력) | v0.2 |
+| `GET` | `/weekly-plan/previous?weekStart=` | 직전 주 plan (excludeIds 알고리즘 입력) | v0.2 |
 | `GET` | `/weekly-plan/statistics?weeks=12` | 주간 완료율 + 현재/최장 스트릭 | v0.2 |
 | `GET` | `/badges` | 배지 목록 조회 (9종) | v0.1 / v0.3 |
 | `POST` | `/badges/{key}` | 배지 수여 | v0.1 |
