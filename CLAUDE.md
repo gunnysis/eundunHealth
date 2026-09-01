@@ -220,6 +220,19 @@ az acr repository untag --name eundunhealthacr --image eundunhealth-api:<tag>
 ```
 또는 `bash C:/programming/docker/eundunhealth-api/redeploy.sh`의 자동 후크에 맡길 것. `monitoring-and-cost.md §6.1` 매트릭스 참조.
 
+**금지 대상은 "태그로 지목한 manifest 삭제" 이지 정리 전체가 아니다.** 두 가지를 구분할 것:
+- **태그 있는 manifest** → `untag` 만. digest 공유(`latest`·`fastapi-latest`) 때문에 위험.
+- **태그 없는(dangling) manifest** → digest 로 삭제해도 안전하다. 태그가 없으니 공유 대상도 없다.
+  `az acr manifest delete --registry eundunhealthacr --name eundunhealth-api@<digest> --yes`
+
+**`untag` 만으로는 용량이 회수되지 않는다** — 태그만 떼고 manifest 는 남는다. 그래서 정리는
+untag → dangling 삭제 2단계여야 한다.
+
+**CI 는 정리하지 않는다** (실측 2026-09-01): `backend.yml` 은 배포마다 `<sha7>`+`latest` 를
+push 하지만 untag/delete 단계가 없다. `redeploy.sh` 의 "최근 5개 보존" 은 **로컬 수동 경로
+전용**이다. 그 결과 매니페스트 68개(태그 54 + dangling 14)·2.37GB/10GB 가 쌓였다.
+보존 정책 설계: `docs/plans/2026-09-01-azure-resource-naming-and-legacy-{design,plan}.md`.
+
 ### 룰 2 — 릴리스 산출물은 `releaseArtifacts` 하나로만 (INC-04)
 AAB와 APK를 따로 빌드하면 사이에 versionCode가 바뀌어 어긋날 수 있다. **반드시**:
 ```bash
