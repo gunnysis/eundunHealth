@@ -11,7 +11,11 @@ import java.time.LocalDate
 class WeeklyPlanGeneratorTest {
     private val monday = LocalDate.of(2026, 6, 8) // 월요일
 
-    private fun ex(id: String, type: ExerciseType = ExerciseType.STRENGTH) = Exercise(id, "n$id", "chest", "body weight", "", emptyList(), 3, 10, type)
+    // ktlint `function-signature` ↔ detekt `MaxLineLength` 충돌 — 사유는 `di/DatabaseModule.kt` 주석 참조.
+    // (detektDebug 는 테스트 소스를 분석하지 않지만 "app/src 전체 140자 초과 0" 불변식을 유지한다)
+    @Suppress("ktlint:standard:function-signature")
+    private fun ex(id: String, type: ExerciseType = ExerciseType.STRENGTH) =
+        Exercise(id, "n$id", "chest", "body weight", "", emptyList(), 3, 10, type)
 
     private fun pool(prefix: String, n: Int, type: ExerciseType = ExerciseType.STRENGTH) = (1..n).map { ex("$prefix$it", type) }
 

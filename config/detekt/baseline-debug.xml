@@ -1,9 +1,5 @@
 <?xml version="1.0" ?>
 <SmellBaseline>
   <ManuallySuppressedIssues/>
-  <CurrentIssues>
-    <ID>MaxLineLength:DatabaseModule.kt$DatabaseModule$fun</ID>
-    <ID>MaxLineLength:ExerciseDbDataSource.kt$ExerciseDbDataSource$suspend fun getStrengthExercises(bodyPart: String, limit: Int = 5): List&lt;ExerciseDto&gt;</ID>
-    <ID>MaxLineLength:HealthRepositoryImpl.kt$HealthRepositoryImpl$override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result&lt;List&lt;LocalDate&gt;&gt;</ID>
-  </CurrentIssues>
+  <CurrentIssues/>
 </SmellBaseline>

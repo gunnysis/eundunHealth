@@ -56,10 +56,11 @@ T6 plans 이관   ─┘
 | T4 Gradle 9.6.0 → 9.7.1 | ✅ | wrapper 갱신, AGP 9.3.2 호환 |
 | T5 doc_audit 수집기 | ✅ | parametrize 확장분 가산 → 수집기 **114** == pytest **114** |
 | T6 plans ledger 이관 | 🔄 부분 | `build-modernization`(PR #164 머지) 이관 완료. 나머지는 머지 대기 |
-| T7 손작성 위반 정리 | ✅ | baseline **19 → 3**. 오탐 5건은 **억제가 아니라 근본수정** |
+| T7 손작성 위반 정리 | ✅ | baseline **19 → 0**. 오탐 5건은 근본수정, 도구 충돌 3+1건은 근거 붙인 `@Suppress` |
 
 **최종 게이트 (2026-09-01)**: Android `spotlessCheck`·`detektDebug`·`testDebugUnitTest`
 (**129 tests / 0 failure / 27 files**)·`assembleRelease`(R8) 전부 green.
+detekt baseline **0건** · `app/src` 140자 초과 **0건**.
 Backend `pytest 114 passed` / coverage **98%** / `ruff` clean / `mypy` 42 files clean /
 `bandit` no issues / `pip-audit --strict` no vulnerabilities.
 
@@ -85,13 +86,48 @@ T7 착수 시 "19건 중 손작성 ~10건" 으로 알고 있었으나, baseline 
 `@Binds`(1건)처럼 **구조적으로 영원히 발생하는 것은 baseline 이 아니라 설정**으로 뺀다
 (`ignoreAnnotated`). baseline 에 두면 프리뷰를 추가할 때마다 재생성해야 해 만성 drift 가 된다.
 
-### 남은 판단 (회원님 결정 필요)
+### `MaxLineLength` 3건 — 해결 (baseline **3 → 0**)
 
-`MaxLineLength` 3건(`DatabaseModule`·`ExerciseDbDataSource`·`HealthRepositoryImpl`)이
-baseline 에 남아 있다. **줄바꿈으로 고칠 수 없다** — ktlint 의 `function-signature` /
-`function-expression-body` 규칙이 `spotlessApply` 때 되돌린다. `.editorconfig` 에
-`max_line_length` 를 넣어 두 도구를 맞추면 해결되지만, 실측 결과 **55 파일 / -184 줄**의
-무관한 재포맷이 함께 일어난다(T7 범위 밖). 현재는 **A안(baseline 3건 유지)** 상태다.
+**증상**: detekt `MaxLineLength`(140)가 `DatabaseModule`·`ExerciseDbDataSource`·
+`HealthRepositoryImpl` 3건을 잡는데, 줄바꿈으로 고치면 `spotlessApply` 가 매번 되돌린다.
+
+**근본 원인**: 세 건 모두 **expression body** 함수이고, ktlint 의 `standard:function-signature`
+가 body 를 시그니처 줄에 붙여 쓴다. **detekt 가 금지하는 것을 ktlint 가 강제하는** 구조라,
+어느 한쪽을 손대지 않으면 영원히 왕복한다. 실측으로 재현 확인(줄바꿈 → spotlessApply →
+150/150/164 자로 복귀, diff 0).
+
+**대안 평가 (전부 실측)**:
+
+| 방안 | 140자 초과(main) | 재포맷 | 부작용 |
+|---|---|---|---|
+| A. baseline 유지(기존) | 3 | — | 부채 아닌 것이 부채 목록에 상주 |
+| B. `.editorconfig` 도입 | **0** | **91 파일** (+2925/−2422) | `no-consecutive-comments` 위반 → **spotlessApply 실패** |
+| **C. 충돌 지점 `@Suppress` (채택)** | **0** | **3 파일** | 없음 |
+
+> **앞선 판단 정정 2건.**
+> ① 이전 세션은 B 를 "**55 파일 / −184 줄**" 로 기록했으나 실측은 **91 파일 /
+>    +2925 −2422** 다. 그리고 원인은 `max_line_length` 값이 아니라 **`.editorconfig` 파일의
+>    존재 자체**였다 — `root = true` 한 줄만 둬도 동일하게 재현된다(ktlint 룰셋이 바뀐다).
+> ② 중간 측정에서 "B 를 쓰면 140초과가 12→15 로 **늘어난다**" 고 적었는데 **틀렸다.**
+>    `awk length` 가 **바이트**를 세어 한글 줄이 부풀려진 것이다(detekt 는 문자 기준).
+>    문자 기준 재측정 결과 B 도 **3 → 0** 으로 줄인다. 즉 B 의 기각 사유는 "지표가 나빠져서"
+>    가 아니라 **줄길이 3건에 91파일 재포맷과 새 룰 위반을 치를 수 없어서**다.
+>    → **한글이 섞인 코드베이스에서 줄 길이를 잴 때 `awk length`·`wc -c` 를 쓰지 말 것.**
+
+**적용**: 세 지점에 `@Suppress("ktlint:standard:function-signature")` + 줄바꿈. 각 지점에
+"왜 이 억제가 필요한가"(도구 충돌)와 "왜 B 를 안 골랐는가"를 주석으로 남겼다 — 근거 없는
+`@Suppress` 는 다음 사람이 지우기 때문이다.
+
+`app/src/test` 의 151자 1건(`WeeklyPlanGeneratorTest`)도 같은 충돌이라 함께 정리했다.
+`detektDebug` 는 테스트 소스를 분석하지 않지만, **"app/src 전체 140자 초과 0"** 이라는
+검사 가능한 불변식 하나로 두는 편이 "detekt 는 0인데 151자 줄이 있다" 는 혼선보다 낫다.
+
+**결과 (MEASURED 2026-09-01)**: `app/src` 140자 초과 **0건** · detekt baseline **0건**
+(61 → 19 → 3 → **0**) · spotlessCheck·detektDebug·testDebugUnitTest·assembleRelease green.
+
+**남은 리스크**: `@Suppress` 는 그 함수 전체에 대해 `function-signature` 를 끈다. 해당 함수의
+시그니처를 나중에 크게 바꾸면 ktlint 가 정렬해 주지 않는다. 3+1 지점 모두 한 줄짜리 위임
+함수라 실질 위험은 낮다.
 
 ---
 
