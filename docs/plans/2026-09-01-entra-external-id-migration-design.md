@@ -119,6 +119,32 @@ az provider show -n Microsoft.AzureActiveDirectory \
 
 → **채택: Asia Pacific**(대표 확정). 앱 DB(Azure PostgreSQL `healthapp`, Korea Central)는 그대로이므로 **인증 데이터만** 국외로 나간다.
 
+### F4-a. issuer URL 패턴 — **실측으로 초안 오류 발견 (2026-09-01)**
+
+테넌트 생성 후 실제 OIDC discovery 문서를 조회한 결과, **초안의 issuer 구성이 틀렸다**.
+
+```
+curl https://eundunhealthciam.ciamlogin.com/eundunhealthciam.onmicrosoft.com/v2.0/.well-known/openid-configuration
+```
+
+| 항목 | 초안(잘못) | **실측(정답)** |
+|---|---|---|
+| issuer | `{subdomain}.ciamlogin.com/{tenantId}/v2.0` | **`{tenantId}.ciamlogin.com/{tenantId}/v2.0`** |
+| jwks_uri | `{subdomain}.ciamlogin.com/{tenantId}/discovery/v2.0/keys` | 동일 ✅ (초안 맞음) |
+
+**issuer 의 서브도메인은 친숙한 이름이 아니라 tenantId 다.** jwks_uri 는 친숙한 이름을 쓰는데 issuer 만 다르다 — 눈으로 보면 놓치기 쉽다. 초안대로 구현했다면 **모든 토큰이 issuer 불일치로 401**이 되고, 서명·audience 는 통과하므로 원인 찾기가 매우 어려웠을 것이다.
+
+**채택 구현 — 문자열 조합 대신 discovery 문서에서 읽는다**:
+```python
+# 하드코딩/조합 금지. 起動 시 1회 discovery 문서를 읽어 issuer·jwks_uri 를 얻는다.
+# 패턴이 바뀌어도 따라가며, 위와 같은 조합 오류가 원천적으로 불가능해진다.
+OIDC_CONFIG = f"https://{subdomain}.ciamlogin.com/{subdomain}.onmicrosoft.com/v2.0/.well-known/openid-configuration"
+```
+> 실측값(2026-09-01, 테넌트 `eundunhealthciam`):
+> - issuer `https://c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8.ciamlogin.com/c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8/v2.0`
+> - jwks_uri `https://eundunhealthciam.ciamlogin.com/c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8/discovery/v2.0/keys`
+> - `id_token_signing_alg_values_supported: ["RS256"]` — F4 확인
+
 ### F4. JWT는 RS256, issuer 검증은 이번에 추가
 
 Entra 발급 토큰은 RS256(현재 Supabase ES256). 그리고 현재 코드에는 **issuer 검증이 아예 없다** — Supabase는 프로젝트가 단일이라 넘어갔지만 Entra는 발급자 URL 패턴을 테넌트 간 공유하므로, 미검증 시 **다른 테넌트에서 발급된 토큰이 통과**한다. 이번에 추가한다.

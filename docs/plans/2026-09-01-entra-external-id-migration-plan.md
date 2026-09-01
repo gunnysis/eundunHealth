@@ -110,6 +110,23 @@ az rest --method PUT \
 > `countryCode` 는 청구/데이터 정책용 국가 코드로, **데이터 저장 위치(location)와 별개**다. 생성은 **비동기**이며 최대 30분 소요(design §6 Step 0-2).
 > 본문 스키마는 preview API 라 버전별 차이가 있을 수 있으니, 실행 전 `az rest --method GET` 으로 기존 리소스 형태를 확인하거나 실패 시 응답 본문의 스키마 오류를 따라 교정한다.
 
+### 0-C-1. 실행 결과 (2026-09-01, 완료)
+
+| 항목 | 값 |
+|---|---|
+| 프로바이더 | `Microsoft.AzureActiveDirectory` → **Registered** |
+| 테넌트 리소스 | `eundunhealthciam` (RG `rg-eundunhealth-prod-krc`) |
+| 도메인 | `eundunhealthciam.onmicrosoft.com` |
+| **tenantId** | `c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8` |
+| location / country | `Asia Pacific` / `KR` |
+| provisioningState | **Succeeded** |
+
+**디버깅 기록**:
+- 초안 본문에 **`sku` 가 빠져 있었다**(필수). 공식 스키마 확인 후 `{"name":"Standard","tier":"A0"}` 추가 — 서비스는 이를 `Base`/`A0` 로 정규화해 반환한다.
+- 생성 전 `checkNameAvailability` 로 이름 가용성 확인(문서 권고). `countryCode: KR` 도 이 단계에서 수용됨을 확인.
+- provisioningState 는 `Provisioning` → `Created` → `Succeeded` 순으로 진행(약 2분).
+- **생성 직후 OIDC discovery 를 조회해 design F4-a 의 issuer 오류를 발견**했다. 문자열 조합 대신 discovery 문서에서 읽는 방식으로 설계 변경.
+
 ### 0-D. 대표님께 요청드릴 구간
 
 Claude 가 대행 불가. 각 항목은 해당 시점에 개별 요청드린다.
