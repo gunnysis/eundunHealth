@@ -53,23 +53,27 @@
 | Name | 형태 | 값/참조 |
 |------|------|--------|
 | `DATABASE_URL` | secretref | `database-url` (asyncpg URL) |
-| `SUPABASE_URL` | secretref | `supabase-url` |
-| `SUPABASE_SERVICE_ROLE_KEY` | secretref | `supabase-service-role-key` |
+| `ENTRA_TENANT_ID` | secretref | `entra-tenant-id` |
+| `ENTRA_SUBDOMAIN` | secretref | `entra-subdomain` |
+| `ENTRA_BACKEND_CLIENT_ID` | secretref | `entra-backend-client-id` |
+| `ENTRA_BACKEND_CLIENT_SECRET` | secretref | `entra-backend-client-secret` |
 | `SENTRY_DSN` | secretref | `sentry-dsn-backend` |
 | `ENVIRONMENT` | value | `production` |
 | `CORS_ORIGINS` | value | `[]` (PR #123 — 와일드카드 차단; 네이티브 앱이라 웹 origin 불필요. live 검증: 임의 origin 에 `Access-Control-Allow-Origin` 미반환) |
 
-### Secrets (4 앱 secret — **Key Vault 참조**, `identity: system`)
+### Secrets (6 앱 secret — **Key Vault 참조**, `identity: system`)
 
 Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에만, 직접값 아님). ACR pull secret 은 **MI 전환으로 제거**.
 
 - `database-url` → KeyVault `database-url` (`postgresql+asyncpg://…healthapp…`)
-- `supabase-url` → KeyVault `supabase-url`
-- `supabase-service-role-key` → KeyVault `supabase-service-role-key`
+- `entra-tenant-id` → KeyVault `entra-tenant-id`
+- `entra-subdomain` → KeyVault `entra-subdomain`
+- `entra-backend-client-id` → KeyVault `entra-backend-client-id`
+- `entra-backend-client-secret` → KeyVault `entra-backend-client-secret`
 - `sentry-dsn-backend` → KeyVault `sentry-dsn-backend`
 - ~~`eundunhealthacrazurecrio-eundunhealthacr`~~ (ACR pull) — **제거**: registries 가 MI(`identity: system`) pull 로 전환.
 
-> backend.yml deploy job 직전 "Verify required **Key Vault** secrets exist" step 이 4개 KeyVault secret 존재를 사전 점검(CI SP = Key Vault Secrets User). 누락 시 fast-fail (INC-18 재발 방지 — 룰 6 KeyVault 적응).
+> backend.yml deploy job 직전 "Verify required **Key Vault** secrets exist" step 이 6개 KeyVault secret 존재를 사전 점검(CI SP = Key Vault Secrets User). 누락 시 fast-fail (INC-18 재발 방지 — 룰 6 KeyVault 적응).
 
 ### Key Vault (`kv-eundunhealth`)
 
@@ -79,7 +83,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | SKU / 권한 모델 | Standard / **Azure RBAC** (legacy access policy 미사용) |
 | Soft-delete / Purge protection | 90일 / **활성**(생성 후 불변) |
 | Network | public + RBAC/MI 가 실질 차단막 (Container Apps Consumption 동적 IP → VNet 미통합) |
-| Secrets (4) | database-url, supabase-url, supabase-service-role-key, sentry-dsn-backend |
+| Secrets (6) | database-url, entra-tenant-id, entra-subdomain, entra-backend-client-id, entra-backend-client-secret, sentry-dsn-backend |
 | RBAC | 운영자=Secrets Officer · Container App MI=Secrets User · CI SP=Secrets User · MI=AcrPull(ACR) |
 | Audit | `kv-audit` 진단설정 → Log Analytics `workspace-appsDOlM` (AuditEvent) |
 
@@ -95,7 +99,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:<SHA>` (앱과 동일, setup 시 치환) |
 | 리소스 | 0.25 vCPU / 0.5Gi, replica-timeout 1800, retry 1 |
 | Identity | **User-assigned MI** `id-eundunhealth-reaper` — AcrPull(ACR) + Key Vault Secrets User(KV) |
-| Secrets | `database-url`·`supabase-url`·`supabase-service-role-key` (KeyVault 참조, `identity:<UAI>`) |
+| Secrets | `database-url`·`entra-tenant-id`·`entra-subdomain`·`entra-backend-client-id`·`entra-backend-client-secret` (KeyVault 참조, `identity:<UAI>`) |
 | IaC | `backend/reaper-job.yaml`(잡 정의) + `scripts/setup-reaper-job.sh`(멱등 오케스트레이션) |
 | 검증 | 수동 실행 `eundunhealth-reaper-g6ngiz7` **Succeeded**(2026-06-17). 현재 0 사용자 → purged 0 |
 

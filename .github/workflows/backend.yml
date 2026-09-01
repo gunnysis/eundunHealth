@@ -69,8 +69,10 @@ jobs:
       - name: Verify OpenAPI spec is in sync (drift detection)
         env:
           DATABASE_URL: postgresql+asyncpg://dummy:dummy@localhost/dummy
-          SUPABASE_URL: https://dummy.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY: dummy
+          ENTRA_TENANT_ID: 00000000-0000-0000-0000-000000000000
+          ENTRA_SUBDOMAIN: dummy
+          ENTRA_BACKEND_CLIENT_ID: 00000000-0000-0000-0000-000000000000
+          ENTRA_BACKEND_CLIENT_SECRET: dummy
         run: |
           cp openapi.json /tmp/openapi.committed.json
           python -c "
@@ -120,10 +122,12 @@ jobs:
 
       - name: Compose up (db + api)
         env:
-          # docker-compose.yml은 SUPABASE_URL/KEY를 placeholder 기본값으로 fallback.
+          # docker-compose.yml은 ENTRA_* 를 placeholder 기본값으로 fallback.
           # /health는 인증 없이 200 응답해야 하므로 실제 값 불필요.
-          SUPABASE_URL: https://placeholder.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY: placeholder
+          ENTRA_TENANT_ID: 00000000-0000-0000-0000-000000000000
+          ENTRA_SUBDOMAIN: placeholder
+          ENTRA_BACKEND_CLIENT_ID: 00000000-0000-0000-0000-000000000000
+          ENTRA_BACKEND_CLIENT_SECRET: placeholder
         run: docker compose up -d --build
 
       - name: Wait for /health 200 (max 60s)
@@ -236,7 +240,7 @@ jobs:
       # CI SP 는 Key Vault Secrets User 보유(Task 3). 참조: docs/ops/incident-log.md INC-2026-05-25-18.
       - name: Verify required Key Vault secrets exist
         run: |
-          REQUIRED="database-url supabase-url supabase-service-role-key sentry-dsn-backend"
+          REQUIRED="database-url entra-tenant-id entra-subdomain entra-backend-client-id entra-backend-client-secret sentry-dsn-backend"
           EXISTING=$(az keyvault secret list --vault-name kv-eundunhealth --query "[].name" -o tsv)
           MISSING=""
           for s in $REQUIRED; do

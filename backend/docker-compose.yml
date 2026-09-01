@@ -24,8 +24,10 @@ services:
       - "8080:8080"
     environment:
       DATABASE_URL: postgresql+asyncpg://dev:devpass@db:5432/eundunhealth
-      SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-placeholder}
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-00000000-0000-0000-0000-000000000000}
+      ENTRA_SUBDOMAIN: ${ENTRA_SUBDOMAIN:-placeholder}
+      ENTRA_BACKEND_CLIENT_ID: ${ENTRA_BACKEND_CLIENT_ID:-00000000-0000-0000-0000-000000000000}
+      ENTRA_BACKEND_CLIENT_SECRET: ${ENTRA_BACKEND_CLIENT_SECRET:-placeholder}
       SENTRY_DSN: ""
       ENVIRONMENT: development
     depends_on:
