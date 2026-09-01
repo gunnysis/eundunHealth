@@ -157,25 +157,25 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 
 ---
 
-## 5. Supabase
+## 5. Supabase — **폐기 (2026-09 전환)**
 
-| 항목 | 값 |
-|------|---|
-| Project ID | `ttzzbfoksncqazvcsfiu` |
-| URL | `https://ttzzbfoksncqazvcsfiu.supabase.co` |
-| Region | Korea |
-| Auth users | 0 (출시 전 초기 상태) |
-| 사용 기능 | Auth 전용 (anon 로그인/회원가입 + Admin API 사용자 삭제). DB는 Azure PG 사용 |
-| JWKS endpoint | `${URL}/auth/v1/.well-known/jwks.json` (백엔드 24h TTL 캐시) |
+인증은 §5-A(Microsoft Entra External ID)로 이관됐다. Android/백엔드 코드에 Supabase 참조는 0이다.
 
-> 옛 프로젝트 `hcowzkqapzlvrvmawfcd` (US 리전)은 사용 안 함. 사용자 직접 삭제 가능.
+| 항목 | 상태 |
+|---|---|
+| Project `ttzzbfoksncqazvcsfiu` (Korea) | **미사용** — 무료 티어 저사용량으로 자동 일시중지된 상태. 삭제는 전환 안정화 확인 후 |
+| Container App / Job secret | `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY` **제거됨** (`ENTRA_*` 4종으로 교체) |
+| Key Vault secret | `supabase-url`·`supabase-service-role-key` — **아직 남아 있음**(롤백 여지). 전환 종결 시 삭제 |
+| 옛 프로젝트 `hcowzkqapzlvrvmawfcd` (US) | 미사용 |
+
+> **정리 순서**: Phase 5 운영 검증 통과 → KV secret 2종 삭제 → Supabase 프로젝트 삭제.
+> 순서를 바꾸면 롤백 경로가 먼저 사라진다.
 
 ---
 
-## 5-A. Microsoft Entra External ID (전환 중 — WS1)
+## 5-A. Microsoft Entra External ID
 
-> Supabase Auth 대체 진행 중. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`.
-> **전환 완료 시 §5(Supabase)를 이 절로 대체한다.**
+> 현행 인증 제공자. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`.
 
 | 항목 | 값 |
 |------|---|

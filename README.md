@@ -52,7 +52,7 @@
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
 - **목표 설정 및 진행 시각화** (v0.3) — 체중 / 체지방률 목표 + 프로필 변화 이력 차트
 - **배지 시스템** — 9 종(마일스톤 4 + 목표 달성 2 + 기타 3)
-- **인증** — Supabase Auth(이메일 / 비밀번호 + App Links 자동 로그인)
+- **인증** — Microsoft Entra External ID(브라우저 위임 · Authorization Code + PKCE). 이메일/비밀번호 입력과 가입·비밀번호 재설정은 Entra 호스팅 페이지에서 처리
 - **에러 표시 일관성** — Auth 화면의 실패는 inline 영구 표시 + a11y liveRegion + Sentry breadcrumb ([CLAUDE.md 룰 8](CLAUDE.md))
 
 ---
@@ -71,7 +71,7 @@
 | 네트워크 | Retrofit + OkHttp + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 |
 | 로컬 DB | Room (version=2) | `EundunDatabase` |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
-| Auth | Supabase Kotlin SDK 3.6.0 | ES256 JWT |
+| Auth | MSAL Android 8.4.2 | RS256 JWT · `oid` claim |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | |
 | 모니터링 | Sentry Android 8.54.0 | 16KB page-aligned native libs |
 | API 클라이언트 | OpenAPI Generator 7.10.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동 |
@@ -99,7 +99,7 @@
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret 4 |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU) |
 | Database | Azure PostgreSQL Flexible Server `healthapp` (B1ms, 32GB) |
-| Auth | Supabase (Korea 리전, project `ttzzbfoksncqazvcsfiu`) |
+| Auth | Microsoft Entra External ID 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미지원) |
 | 운동 데이터 소스 | OSS ExerciseDB (`oss.exercisedb.dev`, 무인증) |
 | CI/CD | GitHub Actions (`android.yml`, `backend.yml`) + Dependabot |
 | 에러 추적 | Sentry (Android / Backend 별도 프로젝트) |
@@ -115,12 +115,12 @@ ui/          # Jetpack Compose 화면 + ViewModel + Navigation (sealed Screen)
   components/    # 공용 컴포넌트 (AuthErrorBanner, ProfileSummaryCard, Skeleton, Error, Empty)
   auth/ home/ onboarding/ profile/ statistics/ goal/ history/ badges/ workout/ splash/
 domain/      # 모델 + 리포지토리 인터페이스 + UseCase + AppError sealed class
-data/        # Repository 구현 + Retrofit + Room + Health Connect + Supabase + DataStore
-di/          # Hilt 모듈 (NetworkModule, SupabaseModule, DatabaseModule, RepositoryModule, CoilModule)
+data/        # Repository 구현 + Retrofit + Room + Health Connect + MSAL(auth/) + DataStore
+di/          # Hilt 모듈 (NetworkModule, DatabaseModule, RepositoryModule, CoilModule)
 ```
 
 핵심 패턴
-- ViewModel 의 userId 획득은 `AuthRepository.getCurrentUserId()` — `SupabaseClient` 직접 주입 금지
+- ViewModel 의 userId 획득은 `AuthRepository.getCurrentUserId()` — MSAL 클라이언트 직접 주입 금지. userId = 토큰의 `oid` claim(`sub` 아님)
 - 모든 ViewModel 의 에러 모델은 `MutableStateFlow<AppError?>` + `clearError()` 로 통일
 - 401 → `TokenAuthenticator` 가 `AtomicReference` 의 토큰을 5초 timeout 으로 갱신
 - 일시 장애는 `RetryInterceptor` 가 지수 백오프(3 회 / 500ms·1s·2s)
@@ -169,7 +169,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 | `GET` | `/weekly-plan/statistics?weeks=12` | v0.2 완료율 + 스트릭 |
 | `GET` / `POST` | `/badges`, `/badges/{key}` | 9 종 |
 | `GET` / `PUT` | `/goals` | v0.3 |
-| `DELETE` | `/account` | Supabase Admin API 연동 |
+| `DELETE` | `/account` | Microsoft Graph 연동 (삭제 204 + `deletedItems` 즉시 파기) |
 
 ---
 
@@ -225,7 +225,7 @@ cd eundunHealth
 # pre-commit hook 활성화 (clone 직후 1 회)
 git config core.hooksPath .githooks
 
-# local.properties 작성 (Supabase URL/key, Backend URL, Sentry DSN, release signing)
+# local.properties 작성 (Backend URL, Sentry DSN, Entra API scope, release signing)
 cp local.properties.example local.properties
 # → 파일 열어 비밀값 채우기
 ```
@@ -347,7 +347,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | 2 | 릴리스 산출물은 `releaseArtifacts` 또는 `preflight-release.sh` 하나로 | INC-04 |
 | 3 | Alembic autogenerate 는 PostgreSQL 컨테이너 위에서만 (`alembic-autogen.sh`) | INC-07 |
 | 4 | `lifespan` 안에서 `app.add_middleware()` 호출 금지 — 모듈 레벨 등록 | INC-03 |
-| 5 | Supabase 프로젝트는 v1.0 출시 후 절대 교체 금지 | INC-14 |
+| 5 | Auth 제공자/테넌트는 실사용자 확보 후 절대 교체 금지 | INC-14 |
 | 6 | `backend.yml` 의 새 `secretref` 는 시크릿 set + 가드 step + 스냅샷 동시 갱신 | INC-18 |
 | 7 | 스키마 변경 PR 은 같은 PR 에서 entrypoint(`alembic upgrade head`) 검증 포함 | INC-2026-05-27-01 |
 | 8 | Auth/UI 실패 표시는 inline + persistent + a11y liveRegion + Sentry breadcrumb | INC-2026-05-26-01 |
@@ -461,7 +461,7 @@ PR 작성 시 [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.m
 - **라이선스** — **Proprietary / All Rights Reserved**. 저장소·앱 소스·아트워크의 무단 복제·재배포·수정·상업적 이용을 금지합니다.
 - **개인정보 처리방침** — [docs/store/privacy-policy.md](docs/store/privacy-policy.md) (Play Store 등재 URL 호스팅 대상).
 - **계정 및 데이터 삭제** — [docs/store/account-deletion.md](docs/store/account-deletion.md) (Play Store 계정 삭제 요청 URL 호스팅 대상).
-- **외부 의존성 라이선스** — 각 의존성은 자체 라이선스를 따릅니다(예: OSS ExerciseDB, Supabase SDK, Sentry SDK, FastAPI 등).
+- **외부 의존성 라이선스** — 각 의존성은 자체 라이선스를 따릅니다(예: OSS ExerciseDB, MSAL, Sentry SDK, FastAPI 등).
 
 ---
 

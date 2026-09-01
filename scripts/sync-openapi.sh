@@ -26,7 +26,7 @@ else
 fi
 
 cd "${BACKEND_DIR}"
-# OpenAPI 추출은 schema introspection만 하므로 실제 DB/Supabase 연결 없음.
+# OpenAPI 추출은 schema introspection만 하므로 실제 DB/IdP 연결 없음.
 # 단, Settings 검증 통과를 위해 dummy 값이 필요 (app.main이 모듈 로드 시 get_settings() 호출).
 export DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://dummy:dummy@localhost/dummy}"
 export ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-00000000-0000-0000-0000-000000000000}"

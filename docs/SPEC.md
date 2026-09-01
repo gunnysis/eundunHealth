@@ -3,7 +3,7 @@
 > **문서 버전:** v1.0 (초기 설계) — 본문은 그대로 보존.
 > **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스(v0.2·v0.3 spec 모두 구현 완료). 본문(기능 명세)은 초기 설계 그대로 보존하며, 버전 스냅샷은 여기에 하드코딩하지 않는다(릴리스마다 drift 방지 — 과거 v0.1.7 에 고착된 이력 있음). 자세한 차이는 [TRD.md](./TRD.md) 참조.
 >
-> **Supabase 사용 범위 (v0.1.1 명시):** Authentication 한정. Database(테이블)/Storage/Realtime/Edge Functions는 사용하지 않음 — 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장. Supabase는 JWT 발급(ES256/JWKS) + 회원가입 이메일 확인 + 비밀번호 재설정 메일만 담당.
+> **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트, 브라우저 위임). IdP 는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계이며 현재 구현과 다르다** — 현행은 `docs/plans/2026-09-01-entra-external-id-migration-design.md` §5 참조.
 
 ## 프로젝트 개요
 
@@ -14,7 +14,7 @@
 - **대상 SDK**: 37 (Android 17)
 - **백엔드**: FastAPI(Python 3.12) — 본 문서 v1.0 작성 당시 Ktor였으나 v0.1.0에서 전환됨.
 - **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 인증 불필요).
-- **인증**: Supabase Auth(한국 리전, JWKS ES256).
+- **인증**: Microsoft Entra External ID(외부 테넌트 `eundunhealthciam`, Asia Pacific, JWKS RS256).
 
 ---
 
@@ -32,7 +32,7 @@
 | Retrofit + OkHttp | 백엔드 API 통신 |
 | Coil 3 | 이미지/GIF 로딩 |
 | DataStore | 설정 영속화 (다크모드) |
-| Supabase Kotlin SDK | 인증 (Auth) |
+| MSAL Android 8.4.2 | 인증 (Entra External ID) |
 | Health Connect | 활동 자동 추적 |
 | Sentry Android SDK | 크래시/에러 모니터링 |
 | Navigation Compose | 화면 전환 |
@@ -124,13 +124,16 @@ AGP · Gradle · KSP · Sentry Gradle Plugin · Detekt · Spotless — 버전은
 
 ## 핵심 기능 상세
 
-### 인증
-- **Supabase Auth** 이메일/비밀번호 기반
-- 세션 자동 저장/복원 (`autoSaveToStorage`, `autoLoadFromStorage`)
-- 토큰 자동 갱신 (`alwaysAutoRefresh`)
-- `AuthRepository.restoreSession()`: 자동 로그인 시 세션 복원 + tokenHolder 설정
-- OkHttp TokenAuthenticator로 401 응답 시 Supabase 토큰 자동 갱신 후 재시도
-- AuthViewModel은 AuthRepository 인터페이스만 의존 (SupabaseClient 직접 참조 없음)
+### 인증 (2026-09 전환 반영)
+- **Microsoft Entra External ID** — 브라우저 위임(Authorization Code + PKCE, MSAL Custom Tab)
+- 앱에는 인증 화면이 `AuthGateScreen` **하나**뿐이다. 이메일/비밀번호 입력·가입·이메일 검증·비밀번호 재설정은 전부 Entra 호스팅 페이지에서 처리된다
+- 세션 저장/복원·토큰 갱신은 MSAL 계정 캐시가 담당 (`acquireTokenSilent`)
+- `AuthRepository.restoreSession()`: 무음 갱신 성공 시 userId 반환 + tokenHolder 설정
+- OkHttp TokenAuthenticator 로 401 응답 시 토큰 자동 갱신 후 재시도 (**전환 시 무수정** — `SessionRefresher` seam 이 IdP 교체를 흡수)
+- ViewModel 은 `AuthRepository` 인터페이스만 의존 (MSAL 클라이언트 직접 참조 없음)
+- userId = 액세스 토큰의 **`oid` claim** (`sub` 아님 — `sub` 는 앱마다 다른 pairwise 값이라 Graph 계정 삭제가 매칭되지 않는다)
+
+> 아래 "회원가입 이메일 확인 흐름"·"App Links 자동 로그인"·"Supabase 사용 범위" 는 **전환 이전 설계 기록**이다. 현재는 검증 코드를 브라우저에서 입력받으므로 App Links·`/auth/confirm` 경로가 존재하지 않는다.
 
 #### 회원가입 이메일 확인 흐름
 - 회원가입 요청이 성공하면 Supabase가 확인 메일을 발송하고, 사용자의 세션은 메일 인증을 마친 후에만 활성화된다. 가입 직후에는 인증 토큰을 발급하지 않으며, 앱은 자동 로그인 상태로 진입하지 않는다.
@@ -244,7 +247,7 @@ backend/src/main/kotlin/com/gunnys/eundunhealth/
 - localhost/10.0.2.2 cleartext는 개발용으로만 허용
 - Release 빌드에서 HTTP 로깅 비활성화 (`HttpLoggingInterceptor.Level.NONE`)
 - OkHttp RetryInterceptor: 최대 3회 재시도, exponential backoff (500ms/1s/2s) — Backend + ExerciseDB 양쪽 적용
-- OkHttp TokenAuthenticator: 401 응답 시 Supabase 토큰 자동 갱신 후 재시도
+- OkHttp TokenAuthenticator: 401 응답 시 토큰 자동 갱신 후 재시도 (IdP 무관 — `SessionRefresher` seam)
 - 연결/읽기 타임아웃: 15초 (Backend + ExerciseDB 양쪽 적용)
 - 에러 추적: `android.util.Log` 대신 `Sentry.captureException()` 사용 (프로덕션 모니터링)
 
@@ -267,7 +270,7 @@ backend/src/main/kotlin/com/gunnys/eundunhealth/
 
 | 서비스 | 용도 | 키 위치 |
 |--------|------|---------|
-| Supabase | 인증 (Auth) | `local.properties` → SUPABASE_URL, SUPABASE_ANON_KEY |
+| Microsoft Entra External ID | 인증 | `app/src/{debug,release}/res/raw/auth_config_ciam.json` (client_id·authority) + `local.properties` → ENTRA_API_SCOPE |
 | ExerciseDB (RapidAPI) | 운동 데이터 조회 | `local.properties` → EXERCISEDB_API_KEY |
 | Sentry.io | 에러 모니터링 | `local.properties` → SENTRY_DSN, SENTRY_AUTH_TOKEN |
 | Azure Container Apps | 백엔드 호스팅 | Azure CLI 인증 |

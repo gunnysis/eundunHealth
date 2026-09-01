@@ -158,7 +158,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
 
-    // Supabase (Auth only)
+    // Microsoft Entra External ID (MSAL)
     implementation(libs.msal)
 
     // Hilt

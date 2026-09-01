@@ -1,5 +1,10 @@
 # Migration Runbook: Ktor → FastAPI
 
+> **역사 문서 주의 (2026-09):** 본 런북은 Ktor → FastAPI 전환 당시의 절차 기록이다.
+> 그 안의 `SUPABASE_*` 시크릿·환경변수는 **현재 존재하지 않는다** — 2026-09 인증 전환으로
+> `ENTRA_TENANT_ID`/`ENTRA_SUBDOMAIN`/`ENTRA_BACKEND_CLIENT_ID`/`ENTRA_BACKEND_CLIENT_SECRET` 로 교체됐다.
+> 현행 시크릿 목록은 `docs/ops/operations-snapshot.md` §2. 아래 본문은 당시 절차를 그대로 보존한다.
+
 > 작성일: 2026-05-24 (cutover 완료) / 갱신: 2026-05-25 (자동 배포 정착)
 > 대상 환경: Azure Container Apps (`eundunhealth-api`, RG `rg-eundunhealth-prod-krc`), Azure PostgreSQL (`healthapp`)
 > 기반: 옛 `docs/plans/expected/2026-05-24-implementation-spec.md` §O (현재는 삭제됨)

@@ -15,6 +15,6 @@ async def delete_account(
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, str]:
-    """현재 인증 사용자의 계정을 삭제한다. Supabase Auth + 앱 DB 데이터 모두 제거."""
+    """현재 인증 사용자의 계정을 삭제한다. Entra 사용자 + 앱 DB 데이터 모두 제거."""
     await AccountService(db, settings).delete_account(user_id)
     return {"status": "ok"}

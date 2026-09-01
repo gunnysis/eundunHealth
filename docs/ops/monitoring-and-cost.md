@@ -203,9 +203,9 @@ az postgres flexible-server firewall-rule delete \
 
 > **요지**: `az containerapp exec --command "..."`로 비대화형 명령 결과를 받기는 불안정(INC-06). 로컬 firewall 임시 허용 패턴이 정석.
 
-### 6.4 Supabase 프로젝트 교체 시 (참고: INC-14)
+### 6.4 Auth 제공자/테넌트 교체 시 (참고: INC-14, 룰 5)
 
-v1.0 정식 출시 후에는 **Supabase 프로젝트 교체를 절대 자유롭게 하지 말 것.** user_id namespace가 갈아엎혀 옛 사용자가 "user not found"가 된다.
+실사용자 확보 후에는 **Auth 제공자·테넌트 교체를 절대 자유롭게 하지 말 것**(IdP 무관). user_id namespace가 갈아엎혀 옛 사용자가 "user not found"가 된다.
 
 - ~~출시 전: 5개 사용자 테이블 `TRUNCATE`로 정리 가능~~ — **2026-06-29 프로덕션 정식 출시로 닫힌 경로**(2026-05 수행 이력만 해당).
 - 출시 후(현 단계) 불가피한 경우: 옛 user_id → 새 user_id 매핑 테이블 + 백필 스크립트 + 사용자 공지가 필수.

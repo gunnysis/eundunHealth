@@ -45,12 +45,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Create stub local.properties
-        # BuildConfig 필드(SUPABASE_URL 등)는 빌드 시 빈 문자열로 처리되어도 무방.
+        # BuildConfig 필드는 빌드 시 기본값으로 처리되어도 무방.
         # 서명용 RELEASE_* 도 debug 빌드와 unit test, lint에는 필요 없음.
         run: |
           cat > local.properties <<'EOF'
-          SUPABASE_URL=https://placeholder.supabase.co
-          SUPABASE_ANON_KEY=placeholder
           BACKEND_BASE_URL=http://10.0.2.2:8080/
           SENTRY_DSN=
           EOF

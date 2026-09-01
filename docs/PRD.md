@@ -63,7 +63,7 @@
   └─ 세션 만료/없음 → 로그인 화면 → 이메일/비밀번호 입력 → 홈 화면
 ```
 
-- Supabase 세션 자동 저장/복원으로 매번 로그인 불필요
+- MSAL 계정 캐시의 무음 갱신으로 매번 로그인 불필요
 - 토큰 만료 시 자동 갱신 (TokenAuthenticator)
 
 ### 2.2. 메인 페이지 (홈 화면)
@@ -216,8 +216,8 @@
 | UI 프레임워크 | Jetpack Compose + Material3 |
 | 아키텍처 | Clean Architecture (UI → Domain → Data) |
 | DI | Hilt |
-| 인증 | Supabase Auth (이메일/비밀번호) |
-| 네트워크 보안 | HTTPS 필수 (개발 환경 localhost 예외), JWT ES256 검증 |
+| 인증 | Microsoft Entra External ID (브라우저 위임 · Authorization Code + PKCE) |
+| 네트워크 보안 | HTTPS 필수 (개발 환경 localhost 예외), JWT **RS256** 검증 (issuer·audience·`scp` 포함) |
 | 네트워크 안정성 | RetryInterceptor (3회 재시도, exponential backoff), 15초 타임아웃 |
 | 시간대 | KST (한국 표준시) 기준 |
 | 언어 | 모든 UI 텍스트 한국어 |
@@ -235,7 +235,7 @@
 │                     │     │  Apps             │     │                 │
 └────────┬────────────┘     └──────────────────┘     └─────────────────┘
          │
-         ├──▶ Supabase Auth (인증)
+         ├──▶ Entra External ID (인증)
          ├──▶ ExerciseDB API (운동 데이터)
          ├──▶ Health Connect (운동 세션 감지)
          └──▶ Sentry (에러 모니터링)
@@ -262,9 +262,10 @@
 | `POST` | `/badges/{key}` | 배지 수여 | v0.1 |
 | `GET` | `/goals` | 목표 목록 (체중·체지방) | v0.3 |
 | `PUT` | `/goals` | 목표 upsert | v0.3 |
-| `DELETE` | `/account` | 회원 탈퇴 (Supabase Auth + 앱 DB 일괄 삭제) | v0.1 |
+| `DELETE` | `/account` | 회원 탈퇴 (Entra 사용자 + 앱 DB 일괄 삭제) | v0.1 |
 
-공개 4개(`/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm`)를 제외한 나머지 14개는 Supabase JWT(ES256 / JWKS) 검증 필요. 응답은 camelCase JSON.
+공개 라우트(`/health`·`/health/ready`·`/privacy`·`/account-deletion`)를 제외한 나머지 14개는 Entra JWT(**RS256** / JWKS) 검증 필요. 응답은 camelCase JSON.
+> `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 인증 전환으로 **삭제**됐다 — Entra 는 이메일 검증을 브라우저 안에서 처리하므로 App Links 경로가 필요 없다.
 
 ---
 
@@ -312,7 +313,7 @@ Splash
 
 | 영역 | 비고 |
 |------|------|
-| 회원가입 이메일 확인 흐름 (AwaitingEmailConfirmation + 60초 재전송) | Supabase Auth `enable_confirmations` 켠 환경에서 사용자 잔류 보장 |
+| ~~회원가입 이메일 확인 흐름 (AwaitingEmailConfirmation + 60초 재전송)~~ | 2026-09 전환으로 **제거** — Entra 호스팅 페이지가 담당 |
 | Login 미인증 사용자에게 인증 메일 재전송 inline 액션 | `EmailNotConfirmed` AppError 도입 |
 | 인증 상태 모델 리팩터: `SessionState` / `AuthOpState` / `SignupState` | 가입/로그인 실패 시 화면 튕김 + 스낵바 잘림 버그 해소 |
 

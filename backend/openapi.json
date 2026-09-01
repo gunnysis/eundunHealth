@@ -454,7 +454,7 @@
   "paths": {
     "/account": {
       "delete": {
-        "description": "현재 인증 사용자의 계정을 삭제한다. Supabase Auth + 앱 DB 데이터 모두 제거.",
+        "description": "현재 인증 사용자의 계정을 삭제한다. Entra 사용자 + 앱 DB 데이터 모두 제거.",
         "operationId": "deleteAccount",
         "responses": {
           "200": {

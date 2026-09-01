@@ -1,6 +1,6 @@
-"""고아 앱 데이터 정리 잡 — Supabase Auth 에 없는 user_id 의 DB 데이터를 purge.
+"""고아 앱 데이터 정리 잡 — Entra 에 없는 user_id 의 DB 데이터를 purge.
 
-배경: account_service.delete_account 는 Supabase Auth 삭제(Step 1) 성공 후 앱 DB purge
+배경: account_service.delete_account 는 Entra 사용자 삭제(Step 1) 성공 후 앱 DB purge
 (Step 2)를 한다. Step 2 가 실패하면 Auth 엔 없고 DB 엔 남은 고아 데이터가 생긴다(로깅됨,
 UoW 롤백으로 부분삭제는 없음). 이 잡이 그 고아를 주기적으로 청소하는 안전망이다.
 

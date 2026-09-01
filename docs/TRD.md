@@ -9,6 +9,12 @@
 
 ## 구현 후 변경 사항 (v0.1.0 → v0.1.19)
 
+
+> ⚠️ **인증 관련 본문 주의:** 아래 v1.0 본문의 인증 서술(Supabase SDK·`supabaseClient.auth.*`·
+> `SupabaseModule`·App Links 자동 로그인·AUTH-01~05 매핑)은 **2026-09 전환으로 전부 대체**됐다.
+> 현행은 바로 아래 변경 사항 표의 "인증 제공자"~"App Links / `/auth/confirm`" 행 + `CLAUDE.md` +
+> `docs/plans/2026-09-01-entra-external-id-migration-design.md` 를 본다.
+
 본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.19 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
 | 영역 | TRD v1.0 | 현재 (v0.1.19) |
@@ -19,7 +25,12 @@
 | Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 8.3 + pytest-asyncio + httpx ASGITransport** (87 PASS, cov ~97% / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API | RapidAPI ExerciseDB | **OSS** `oss.exercisedb.dev` (인증 불필요) |
-| Supabase 리전 | (US) | **Korea (project `ttzzbfoksncqazvcsfiu`)** |
+| **인증 제공자** | Supabase Auth (SDK 3.6.0, ES256) | **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` — MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE), **RS256** (2026-09 전환) |
+| **인증 데이터 위치** | Supabase Korea 리전 | **Asia Pacific** — Entra 외부 테넌트가 한국 리전을 제공하지 않는다. 건강 데이터는 그대로 Korea Central. 방침 국외이전 고지: `docs/store/privacy-policy.md` §3-1 |
+| **사용자 식별자** | Supabase JWT `sub` | 액세스 토큰 **`oid`** claim — `sub` 는 앱마다 다른 pairwise 값이라 Graph 계정 삭제가 매칭되지 않는다 |
+| **계정 삭제** | Supabase Admin API (200) | **Microsoft Graph** `DELETE /users/{oid}`(**204**) + `deletedItems` 즉시 파기 — 30일 소프트 삭제를 방침의 "즉시 영구 삭제" 문구에 맞춤 |
+| **인증 화면 수** | 3 (Login/Signup/ForgotPassword, 959줄) | **1** (`AuthGateScreen`, ui/auth 283줄) — 입력·검증·재발송·비밀번호 재설정이 Entra 호스팅 페이지로 이관 |
+| **App Links / `/auth/confirm`** | 이메일 확인 링크용으로 존재 | **삭제** — Entra 는 브라우저 안에서 검증 코드를 입력받는다 |
 | Sentry 프로젝트 | 단일 `eundunhealth` | **두 프로젝트 분리** — Android `eundunhealth`, Backend `eundunhealth-backend` |
 | Android 정적 분석 | 미적용 | **Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0** |
 | 차트 라이브러리 | 미사용 | **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트 |
@@ -634,6 +645,17 @@ eundunHealth/                          # 루트 Gradle 프로젝트
 ```
 
 ### 9.2. 환경 변수
+
+> ⚠️ **아래 표는 TRD v1.0(2026-05, Ktor + Supabase) 시점 기록이며 현행이 아니다.**
+> 현재 필요한 값만 정리하면:
+>
+> | 대상 | 현행 키 |
+> |---|---|
+> | Android `local.properties` | `BACKEND_BASE_URL` · `eundunhealth-app_SENTRY_DSN` · `ENTRA_API_SCOPE`(선택, 기본값 있음) · release 서명 3종 |
+> | Android MSAL 설정 | `app/src/{debug,release}/res/raw/auth_config_ciam.json` (client_id·authority·redirect_uri — `R.raw` 라 BuildConfig 주입 불가) |
+> | Backend | `DATABASE_URL` · `ENTRA_TENANT_ID` · `ENTRA_SUBDOMAIN` · `ENTRA_BACKEND_CLIENT_ID` · `ENTRA_BACKEND_CLIENT_SECRET` · `SENTRY_DSN` · `ENVIRONMENT` · `CORS_ORIGINS` |
+>
+> 정본은 `local.properties.example` · `backend/.env.example` · `docs/ops/operations-snapshot.md` §2.
 
 #### Android (`local.properties`)
 
