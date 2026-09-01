@@ -13,7 +13,15 @@ on:
       - 'app/**'
       - 'build.gradle.kts'
       - 'settings.gradle.kts'
+      # `gradle/**` 는 디렉터리 gradle/ 만 매칭한다 — 루트의 gradle.properties 는 안 걸린다.
+      # AGP 호환 플래그·JVM 힙이 여기 있으므로 빠지면 빌드 설정 변경이 CI 를 통째로 우회한다
+      # (2026-09-02 실측 구멍). version.properties 는 versionCode/Name 의 SSoT 이고,
+      # gradlew 는 과거 CRLF 로 실제 사고가 났던 파일이다(INC 2026-06-19).
       - 'gradle/**'
+      - 'gradle.properties'
+      - 'version.properties'
+      - 'gradlew'
+      - 'gradlew.bat'
       - 'config/detekt/**'
       - '.github/workflows/android.yml'
   pull_request:
@@ -22,7 +30,15 @@ on:
       - 'app/**'
       - 'build.gradle.kts'
       - 'settings.gradle.kts'
+      # `gradle/**` 는 디렉터리 gradle/ 만 매칭한다 — 루트의 gradle.properties 는 안 걸린다.
+      # AGP 호환 플래그·JVM 힙이 여기 있으므로 빠지면 빌드 설정 변경이 CI 를 통째로 우회한다
+      # (2026-09-02 실측 구멍). version.properties 는 versionCode/Name 의 SSoT 이고,
+      # gradlew 는 과거 CRLF 로 실제 사고가 났던 파일이다(INC 2026-06-19).
       - 'gradle/**'
+      - 'gradle.properties'
+      - 'version.properties'
+      - 'gradlew'
+      - 'gradlew.bat'
       - 'config/detekt/**'
       - '.github/workflows/android.yml'
 
@@ -45,12 +61,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Create stub local.properties
-        # BuildConfig 필드(SUPABASE_URL 등)는 빌드 시 빈 문자열로 처리되어도 무방.
+        # BuildConfig 필드는 빌드 시 기본값으로 처리되어도 무방.
         # 서명용 RELEASE_* 도 debug 빌드와 unit test, lint에는 필요 없음.
         run: |
           cat > local.properties <<'EOF'
-          SUPABASE_URL=https://placeholder.supabase.co
-          SUPABASE_ANON_KEY=placeholder
           BACKEND_BASE_URL=http://10.0.2.2:8080/
           SENTRY_DSN=
           EOF
@@ -83,12 +97,21 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest
 
-      # NOTE: assembleDebug 는 R8 미적용 → 실제 R8 stripping(룰 12, Gson keep 갭/INC-2026-06-15-25)은
-      # CI 에서 실행되지 않는다. Rule 12 가드는 위 Unit tests 의 ProguardKeepRulesTest(keep 규칙 박제) +
-      # 출시 빌드 실기기 계측(룰 2/12, preflight-release.sh)으로 분담한다. 릴리스 빌드는 서명 키가
-      # 필요해 CI 에 포함하지 않는다.
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug
+
+      # 이 저장소의 릴리스 사고는 전부 R8 에서만 재현됐다 — 룰 12(2026-06-15 빈 운동계획,
+      # Gson 래퍼 keep 누락)·INC-2026-07-02-29. debug 빌드와 단위 테스트는 R8 을 타지 않으므로
+      # 이 스텝이 없으면 minify/keep/`-dontwarn` 설정 회귀가 **출시 빌드에서야** 드러난다.
+      # (실제로 Entra 전환의 `Missing class com.google.crypto.tink.subtle.**` 도 로컬 릴리스
+      #  빌드를 직접 돌려서야 발견됐다.)
+      #
+      # 서명 키 없이 돌아간다 — INC-2026-07-02-29 수정으로 release 서명이 keystore 존재-조건부가
+      # 되어 clean checkout 에서는 unsigned 로 빌드된다(CodeQL autobuild 도 같은 경로).
+      # 목적은 R8 설정 검증이지 배포물 생산이 아니므로 **산출물은 업로드하지 않는다** —
+      # 출시 산출물의 유일한 경로는 preflight-release.sh 다(룰 2).
+      - name: Build release (R8) — 룰 12 회귀 가드
+        run: ./gradlew :app:assembleRelease
 
       - name: Upload debug APK artifact
         if: github.event_name == 'pull_request'

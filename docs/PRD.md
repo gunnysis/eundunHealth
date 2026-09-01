@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
 **문서 버전:** v2.4 (2026-07-03 — v0.1.19 Android CD 첫 실 e2e 릴리스 반영; 제품 기능 명세는 v0.1.12 대비 불변)
-**제품 버전:** v0.1.19 (versionCode 33) — Android CD(`release.yml`, 태그 push → Play 내부 트랙 자동 업로드) 첫 실 e2e 릴리스 + 의존성 배치(#139: sentry-gradle 6.12.0·Compose BOM 2026.06.00·lifecycle 2.11.0·Gradle 9.6.0) + release 서명 keystore 존재-조건부화(INC-2026-07-02-29). **사용자 가시 동작 변화 없음**. 이전(v0.1.18): 출시 재업로드 — v0.1.17/31 업로드가 Play "이미 사용된 버전 코드 31" 로 거부(INC-2026-06-19-28) → versionCode 32 재빌드 + 단조성 가드(앱 동작 변화 없음, v0.1.17 빌드 동일). 이전(v0.1.17): 공개 출시 전 전체 감사(Rule 8 inline 에러 배너 완성[Onboarding·Home·Profile]·HistoryScreen 완료/미완료 a11y·BadgeViewModel/백엔드 경계 테스트·account_service 로그 구조화·문서 드리프트 정정; 내부 품질·접근성, 사용자 가시 동작 변화 없음). 이전(v0.1.16): 출시 후 심층 감사 개선(JWKS 이벤트루프 블로킹 제거·무테스트 ViewModel 테스트 +20·GoalScreen 에러상태·DayPlanCard perf·오늘의활동 a11y·pool_pre_ping). 이전(v0.1.15): 감사 LOW 후속(SideEffect 라이프사이클-aware + alembic server_default·CORS 차단 + starlette CVE, PR #123). 이전(v0.1.14): 출시 준비 종합(실기기 제보 2버그 근본수정: 빈 운동계획=R8 keep 갭·완료 토글 해제 보존=수동 우선 + 전수감사 출시차단 해소 + 재발방지, PR #122). 이전(v0.1.13): 코드베이스 리팩토링(내부 품질, 사용자 영향 없음). 이전(v0.1.12): Health Connect 체성분(체중·체지방) 가져오기 제거 + `READ_WEIGHT`/`READ_BODY_FAT` 권한 회수(6→4) + 신체 4지표 수동 단일화. 이전(v0.1.11): Play Store 계정 삭제 페이지 + 계정 삭제 완전성(목표·신체이력 purge) 수정 + Health Connect 권한 rationale intent(Android 14+ 연동 버튼 무반응) 수정. 이전(v0.1.9): Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩. 이전 누적: v0.1.1~v0.1.4 (signup 흐름 + App Links + redirect hotfix + 422 observability) / v0.1.5 (vico 3.1 + healthConnect stable) / v0.1.6 (Signup Failed UX inline banner — INC-2026-05-26-01) / v0.1.7 (login+forgot 룰 8 + `AuthErrorBanner` promote) / v0.1.8 (UDF-Enhanced 12 VM + OkHttp5/Coil3 + 의존성 bump). v0.1·v0.2·v0.3 spec 전체 구현 완료. 백엔드 인프라(2026-06-09): warm baseline + Key Vault IaC. Play Store: **프로덕션 정식 출시(LIVE)** — 프로덕션 = **v0.1.19/33**(2026-07-03 release.yml 자동 CD → 같은 날 Console 수동 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인); 출시 산출물 단일 위치 `app/build/outputs/bundle`
+**제품 버전:** v0.2.0 (versionCode 34) — Android CD(`release.yml`, 태그 push → Play 내부 트랙 자동 업로드) 첫 실 e2e 릴리스 + 의존성 배치(#139: sentry-gradle 6.12.0·Compose BOM 2026.06.00·lifecycle 2.11.0·Gradle 9.6.0) + release 서명 keystore 존재-조건부화(INC-2026-07-02-29). **사용자 가시 동작 변화 없음**. 이전(v0.1.18): 출시 재업로드 — v0.1.17/31 업로드가 Play "이미 사용된 버전 코드 31" 로 거부(INC-2026-06-19-28) → versionCode 32 재빌드 + 단조성 가드(앱 동작 변화 없음, v0.1.17 빌드 동일). 이전(v0.1.17): 공개 출시 전 전체 감사(Rule 8 inline 에러 배너 완성[Onboarding·Home·Profile]·HistoryScreen 완료/미완료 a11y·BadgeViewModel/백엔드 경계 테스트·account_service 로그 구조화·문서 드리프트 정정; 내부 품질·접근성, 사용자 가시 동작 변화 없음). 이전(v0.1.16): 출시 후 심층 감사 개선(JWKS 이벤트루프 블로킹 제거·무테스트 ViewModel 테스트 +20·GoalScreen 에러상태·DayPlanCard perf·오늘의활동 a11y·pool_pre_ping). 이전(v0.1.15): 감사 LOW 후속(SideEffect 라이프사이클-aware + alembic server_default·CORS 차단 + starlette CVE, PR #123). 이전(v0.1.14): 출시 준비 종합(실기기 제보 2버그 근본수정: 빈 운동계획=R8 keep 갭·완료 토글 해제 보존=수동 우선 + 전수감사 출시차단 해소 + 재발방지, PR #122). 이전(v0.1.13): 코드베이스 리팩토링(내부 품질, 사용자 영향 없음). 이전(v0.1.12): Health Connect 체성분(체중·체지방) 가져오기 제거 + `READ_WEIGHT`/`READ_BODY_FAT` 권한 회수(6→4) + 신체 4지표 수동 단일화. 이전(v0.1.11): Play Store 계정 삭제 페이지 + 계정 삭제 완전성(목표·신체이력 purge) 수정 + Health Connect 권한 rationale intent(Android 14+ 연동 버튼 무반응) 수정. 이전(v0.1.9): Health Connect 체중·체지방 가져오기 + 홈 "오늘의 활동" 요약(걸음·칼로리·심박) + HC 동기화 경로 정리/갤럭시 워치 온보딩. 이전 누적: v0.1.1~v0.1.4 (signup 흐름 + App Links + redirect hotfix + 422 observability) / v0.1.5 (vico 3.1 + healthConnect stable) / v0.1.6 (Signup Failed UX inline banner — INC-2026-05-26-01) / v0.1.7 (login+forgot 룰 8 + `AuthErrorBanner` promote) / v0.1.8 (UDF-Enhanced 12 VM + OkHttp5/Coil3 + 의존성 bump). v0.1·v0.2·v0.3 spec 전체 구현 완료. 백엔드 인프라(2026-06-09): warm baseline + Key Vault IaC. Play Store: **프로덕션 정식 출시(LIVE)** — 프로덕션 = **v0.1.19/33**(2026-07-03 release.yml 자동 CD → 같은 날 Console 수동 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인); 출시 산출물 단일 위치 `app/build/outputs/bundle`
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -63,7 +63,7 @@
   └─ 세션 만료/없음 → 로그인 화면 → 이메일/비밀번호 입력 → 홈 화면
 ```
 
-- Supabase 세션 자동 저장/복원으로 매번 로그인 불필요
+- MSAL 계정 캐시의 무음 갱신으로 매번 로그인 불필요
 - 토큰 만료 시 자동 갱신 (TokenAuthenticator)
 
 ### 2.2. 메인 페이지 (홈 화면)
@@ -216,8 +216,8 @@
 | UI 프레임워크 | Jetpack Compose + Material3 |
 | 아키텍처 | Clean Architecture (UI → Domain → Data) |
 | DI | Hilt |
-| 인증 | Supabase Auth (이메일/비밀번호) |
-| 네트워크 보안 | HTTPS 필수 (개발 환경 localhost 예외), JWT ES256 검증 |
+| 인증 | Microsoft Entra External ID (브라우저 위임 · Authorization Code + PKCE) |
+| 네트워크 보안 | HTTPS 필수 (개발 환경 localhost 예외), JWT **RS256** 검증 (issuer·audience·`scp` 포함) |
 | 네트워크 안정성 | RetryInterceptor (3회 재시도, exponential backoff), 15초 타임아웃 |
 | 시간대 | KST (한국 표준시) 기준 |
 | 언어 | 모든 UI 텍스트 한국어 |
@@ -235,36 +235,35 @@
 │                     │     │  Apps             │     │                 │
 └────────┬────────────┘     └──────────────────┘     └─────────────────┘
          │
-         ├──▶ Supabase Auth (인증)
+         ├──▶ Entra External ID (인증)
          ├──▶ ExerciseDB API (운동 데이터)
          ├──▶ Health Connect (운동 세션 감지)
          └──▶ Sentry (에러 모니터링)
 ```
 
-### Backend API (v0.1.0 — FastAPI Python 3.12)
+### Backend API (FastAPI Python 3.14)
 
 | Method | Path | 설명 | 도입 |
 |--------|------|------|-----|
 | `GET` | `/health` | liveness 헬스 체크 (Container App probe) | v0.1 |
 | `GET` | `/health/ready` | readiness probe (DB `SELECT 1` → 200/503) | v0.1 |
-| `GET` | `/.well-known/assetlinks.json` | Android App Links 검증 | v0.1.3 |
-| `GET` | `/auth/confirm` | 이메일 확인 fallback (HTML 응답) | v0.1.3 |
 | `GET` | `/profile` | 프로필 조회 | v0.1 |
 | `PUT` | `/profile` | 프로필 생성/수정 (restDay 포함, 매 호출마다 history 자동 기록) | v0.1 / v0.3 |
 | `GET` | `/profile/history?limit=50` | 프로필 변경 이력 (체형 진행 차트용) | v0.3 |
-| `GET` | `/weekly-plan?week_start=` | 주간 계획 조회 | v0.1 |
+| `GET` | `/weekly-plan?weekStart=` | 주간 계획 조회 | v0.1 |
 | `POST` | `/weekly-plan` | 주간 계획 생성 | v0.1 |
 | `PATCH` | `/weekly-plan/complete` | 운동 완료 토글 | v0.1 |
 | `GET` | `/weekly-plan/history?page=&size=` | 히스토리 조회 (페이지네이션) | v0.1 |
-| `GET` | `/weekly-plan/previous?week_start=` | 직전 주 plan (excludeIds 알고리즘 입력) | v0.2 |
+| `GET` | `/weekly-plan/previous?weekStart=` | 직전 주 plan (excludeIds 알고리즘 입력) | v0.2 |
 | `GET` | `/weekly-plan/statistics?weeks=12` | 주간 완료율 + 현재/최장 스트릭 | v0.2 |
 | `GET` | `/badges` | 배지 목록 조회 (9종) | v0.1 / v0.3 |
 | `POST` | `/badges/{key}` | 배지 수여 | v0.1 |
 | `GET` | `/goals` | 목표 목록 (체중·체지방) | v0.3 |
 | `PUT` | `/goals` | 목표 upsert | v0.3 |
-| `DELETE` | `/account` | 회원 탈퇴 (Supabase Auth + 앱 DB 일괄 삭제) | v0.1 |
+| `DELETE` | `/account` | 회원 탈퇴 (Entra 사용자 + 앱 DB 일괄 삭제) | v0.1 |
 
-공개 4개(`/health`·`/health/ready`·`/.well-known/assetlinks.json`·`/auth/confirm`)를 제외한 나머지 14개는 Supabase JWT(ES256 / JWKS) 검증 필요. 응답은 camelCase JSON.
+공개 라우트(`/health`·`/health/ready`·`/privacy`·`/account-deletion`)를 제외한 나머지 14개는 Entra JWT(**RS256** / JWKS) 검증 필요. 응답은 camelCase JSON.
+> `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 인증 전환으로 **삭제**됐다 — Entra 는 이메일 검증을 브라우저 안에서 처리하므로 App Links 경로가 필요 없다.
 
 ---
 
@@ -312,7 +311,7 @@ Splash
 
 | 영역 | 비고 |
 |------|------|
-| 회원가입 이메일 확인 흐름 (AwaitingEmailConfirmation + 60초 재전송) | Supabase Auth `enable_confirmations` 켠 환경에서 사용자 잔류 보장 |
+| ~~회원가입 이메일 확인 흐름 (AwaitingEmailConfirmation + 60초 재전송)~~ | 2026-09 전환으로 **제거** — Entra 호스팅 페이지가 담당 |
 | Login 미인증 사용자에게 인증 메일 재전송 inline 액션 | `EmailNotConfirmed` AppError 도입 |
 | 인증 상태 모델 리팩터: `SessionState` / `AuthOpState` / `SignupState` | 가입/로그인 실패 시 화면 튕김 + 스낵바 잘림 버그 해소 |
 

@@ -1,7 +1,7 @@
 ---
 type: design
-status: proposed
-pr: null
+status: in-progress
+pr: 165
 related_inc: INC-2026-05-24-14
 supersedes: null
 target_version: versionCode 34+ (Android) / 백엔드·문서는 앱 버전 무관
@@ -12,9 +12,9 @@ tags: [auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11
 # Supabase Auth → Microsoft Entra External ID 전환 설계
 
 - **작성일**: 2026-09-01
-- **상태**: 작성 중 (승인 대기)
+- **상태**: **진행 중** — 구현 완료(브랜치 `feature/entra-external-id-migration`), 머지 대기
 - **상위 프로그램**: `2026-09-01-legacy-modernization-program-design.md` (WS1)
-- **연관 작업**: INC-2026-05-24-14(룰 5 근거) · `entra-external-id-cost-review`(2026-06-09 전환 보류 결정 — 본 문서가 뒤집음) · **`2026-09-01-build-modernization-design.md`(같은 빌드 파일을 건드림 — 현대화를 먼저 하는 것을 권장)**
+- **연관 작업**: INC-2026-05-24-14(룰 5 근거) · `entra-external-id-cost-review`(2026-06-09 전환 보류 결정 — 본 문서가 뒤집음) · **빌드 현대화(WS2, PR #164 머지 완료 — `docs/plans/logs/dependencies.md` 2026-09-01 entry)** — 같은 빌드 파일을 건드리므로 현대화를 먼저 했다
 - **구현 플랜**: `docs/plans/2026-09-01-entra-external-id-migration-plan.md`
 - **대상 버전**: Android versionCode 34+ / 백엔드·문서는 앱 버전 무관
 - **선행 작업**: §6 Step 0 (프로바이더 등록 + 테넌트 생성 + 한국어·브랜딩 설정)
@@ -162,15 +162,46 @@ curl -sS https://repo1.maven.org/maven2/com/microsoft/identity/client/msal/maven
 
 MSAL 요구사항은 **Min SDK 16+ / Target SDK 33+**(공식). 본 앱은 `minSdk 26`(`app/build.gradle.kts:88`) → **호환**.
 
-### F7. 별도 Maven 저장소는 **불필요** — 공식 문서가 낡았다
+### F7. 별도 Maven 저장소가 **필요하다** — 초안 F7 은 틀렸다 (2026-09-01 정정)
 
-MSAL 공식 문서는 Azure DevOps DuoSDK 피드 추가를 지시한다:
-```gradle
-maven { url 'https://pkgs.dev.azure.com/MicrosoftDeviceSDK/DuoSDK-Public/.../maven/v1' }
+**초안 주장**: "MSAL 공식 문서는 Azure DevOps DuoSDK 피드 추가를 지시하지만, 전이 의존성
+`com.microsoft.identity:common:24.6.0` 이 Maven Central 에 존재하므로 불필요하다."
+
+**왜 틀렸나 — 검증 대상 아티팩트를 잘못 골랐다.** `common` 이 Maven Central 에 있는 것은
+사실이지만, 막히는 것은 그 **아래 단계**다. 실제 의존성 트리는 이렇다:
+
 ```
-그러나 전이 의존성 `com.microsoft.identity:common:24.6.0`이 **Maven Central에 존재함을 확인**(HTTP 200, `lastUpdated 20260821215122`). 현 `settings.gradle.kts`의 `FAIL_ON_PROJECT_REPOS` + `mavenCentral()`로 충분하다.
+com.microsoft.identity.client:msal:8.4.2
+ +--- com.microsoft.identity:common:24.6.0          (Maven Central 있음)
+ |     +--- com.microsoft.identity:common4j:24.6.0  (Maven Central 있음)
+ |     +--- com.microsoft.device.display:display-mask:0.3.0   <-- FAILED
+```
 
-→ **공개 저장소에 불필요한 서드파티 저장소를 추가하지 않는다**(공급망 표면 확대 회피).
+`display-mask`(Surface Duo SDK) 소재 실측 (MEASURED, 2026-09-01):
+
+| 저장소 | 결과 |
+|---|---|
+| Maven Central | **404** |
+| Google Maven | **404** |
+| DuoSDK 피드 | **200** |
+
+→ 공식 문서의 저장소 추가 지시는 **낡은 것이 아니라 지금도 유효**하다.
+
+**채택 — 저장소를 추가하되 `content` 로 그룹을 좁힌다** (`settings.gradle.kts`):
+```kotlin
+maven("https://pkgs.dev.azure.com/MicrosoftDeviceSDK/DuoSDK-Public/_packaging/Duo-SDK-Feed/maven/v1") {
+    content { includeGroup("com.microsoft.device.display") }
+}
+```
+`content` 필터가 있으면 이 피드는 **그 그룹의 아티팩트만** 제공하고 나머지는 계속
+mavenCentral 에서만 해석된다. 저장소를 통째로 여는 것과 달리 공급망 표면이 실질적으로
+늘지 않는다. 배제(`exclude`)는 택하지 않았다 — MSAL 이 런타임에 참조하면
+`NoClassDefFoundError` 가 나는데 이는 **릴리스 실기기에서만** 드러난다.
+
+**교훈**: "전이 의존성이 Maven Central 에 있는가" 를 확인할 때는 **1단계만 보면 안 된다.**
+확인 수단은 HTTP 200 조회가 아니라 **실제 해석**이다 —
+`./gradlew :app:dependencies --configuration debugRuntimeClasspath` 한 줄이 정답을 준다.
+이 오류는 F5-a(검색 API 대신 `maven-metadata.xml`)와 같은 계열이다: 근거의 층위를 잘못 골랐다.
 
 ### F8. MSAL × R8 — 룰 12 직접 적용 대상
 
@@ -183,6 +214,72 @@ MSAL 공식 문서: *"MSAL uses **reflection** and generic type information stor
 ### F9. 리다이렉트 URI 형식 (공식 확정)
 
 `msauth://<package>/<base64-url-encoded-signature>` + config에 `broker_redirect_uri_registered: true`. 서명 키 3종(debug/upload/Play App Signing)이므로 **redirect URI도 3개** 등록.
+
+### F10. 실제 토큰으로 F1·F1-b·F4-a 동시 검증 — **엔드투엔드 실측 (2026-09-01)**
+
+구현 전에 **살아있는 테넌트에서 실제 액세스 토큰을 발급받아** 설계 단언을 검증했다. 문서 대조가 아니라 실물 검증이다.
+
+방법: 소비자 계정 self-service 가입 → Authorization Code + PKCE(공개 클라이언트, `http://localhost`) → 토큰 교환 → **PyJWT + `PyJWKClient` 로 라이브 JWKS 서명 검증**(`audience`·`issuer` 강제).
+
+실제 액세스 토큰 claims (검증 통과):
+
+| claim | 실측값 | 의미 |
+|---|---|---|
+| `alg` / `kid` | `RS256` / `K8kSE0JOSAiPJeUorccBhbrhv3I` | F4 확인 |
+| `iss` | `https://c7ebcc7f-….ciamlogin.com/c7ebcc7f-…/v2.0` | **F4-a 확인** — 서브도메인이 tenantId |
+| `aud` | `903bf44d-…`(백엔드 appId) | audience 검증 통과 |
+| `oid` | `d2540ae9-916a-465d-b0ed-f364a767ed23` | **F1 확인** |
+| `sub` | `jGuRLV4x0jrHaV8h7jf4S-L71Tw5YrxJB-ASjeQH21Q` | **`oid` 와 다름** — pairwise, DB 키로 쓰면 안 됨 |
+| `scp` | `access_as_user` | **F1-b 확인** |
+| `azp` | `2bf6134f-…`(Android appId) | |
+| `preferred_username` | `qkr133456@gmail.com` | |
+
+**`oid` → Graph 사용자 매핑을 별도 확인**(계정 삭제 경로):
+```
+GET /v1.0/users/d2540ae9-916a-465d-b0ed-f364a767ed23  → HTTP 200
+  id   = d2540ae9-916a-465d-b0ed-f364a767ed23   ← oid 와 완전 일치
+  mail = qkr133456@gmail.com
+```
+→ F1 의 "Graph 가 이 ID 를 `id` 로 반환한다"가 **본 테넌트에서 사실로 확인**됐다. `sub` 를 저장했다면 삭제만 조용히 실패했을 것이라는 F1 의 경고도 `sub != oid` 로 실증됐다.
+
+**부수 발견 2건**:
+
+1. **액세스 토큰에 `email` claim 이 없다.** 이메일은 `preferred_username` 으로만 온다. → 본 앱은 **user id 외의 프로필 claim 을 전혀 쓰지 않으므로**(이메일은 가입·로그인 폼 입력값으로만 쓰이고 화면에 표시하지 않는다) **영향 없음**. 향후 이메일 표시가 필요해지면 `email` optional claim 을 추가하지 말고 `preferred_username` 을 쓴다.
+2. **`name` claim 이 `"unknown"`** — 기본 가입 흐름이 표시 이름을 수집하지 않아 Entra 가 채운 값이다. 앱이 이름을 표시하지 않으므로 무해하나, **표시 이름이 필요해지면 user flow 의 속성 수집을 늘려야 한다**(앱 코드가 아니라 테넌트 설정).
+
+> **재현 스크립트**: 세션 scratchpad `verify_token.py`. 저장소에 두지 않는다 — 실행에 실토큰이 필요하고, 값이 자격증명이다.
+
+### F11. Q1 확정 — 코드 입력 방식. 그리고 **검증 메일은 영어이며 브랜딩으로 못 고친다**
+
+**Q1 = (a) 브라우저 내 코드 입력** (실물 확인, 2026-09-01). 수신 메일 원문:
+
+```
+eundunHealth
+Account verification code
+... please use the code below for account verification.
+The code will only work for 30 minutes.
+Account verification code:  92680384
+```
+
+**링크가 없다.** 따라서 다음을 **삭제**할 수 있다 — `assetlinks.json` · App Links intent-filter · 백엔드 `/auth/confirm` 라우트 · 앱의 `SignupResult.AwaitingConfirmation`/`resendConfirmation` 경로. 가입·검증 전 과정이 브라우저 안에서 완결된다.
+
+**부수 발견 — 메일이 영어다.** 한국어 전용 제품에서 유일하게 영어가 노출되는 지점이다. 공식 문서로 확인한 구조:
+
+| 요소 | 출처 | 한국어화 |
+|---|---|---|
+| 메일 상단 `eundunHealth` | **테넌트 이름** — *"The new tenant name also appears in the verification email sent to the user."* | ✅ 테넌트 이름 변경으로 가능 |
+| 메일 본문·제목 | Microsoft 내장 OTP 템플릿 | ❌ **Company branding 범위 밖** (브랜딩 문서는 sign-in/up/out **페이지**만 다룬다) |
+| 본문 한국어화 경로 | `OnOtpSend` 커스텀 인증 확장 → 자체 REST API → ACS/SendGrid | ⚠️ *"send the one-time passcode with your custom email template... while also supporting localization"* |
+
+> **내장 템플릿이 브라우저 로케일을 따르는지는 미검증**이다. 관측된 것은 "영어로 왔다" 뿐이며, 로케일 무시인지 로케일 판정 실패인지는 확인하지 않았다. 단정하지 말 것.
+
+**판단 — 현 시점 Won't-do.** 한국어 메일 하나를 위해 ACS/SendGrid + Function/API + 인증 확장 등록을 새로 운영해야 한다. 운영 표면·비용·장애 지점이 모두 늘고, 내용은 8자리 숫자 코드가 전부라 영어여도 이해에 지장이 없다. **사용자 유입 후 이탈 신호가 관측되면 재검토**한다.
+
+- 단기 개선(저비용): 테넌트 이름을 `은둔헬스` 로 바꾸면 메일 상단만이라도 한국어가 된다. 단 **로그인 페이지 배너에도 같은 이름이 쓰이므로** 함께 바뀐다 — 시각 확인 후 결정.
+
+**참고**:
+- [Customize branding (external tenants)](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-customize-branding-customers)
+- [Configure a custom email provider for OTP send events](https://learn.microsoft.com/en-us/entra/identity-platform/custom-extension-email-otp-get-started)
 
 ### 참고: 요금 (2026-06-09 메모리 수치 정정)
 
@@ -204,22 +301,26 @@ MSAL 공식 문서: *"MSAL uses **reflection** and generic type information stor
 
 ### 4.1 백엔드
 
-**`app/dependencies.py`** — 교체 범위는 URL·알고리즘·claim 3가지로 좁다:
+**`app/dependencies.py`** — 교체 범위는 JWKS 출처·알고리즘·claim 3가지로 좁다:
 ```python
 # JWKS: {supabase_url}/auth/v1/.well-known/jwks.json
-#    →  https://{subdomain}.ciamlogin.com/{tenant_id}/discovery/v2.0/keys
+#    →  discovery 문서의 jwks_uri (조합 금지 — F4-a)
+cfg = _get_oidc_config(settings.entra_subdomain)   # issuer·jwks_uri 를 1회 조회 후 캐시
 payload = jwt.decode(
     credentials.credentials, signing_key.key,
     algorithms=["RS256"],                       # F4
     audience=settings.entra_backend_client_id,  # "authenticated" → 백엔드 앱 client_id
-    issuer=f"https://{settings.entra_subdomain}.ciamlogin.com/{settings.entra_tenant_id}/v2.0",  # F4 신규
+    issuer=cfg["issuer"],                       # F4 신규 · F4-a: 조합하지 말고 읽을 것
 )
 # F1-b: scp 검증 (공식 권장). app-only 토큰(roles 보유) 차단 효과도 있다.
 if "access_as_user" not in (payload.get("scp") or "").split():
     raise InvalidTokenError("missing required scope")
 user_id = payload.get("oid")                    # F1 — 부재 시 401(대개 profile scope 누락)
 ```
-`PyJWKClient` 24h 캐시 · `timeout=5` · `asyncio.to_thread` 오프로딩 · 401/503/500 분기는 **IdP 무관이라 그대로 존치**.
+
+> **`issuer` 를 문자열로 조합하지 말 것.** 초안은 `{subdomain}.ciamlogin.com/...` 으로 조합했고 이는 **틀렸다**(F4-a 실측: 서브도메인이 tenantId 다). 조합식은 서명·audience 를 통과시키고 issuer 에서만 어긋나기 때문에 **전 API 401 인데 원인 추적이 매우 어렵다.** discovery 문서에서 읽으면 이 오류가 원천적으로 불가능하다.
+
+`PyJWKClient` 24h 캐시 · `timeout=5` · `asyncio.to_thread` 오프로딩 · 401/503/500 분기는 **IdP 무관이라 그대로 존치**. discovery 조회도 같은 워커 스레드 오프로딩·실패 시 503 경로를 따른다.
 
 **`app/config.py`** — `supabase_url`/`supabase_service_role_key` 제거, `entra_tenant_id`/`entra_subdomain`/`entra_backend_client_id`/`entra_backend_client_secret` 추가.
 

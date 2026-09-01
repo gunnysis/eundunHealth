@@ -459,8 +459,9 @@ def render_readme_v2(
     lines.append("1. **새 작업 시작**: `_templates/{design,plan}.md` 복사 → `docs/plans/YYYY-MM-DD-<topic>-{design,plan}.md` 페어 작성. frontmatter 의 `ledger_topic` 필드에 `android` / `backend` / `dependencies` / `process-infra` 중 하나.")
     lines.append("2. **작업 진행**: 페어 파일 update. PR 작성 시 페어 link.")
     lines.append(f"3. **PR 머지 후**: 해당 topic ledger (`{LEDGER_DIR}/<ledger_topic>.md`) 의 `## Recent (last 90 days)` 섹션 맨 위에 압축 entry 추가 (~15-30줄). 페어 파일 `git rm`. 같은 commit 또는 후속 mechanical commit.")
-    lines.append("4. **(자동)** `gen-plans-index.sh` 가 매 commit 시 ledger 의 Recent/Older 자동 재정렬 (90일 기준) + 본 INDEX 갱신.")
-    lines.append("5. **(가드)** shipped frontmatter 인 페어가 루트에 남아있으면 CI fail (`docs-plans-index.yml`).")
+    lines.append(f"4. **(같은 commit) 참조 리다이렉트**: `git rm` 한 페어를 참조하던 문서가 있으면 함께 고친다 — 길잡이 참조는 경로를 ledger 로 **교체**, 이력 기록(CHANGELOG 의 \"Added\")은 원문을 두고 **리다이렉트를 병기**한다. 빠뜨리면 링크가 조용히 죽는다(2026-09-01 도입 시점 26건 적체). 검사: `bash scripts/check-plans-links.sh`")
+    lines.append("5. **(자동)** `gen-plans-index.sh` 가 매 commit 시 ledger 의 Recent/Older 자동 재정렬 (90일 기준) + 본 INDEX 갱신.")
+    lines.append("6. **(가드)** shipped frontmatter 인 페어가 루트에 남아있으면 CI fail (`docs-plans-index.yml`). 같은 워크플로가 끊긴 페어 참조도 차단한다(pre-commit 에도 배선).")
     lines.append("")
 
     return "\n".join(lines) + "\n"

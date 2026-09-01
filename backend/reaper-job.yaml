@@ -23,15 +23,24 @@ properties:
       - name: database-url
         keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/database-url"
         identity: "/subscriptions/__SUBSCRIPTION_ID__/resourceGroups/rg-eundunhealth-prod-krc/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
-      - name: supabase-url
-        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/supabase-url"
+      - name: entra-tenant-id
+        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/entra-tenant-id"
         identity: "/subscriptions/__SUBSCRIPTION_ID__/resourceGroups/rg-eundunhealth-prod-krc/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
-      - name: supabase-service-role-key
-        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/supabase-service-role-key"
+      - name: entra-subdomain
+        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/entra-subdomain"
+        identity: "/subscriptions/__SUBSCRIPTION_ID__/resourceGroups/rg-eundunhealth-prod-krc/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
+      - name: entra-backend-client-id
+        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/entra-backend-client-id"
+        identity: "/subscriptions/__SUBSCRIPTION_ID__/resourceGroups/rg-eundunhealth-prod-krc/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
+      - name: entra-backend-client-secret
+        keyVaultUrl: "https://kv-eundunhealth.vault.azure.net/secrets/entra-backend-client-secret"
         identity: "/subscriptions/__SUBSCRIPTION_ID__/resourceGroups/rg-eundunhealth-prod-krc/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-eundunhealth-reaper"
   template:
     containers:
-      - image: eundunhealthacr.azurecr.io/eundunhealth-api:0e6a99d
+      # CI (backend.yml) and scripts/setup-reaper-job.sh substitute `__IMAGE__` with the
+      # image just deployed to the Container App, so app and job always share one image.
+      # A hardcoded tag used to live here; it drifted and became a purge target (design D1).
+      - image: __IMAGE__
         name: reaper
         command:
           - python
@@ -45,7 +54,11 @@ properties:
             value: production
           - name: DATABASE_URL
             secretRef: database-url
-          - name: SUPABASE_URL
-            secretRef: supabase-url
-          - name: SUPABASE_SERVICE_ROLE_KEY
-            secretRef: supabase-service-role-key
+          - name: ENTRA_TENANT_ID
+            secretRef: entra-tenant-id
+          - name: ENTRA_SUBDOMAIN
+            secretRef: entra-subdomain
+          - name: ENTRA_BACKEND_CLIENT_ID
+            secretRef: entra-backend-client-id
+          - name: ENTRA_BACKEND_CLIENT_SECRET
+            secretRef: entra-backend-client-secret

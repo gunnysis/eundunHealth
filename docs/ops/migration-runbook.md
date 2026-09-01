@@ -1,8 +1,13 @@
 # Migration Runbook: Ktor → FastAPI
 
+> **역사 문서 주의 (2026-09):** 본 런북은 Ktor → FastAPI 전환 당시의 절차 기록이다.
+> 그 안의 `SUPABASE_*` 시크릿·환경변수는 **현재 존재하지 않는다** — 2026-09 인증 전환으로
+> `ENTRA_TENANT_ID`/`ENTRA_SUBDOMAIN`/`ENTRA_BACKEND_CLIENT_ID`/`ENTRA_BACKEND_CLIENT_SECRET` 로 교체됐다.
+> 현행 시크릿 목록은 `docs/ops/operations-snapshot.md` §2. 아래 본문은 당시 절차를 그대로 보존한다.
+
 > 작성일: 2026-05-24 (cutover 완료) / 갱신: 2026-05-25 (자동 배포 정착)
 > 대상 환경: Azure Container Apps (`eundunhealth-api`, RG `rg-eundunhealth-prod-krc`), Azure PostgreSQL (`healthapp`)
-> 기반: 옛 `docs/plans/expected/2026-05-24-implementation-spec.md` §O (현재는 삭제됨)
+> 기반: 옛 `docs/plans/expected/2026-05-24-implementation-spec.md` §O — **삭제됨**. 완료 기록은 `docs/plans/logs/process-infra.md` (본 런북이 그 후속 산출물)
 > 상태: **cutover 완료**. 본 문서는 historical record 겸 향후 동급 마이그레이션 시 reference.
 
 > **현행 배포 절차는 `operations-snapshot.md §2`와 `CLAUDE.md "Deployment"` 섹션 참조.** 본 문서의 4.1·4.2(수동 cutover)는 2026-05-24 단일 실행분으로 종결. 이후의 모든 backend 변경은 GitHub Actions 자동 배포(`backend.yml`)로 진행.
@@ -149,7 +154,7 @@ psql "postgres://<db-admin-user>:<password>@healthapp.postgres.database.azure.co
 
 **동시성 안전**: Alembic 의 `alembic_version` row lock 이 동시 실행 직렬화 보장. Azure 공식 경고("min-replicas=0 + max=1 이어도 fail/update 시 중복 인스턴스 가능, no singleton guaranteed")에도 안전.
 
-**예외 — 5분 이상 데이터 백필 마이그레이션**: Container Apps startup probe timeout 으로 entrypoint 가 실패할 수 있음. 그땐 Container Apps Jobs 패턴으로 분리 검토 (`docs/plans/2026-05-27-schema-drift-recovery-design.md` §2 Out-of-scope, §9 잔여 리스크).
+**예외 — 5분 이상 데이터 백필 마이그레이션**: Container Apps startup probe timeout 으로 entrypoint 가 실패할 수 있음. 그땐 Container Apps Jobs 패턴으로 분리 검토 (`docs/plans/logs/backend.md` §2 Out-of-scope, §9 잔여 리스크).
 
 ---
 

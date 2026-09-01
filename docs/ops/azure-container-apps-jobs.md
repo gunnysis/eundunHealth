@@ -3,7 +3,7 @@
 > orphan reaper(`eundunhealth-reaper`) 프로비저닝(2026-06-17) 중 발생한 4개 에러(E1~E4)를
 > 공식·외부 문서로 교차검증하고, **재현 가능한 프로비저닝 패턴 + 함정 회피**를 박제한 durable 문서.
 > 향후 Container Apps **Job**(private ACR 이미지 + Key Vault 시크릿 + MI) 추가 시 본 패턴을 따른다.
-> 워크드 예시: `scripts/setup-reaper-job.sh` + `backend/reaper-job.yaml` (설계 `docs/plans/2026-06-17-orphan-reaper-job-design.md`).
+> 워크드 예시: `scripts/setup-reaper-job.sh` + `backend/reaper-job.yaml` (설계 `docs/plans/logs/process-infra.md`).
 
 ## 0. 권장 패턴 (공식 검증)
 
@@ -55,4 +55,4 @@ az monitor log-analytics query --workspace "$WID" \
 - [Jobs in Azure Container Apps](https://learn.microsoft.com/en-us/azure/container-apps/jobs) / [Create a job (CLI)](https://learn.microsoft.com/en-us/azure/container-apps/jobs-get-started-cli)
 - [microsoft/azure-container-apps#1284 — job `--registry-identity` 버그](https://github.com/microsoft/azure-container-apps/issues/1284)
 - [Azure CLI#18869 / #2588 — leading-dash 인자](https://github.com/Azure/azure-cli/issues/18869)
-- 관련 메모리/설계: `docs/plans/2026-06-17-orphan-reaper-job-design.md` §10
+- 관련 메모리/설계: `docs/plans/logs/process-infra.md` §10

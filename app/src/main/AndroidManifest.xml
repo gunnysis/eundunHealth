@@ -39,16 +39,34 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
 
-            <!-- App Links: Supabase Confirm Email 메일 링크가 앱으로 직접 전달 -->
-            <intent-filter android:autoVerify="true">
+        <!-- MSAL 이 브라우저 인증 결과를 받는 액티비티.
+             path 의 서명 해시는 **URL 인코딩하지 않는다** — res/raw/auth_config_ciam.json 의
+             redirect_uri 는 인코딩하고 여기는 안 한다. 방향이 반대라 자주 틀리는 지점이다.
+             서명 키마다 해시가 다르므로 data 를 키 수만큼 선언한다(3종 전부 등록됨). -->
+        <activity
+            android:name="com.microsoft.identity.client.BrowserTabActivity"
+            android:exported="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <!-- debug 키 -->
                 <data
-                    android:scheme="https"
-                    android:host="${appLinksHost}"
-                    android:pathPrefix="/auth/confirm" />
+                    android:scheme="msauth"
+                    android:host="com.gunnys.eundunhealth"
+                    android:path="/zUYkGo2kG8/CAW3QPXU/TM8o2o8=" />
+                <!-- 업로드 키 (.key/eundunhealth_upload_key) -->
+                <data
+                    android:scheme="msauth"
+                    android:host="com.gunnys.eundunhealth"
+                    android:path="/cqNNQa0DrMdbfDML6amWDRDXqdc=" />
+                <!-- Play App Signing 키 (Google 재서명) — 실제 배포본이 쓰는 키 -->
+                <data
+                    android:scheme="msauth"
+                    android:host="com.gunnys.eundunhealth"
+                    android:path="/7g70qemsU1zUB7wCNJUwcfXqd8Q=" />
             </intent-filter>
         </activity>
 

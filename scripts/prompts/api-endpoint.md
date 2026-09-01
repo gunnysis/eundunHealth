@@ -77,10 +77,10 @@ cd backend
 - [ ] workload 명은 `eundunhealth` (기존 명명과 일관성)
 - [ ] env suffix 명시 (예: `-prod`, `-dev`)
 - [ ] ACR/Storage 처럼 alphanumeric only 리소스는 하이픈 제거 + 압축형
-- [ ] design doc (`docs/plans/2026-06-02-naming-convention-audit-design.md`) §3.2 표에 신규 리소스 1행 추가
+- [ ] design doc (`docs/plans/logs/process-infra.md`) §3.2 표에 신규 리소스 1행 추가
 
 ## 주의사항
-- 모든 endpoint 는 JWT 인증 필수 (`/health` 제외). Supabase ES256 (JWKS, PyJWKClient 24h TTL).
+- 모든 endpoint 는 JWT 인증 필수 (`/health` 제외). Entra RS256 (OIDC discovery 로 얻은 JWKS, PyJWKClient 24h TTL). `oid` claim + `scp` 검증.
 - Token: NetworkModule 의 `AtomicReference`, `TokenAuthenticator` 가 401 자동 갱신.
 - Android ↔ Backend 필드명 일치는 OpenAPI 가 자동 보장 — `@SerialName` 수동 명시 불요.
 

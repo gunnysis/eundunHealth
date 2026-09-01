@@ -37,7 +37,7 @@ def test_html_routes_excluded_from_openapi_schema():
     from app.main import app
 
     paths = app.openapi()["paths"]
-    for p in ("/privacy", "/account-deletion", "/auth/confirm"):
+    for p in ("/privacy", "/account-deletion"):
         assert p not in paths, f"{p} 는 HTML 라우트 — openapi 스키마에서 제외돼야 함"
     assert "/health" in paths  # JSON 라우트는 문서화 유지
 

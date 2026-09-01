@@ -157,7 +157,7 @@ az consumption budget create \
 |------|------------|-------------|
 | 특정 태그만 떼고 manifest는 보존 | `az acr repository delete --image <repo>:<tag> --yes` | `az acr repository untag --name <reg> --image <repo>:<tag>` |
 | 특정 manifest digest 삭제 (다른 태그가 그걸 가리키지 않을 때만) | (위와 같이 manifest 모두 삭제 위험) | 사전 점검: `az acr manifest list-metadata -r <reg> -n <repo> --query "[?digest=='sha256:...'].tags"` → 비어있을 때만 삭제 |
-| 옛 timestamp 태그 정리 | 수동 일괄 삭제 | `bash redeploy.sh`가 자동 untag (최근 5개 + 운영 중 태그 보존) |
+| 옛 태그·dangling 정리 | 수동 일괄 삭제 | **`acr purge` 스케줄 ACR Task 2개**(2026-09-01~). 로컬 경로는 `redeploy.sh` 가 timestamp 최근 5개 보존 |
 
 > **요지**: `az acr repository delete --image <tag>`는 **태그가 가리키는 manifest 자체를 삭제**한다. 같은 manifest를 가리키는 모든 태그가 함께 사라진다. 옛 이미지를 untag만 하려면 반드시 `az acr repository untag`.
 
@@ -203,9 +203,9 @@ az postgres flexible-server firewall-rule delete \
 
 > **요지**: `az containerapp exec --command "..."`로 비대화형 명령 결과를 받기는 불안정(INC-06). 로컬 firewall 임시 허용 패턴이 정석.
 
-### 6.4 Supabase 프로젝트 교체 시 (참고: INC-14)
+### 6.4 Auth 제공자/테넌트 교체 시 (참고: INC-14, 룰 5)
 
-v1.0 정식 출시 후에는 **Supabase 프로젝트 교체를 절대 자유롭게 하지 말 것.** user_id namespace가 갈아엎혀 옛 사용자가 "user not found"가 된다.
+실사용자 확보 후에는 **Auth 제공자·테넌트 교체를 절대 자유롭게 하지 말 것**(IdP 무관). user_id namespace가 갈아엎혀 옛 사용자가 "user not found"가 된다.
 
 - ~~출시 전: 5개 사용자 테이블 `TRUNCATE`로 정리 가능~~ — **2026-06-29 프로덕션 정식 출시로 닫힌 경로**(2026-05 수행 이력만 해당).
 - 출시 후(현 단계) 불가피한 경우: 옛 user_id → 새 user_id 매핑 테이블 + 백필 스크립트 + 사용자 공지가 필수.
@@ -260,7 +260,7 @@ pwsh -File scripts\register-azure-credentials.ps1 -Verify
 
 ## 7. Azure Monitor Alerts
 
-> 설계 문서: `docs/plans/2026-06-03-azure-monitor-alerts-design.md`
+> 설계 문서: `docs/plans/logs/process-infra.md`
 > 프로비저닝 스크립트: `scripts/setup-azure-alerts.sh`
 
 ### 7.1 Action Group
@@ -285,16 +285,16 @@ pwsh -File scripts\register-azure-credentials.ps1 -Verify
 
 | Alert | Metric | 조건 | Sev | Eval | Window |
 |---|---|---|---|---|---|
-| `alert-psql-cpu-eundunhealth-prod` | `cpu_percent` | avg > 80% | Sev2 | 1m | 5m |
-| `alert-psql-storage-eundunhealth-prod` | `storage_percent` | avg > 80% | Sev1 | 5m | 15m |
-| `alert-psql-connections-eundunhealth-prod` | `active_connections` | avg > 20 | Sev2 | 1m | 5m |
+| `alert-pgsql-cpu-eundunhealth-prod` | `cpu_percent` | avg > 80% | Sev2 | 1m | 5m |
+| `alert-pgsql-storage-eundunhealth-prod` | `storage_percent` | avg > 80% | Sev1 | 5m | 15m |
+| `alert-pgsql-connections-eundunhealth-prod` | `active_connections` | avg > 20 | Sev2 | 1m | 5m |
 | `alert-ca-5xx-eundunhealth-prod` | `Requests` (5xx) | total > 3 | Sev1 | 1m | 5m |
 
 **P2 — Activity Log (무료)**
 
 | Alert | 조건 | Severity |
 |---|---|---|
-| `alert-psql-firewall-eundunhealth-prod` | PostgreSQL firewall rule 변경 (write) | Sev3 |
+| `alert-pgsql-firewall-eundunhealth-prod` | PostgreSQL firewall rule 변경 (write) | Sev3 |
 
 ### 7.3 관리
 

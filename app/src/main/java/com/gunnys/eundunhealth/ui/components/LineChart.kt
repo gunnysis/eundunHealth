@@ -9,7 +9,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
@@ -29,7 +29,7 @@ fun LineChart(
     val producer = remember { CartesianChartModelProducer() }
     LaunchedEffect(yValues) {
         if (yValues.isNotEmpty()) {
-            producer.runTransaction { lineSeries { series(yValues) } }
+            producer.runTransaction { lineModel { series(yValues) } }
         }
     }
     CartesianChartHost(

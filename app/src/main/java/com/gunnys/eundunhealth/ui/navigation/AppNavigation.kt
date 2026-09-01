@@ -10,11 +10,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.gunnys.eundunhealth.ui.auth.AuthGateScreen
 import com.gunnys.eundunhealth.ui.auth.AuthViewModel
-import com.gunnys.eundunhealth.ui.auth.ForgotPasswordScreen
-import com.gunnys.eundunhealth.ui.auth.LoginScreen
 import com.gunnys.eundunhealth.ui.auth.SessionState
-import com.gunnys.eundunhealth.ui.auth.SignupScreen
 import com.gunnys.eundunhealth.ui.badge.BadgeScreen
 import com.gunnys.eundunhealth.ui.goal.GoalScreen
 import com.gunnys.eundunhealth.ui.history.HistoryScreen
@@ -42,7 +40,7 @@ fun AppNavigation(
                 }
             }
             SessionState.Unauthenticated -> {
-                navController.navigate(Screen.Login.route) {
+                navController.navigate(Screen.AuthGate.route) {
                     popUpTo(0) { inclusive = true }
                 }
             }
@@ -54,23 +52,8 @@ fun AppNavigation(
         composable(Screen.Splash.route) {
             SplashScreen()
         }
-        composable(Screen.Login.route) {
-            LoginScreen(
-                onNavigateToSignup = { navController.navigate(Screen.Signup.route) },
-                onNavigateToForgotPassword = { navController.navigate(Screen.ForgotPassword.route) },
-                authViewModel = authViewModel,
-            )
-        }
-        composable(Screen.Signup.route) {
-            SignupScreen(
-                onNavigateToLogin = { navController.popBackStack() },
-                authViewModel = authViewModel,
-            )
-        }
-        composable(Screen.ForgotPassword.route) {
-            ForgotPasswordScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
+        composable(Screen.AuthGate.route) {
+            AuthGateScreen(authViewModel = authViewModel)
         }
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
@@ -98,18 +81,17 @@ fun AppNavigation(
         composable(
             Screen.WorkoutDetail.route,
             arguments = listOf(navArgument("exerciseId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            WorkoutDetailScreen(
-                exerciseId = backStackEntry.arguments?.getString("exerciseId") ?: "",
-                onBack = { navController.popBackStack() },
-            )
+        ) {
+            // exerciseId 는 WorkoutDetailViewModel 이 SavedStateHandle 로 읽는다 — 중복 전달하지 않는다.
+            WorkoutDetailScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.Profile.route) {
             ProfileScreen(
                 onBack = { navController.popBackStack() },
                 onAccountDeleted = {
-                    // AuthViewModel을 Unauthenticated로 전환 → 상단 LaunchedEffect가 Login으로 이동
-                    authViewModel.logout()
+                    // 계정 삭제 경로가 이미 로그아웃까지 마쳤다 — 세션 상태만 되돌리면
+                    // 상단 LaunchedEffect 가 인증 게이트로 이동시킨다.
+                    authViewModel.onSessionEnded()
                 },
             )
         }

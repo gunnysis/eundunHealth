@@ -175,20 +175,9 @@
 - **Lessons**: (1) **deploy path 버그**: staging 을 로컬(cwd=repo root)에서 테스트해 `backend/containerapp.yaml` 통과했으나 CI deploy job 은 `working-directory: backend` → `backend/backend/...` 로 실패(#96). → **CI invocation 경로까지 테스트**(아티팩트만 X). (2) **cp949 인코딩**: `az --yaml` 가 파일을 OS locale codec 으로 읽어 한글 주석에서 실패(Windows). CI(Ubuntu UTF-8) 무관하나 YAML 주석 ASCII 화. (3) **RBAC vault**: control-plane Owner ≠ data-plane → `secret set` 전에 self-grant Secrets Officer 필수(없으면 403). (4) **Git Bash MSYS**: resource-ID(`/subscriptions/...`) 인자가 망가짐 + `az keyvault show --query id` bash 에서 빈값 → resource-ID 명령은 PowerShell.
 - **Files touched**: `backend/containerapp.yaml`(신규), `.github/workflows/backend.yml`, `backend/app/routers/health.py`, `backend/tests/test_health.py`, `backend/openapi.json`, `docs/ops/operations-snapshot.md`, `docs/ops/migration-runbook.md`(§7), design+plan 페어(아카이브)
 
-### 2026-06-03 — Azure Monitor Alerts (P1+P2) 프로비저닝
-
-- **PR**: 없음 (main 직접 커밋 4건: `6e607c8` ~ `fa30d22`)
-- **Design**: `docs/plans/2026-06-03-azure-monitor-alerts-design.md` (approved, 본 entry 로 아카이브)
-- **Related INC**: INC-2026-05-27-01 (schema drift 500), INC-2026-05-24-01 (ACR manifest 삭제)
-- **Why**: Azure Monitor 알림 전무 — Sentry (앱 레벨) + GitHub Actions `/health` (배포 시점 1회) 만 존재. 배포~수동 점검 사이 인프라 이상 실시간 감지 불가. 과거 INC 2건 모두 Monitor alert 으로 조기 감지 가능했음.
-- **What**: `scripts/setup-azure-alerts.sh` — idempotent bash 스크립트 (9단계, `--dry-run` / `--delete` / `--help`). Action Group (`ag-eundunhealth-prod`, email) + Activity Log alert 4개 (Service Health / Resource Health / Resource Deletion / PG Firewall 변경, 무료) + Metric alert 4개 (PG CPU / Storage / Connections / CA 5xx, ~700원/월). Activity Log 은 `az rest --method PUT` (ARM REST API), Metric 은 `az monitor metrics alert create`. 네이밍 `alert-<type>-eundunhealth-prod` (CAF 패턴). `docs/ops/monitoring-and-cost.md` §4 비용 + §5 체크리스트 + §7 Alert 섹션 신설. `docs/ops/operations-snapshot.md` §9 비용 + §12 인벤토리 + §13 변경이력. `CLAUDE.md` scripts 섹션 등재.
-- **Decisions**: D1 기존 workspace 재사용 (rename 불가) / D2 Azure CLI 스크립트 (기존 `scripts/*.sh` 패턴) / D3 Activity Log = ARM REST API (CLI 문법 제한) / D4 Metric = CLI (dimension filter 지원) / D5 CAF 네이밍 / D7 5xx > 3 (5분, scale-to-zero false positive 방지) / D8 PG connections avg > 20 (B1ms 최대 50 의 40%)
-- **Outcome**: 4 commits, 5 files (+ CHANGELOG 2건), +666 LOC. Alert 8개 프로비저닝 완료 (metric 4 + activity log 4, MEASURED). 비용 ~$0.40/월 (ESTIMATE-ONLY, Azure 무료 tier 포함 시 $0 가능). PG Firewall alert 로 Action Group 파이프라인 실측 테스트 가능 (설계 §6.2).
-- **Residual risks**: Scale-to-zero 시 CA metric 미발생 (Sentry 보완) / Activity Log deletion 이 의도된 작업에도 발화 (Sev1 의도적) / Email-only 누락 가능 (현 규모 충분, 향후 Discord 확장 가능) / Git Bash MSYS path conversion (`MSYS_NO_PATHCONV=1` 해결)
-- **Files touched**: `scripts/setup-azure-alerts.sh` (신규), `docs/ops/monitoring-and-cost.md`, `docs/ops/operations-snapshot.md`, `docs/plans/README.md` (자동), `CLAUDE.md`, `docs/CHANGELOG.md`
-
 ## Older
 
+- 2026-06-03 Azure Monitor Alerts (P1+P2) 프로비저닝 — Azure Monitor 알림 전무 — Sentry (앱 레벨) + GitHub Actions `/health` (배포 시점 1회) 만 존재.
 - 2026-06-02 naming convention audit + PEP 257 enforce + automation infra ([#68](https://github.com/gunnysis/eundunHealth/pull/68)) — 5종 공식 명명/문서화 가이드 (JetBrains Kotlin / Google Android Style / PEP 8/257/484/526 / Microsoft CAF) 대비 코드+인프라 준수도 audit + PEP 257 docstring gap 해소 + 신규 코드/리소스 추가 시점에 자동 점검되는 인프라 보강.
 - 2026-06-02 lessons-meta-rules (PR #68 lessons L2/L6 재발방지) ([#71](https://github.com/gunnysis/eundunHealth/pull/71)) — PR #68 작업의 7 lessons 중 자동 가드 채널 없는 2건 (L2 산수 미검증 / L6 subagent reviewer 측정 오류) 의 프로세스 룰화.
 - 2026-06-02 lessons-infra-guards (PR #68 lessons L1/L4/L5/L7 재발방지) ([#70](https://github.com/gunnysis/eundunHealth/pull/70)) — PR #68 (naming convention audit) 작업의 7 lessons 중 자동 가드 채널 가능 4건을 가장 가까운 채널에 묶음.

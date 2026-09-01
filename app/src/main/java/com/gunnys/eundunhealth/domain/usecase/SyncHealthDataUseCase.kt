@@ -2,8 +2,7 @@ package com.gunnys.eundunhealth.domain.usecase
 
 import androidx.compose.runtime.Immutable
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import java.time.LocalDate
 import javax.inject.Inject
@@ -37,7 +36,7 @@ class SyncHealthDataUseCase @Inject constructor(
         }
 
         val completedDates = healthRepo.getExerciseDatesThisWeek(plan.weekStart).getOrElse {
-            it.toAppError().reportToSentry()
+            it.toReportedAppError()
             emptyList()
         }
 

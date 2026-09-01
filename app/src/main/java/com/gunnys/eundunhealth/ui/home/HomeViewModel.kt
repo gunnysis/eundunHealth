@@ -8,8 +8,7 @@ import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.GetOrCreateWeeklyPlanUseCase
@@ -108,13 +107,12 @@ class HomeViewModel @Inject constructor(
                 sync.newlyCompletedDates.forEach { date ->
                     // manual=false: HC 자동완료는 manuallySet 을 남기지 않아 이후 사용자 수동 해제가 가능.
                     workoutRepo.updateDayCompletion(sync.plan.id, date, true, manual = false)
-                        .onFailure { it.toAppError().reportToSentry() }
+                        .onFailure { it.toReportedAppError() }
                 }
                 checkBadges(sync.plan)
             }
             .onFailure {
-                val appErr = it.toAppError()
-                appErr.reportToSentry()
+                val appErr = it.toReportedAppError()
                 _uiState.value = HomeUiState.Error(appErr)
             }
     }
@@ -165,8 +163,7 @@ class HomeViewModel @Inject constructor(
                     // 실패 시 plan/완료 카운트만 current(토글 직전 스냅샷)로 revert. 활동 필드는 live 에서
                     // 보존(그 사이 loadTodayActivity 가 채운 todayActivity 유지).
                     val live = _uiState.value
-                    val appErr = it.toAppError()
-                    appErr.reportToSentry()
+                    val appErr = it.toReportedAppError()
                     if (live is HomeUiState.Success) {
                         _uiState.value = live.copy(
                             plan = current.plan,

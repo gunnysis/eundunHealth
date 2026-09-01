@@ -52,7 +52,7 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 
 | 데이터 종류 | 수집? | 공유? | 처리 방식 | 비고 |
 |------------|-------|-------|----------|------|
-| **이메일 주소** | ✅ | ❌ | Supabase Auth (저장됨) | 로그인 식별 |
+| **이메일 주소** | ✅ | ❌ | Microsoft Entra External ID (저장됨) | 로그인 식별 |
 | **사용자 ID** | ✅ | ❌ | 백엔드 DB(Azure PostgreSQL) | 운동 기록 연결 |
 | **신체 활동(키/몸무게/체지방률/근육량)** | ✅ | ❌ | 백엔드 DB | 운동 계획 생성 입력 |
 | **건강·피트니스(Health Connect 읽기)** | ✅ | ❌ | **READ 권한 4개**(운동 세션·걸음 수·소모 칼로리·심박수) **읽기 전용**(쓰기 없음). ⚠️ #106(v0.1.12)에서 **체중·체지방 HC 읽기 제거**(`READ_WEIGHT`/`READ_BODY_FAT` 회수, 6→4) | 걸음·칼로리·심박수는 단말 표시 전용(미전송). 운동 세션→완료 날짜만 백엔드 전송. **신체 4지표(키·몸무게·체지방·골격근)는 HC 아닌 사용자 직접 입력**. Data safety 폼은 실제 권한과 정확히 일치해야 함(검수 가드). 상세 privacy-policy.md §1 |
@@ -60,11 +60,12 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 | **광고 ID / IDFA / 위치** | ❌ | ❌ | 미사용 | |
 
 **“데이터 수집 목적”** 답변:
-- 앱 기능 (Supabase, Health Connect, 백엔드 DB)
+- 앱 기능 (Microsoft Entra External ID, Health Connect, 백엔드 DB)
 - 분석 (Sentry — 충돌 진단, 성능 모니터링)
 
-**“저장 위치”**: Supabase (Korea 리전) + Azure PostgreSQL (Korea Central)
-**“삭제 요청 방법”**: 앱 내 **계정 삭제** 버튼(ProfileScreen) — Supabase Admin API 로 Auth 삭제 + 앱 DB 의 user_id 전 테이블(프로필·계측 이력·운동 계획·목표·배지) 일괄 삭제. 앱 미사용자는 이메일 요청 경로 제공. **Play Console 데이터 안전/스토어 등록정보의 "계정 삭제 요청 URL" 에 `account-deletion` 페이지 URL 등록 필수** (§4 참조).
+**“저장 위치”**: Microsoft Entra External ID (**아시아·태평양** — 한국 리전 미지원) + Azure PostgreSQL (Korea Central)
+> ⚠️ 인증 데이터만 국외로 나간다. 건강 데이터는 Korea Central 에만 있다. 방침의 국외이전 고지는 `docs/store/privacy-policy.md` §3-1.
+**“삭제 요청 방법”**: 앱 내 **계정 삭제** 버튼(ProfileScreen) — Microsoft Graph 로 Entra 사용자 삭제(+`deletedItems` 즉시 파기) + 앱 DB 의 user_id 전 테이블(프로필·계측 이력·운동 계획·목표·배지) 일괄 삭제. 앱 미사용자는 이메일 요청 경로 제공. **Play Console 데이터 안전/스토어 등록정보의 "계정 삭제 요청 URL" 에 `account-deletion` 페이지 URL 등록 필수** (§4 참조).
 
 ---
 
@@ -162,7 +163,7 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 ### A. 프로덕션 전용 게이트 (먼저 확인 — 누락 시 검수 거부/지연)
 
 1. **비공개 테스트 졸업** — 2023.11 이후 생성된 **개인(individual) 개발자 계정**은 프로덕션 액세스 전 **비공개 테스트 12명 이상 + 14일 연속**이 요구될 수 있다. Console "프로덕션 액세스" 카드에서 상태 확인. 해당 시 본 AAB 로 **비공개 테스트(Closed)** 부터 → 14일 후 프로덕션 신청. (조직 계정·기존 출시 이력 계정은 면제 가능.) [기준](https://support.google.com/googleplay/android-developer/answer/14151465)
-2. **App access (테스트 로그인)** — 본 앱은 **로그인 필수**(Supabase Auth)라 검수자가 접근 못 하면 거부된다. **앱 콘텐츠 → 앱 액세스 → "모든 기능에 로그인 필요"** 선택 후 **검수용 테스트 계정(이메일/비번)** 등록(실데이터 분리 위해 전용 계정 권장).
+2. **App access (테스트 로그인)** — 본 앱은 **로그인 필수**(Microsoft Entra External ID)라 검수자가 접근 못 하면 거부된다. **앱 콘텐츠 → 앱 액세스 → "모든 기능에 로그인 필요"** 선택 후 **검수용 테스트 계정(이메일/비번)** 등록(실데이터 분리 위해 전용 계정 권장). 계정은 Entra 호스팅 페이지에서 직접 가입해 만든다.
 3. **콘텐츠 등급(IARC 설문)** — 프로덕션 필수. 앱 콘텐츠 → 콘텐츠 등급 → 설문(건강·피트니스, 폭력/성적 콘텐츠 없음) → IARC 등급 자동 산정.
 4. **타겟 API 레벨** — Play 신규앱 요건 targetSdk ≥ 35(Android 15). 본 앱 targetSdk **37(Android 17, stable)** → 충족. [기준](https://developer.android.com/google/play/requirements/target-sdk)
 
@@ -188,7 +189,7 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 **자동 경로 (권장)**: 태그 `v*` push → `.github/workflows/release.yml` 이 environment `play-release`
 (required reviewer 승인) 게이트 후 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB 빌드 →
 **Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`scripts/update-upload-ledger.sh`)까지 수행.
-프로덕션 승격은 Play Console 수동 유지. 설계: `docs/plans/2026-07-02-android-cd-play-upload-design.md`.
+프로덕션 승격은 Play Console 수동 유지. 설계: `docs/plans/logs/process-infra.md`.
 
 ```bash
 bash scripts/bump-version.sh 0.1.19          # 버전 bump (+원장 단조 가드)

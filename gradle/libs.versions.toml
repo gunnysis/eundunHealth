@@ -5,8 +5,7 @@ coreKtx = "1.19.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
 composeBom = "2026.06.01"
-supabase = "3.6.0"
-ktor = "3.5.0"
+msal = "8.4.2"
 hilt = "2.60.1"
 hiltNavigationCompose = "1.4.0"
 room = "2.8.4"
@@ -23,7 +22,7 @@ vico = "3.3.1"
 detekt = "1.23.8"
 spotless = "8.6.0"
 ktlint = "1.5.0"
-openapiGenerator = "7.10.0"
+openapiGenerator = "7.25.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,8 +38,7 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 
-supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
-ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+msal = { module = "com.microsoft.identity.client:msal", version.ref = "msal" }
 
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }

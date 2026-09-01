@@ -32,11 +32,17 @@ properties:
     - name: database-url
       keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/database-url
       identity: system
-    - name: supabase-url
-      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/supabase-url
+    - name: entra-tenant-id
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/entra-tenant-id
       identity: system
-    - name: supabase-service-role-key
-      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/supabase-service-role-key
+    - name: entra-subdomain
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/entra-subdomain
+      identity: system
+    - name: entra-backend-client-id
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/entra-backend-client-id
+      identity: system
+    - name: entra-backend-client-secret
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/entra-backend-client-secret
       identity: system
     - name: sentry-dsn-backend
       keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/sentry-dsn-backend
@@ -52,10 +58,14 @@ properties:
       env:
       - name: DATABASE_URL
         secretRef: database-url
-      - name: SUPABASE_URL
-        secretRef: supabase-url
-      - name: SUPABASE_SERVICE_ROLE_KEY
-        secretRef: supabase-service-role-key
+      - name: ENTRA_TENANT_ID
+        secretRef: entra-tenant-id
+      - name: ENTRA_SUBDOMAIN
+        secretRef: entra-subdomain
+      - name: ENTRA_BACKEND_CLIENT_ID
+        secretRef: entra-backend-client-id
+      - name: ENTRA_BACKEND_CLIENT_SECRET
+        secretRef: entra-backend-client-secret
       - name: SENTRY_DSN
         secretRef: sentry-dsn-backend
       - name: ENVIRONMENT

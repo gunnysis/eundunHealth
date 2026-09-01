@@ -84,8 +84,10 @@ done
 # Alembic에 PG URL 주입 (async driver 사용)
 export DATABASE_URL="postgresql+asyncpg://dev:devpass@localhost:5432/eundunhealth"
 # 모듈 import 시 settings가 둘 다 요구 — placeholder로 안전 통과.
-export SUPABASE_URL="${SUPABASE_URL:-https://placeholder.supabase.co}"
-export SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-placeholder}"
+export ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-00000000-0000-0000-0000-000000000000}"
+export ENTRA_SUBDOMAIN="${ENTRA_SUBDOMAIN:-placeholder}"
+export ENTRA_BACKEND_CLIENT_ID="${ENTRA_BACKEND_CLIENT_ID:-00000000-0000-0000-0000-000000000000}"
+export ENTRA_BACKEND_CLIENT_SECRET="${ENTRA_BACKEND_CLIENT_SECRET:-placeholder}"
 
 echo ""
 echo "Step 1/2: alembic upgrade head (기존 마이그레이션 적용)..."

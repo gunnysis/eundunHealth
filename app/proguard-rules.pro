@@ -1,5 +1,5 @@
 # Gson/Retrofit이 리플렉션으로 접근하는 DTO/JSON 모델은 keep 필요.
-# Supabase/Sentry/Room/DataStore는 각 라이브러리의 consumer-rules.pro가 keep 규칙을
+# MSAL/Sentry/Room/DataStore는 각 라이브러리의 consumer-rules.pro가 keep 규칙을
 # 자체적으로 제공하므로 여기에 중복 선언하지 않는다.
 
 -keepattributes Signature, *Annotation*
@@ -15,6 +15,9 @@
 # generator 설정/버전 변경 시 같은 silent 결함이 재발하므로 방어적으로 명시 keep.
 -keep class com.gunnys.eundunhealth.api.generated.model.** { *; }
 
-# Ktor / management.* 클래스 미설치 환경에서 발생하는 R8 경고 억제 (transitive 의존성)
--dontwarn java.lang.management.ManagementFactory
--dontwarn java.lang.management.RuntimeMXBean
+# MSAL 의 전이 의존성 nimbus-jose-jwt 가 참조하는 Google Tink 클래스.
+# EdDSA(Ed25519)·X25519·XChaCha20Poly1305 JOSE 알고리즘 전용 경로이며 Tink 는 런타임
+# 의존성에 없다. Entra CIAM 은 RS256 을 쓰므로 이 경로는 실행되지 않는다 —
+# 없는 클래스를 keep 할 수는 없으니 경고만 억제한다(-keep 이 아니라 -dontwarn 이 맞다).
+# 실측: 이 규칙이 없으면 :app:minifyReleaseWithR8 이 "Missing classes detected" 로 실패한다.
+-dontwarn com.google.crypto.tink.subtle.**

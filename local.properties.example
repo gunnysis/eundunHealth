@@ -4,9 +4,11 @@
 # Android SDK (Android Studio가 자동 설정)
 # sdk.dir=C:\\Users\\<USER>\\AppData\\Local\\Android\\Sdk
 
-# Supabase (Android 클라이언트용 — anon key만)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=eyJ...
+# Microsoft Entra External ID
+# client_id / authority 는 app/src/{debug,release}/res/raw/auth_config_ciam.json 에 있다
+# (MSAL 이 R.raw 리소스를 요구하므로 BuildConfig 주입이 불가).
+# 여기는 MSAL 이 요청할 API scope 만 둔다 — 미설정 시 운영 기본값을 쓴다.
+ENTRA_API_SCOPE=api://<backend-client-id>/access_as_user
 # 주의: SERVICE_ROLE_KEY는 백엔드 환경변수로만 사용. Android local.properties에 두지 말 것.
 
 # ExerciseDB — OSS 공개 API 사용 중 (인증 없음)

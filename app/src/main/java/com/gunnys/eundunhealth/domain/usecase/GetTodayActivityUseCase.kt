@@ -2,8 +2,7 @@ package com.gunnys.eundunhealth.domain.usecase
 
 import androidx.compose.runtime.Immutable
 import com.gunnys.eundunhealth.domain.model.DailyActivity
-import com.gunnys.eundunhealth.domain.model.reportToSentry
-import com.gunnys.eundunhealth.domain.model.toAppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import javax.inject.Inject
 
@@ -22,7 +21,7 @@ class GetTodayActivityUseCase @Inject constructor(
             return@runCatching TodayActivityResult(activity = null, hasPermission = false)
         }
         val activity = healthRepo.getTodayActivity().getOrElse {
-            it.toAppError().reportToSentry()
+            it.toReportedAppError()
             null
         }
         TodayActivityResult(activity = activity, hasPermission = true)

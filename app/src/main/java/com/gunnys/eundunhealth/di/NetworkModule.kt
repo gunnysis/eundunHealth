@@ -6,16 +6,15 @@ import com.gunnys.eundunhealth.api.generated.api.BadgesApi
 import com.gunnys.eundunhealth.api.generated.api.GoalsApi
 import com.gunnys.eundunhealth.api.generated.api.ProfileApi
 import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanApi
+import com.gunnys.eundunhealth.data.auth.MsalClientProvider
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbApi
+import com.gunnys.eundunhealth.data.remote.interceptor.EntraSessionRefresher
 import com.gunnys.eundunhealth.data.remote.interceptor.RetryInterceptor
-import com.gunnys.eundunhealth.data.remote.interceptor.SupabaseSessionRefresher
 import com.gunnys.eundunhealth.data.remote.interceptor.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
 import io.sentry.okhttp.SentryOkHttpInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -33,24 +32,19 @@ object NetworkModule {
     private const val TIMEOUT_SECONDS = 15L
     private const val EXERCISEDB_BASE_URL = "https://oss.exercisedb.dev/api/v1/"
 
+    // 빈 홀더로 시작한다. MSAL 계정 캐시 조회는 suspend 라 여기서 못 부르고,
+    // 앱 시작 시 AuthViewModel 의 세션 복원이 첫 토큰을 채운다. 그 전에 나가는 요청은
+    // 토큰 없이 401 을 받고 TokenAuthenticator 가 갱신한다.
     @Provides
     @Singleton
-    fun provideTokenHolder(supabaseClient: SupabaseClient): AtomicReference<String?> {
-        val holder = AtomicReference<String?>(null)
-        // Initialize with current session token if available
-        try {
-            val token = supabaseClient.auth.currentSessionOrNull()?.accessToken
-            holder.set(token)
-        } catch (_: Exception) {}
-        return holder
-    }
+    fun provideTokenHolder(): AtomicReference<String?> = AtomicReference(null)
 
     @Provides
     @Singleton
     @Named("backend")
     fun provideBackendOkHttpClient(
         tokenHolder: AtomicReference<String?>,
-        supabaseClient: SupabaseClient,
+        msalProvider: MsalClientProvider,
     ): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(RetryInterceptor())
         .addInterceptor { chain ->
@@ -64,7 +58,7 @@ object NetworkModule {
             }
             chain.proceed(request)
         }
-        .authenticator(TokenAuthenticator(SupabaseSessionRefresher(supabaseClient), tokenHolder))
+        .authenticator(TokenAuthenticator(EntraSessionRefresher(msalProvider), tokenHolder))
         .addInterceptor(SentryOkHttpInterceptor())
         .addInterceptor(
             HttpLoggingInterceptor().apply {

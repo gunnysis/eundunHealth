@@ -132,14 +132,14 @@ async def test_complete_when_plan_missing_returns_404(client):
     assert resp.status_code == 404
 
 
-# === Supabase Admin API 실패 / 멱등 경로 ===
+# === Graph API 실패 / 멱등 경로 ===
 
 @pytest.mark.asyncio
-async def test_delete_account_supabase_500_raises_502(client, sample_profile, supabase_delete_mock):
-    """Supabase 5xx → AccountService가 AppException(502)로 변환 → DB는 보존."""
+async def test_delete_account_graph_500_raises_502(client, sample_profile, entra_delete_mock):
+    """Graph 5xx → AccountService가 AppException(502)로 변환 → DB는 보존."""
     await client.put("/profile", json=sample_profile)
 
-    with supabase_delete_mock(status_code=500):
+    with entra_delete_mock(status_code=500):
         resp = await client.delete("/account")
         assert resp.status_code == 502
         body = resp.json()
@@ -151,11 +151,11 @@ async def test_delete_account_supabase_500_raises_502(client, sample_profile, su
 
 
 @pytest.mark.asyncio
-async def test_delete_account_supabase_404_is_idempotent(client, sample_profile, supabase_delete_mock):
-    """Supabase 404 (이미 삭제된 사용자) → 200 + DB 데이터도 정리되어야 한다."""
+async def test_delete_account_graph_404_is_idempotent(client, sample_profile, entra_delete_mock):
+    """Graph 404 (이미 삭제된 사용자) → 200 + DB 데이터도 정리되어야 한다."""
     await client.put("/profile", json=sample_profile)
 
-    with supabase_delete_mock(status_code=404):
+    with entra_delete_mock(status_code=404):
         resp = await client.delete("/account")
         assert resp.status_code == 200
 

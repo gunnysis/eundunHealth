@@ -6,8 +6,8 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.1.19-blue)
-![versionCode](https://img.shields.io/badge/versionCode-33-blue)
+![versionName](https://img.shields.io/badge/versionName-0.2.0-blue)
+![versionCode](https://img.shields.io/badge/versionCode-34-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB)
@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **프로덕션 정식 출시(LIVE)** — Google Play 프로덕션 출시·승인 완료(2026-06-29). 프로덕션 버전 v0.1.19 (versionCode 33) — 2026-07-03 자동 CD(태그 push → `release.yml`, 내부 트랙) 후 같은 날 프로덕션 승격. 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성). 2026-07-29 Azure RG 이관(`apps` → `rg-eundunhealth-prod-krc`, 단일 RG — 서비스 URL 무영향)
+- **현재 단계** — **프로덕션 정식 출시(LIVE)**. 저장소 버전과 스토어 버전이 다르다 — **저장소 = v0.2.0 (versionCode 34, Entra 전환, 미출시)** / **Play 프로덕션 = v0.1.19 (versionCode 33)**. Google Play 프로덕션 출시·승인 완료(2026-06-29) — 2026-07-03 자동 CD(태그 push → `release.yml`, 내부 트랙) 후 같은 날 프로덕션 승격. 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성). 2026-07-29 Azure RG 이관(`apps` → `rg-eundunhealth-prod-krc`, 단일 RG — 서비스 URL 무영향)
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -52,7 +52,7 @@
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
 - **목표 설정 및 진행 시각화** (v0.3) — 체중 / 체지방률 목표 + 프로필 변화 이력 차트
 - **배지 시스템** — 9 종(마일스톤 4 + 목표 달성 2 + 기타 3)
-- **인증** — Supabase Auth(이메일 / 비밀번호 + App Links 자동 로그인)
+- **인증** — Microsoft Entra External ID(브라우저 위임 · Authorization Code + PKCE). 이메일/비밀번호 입력과 가입·비밀번호 재설정은 Entra 호스팅 페이지에서 처리
 - **에러 표시 일관성** — Auth 화면의 실패는 inline 영구 표시 + a11y liveRegion + Sentry breadcrumb ([CLAUDE.md 룰 8](CLAUDE.md))
 
 ---
@@ -64,14 +64,14 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Kotlin 2.4.10, Java 17 | KSP 2.3.11 |
-| 빌드 | Gradle 9.6.0, AGP 9.3.2 | Min SDK 26 / Target SDK 37 |
+| 빌드 | Gradle 9.7.1, AGP 9.3.2 | Min SDK 26 / Target SDK 37 |
 | UI | Jetpack Compose (BOM 2026.06.01) | Material 3 |
 | DI | Hilt 2.60.1 | |
 | 비동기 | kotlinx-coroutines + Flow | |
 | 네트워크 | Retrofit + OkHttp + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 |
 | 로컬 DB | Room (version=2) | `EundunDatabase` |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
-| Auth | Supabase Kotlin SDK 3.6.0 | ES256 JWT |
+| Auth | MSAL Android 8.4.2 | RS256 JWT · `oid` claim |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | |
 | 모니터링 | Sentry Android 8.54.0 | 16KB page-aligned native libs |
 | API 클라이언트 | OpenAPI Generator 7.10.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동 |
@@ -81,15 +81,15 @@
 
 | 영역 | 선택 | 비고 |
 |------|------|------|
-| 언어 / 런타임 | Python 3.12 | |
+| 언어 / 런타임 | Python 3.14 | |
 | 프레임워크 | FastAPI 0.139.0 + uvicorn 0.50.0 | |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.51 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
 | 마이그레이션 | Alembic 1.18.5 (head: `b78b256c2b20`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
-| Auth 검증 | PyJWT 2.13.0 + JWKS | ES256, 24h TTL 캐시 |
+| Auth 검증 | PyJWT 2.13.0 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.64.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 87/87 PASS, coverage ~97% (sysmon core) |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 115/115 PASS, coverage ~97% (sysmon core) |
 
 ### 인프라
 
@@ -99,7 +99,7 @@
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret 4 |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU) |
 | Database | Azure PostgreSQL Flexible Server `healthapp` (B1ms, 32GB) |
-| Auth | Supabase (Korea 리전, project `ttzzbfoksncqazvcsfiu`) |
+| Auth | Microsoft Entra External ID 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미지원) |
 | 운동 데이터 소스 | OSS ExerciseDB (`oss.exercisedb.dev`, 무인증) |
 | CI/CD | GitHub Actions (`android.yml`, `backend.yml`) + Dependabot |
 | 에러 추적 | Sentry (Android / Backend 별도 프로젝트) |
@@ -115,12 +115,12 @@ ui/          # Jetpack Compose 화면 + ViewModel + Navigation (sealed Screen)
   components/    # 공용 컴포넌트 (AuthErrorBanner, ProfileSummaryCard, Skeleton, Error, Empty)
   auth/ home/ onboarding/ profile/ statistics/ goal/ history/ badges/ workout/ splash/
 domain/      # 모델 + 리포지토리 인터페이스 + UseCase + AppError sealed class
-data/        # Repository 구현 + Retrofit + Room + Health Connect + Supabase + DataStore
-di/          # Hilt 모듈 (NetworkModule, SupabaseModule, DatabaseModule, RepositoryModule, CoilModule)
+data/        # Repository 구현 + Retrofit + Room + Health Connect + MSAL(auth/) + DataStore
+di/          # Hilt 모듈 (NetworkModule, DatabaseModule, RepositoryModule, CoilModule)
 ```
 
 핵심 패턴
-- ViewModel 의 userId 획득은 `AuthRepository.getCurrentUserId()` — `SupabaseClient` 직접 주입 금지
+- ViewModel 의 userId 획득은 `AuthRepository.getCurrentUserId()` — MSAL 클라이언트 직접 주입 금지. userId = 토큰의 `oid` claim(`sub` 아님)
 - 모든 ViewModel 의 에러 모델은 `MutableStateFlow<AppError?>` + `clearError()` 로 통일
 - 401 → `TokenAuthenticator` 가 `AtomicReference` 의 토큰을 5초 timeout 으로 갱신
 - 일시 장애는 `RetryInterceptor` 가 지수 백오프(3 회 / 500ms·1s·2s)
@@ -131,7 +131,7 @@ di/          # Hilt 모듈 (NetworkModule, SupabaseModule, DatabaseModule, Repos
 app/main.py           # FastAPI 앱 + lifespan(DB / Sentry) + 모듈 레벨 CORS + 글로벌 예외 핸들러
 app/config.py         # pydantic-settings (@lru_cache)
 app/database.py       # DeclarativeBase + get_db() UoW (app.state.session_factory)
-app/dependencies.py   # JWKS 기반 JWT 검증 (ES256)
+app/dependencies.py   # JWKS 기반 JWT 검증 (RS256, Entra External ID)
 app/exceptions.py     # AppException 계층 (NotFound / Conflict / BadRequest)
 app/models/           # SQLAlchemy 2.0 Mapped[T]
 app/schemas/          # Pydantic CamelSchema (alias_generator=to_camel)
@@ -149,12 +149,10 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 |--------|------|------|
 | `GET` | `/health` | 헬스체크 — liveness (Container App probe) |
 | `GET` | `/health/ready` | readiness probe (DB `SELECT 1` → 200/503) |
-| `GET` | `/.well-known/assetlinks.json` | Android App Links 검증 |
-| `GET` | `/auth/confirm` | 이메일 확인 fallback (HTML 응답) |
 | `GET` | `/privacy` | 개인정보 처리방침 (Play 등록 URL, `docs/store/` 렌더) |
 | `GET` | `/account-deletion` | 계정·데이터 삭제 안내 (Play 등록 URL) |
 
-> HTML 브라우저 라우트(`/privacy`·`/account-deletion`·`/auth/confirm`)는 `include_in_schema=False` — openapi.json(Android 생성기 입력)에서 제외해 앱이 호출하지 않는 죽은 클라이언트 메서드 생성을 막는다. 라우트 자체는 정상 동작(브라우저·크롤러 직접 접근).
+> HTML 브라우저 라우트(`/privacy`·`/account-deletion`)는 `include_in_schema=False` — openapi.json(Android 생성기 입력)에서 제외해 앱이 호출하지 않는 죽은 클라이언트 메서드 생성을 막는다. 라우트 자체는 정상 동작(브라우저·크롤러 직접 접근).
 
 **JWT 필요 (14)**
 
@@ -165,11 +163,11 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 | `GET` / `POST` | `/weekly-plan` | 주간 운동 계획 |
 | `PATCH` | `/weekly-plan/complete` | 일자별 완료 표시 |
 | `GET` | `/weekly-plan/history?page=&size=` | 페이지네이션 |
-| `GET` | `/weekly-plan/previous?week_start=` | v0.2 알고리즘 입력 |
+| `GET` | `/weekly-plan/previous?weekStart=` | v0.2 알고리즘 입력 |
 | `GET` | `/weekly-plan/statistics?weeks=12` | v0.2 완료율 + 스트릭 |
 | `GET` / `POST` | `/badges`, `/badges/{key}` | 9 종 |
 | `GET` / `PUT` | `/goals` | v0.3 |
-| `DELETE` | `/account` | Supabase Admin API 연동 |
+| `DELETE` | `/account` | Microsoft Graph 연동 (삭제 204 + `deletedItems` 즉시 파기) |
 
 ---
 
@@ -178,7 +176,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ```
 .
 ├── app/                      # Android 앱 (Kotlin / Compose)
-├── backend/                  # FastAPI 백엔드 (Python 3.12)
+├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: b78b256c2b20)
 │   ├── tests/                # pytest (87 PASS, coverage ~97%)
@@ -225,7 +223,7 @@ cd eundunHealth
 # pre-commit hook 활성화 (clone 직후 1 회)
 git config core.hooksPath .githooks
 
-# local.properties 작성 (Supabase URL/key, Backend URL, Sentry DSN, release signing)
+# local.properties 작성 (Backend URL, Sentry DSN, Entra API scope, release signing)
 cp local.properties.example local.properties
 # → 파일 열어 비밀값 채우기
 ```
@@ -347,7 +345,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | 2 | 릴리스 산출물은 `releaseArtifacts` 또는 `preflight-release.sh` 하나로 | INC-04 |
 | 3 | Alembic autogenerate 는 PostgreSQL 컨테이너 위에서만 (`alembic-autogen.sh`) | INC-07 |
 | 4 | `lifespan` 안에서 `app.add_middleware()` 호출 금지 — 모듈 레벨 등록 | INC-03 |
-| 5 | Supabase 프로젝트는 v1.0 출시 후 절대 교체 금지 | INC-14 |
+| 5 | Auth 제공자/테넌트는 실사용자 확보 후 절대 교체 금지 | INC-14 |
 | 6 | `backend.yml` 의 새 `secretref` 는 시크릿 set + 가드 step + 스냅샷 동시 갱신 | INC-18 |
 | 7 | 스키마 변경 PR 은 같은 PR 에서 entrypoint(`alembic upgrade head`) 검증 포함 | INC-2026-05-27-01 |
 | 8 | Auth/UI 실패 표시는 inline + persistent + a11y liveRegion + Sentry breadcrumb | INC-2026-05-26-01 |
@@ -382,7 +380,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `0.1.19` (versionCode `33`) — **Google Play 프로덕션 정식 출시(LIVE)** — 프로덕션 = v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인). v0.1.19 = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
+**현재 버전** — 저장소 `0.2.0` (versionCode `34`, Supabase → Entra External ID 전환, **미출시**) / Play 프로덕션 `0.1.19` (versionCode `33`) — **Google Play 프로덕션 정식 출시(LIVE)** — 프로덕션 = v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인). v0.1.19 = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
 
 ### 마일스톤 진행
 
@@ -461,7 +459,7 @@ PR 작성 시 [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.m
 - **라이선스** — **Proprietary / All Rights Reserved**. 저장소·앱 소스·아트워크의 무단 복제·재배포·수정·상업적 이용을 금지합니다.
 - **개인정보 처리방침** — [docs/store/privacy-policy.md](docs/store/privacy-policy.md) (Play Store 등재 URL 호스팅 대상).
 - **계정 및 데이터 삭제** — [docs/store/account-deletion.md](docs/store/account-deletion.md) (Play Store 계정 삭제 요청 URL 호스팅 대상).
-- **외부 의존성 라이선스** — 각 의존성은 자체 라이선스를 따릅니다(예: OSS ExerciseDB, Supabase SDK, Sentry SDK, FastAPI 등).
+- **외부 의존성 라이선스** — 각 의존성은 자체 라이선스를 따릅니다(예: OSS ExerciseDB, MSAL, Sentry SDK, FastAPI 등).
 
 ---
 

@@ -1,12 +1,18 @@
 package com.gunnys.eundunhealth.ui.auth
 
+import android.app.Activity
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
+import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,9 +27,27 @@ sealed class SessionState {
 }
 
 /**
- * 앱 전역 세션 관리 + deep link 처리 전용 ViewModel.
- * 로그인/회원가입/비밀번호 재설정 로직은 각 화면별 ViewModel (LoginViewModel,
- * SignupViewModel, ForgotPasswordViewModel) 로 분리됨.
+ * 인증 게이트 화면의 렌더 상태.
+ *
+ * 설계 §5.3 은 `Launching`(브라우저 여는 중)과 `AwaitingReturn`(브라우저 체류 중)을 나눴으나
+ * **하나로 합쳤다**. MSAL 은 "Custom Tab 이 실제로 표시됐다" 는 콜백을 주지 않아 두 상태를
+ * 구분할 근거가 런타임에 없고, 두 상태의 UI(스피너 + CTA 비활성)도 동일하다. 나누면 전이가
+ * 일어나지 않는 죽은 상태가 하나 생긴다. ViewModel 이 살아있는 한 이 상태는 백그라운드 왕복을
+ * 넘어 유지되므로 설계가 노린 "복귀 시 깜빡임 방지" 는 그대로 달성된다.
+ */
+@Immutable
+sealed interface AuthGateUiState {
+    data object Idle : AuthGateUiState
+    data object Authenticating : AuthGateUiState
+    data class Failed(val error: AppError) : AuthGateUiState
+}
+
+/**
+ * 앱 전역 세션 관리 + 인증 게이트 ViewModel.
+ *
+ * 브라우저 위임 전환으로 입력 검증·재발송·비밀번호 재설정이 전부 Entra 호스팅 페이지로
+ * 넘어가면서 per-screen 로직이 소멸했다. 그래서 `LoginViewModel`/`SignupViewModel`/
+ * `ForgotPasswordViewModel` 3종을 폐기하고 여기로 통합했다(설계 §5.6, 룰 11 항목 5 갱신).
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -34,78 +58,102 @@ class AuthViewModel @Inject constructor(
     private val _sessionState = MutableStateFlow<SessionState>(SessionState.Unknown)
     val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
 
-    private val _deepLinkError = MutableStateFlow<AppError?>(null)
-    val deepLinkError: StateFlow<AppError?> = _deepLinkError.asStateFlow()
-
-    private val _pendingEmail = MutableStateFlow<String?>(null)
-    val pendingEmail: StateFlow<String?> = _pendingEmail.asStateFlow()
-
-    fun setPendingEmail(email: String) {
-        _pendingEmail.value = email
-    }
-
-    fun clearPendingEmail() {
-        _pendingEmail.value = null
-    }
-
-    fun consumeDeepLinkError() {
-        _deepLinkError.value = null
-    }
+    private val _uiState = MutableStateFlow<AuthGateUiState>(AuthGateUiState.Idle)
+    val uiState: StateFlow<AuthGateUiState> = _uiState.asStateFlow()
 
     init {
         checkSession()
     }
 
+    /**
+     * 온보딩이 필요한지 판정한다. `getProfile()` 은 **3분기**다 — 이 구분이 무너지면 데이터를 잃는다.
+     *
+     * | 반환 | 판정 |
+     * | --- | --- |
+     * | `success(profile)` | 온보딩 불필요 |
+     * | `success(null)` (404) | 온보딩 필요 |
+     * | `failure(e)` | **판정 불가 → 온보딩으로 보내지 않는다** |
+     *
+     * 세 번째를 `getOrNull()` 로 두 번째와 뭉개면(과거 코드) 일시적 네트워크 오류 한 번에
+     * 기존 사용자가 온보딩으로 라우팅되고, 온보딩을 마치면 `PUT /profile` 이 키·몸무게·
+     * 체지방·근육량·휴식일을 덮어쓴다 — **비가역**. 반대 방향(신규 사용자를 홈으로)은
+     * 홈이 에러 + 재시도를 보여주고 TopAppBar 로 프로필 화면(`ProfileUiState.Empty`)에도
+     * 갈 수 있어 회복 가능하다. 두 오판의 대가가 비대칭이므로 안전한 쪽을 명시적으로 고른다.
+     *
+     * 조용히 넘기지 않는다 — breadcrumb 로 남겨 이후 크래시 타임라인에서 원인 추적이 되게 한다.
+     */
+    private suspend fun resolveNeedsOnboarding(): Boolean = userRepo.getProfile().fold(
+        onSuccess = { profile -> profile == null },
+        onFailure = { e ->
+            Sentry.addBreadcrumb(
+                Breadcrumb().apply {
+                    category = "auth.profile_check_failed"
+                    level = SentryLevel.WARNING
+                    message = "프로필 조회 실패 — 온보딩 라우팅 보류(홈으로)"
+                    setData("error", e::class.java.simpleName)
+                },
+            )
+            e.toReportedAppError()
+            false
+        },
+    )
+
     private fun checkSession() = viewModelScope.launch {
         runCatching {
             val userId = authRepo.restoreSession()
             if (userId != null) {
-                val hasProfile = userRepo.getProfile().getOrNull() != null
-                SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
+                SessionState.Authenticated(userId, needsOnboarding = resolveNeedsOnboarding())
             } else {
                 SessionState.Unauthenticated
             }
         }
-            .onSuccess { session ->
-                _sessionState.value = session
-            }
-            .onFailure {
-                _sessionState.value = SessionState.Unauthenticated
-            }
+            .onSuccess { session -> _sessionState.value = session }
+            .onFailure { _sessionState.value = SessionState.Unauthenticated }
     }
 
     /**
-     * 로그인/회원가입 성공 후 per-screen VM 의 SideEffect 를 받아 세션 전환.
-     * Screen composable 이 mediator 로서 호출한다.
+     * 브라우저를 띄워 인증한다. 성공하면 세션 상태가 전환되고 [AppNavigation] 이 이동시킨다.
+     *
+     * 중복 탭 차단: 이미 진행 중이면 무시한다 — MSAL 은 대화형 요청이 겹치면 예외를 던진다.
      */
-    fun onAuthSuccess(userId: String, needsOnboarding: Boolean) {
-        _sessionState.value = SessionState.Authenticated(userId, needsOnboarding)
-        _pendingEmail.value = null
+    fun authenticate(activity: Activity) {
+        if (_uiState.value is AuthGateUiState.Authenticating) return
+        _uiState.value = AuthGateUiState.Authenticating
+
+        viewModelScope.launch {
+            authRepo.authenticate(activity)
+                .onSuccess { userId ->
+                    val needsOnboarding = resolveNeedsOnboarding()
+                    _uiState.value = AuthGateUiState.Idle
+                    _sessionState.value =
+                        SessionState.Authenticated(userId, needsOnboarding = needsOnboarding)
+                }
+                .onFailure { e ->
+                    // 사용자가 브라우저를 닫은 것은 실패가 아니다 — 배너 없이 조용히 복귀(설계 §5.3).
+                    _uiState.value = if (e is AuthCancelledException) {
+                        AuthGateUiState.Idle
+                    } else {
+                        AuthGateUiState.Failed(e.toReportedAppError())
+                    }
+                }
+        }
+    }
+
+    fun dismissError() {
+        if (_uiState.value is AuthGateUiState.Failed) {
+            _uiState.value = AuthGateUiState.Idle
+        }
     }
 
     fun logout() = viewModelScope.launch {
         authRepo.signOut()
+        _uiState.value = AuthGateUiState.Idle
         _sessionState.value = SessionState.Unauthenticated
     }
 
-    /**
-     * Deep link 처리 시작 시 호출. cold start 시 [checkSession] 의 Unauthenticated 결과가
-     * [onDeepLinkSuccess] 의 Authenticated 보다 먼저 fire 하여 사용자가 Login 화면을 잠깐
-     * 보는 race 를 회피한다. AppNavigation 의 Unknown 분기는 Splash 유지.
-     */
-    fun beginDeepLinkProcessing() {
-        _sessionState.value = SessionState.Unknown
-    }
-
-    fun onDeepLinkSuccess(userId: String) = viewModelScope.launch {
-        val hasProfile = userRepo.getProfile().getOrNull() != null
-        _sessionState.value = SessionState.Authenticated(userId, needsOnboarding = !hasProfile)
-        _pendingEmail.value = null
-    }
-
-    fun onDeepLinkError(e: Throwable) {
-        val appErr = e.toAppErrorReporting()
-        _deepLinkError.value = appErr
+    /** 계정 삭제 등 외부 경로에서 세션이 끝났을 때 게이트로 되돌린다. */
+    fun onSessionEnded() {
+        _uiState.value = AuthGateUiState.Idle
         _sessionState.value = SessionState.Unauthenticated
     }
 }

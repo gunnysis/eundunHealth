@@ -26,11 +26,13 @@ else
 fi
 
 cd "${BACKEND_DIR}"
-# OpenAPI 추출은 schema introspection만 하므로 실제 DB/Supabase 연결 없음.
+# OpenAPI 추출은 schema introspection만 하므로 실제 DB/IdP 연결 없음.
 # 단, Settings 검증 통과를 위해 dummy 값이 필요 (app.main이 모듈 로드 시 get_settings() 호출).
 export DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://dummy:dummy@localhost/dummy}"
-export SUPABASE_URL="${SUPABASE_URL:-https://dummy.supabase.co}"
-export SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-dummy}"
+export ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-00000000-0000-0000-0000-000000000000}"
+export ENTRA_SUBDOMAIN="${ENTRA_SUBDOMAIN:-dummy}"
+export ENTRA_BACKEND_CLIENT_ID="${ENTRA_BACKEND_CLIENT_ID:-00000000-0000-0000-0000-000000000000}"
+export ENTRA_BACKEND_CLIENT_SECRET="${ENTRA_BACKEND_CLIENT_SECRET:-dummy}"
 
 "${PY}" - <<'PY'
 import json

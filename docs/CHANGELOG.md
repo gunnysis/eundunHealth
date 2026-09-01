@@ -4,6 +4,48 @@
 
 ---
 
+## [v0.2.0] — 2026-09-01 — 인증 제공자 전환: Supabase Auth → Microsoft Entra External ID
+
+> **사용자 가시 변화가 큰 릴리스.** 로그인 화면이 앱 안의 폼에서 **브라우저 페이지**로 바뀐다. 가입·이메일 검증·비밀번호 재설정이 전부 Entra 호스팅 페이지에서 처리되며, 앱에는 CTA 하나만 남는다.
+> 전환 배경은 Supabase 무료 티어의 저사용량 자동 일시중지 — 인증 가용성이 외부 정책에 종속되던 구조를 Azure 로 일원화했다. 설계: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md`.
+> **실사용자 0명을 확인하고 룰 5 예외를 1회 소진**했다(감사 추적: `incident-log.md` INC-2026-05-24-14).
+
+### 🔐 인증
+- Supabase Auth → **Microsoft Entra External ID** 외부 테넌트(`eundunhealthciam`, Asia Pacific). MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE).
+- JWT **ES256 → RS256**. `issuer` 검증 신규 추가 — Entra 는 발급자 URL 패턴을 테넌트 간 공유하므로 미검증 시 **타 테넌트 토큰이 통과**한다.
+- `scp` 에 `access_as_user` 검증 추가(공식 권장). app-only 토큰 차단 효과 포함.
+- 사용자 식별자 `sub` → **`oid`**. `sub` 는 앱마다 다른 pairwise 값이라 저장하면 **로그인은 되는데 계정 삭제만 조용히 실패**한다.
+- `issuer`/`jwks_uri` 는 문자열 조합이 아니라 **OIDC discovery 에서 읽는다** — 조합식은 서명·audience 를 통과시키고 issuer 에서만 어긋나 추적이 매우 어렵다(실제로 초안이 틀렸다).
+
+### 🗑️ 계정 삭제
+- Supabase Admin API → **Microsoft Graph**. 성공 코드 200 → **204**.
+- `deletedItems` 즉시 파기 추가 — Graph 의 사용자 삭제는 30일 소프트 삭제라, 이 단계가 없으면 게시된 방침의 "즉시 영구 삭제" 문구와 실제가 어긋난다.
+
+### 🧹 레거시 제거
+- 인증 화면 3종(Login/Signup/ForgotPassword) + VM 3종 + 재발송 컨트롤러 삭제 → **`AuthGateScreen` 하나**(ui/auth 959줄 → 283줄).
+- App Links(`autoVerify` intent-filter) · `/.well-known/assetlinks.json` · `/auth/confirm` · `MainActivity` 딥링크 처리 **전부 삭제** — Entra 는 검증 코드를 브라우저 안에서 입력받아 링크가 없다.
+- `MOCK_AUTH_ERROR` 디버그 스캐폴딩 제거(Supabase 에러 문자열 mock 이라 무의미).
+- supabase-kt 3.6.0 SDK 버그 우회 코드 2곳(`handleDeeplinks` 에러 silent 처리, `Email.decodeResult` 디코딩 실패 흡수) 제거.
+
+### 📄 방침 (Play Store 게시본)
+- 처리자 Supabase → Microsoft Entra External ID. 보관 위치 "한국 리전" → **아시아·태평양**(Entra 외부 테넌트가 한국 리전 미지원).
+- **§3-1 개인정보 국외 이전 고지 신설.** 건강 데이터는 Korea Central 에 그대로 남는다는 점도 명시.
+
+### 📏 룰
+- **룰 5** 를 "Supabase 프로젝트" → "Auth 제공자/테넌트" 로 **일반화**. IdP 이름으로 못 박으면 다음 교체 때 가드가 조용히 사라진다.
+- **룰 11 항목 5** 갱신 — per-screen 인증 로직이 소멸해 규칙의 전제가 사라졌다(무시가 아니라 개정).
+
+### 🛠️ 빌드 / 인프라
+- MSAL 의 전이 의존성 `display-mask` 가 Maven Central·Google Maven 모두 **404** → DuoSDK 피드를 `content { includeGroup }` 로 **그룹만 좁혀** 추가.
+- R8: `nimbus-jose-jwt` 가 참조하는 Google Tink 미존재로 `minifyReleaseWithR8` 실패 → `-dontwarn`(없는 클래스는 keep 할 수 없다). Ktor 제거로 무의미해진 규칙 2줄 정리.
+- Container App / Job / CI 시크릿 `SUPABASE_*` → `ENTRA_*` 4종(룰 6 3종 동시 변경).
+- `scripts/alembic-autogen.sh` 가 `SUPABASE_*` 만 export 해 **Settings 검증에서 죽던 상태** 수정.
+
+### 🔢 버전
+- versionName 0.1.19 → **0.2.0**(user-facing 동작 변화 = MINOR), versionCode 33 → **34**.
+
+---
+
 ## [v0.1.19] — 2026-07-03 — Android CD 첫 자동 출시(내부 트랙) + 의존성 배치
 
 > P4 Android CD(`release.yml`, PR #143)의 첫 실 e2e 릴리스 — 태그 `v*` push → environment `play-release` 승인 → preflight 전체 게이트(룰 2·13·Sentry 매핑) → Play **내부 트랙** 자동 업로드 → 원장 자동 갱신 커밋. 사용자 가시 동작 변화 없음(의존성 업데이트 + 빌드/파이프라인). **같은 날(2026-07-03) Console 수동 승격으로 프로덕션 반영.**
@@ -42,7 +84,7 @@
 
 ## [v0.1.17] — 2026-06-18 — 공개 출시 전 전체 감사
 
-> 7-도메인 공개 출시 전 전체 점검(보안·성능·에러UX·테스트·의존성·Play 컴플라이언스·코드품질). 출시 차단 없음. 브랜치 `fix/pre-release-audit`. 설계: `docs/plans/2026-06-18-pre-release-full-audit-{design,plan}.md`.
+> 7-도메인 공개 출시 전 전체 점검(보안·성능·에러UX·테스트·의존성·Play 컴플라이언스·코드품질). 출시 차단 없음. 브랜치 `fix/pre-release-audit`. 설계: `docs/plans/2026-06-18-pre-release-full-audit-{design,plan}.md` → `docs/plans/logs/process-infra.md` 2026-06-18 entry 로 흡수.
 
 ### 🛠️ Android — Rule 8 inline 에러 배너 완전 적용
 - **OnboardingScreen**: 프로필 저장 실패 시 `Snackbar` → `AuthErrorBanner`(inline persistent + `liveRegion=Polite` + Sentry breadcrumb). `OnboardingUiState.error: AppError?` 신설.
@@ -68,7 +110,7 @@
 
 ## [v0.1.16] — 2026-06-17 — 출시 후 심층 감사 개선
 
-> v0.1.15 출시 사이클 후 5-도메인 심층 재감사(Android/Backend/테스트/의존성/UX). 공식 문서 fact-check 로 감사 발견 2건 정정. 코드 건강·출시 차단 0건 — 신뢰성·성능·접근성·테스트 폴리시. 브랜치 `feature/deep-audit-improvements`. 설계: `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md`.
+> v0.1.15 출시 사이클 후 5-도메인 심층 재감사(Android/Backend/테스트/의존성/UX). 공식 문서 fact-check 로 감사 발견 2건 정정. 코드 건강·출시 차단 0건 — 신뢰성·성능·접근성·테스트 폴리시. 브랜치 `feature/deep-audit-improvements`. 설계: `docs/plans/2026-06-17-post-release-audit-improvements-{design,plan}.md` (→ `docs/plans/logs/process-infra.md` 2026-06-17 entry 로 흡수).
 
 ### 🛠️ Tier 1 — 개선 (A~E)
 - **A (Backend)**: JWKS 서명키 동기 조회를 `asyncio.to_thread` 로 이벤트 루프 밖으로 오프로드 + `PyJWKClient` timeout 30s→5s. 콜드스타트·키 로테이션 시 루프 정지 리스크 제거. (공식 PyJWT API 확인: 기본 timeout 은 무한대가 아니라 30s — 감사 보고 정정)
@@ -222,7 +264,7 @@
 - **불변** — 활동 HC(걸음·칼로리·심박·운동), 목표 "체중 추이"/체지방 차트(백엔드 이력), `bmi`/`fitnessLevel` 알고리즘, 백엔드.
 
 ### 근거 / 연구
-HC 체성분 가져오기는 **구조적으로 무용**: HC에 골격근량 타입 부재(공식), 체지방 삼성헬스→HC 동기화 flaky, 스마트체중계 없는 대다수 무데이터 → 영구 "기록 없음". 공식·외부 문서 분석([HC 데이터타입](https://developer.android.com/health-and-fitness/health-connect/data-types) · [Samsung Developer HC 동기화](https://developer.samsung.com/health/blog/en/accessing-samsung-health-data-through-health-connect) · [Google Health Help](https://support.google.com/android/answer/13770320)) 후 제거 결론. 삼성헬스 Data SDK 직접 연동은 파트너 부재로 기각, HC-only 유지. design+plan: `docs/plans/2026-06-10-body-composition-data-{design,plan}.md` (B안).
+HC 체성분 가져오기는 **구조적으로 무용**: HC에 골격근량 타입 부재(공식), 체지방 삼성헬스→HC 동기화 flaky, 스마트체중계 없는 대다수 무데이터 → 영구 "기록 없음". 공식·외부 문서 분석([HC 데이터타입](https://developer.android.com/health-and-fitness/health-connect/data-types) · [Samsung Developer HC 동기화](https://developer.samsung.com/health/blog/en/accessing-samsung-health-data-through-health-connect) · [Google Health Help](https://support.google.com/android/answer/13770320)) 후 제거 결론. 삼성헬스 Data SDK 직접 연동은 파트너 부재로 기각, HC-only 유지. design+plan: `docs/plans/2026-06-10-body-composition-data-{design,plan}.md` (→ `docs/plans/logs/android.md` 2026-06-10 entry 로 흡수) (B안).
 
 ### 📁 주요 Files
 - 삭제: `domain/usecase/ImportBodyCompositionUseCase.kt`(+테스트), `domain/model/BodyComposition.kt`
@@ -415,9 +457,9 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
 ### ✅ Changes
 
 #### _staging → docs/plans/ 승격 (3건 shipped 문서)
-- **Added** `docs/plans/2026-06-05-frontend-major-improvement-design.md` — 프론트엔드 대규모 개선 설계 (Rev.2, 613줄)
-- **Added** `docs/plans/2026-06-05-frontend-major-improvement-plan.md` — 실행 계획 (Rev.2, 244줄)
-- **Added** `docs/plans/2026-06-06-frontend-regression-prevention-design.md` — 회귀 방지 설계 (90줄)
+- **Added** `docs/plans/2026-06-05-frontend-major-improvement-design.md` — 프론트엔드 대규모 개선 설계 (Rev.2, 613줄) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- **Added** `docs/plans/2026-06-05-frontend-major-improvement-plan.md` — 실행 계획 (Rev.2, 244줄) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- **Added** `docs/plans/2026-06-06-frontend-regression-prevention-design.md` — 회귀 방지 설계 (90줄) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 - 본문 상태 텍스트 frontmatter `shipped`와 동기화, 내부 `_staging/` 경로 참조 수정
 
 #### gen_plans_index.py shipped pr:null 검증 버그 수정
@@ -429,9 +471,9 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
 - **Modified** `docs/plans/logs/android.md` — `_staging/` → `docs/plans/` 경로 3건 수정
 
 ### 📁 Files Modified
-- `docs/plans/2026-06-05-frontend-major-improvement-design.md` (+613, new)
-- `docs/plans/2026-06-05-frontend-major-improvement-plan.md` (+244, new)
-- `docs/plans/2026-06-06-frontend-regression-prevention-design.md` (+90, new)
+- `docs/plans/2026-06-05-frontend-major-improvement-design.md` (+613, new) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- `docs/plans/2026-06-05-frontend-major-improvement-plan.md` (+244, new) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- `docs/plans/2026-06-06-frontend-regression-prevention-design.md` (+90, new) *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 - `docs/plans/logs/android.md` (+3, -3)
 - `scripts/gen_plans_index.py` (+2, -2)
 - `scripts/test_gen_plans_index.py` (+21, -5)
@@ -556,7 +598,7 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
 - **Added** CLAUDE.md **룰 11** — ViewModel UDF-Enhanced 패턴 5개 체크리스트 + 허용 예외 + baseline.
 - **Added** `.github/workflows/android.yml` "Check collectAsState anti-pattern" CI step — import `$` anchor + 호출부 `grep -v` 필터, false positive 0.
 - **Modified** `.githooks/pre-commit` — collectAsState grep check 섹션 추가 (staged `.kt` 파일 한정, 룰 11).
-- **Added** `docs/plans/_staging/2026-06-06-frontend-regression-prevention-design.md` — 설계 문서 (D1~D6 결정 테이블 + 잔여 리스크).
+- **Added** `docs/plans/_staging/2026-06-06-frontend-regression-prevention-design.md` — 설계 문서 (D1~D6 결정 테이블 + 잔여 리스크). *(`_staging/` 은 gitignored scratch — 이후 루트 페어로 승격 후 ledger 이관 → `docs/plans/logs/android.md`)*
 
 #### 문서 동기화
 - **Modified** `CLAUDE.md` — Key patterns 섹션 UDF-Enhanced 반영, stale 버전 수정 (Sentry 8.16→8.42, Vico 2.1→3.1, Spotless 7.0→8.5, OkHttp/Coil 추가), pre-commit 설명 갱신.
@@ -658,7 +700,7 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
   - P1 Activity Log alerts 3개: ServiceHealth, ResourceHealth, Deletion (무료)
   - P2 Metric alerts 4개: PG CPU/Storage/Connections, CA 5xx (~$0.40/월)
   - P2 Activity Log alert 1개: PG Firewall 변경 (무료)
-- **Added**: `docs/plans/2026-06-03-azure-monitor-alerts-design.md` — 설계 문서 (D1~D8 의사결정, 옵션 비교, 검증 계획, 롤백 절차)
+- **Added**: `docs/plans/2026-06-03-azure-monitor-alerts-design.md` — 설계 문서 (D1~D8 의사결정, 옵션 비교, 검증 계획, 롤백 절차) *(이후 ledger 이관 → `docs/plans/logs/process-infra.md`)*
 - **Modified**: `docs/ops/monitoring-and-cost.md` — §7 Alert 섹션 신설, §4 비용 갱신 (+~700원), §5 체크리스트에 alert 확인 항목 추가
 - **Modified**: `docs/ops/operations-snapshot.md` — §12 Alert 인벤토리 신설 (8개 alert 테이블), §9 비용 갱신, §13 변경 이력 추가
 - **Modified**: `CLAUDE.md` — 자동화 스크립트 섹션에 `setup-azure-alerts.sh` 항목 추가
@@ -670,7 +712,7 @@ deploy path(CI `working-directory: backend` → `backend/` prefix 중복) · `az
 
 ### 📁 Files Modified
 - `scripts/setup-azure-alerts.sh` (+385 lines, new)
-- `docs/plans/2026-06-03-azure-monitor-alerts-design.md` (+149 lines, new)
+- `docs/plans/2026-06-03-azure-monitor-alerts-design.md` (+149 lines, new) *(이후 ledger 이관 → `docs/plans/logs/process-infra.md`)*
 - `docs/ops/monitoring-and-cost.md` (+65, -2 lines)
 - `docs/ops/operations-snapshot.md` (+33, -2 lines)
 - `docs/plans/README.md` (+4, -2 lines, auto-generated)
@@ -743,7 +785,7 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 ### Refs
 - PR: #58
 - Design + Plan: `docs/plans/2026-05-29-signup-error-banner-{design,plan}.md` (머지 후 `logs/android.md` entry 로 흡수 + git rm)
-- Supersedes RFC: `docs/plans/2026-05-27-signup-failed-ux-visibility-rfc.md`
+- Supersedes RFC: `docs/plans/2026-05-27-signup-failed-ux-visibility-rfc.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 - INC: `docs/ops/incident-log.md` INC-2026-05-26-01
 
 ---
@@ -761,7 +803,7 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 
 ### Refs
 - PRs: #52 vico migration / #53 healthConnect 1.1.0 stable / #54 starlette 1.1.0 / #55 kotlin docs
-- Design+plan: `docs/plans/2026-05-28-vico-3-migration-design.md` + `-plan.md`
+- Design+plan: `docs/plans/2026-05-28-vico-3-migration-design.md` + `-plan.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 - 트리거: 2026-05-28 dependabot 8 PR triage 세션 (PR #50 plan)
 - 보류 정책: `docs/ops/dependency-deferred.md`
 
@@ -783,7 +825,7 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 
 ### Refs
 - 진단: v0.1.3 Phase 5 Step 4 디바이스 검증 중 발견
-- 원본 design: `docs/plans/2026-05-26-applinks-deep-link-design.md`
+- 원본 design: `docs/plans/2026-05-26-applinks-deep-link-design.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 
 ---
 
@@ -810,8 +852,8 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 - assetlinks.json 의 SHA256 fingerprint 가 release keystore 와 일치하는지 디바이스에서 `adb shell pm get-app-links --user 0 com.gunnys.eundunhealth` 로 확인 (`verified` 표시).
 
 ### Refs
-- Design: `docs/plans/2026-05-26-applinks-deep-link-design.md`
-- Plan: `docs/plans/2026-05-26-applinks-deep-link-plan.md`
+- Design: `docs/plans/2026-05-26-applinks-deep-link-design.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- Plan: `docs/plans/2026-05-26-applinks-deep-link-plan.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 
 ---
 
@@ -848,8 +890,8 @@ INC-2026-05-26-01 의 가시성 결함을 SignupScreen 외 Login + ForgotPasswor
 - 단위 테스트 케이스 추가: AppErrorTest +1, AuthErrorMappingTest +6 (신규), AuthViewModelTest +8
 
 ### Refs
-- Design: `docs/plans/2026-05-26-signup-confirmation-flow-design.md`
-- Plan: `docs/plans/2026-05-26-signup-confirmation-flow-plan.md`
+- Design: `docs/plans/2026-05-26-signup-confirmation-flow-design.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
+- Plan: `docs/plans/2026-05-26-signup-confirmation-flow-plan.md` *(이후 ledger 이관 → `docs/plans/logs/android.md`)*
 
 ---
 

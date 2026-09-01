@@ -1,7 +1,7 @@
 ---
 type: plan
-status: proposed
-pr: null
+status: in-progress
+pr: 165
 related_inc: INC-2026-05-24-14
 supersedes: null
 target_version: versionCode 34+ (Android) / 백엔드·문서는 앱 버전 무관
@@ -43,6 +43,92 @@ Phase 5  머지 후 운영 검증 (실기기 E2E)
 
 ---
 
+## 진행 상황 (2026-09-01 기준)
+
+**Phase 0~4(Step 3)까지 완료. 푸시하지 않았다 — 브랜치는 로컬에만 있다.**
+
+| Phase | 상태 |
+|---|---|
+| 0 테넌트 준비 | ✅ **완결** (`User.DeleteRestore.All` 관리자 동의 2026-09-01 부여) |
+| 1 백엔드 | ✅ `5f9f515` `3c1cd05` `c4dbe38` `b3d46bb` |
+| 2 Android | ✅ `4c01daf` |
+| 3 문서·룰 | ✅ `23a3bfc` |
+| 4 회귀 | ✅ Step 1~3 + v0.2.0/34 번프 + CHANGELOG(`a1869cf`). **Step 4(push + PR) 보류 — 대표 지시** |
+| 5 운영 검증 | 미착수 (머지 필요) |
+
+### 재개 시 첫 번째로 읽을 것
+
+**머지하면 현재 Play 배포본(v0.1.19)이 즉시 401 이 된다.** main 머지 → `backend.yml`
+자동 배포 → 백엔드가 Entra 토큰만 검증하는데 배포본은 Supabase 토큰을 보낸다.
+실사용자 0명 전제로 수용된 결과지만 **되돌리기 어려운 지점**이므로, 머지와
+새 앱 버전(versionCode 34) 업로드를 붙여서 계획한다.
+
+### 잔여 작업
+
+| # | 항목 | 성격 |
+|---|---|---|
+| ~~R-1~~ | `User.DeleteRestore.All` 관리자 동의 | ✅ **완료 (2026-09-01)** — assignmentId `jG3EzFY6sEKcCByMb-fvijaXM5dyw7RLvsxTRZLio-k`. 없었다면 `deletedItems` 파기가 403 → 30일 소프트 삭제로 남아 게시된 "즉시 영구 삭제" 문구와 어긋났다. 상세·정정은 아래 0-A |
+| R-2 | push + PR | ⏸ **보류 (회원님 명시 지시, 2026-09-01)**. 이 브랜치 위에 `feature/tech-debt-runtime-modernization`(T0~T7 + H1~H10)이 **stacked** 로 쌓여 있다 — 재개 시 **이 브랜치를 먼저 push** 해 PR base 를 확보해야 위쪽 PR diff 에 여기 커밋 10건이 섞이지 않는다 |
+| R-3 | 로컬 `main` 잉여 커밋 2건(`c8d7600`·`c7d4cd3`) | 브랜치 생성 전 main 에 직접 커밋됨. 둘 다 feature 브랜치의 조상이라 `git branch -f main origin/main` 으로 정리해도 **아무것도 잃지 않는다**. 대표 판단 대기 |
+| R-4 | 테스트용 redirect URI `http://localhost` 제거 | Phase 5 완료 후 |
+| **R-7** | **라이브 reaper Job 재배포 (신규, 2026-09-01 발견)** | **R-5 보다 먼저.** 아래 참조 |
+| R-5 | Supabase 정리(KV secret 2종 → 프로젝트 삭제) | Phase 5 통과 후 **그리고 R-7 이후**. **순서를 바꾸면 롤백 경로가 먼저 사라진다** |
+| ~~R-6~~ | `doc_audit.py` off-by-one | ✅ **해소** — `tech-debt-runtime-modernization` T5 에서 처리(parametrize 확장분 가산). 실측: 수집기 **114** == pytest **114** |
+
+#### R-7 — 라이브 reaper Job 이 **Supabase 시절 그대로**다 (2026-09-01 발견)
+
+Azure 정리 설계를 재검증하다 드러났다. Task 1-5 는 `backend/reaper-job.yaml` **파일**을 Entra
+시크릿으로 바꿨지만, 그 파일이 **라이브 잡에 적용되는 경로는 수동 스크립트뿐**이다
+(`scripts/setup-reaper-job.sh`). CI 는 Container App 만 갱신한다(실측: `backend.yml` 에
+`containerapp job` 참조 0건). 그래서 잡은 아직 이렇다 —
+
+```
+image  : eundunhealth-api:de612e9   ← 2026-07-10, Entra 전환 이전 코드
+secrets: database-url, supabase-url, supabase-service-role-key
+env    : ENVIRONMENT, DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+```
+
+**머지하면 무슨 일이 일어나나**
+
+1. 앱은 Entra 로 넘어가는데 **주간 잡은 Supabase Admin API 로 사용자를 지우려 한다.**
+2. Entra 쪽 orphan 은 아무도 치우지 않는다 — 방금 부여한 `User.DeleteRestore.All`
+   (R-1)의 효과가 **잡 경로에서는 나타나지 않는다.**
+3. **R-5(Supabase 프로젝트 삭제)를 먼저 하면 잡이 확실히 깨진다.** 그것도 일요일 18:00 UTC 에
+   조용히 — 잡 실패는 앱 `/health` 에 안 잡히고 별도 알림도 없다.
+
+**Phase 5 의 갭이기도 하다.** 현재 Phase 5 E2E 4번은 "reaper 수동 1회 실행해 orphan 0" 인데,
+**지금 잡을 그대로 돌리면 Supabase 를 본다** — 그 검증은 Entra 경로를 전혀 확인하지 못한다.
+
+**조치 (순서 고정)**
+
+```bash
+# 1) 백엔드 자동 배포 완료 후 (새 이미지가 ACR 에 있어야 한다)
+bash scripts/setup-reaper-job.sh          # yaml 의 Entra 시크릿 + 현재 앱 이미지로 재배포
+# 2) 수동 1회 실행 → Phase 5 E2E 4번을 이 상태에서 수행
+az containerapp job start -n eundunhealth-reaper -g rg-eundunhealth-prod-krc
+az containerapp job execution list -n eundunhealth-reaper -g rg-eundunhealth-prod-krc -o table
+# 3) 그 다음에야 R-5(Supabase 정리)
+```
+
+**근본 원인과 재발 방지**: 앱과 잡이 **같은 이미지를 쓰는데 갱신 경로가 다르다**. 이번엔
+7주 벌어졌다. 구조적 해결은 CI 가 잡 이미지도 같이 갱신하는 것 —
+`2026-09-01-azure-resource-naming-and-legacy-plan.md` **B2-a**. 그쪽에서 다루되,
+**B2-a 를 먼저 켜면 안 된다**(새 이미지 + 옛 시크릿 조합이 된다). 순서는 **R-7 → B2-a**.
+
+### 설계 대비 실제 (전환 중 발견해 정정한 것)
+
+| # | 초안 | 실제 |
+|---|---|---|
+| F4-a | issuer = `{subdomain}.ciamlogin.com/...` | **틀림.** 서브도메인이 tenantId. discovery 에서 읽도록 변경 + 인자 계약 테스트로 박제 |
+| F7 | 별도 Maven 저장소 불필요 | **틀림.** `display-mask` 가 Maven Central·Google Maven 모두 404. DuoSDK 피드를 `content` 로 좁혀 추가 |
+| F11 | (없음) | 검증 메일이 영어. 브랜딩 범위 밖이며 한국어화는 `OnOtpSend` 커스텀 확장 필요 → 현 시점 Won't-do |
+| 권한 | `User.ReadWrite.All` 로 충분 | **부족.** `deletedItems` 삭제는 `User.DeleteRestore.All` 필요(공식 권한표) |
+| §5.3 | `Launching` / `AwaitingReturn` 2상태 | **1개로 합침.** MSAL 이 "Custom Tab 표시됨" 콜백을 주지 않아 전이 근거가 없다 |
+| 룰 12 | MSAL keep 필요 여부 미정 | keep 불필요. 대신 **nimbus-jose-jwt → Tink 미존재로 R8 실패** → `-dontwarn` |
+| 태스크 분할 | 2-1(의존성)을 단독 커밋 | 불가. pre-commit 이 컴파일을 요구해 2-1~2-5 를 한 커밋으로 합침 |
+
+---
+
 ## Phase 0: 테넌트 준비
 
 > **이 Phase가 끝나기 전에는 Task 1 이후를 시작할 수 없다.** Q1~Q4의 답이 Task 범위를 바꾼다.
@@ -68,10 +154,43 @@ az provider show -n Microsoft.AzureActiveDirectory \
 | **외부 테넌트 생성** | ✅ `az rest --method PUT` | ARM API + delegated 토큰 조건 충족 |
 | KV secret 등록 | ✅ `az keyvault secret set` | 기존에도 수행 |
 | 앱 등록 2건 | ❌ **대표 필요** | **새 테넌트**에 인증해야 함 → `az login --tenant <new>` 는 대화형 |
-| Graph 관리자 동의 | ❌ **대표 필요** | 새 테넌트 관리자 권한 + 개인 MSA 의 Graph 제약([[azure-cli-rbac-msa-limitation]]) |
+| Graph 관리자 동의 | ✅ **자동화 가능** (2026-09-01 정정) | 아래 "0-A 정정" 참조 |
 | user flow · 한국어 · 브랜딩 | ❌ **대표 필요** | 새 테넌트 Graph API (`organizationalBranding` 등) |
 
 → **테넌트 생성까지는 제가 하고, 새 테넌트 내부 설정부터 대표님께 요청**하는 것이 정확한 분담이다.
+
+#### 0-A 정정 (2026-09-01) — "Graph 관리자 동의 = 대표 필요" 는 틀렸다
+
+위 표는 관리자 동의를 ❌ 로 적었다. 근거는 두 가지였는데 **둘 다 이 건에는 해당하지 않았다.**
+
+| 적어 둔 근거 | 실측 |
+|---|---|
+| "새 테넌트에 인증해야 함 → `az login --tenant` 는 대화형" | **불필요.** 기존 세션이 이미 그 테넌트를 포함한다. `az account get-access-token --tenant <ciam> --resource https://graph.microsoft.com` 가 **비대화형으로 성공**하고 `/v1.0/me` 가 200 을 준다(테넌트는 `az rest .../tenants?api-version=2022-12-01` 로 열거되며 `eundunhealthciam.onmicrosoft.com` 이 목록에 있다) |
+| "개인 MSA 의 Graph 제약([[azure-cli-rbac-msa-limitation]])" | **다른 문제를 끌어왔다.** 그 메모는 **ARM RBAC**(`az role assignment` → MissingSubscription) 제약이다. 관리자 동의는 ARM 이 아니라 **Graph 디렉터리 작업**이라 무관하다. 실제 역할은 `/me/transitiveMemberOf` 조회 결과 **Global Administrator** — 공식 요구치(Privileged Role Administrator)를 충족한다 |
+
+**실제 상태도 표와 달랐다**: 앱 등록은 `User.ReadWrite.All`·`User.DeleteRestore.All` 을 **둘 다
+선언**하고 있었고, 서비스 주체에는 `User.ReadWrite.All` **하나만** 부여돼 있었다. 즉 "권한을
+추가"할 필요는 없고 **선언된 것에 동의만** 하면 되는 상태였다.
+
+**사용한 경로** — [공식 문서](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-admin-consent)
+의 Graph API 방식(포털 클릭과 동등):
+
+```powershell
+$t = az account get-access-token --tenant <ciam-tenant-id> --resource https://graph.microsoft.com --query accessToken -o tsv
+Invoke-RestMethod -Method POST -Headers @{Authorization="Bearer $t"} -ContentType "application/json" `
+  -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/<graph-sp-id>/appRoleAssignedTo" `
+  -Body '{"principalId":"<backend-sp-id>","resourceId":"<graph-sp-id>","appRoleId":"<User.DeleteRestore.All>"}'
+```
+
+되돌리기: 같은 컬렉션에 `DELETE .../appRoleAssignedTo/{assignmentId}`.
+
+> **교훈 — 제약을 라벨로 옮겨 적지 말 것.** "개인 MSA 는 Graph 가 막힌다" 는 요약이
+> ARM RBAC 사례에서 만들어져 **성격이 다른 작업에 그대로 재사용**됐고, 그 결과 자동화
+> 가능한 일이 3주 가까이 "대표 대기" 로 남았다. 제약을 인용할 때는 **원 사례의 대상 API**
+> 까지 함께 확인한다.
+>
+> **부수 교훈**: 셸 지시는 실행될 셸에 맞춰 준다. 이 저장소의 `!` 프리픽스는 **PowerShell**
+> 로 라우팅되므로 bash 줄바꿈(`\`)과 bash 변수를 쓴 명령은 그대로 깨진다.
 
 ### 0-B. 명명 설계 (CAF + `docs/conventions/naming.md`)
 
@@ -127,27 +246,41 @@ az rest --method PUT \
 - provisioningState 는 `Provisioning` → `Created` → `Succeeded` 순으로 진행(약 2분).
 - **생성 직후 OIDC discovery 를 조회해 design F4-a 의 issuer 오류를 발견**했다. 문자열 조합 대신 discovery 문서에서 읽는 방식으로 설계 변경.
 
-### 0-D. 대표님께 요청드릴 구간
+### 0-D. 대표 수행 구간 — **거의 완료 (2026-09-01)**
 
-Claude 가 대행 불가. 각 항목은 해당 시점에 개별 요청드린다.
+당초 "Claude 대행 불가" 로 분류했던 항목 대부분이 실제로는 Graph API 로 수행 가능했다. 남은 것은 **1건뿐**이다.
 
-| # | 작업 | 완료 판정 |
+| # | 작업 | 상태 |
 |---|---|---|
-| 0-3 | 앱 등록 ① Android public client | client_id 확보. "Allow public client flows" = Yes. redirect URI **서명 3종**(debug/upload/Play App Signing) 모두 등록 |
-| 0-4 | 앱 등록 ② 백엔드 confidential client | client_id + client secret 확보. Expose an API → scope `access_as_user` |
-| 0-5 | Graph `User.ReadWrite.All`(Application) + **관리자 동의** + User Administrator 역할 | Graph `DELETE /users/{id}` 가 403이 아닌 204/404를 반환 |
-| 0-6 | **한국어 추가** — Company branding → Browser language customizations → Korean (Korea) | 브라우저 언어 ko로 로그인 페이지 접속 시 한국어 노출 |
-| 0-7 | 브랜딩 — 로고·배경·파비콘·CSS(`#006D3C`), 푸터에 `/privacy`·`/account-deletion` | 로그인 페이지가 앱 톤과 이어짐 |
-| 0-8 | KV secret 4종 등록 | `az keyvault secret list --vault-name kv-eundunhealth` 에 `entra-*` 4종 존재 |
+| 0-3 | 앱 등록 ① Android public client | ✅ `2bf6134f-…` · public client flows 활성 · redirect URI **2/3** |
+| 0-4 | 앱 등록 ② 백엔드 confidential client | ✅ `903bf44d-…` · scope `access_as_user` · secret(만료 2028-09-01) |
+| 0-5 | Graph `User.ReadWrite.All` + 관리자 동의 | ✅ 동의 완료 + `GET /users` 200 기능 검증 |
+| 0-5b | **delegated 관리자 동의** (초안에 없던 항목) | ✅ AllPrincipals 2건 — Graph 3스코프 + `access_as_user` |
+| 0-6 | 한국어 추가 (ko-KR localization) | ✅ 바이트 검증 통과 |
+| 0-7 | 브랜딩 — 배경색 `#006D3C` | ✅ 색상 적용. 로고·파비콘·푸터 링크는 **미적용**(선택 항목) |
+| 0-8 | KV secret 4종 | ✅ `entra-tenant-id`·`entra-subdomain`·`entra-backend-client-id`·`entra-backend-client-secret` |
+| **0-9** | **Play App Signing 서명 해시 등록** | ⛔ **유일한 잔여 항목** — Play Console 에서만 조회 가능 |
 
-**Phase 0에서 함께 확정할 게이트 질문:**
+**0-9 절차** (대표 수행 → Claude 가 등록):
+1. Play Console → eundunHealth → 테스트 및 출시 → **설정 → 앱 서명**
+2. "앱 서명 키 인증서" 의 **SHA-1 지문**(`AB:CD:…` hex) 복사
+3. 변환 후 redirect URI 등록:
+   ```bash
+   echo "AB:CD:..." | tr -d ':' | xxd -r -p | openssl base64
+   # → msauth://com.gunnys.eundunhealth/<URL 인코딩된 값> 을 앱 등록에 추가
+   ```
 
-| # | 질문 | 잠그는 Task |
+> **차단 시점**: Phase 5(Play 내부 트랙 실기기 E2E) 이전까지만 있으면 된다. Phase 1~4 는 이것 없이 진행 가능.
+> **미등록 채로 출시하면** 디버그·로컬 릴리스는 정상인데 **Play 배포본에서만 로그인 실패**한다(룰 12 와 동일 유형).
+
+**게이트 질문 결과:**
+
+| # | 질문 | 결과 |
 |---|---|---|
-| Q1 | 이메일 검증이 (a) 브라우저 세션 내 코드 입력 (b) 별도 링크 클릭 | **Task 2-5**(Manifest) · **Task 1-4**(`auth.py` 삭제 여부) |
-| Q2 | Graph 호출이 M2M premium 과금 대상인지 | 없음(비용 기록만) |
-| Q3 | 호스팅 페이지 다크모드 CSS 대응 가능 여부 | 0-7 범위 |
-| Q4 | MSAL이 Custom Tab 툴바 색상 커스터마이즈를 노출하는지 | **Task 2-3** 범위 |
+| Q1 | 이메일 검증 방식 | **확정: (a) 브라우저 내 코드 입력** — 수신 메일에 8자리 코드만 있고 링크가 없다(설계 F11). → `assetlinks.json`·App Links·`/auth/confirm` **삭제 확정** |
+| Q2 | Graph 호출 M2M 과금 | 미확인. 현 규모에서 비용 영향 없음(설계 §3 요금 참조) — **비차단** |
+| Q3 | 호스팅 페이지 다크모드 CSS | 미확인 — 0-7 선택 항목과 함께 **후순위** |
+| Q4 | MSAL Custom Tab 툴바 커스터마이즈 | 미확인 — Task 2-3 착수 시 MSAL API 로 확인 |
 
 ---
 
@@ -245,12 +378,19 @@ bash scripts/sync-openapi.sh   # openapi.json 재생성 — drift 가드가 CI�
 
 **Files:** `backend/containerapp.yaml`, `backend/reaper-job.yaml`, `.github/workflows/backend.yml`, `docs/ops/operations-snapshot.md`, `backend/.env.example`, `backend/docker-compose.yml`
 
-- [ ] KV에 `entra-*` 4종 등록 완료 (Phase 0-8) — **선행 확인 필수**
-- [ ] `containerapp.yaml` secrets/env 교체 (**주석은 ASCII만** — cp949 함정)
-- [ ] `reaper-job.yaml` 동일 교체. UAI `id-eundunhealth-reaper`의 KV RBAC 범위가 vault 단위인지 확인
-- [ ] `backend.yml:239` `REQUIRED="database-url entra-tenant-id entra-subdomain entra-backend-client-id entra-backend-client-secret sentry-dsn-backend"`
-- [ ] `backend.yml` dummy env (L72-73, L125-126) 교체
-- [ ] `operations-snapshot.md` §2 Secrets 갱신
+전건 완료 (실측 2026-09-01 — 아래 근거는 파일에서 직접 확인한 값):
+
+- [x] KV에 `entra-*` 4종 등록 완료 (Phase 0-8) — `operations-snapshot.md:219`
+- [x] `containerapp.yaml` secrets/env 교체 — `:35-45` KV 참조 4종 + `:62` `secretRef`
+- [x] `reaper-job.yaml` 동일 교체 — `:26-36` KV 참조 4종 + `:55` `secretRef`
+- [x] `backend.yml` `REQUIRED` 6종 — **`:246`**(계획서의 `:239` 는 작성 시점 줄번호. 이후
+      변경으로 이동했다 — **줄번호는 검증 기준이 못 된다. 문자열로 확인할 것**)
+- [x] `backend.yml` dummy env 교체
+- [x] `operations-snapshot.md` §2 Secrets 갱신 — `:56` `:69` `:86` `:102`
+
+> **구 Supabase secret 2종은 의도적으로 남아 있다**(`supabase-url`·`supabase-service-role-key`,
+> `operations-snapshot.md:168`). 롤백 여지 확보용이며 R-5 에서 Phase 5 통과 후 삭제한다 —
+> **순서를 바꾸면 롤백 경로가 먼저 사라진다.**
 
 **Step: commit**
 ```bash
@@ -267,12 +407,14 @@ git commit -m "infra: Container App/Job/CI 시크릿을 Entra 로 교체 (룰 6 
 
 **Step 1:** 제거 `supabase-auth(3.6.0)` · `ktor-client-okhttp(3.5.0)`. 추가 `msal = "8.4.2"`.
 - **버전 근거**: `repo1.maven.org/.../msal/maven-metadata.xml`의 `<release>` (MEASURED). **Maven Central 검색 API는 6.0.1로 응답하니 신뢰하지 말 것**
-- **별도 Maven 저장소 불필요** — MSAL 공식 문서는 Azure DevOps DuoSDK 피드 추가를 지시하지만, 전이 의존성 `com.microsoft.identity:common:24.6.0`이 Maven Central에 존재함을 확인(HTTP 200). 현 `settings.gradle.kts`의 `mavenCentral()`로 충분하며, **공개 저장소에 서드파티 저장소를 추가하지 않는다**
+- **별도 Maven 저장소가 필요하다(초안 정정)** — `display-mask`(Surface Duo SDK)가 Maven Central·Google Maven 모두 404 라 해석이 실패한다. `settings.gradle.kts` 에 DuoSDK 피드를 추가하되 `content { includeGroup("com.microsoft.device.display") }` 로 그룹을 좁힌다(설계 F7 정정)
 - minSdk 26 ≥ MSAL 요구 16+ → 호환
 
 **Step 2:** 빌드 확인 (bash)
 ```bash
-./gradlew :app:assembleDebug
+# 소스가 아직 Supabase 를 참조하므로 컴파일은 Task 2-4 까지 실패한다.
+# 이 단계에서 볼 것은 **의존성 해석**이다 — 저장소 누락은 여기서만 드러난다.
+./gradlew :app:dependencies --configuration debugRuntimeClasspath
 ```
 
 ### Task 2-2: DI — MSAL 초기화
@@ -452,6 +594,9 @@ curl -s https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontaine
 2. 로그아웃 → 재로그인 → 세션 복원
 3. 401 → `TokenAuthenticator` silent refresh 회귀 없음
 4. 계정 삭제 → Graph 204 + `deletedItems` 퍼지 + 앱 DB purge + reaper 수동 1회 실행해 orphan 0
+   > **선행 필수 — R-7**: 라이브 reaper Job 은 아직 **Supabase 시절 이미지·시크릿**이다.
+   > 재배포(`bash scripts/setup-reaper-job.sh`) 없이 돌리면 Supabase 를 보므로 이 검증이
+   > **Entra 경로를 전혀 확인하지 못한다.** 잔여작업 R-7 참조.
 5. **R8 회귀 확인** — 릴리스 빌드에서 1~4가 전부 동작해야 한다(룰 12: 디버그로는 못 잡음)
 
 ---
@@ -464,6 +609,7 @@ curl -s https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontaine
 | R2 | MSAL × R8 릴리스 전용 회귀 (룰 12) | Phase 5 릴리스 빌드 검증 필수. 디버그 통과는 근거가 안 됨 |
 | R3 | client secret 만료 | 만료일 기록. Graph 토큰 발급 실패를 Sentry로 감지 |
 | R4 | Q1~Q4 미확정 상태로 착수 | Phase 0 게이트로 차단 |
+| 정리 | 테스트용 redirect URI `http://localhost` 가 Android 앱 등록에 남아 있음 | Phase 5 완료 후 **제거**. 공개 클라이언트라 시크릿 유출 위험은 없으나 불필요한 표면은 남기지 않는다 |
 | 후속 | `doc_audit.py` 수집기 off-by-one | design §9. 본 전환과 무관, **별도 PR** |
 | 후속 | Auth Tab(Chrome 인증 전용 탭) 적용 | 현 범위 밖. MSAL 지원 여부 확인 후 검토 |
 

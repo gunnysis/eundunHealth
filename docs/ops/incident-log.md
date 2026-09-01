@@ -199,8 +199,23 @@
 **복구**: 출시 전이라 사용자 0명. 5개 사용자 테이블 `TRUNCATE`로 정리.
 
 **재발 방지**:
-- v1.0 정식 출시 후엔 Supabase 프로젝트 교체 절대 금지(또는 데이터 마이그레이션 절차 필수).
+- 실사용자 확보 후엔 Auth 제공자·테넌트 교체 절대 금지(또는 데이터 마이그레이션 절차 필수). → **룰 5**
 - 만약 교체가 불가피하면: 옛 user_id → 새 user_id 매핑 테이블 + 백필 스크립트.
+
+**2026-09-01 — 이 가드를 의도적으로 1회 소진함 (감사 추적)**
+
+Supabase → Microsoft Entra External ID 전환으로 **룰 5 가 금지하는 바로 그 작업을 수행**했다. 우회가 아니라 예외 적용이므로 경위를 남긴다.
+
+| 항목 | 내용 |
+|---|---|
+| 사유 | Supabase 무료 티어가 저사용량으로 프로젝트를 자동 일시중지 → 인증 가용성이 외부 정책에 종속. 인프라를 Azure 로 일원화 |
+| 예외 근거 | **실사용자 0명 확인** — orphan 이 될 대상이 없다. 룰 5 의 피해 메커니즘(user_id namespace 변경 → 기존 사용자 orphan)이 성립하지 않는 유일한 조건 |
+| 확인 방법 | 전환 시점 프로덕션 사용자 수 0 |
+| 대가 | 인증 데이터가 국외(Asia Pacific)로 이전됨 — Entra 외부 테넌트가 한국 리전을 제공하지 않는다. 방침에 국외이전 고지 추가(`docs/store/privacy-policy.md` §3-1) |
+| 이후 | **예외는 소진됐다.** Entra 테넌트에 대해 룰 5 가 다시 완전히 발효한다. 다음 교체 시엔 매핑 테이블 + 백필 + 사용자 공지가 필수다 |
+| 설계 | `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md` |
+
+> 룰 5 의 문언은 이때 **"Supabase 프로젝트" → "Auth 제공자/테넌트"** 로 일반화했다. IdP 이름으로 못 박아 두면 다음 교체 때 가드가 조용히 사라지기 때문이다.
 
 ---
 
@@ -453,7 +468,7 @@ PR #44 의 422 RequestValidationError observability handler 는 이 경로에 �
 - **runbook §3.4 신설**: "stamp 이후의 모델 변경 자동 적용 책임은 entrypoint" 명시.
 - **Cosmetic drift 잔존**: `text→varchar`, `timestamp→timestamptz`, `real→double precision`, 인덱스 이름 차이는 런타임 영향 0 + 변환 위험 ↑ + 가치 0 → v1.0 이후 데이터 마이그레이션 윈도우에서 별도 검토 (의도적 tolerate).
 
-**참조**: `docs/plans/2026-05-27-schema-drift-recovery-design.md` (전체 분석 + 공식 문서 인용), `docs/plans/2026-05-27-schema-drift-recovery-plan.md` (구현 계획).
+**참조**: `docs/plans/logs/backend.md` (전체 분석 + 공식 문서 인용), `docs/plans/logs/backend.md` (구현 계획).
 
 ---
 

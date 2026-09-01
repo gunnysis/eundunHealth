@@ -20,7 +20,10 @@ import javax.inject.Inject
 class HealthConnectDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private val client by lazy { HealthConnectClient.getOrCreate(context) }
+    // 타입을 명시할 것 — `by lazy` 의 추론 타입만 두면 detekt 가 이 프로퍼티를 통한 호출의
+    // 수신자를 못 풀어, 아래 suspend 함수 4개 전부를 RedundantSuspendModifier 로 오탐한다
+    // (MEASURED 2026-09-01: 명시 전 4건 → 명시 후 0건).
+    private val client: HealthConnectClient by lazy { HealthConnectClient.getOrCreate(context) }
 
     fun isAvailable(): Boolean = HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
 
