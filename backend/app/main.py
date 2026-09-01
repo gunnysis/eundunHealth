@@ -7,6 +7,7 @@ from contextvars import ContextVar
 
 import sentry_sdk
 from fastapi import FastAPI, Request, Response
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -128,6 +129,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     진단에 필요한 것은 **어느 필드가 어떤 규칙을 어겼는지**이므로 `loc`·`type`·`msg` 만 남긴다.
     응답 body 는 그대로 둔다 — 받는 주체가 자기 자신이고, 바꾸면 API 호환성이 깨진다.
 
+    다만 응답은 FastAPI 자체 핸들러와 똑같이 `jsonable_encoder` 를 통과시킨다(설치본
+    `fastapi/exception_handlers.py` 실측). 현재 스키마는 `Field(ge/le)` 제약뿐이라 `errors()`
+    가 이미 JSON 직렬화 가능하지만(3 케이스 `json.dumps` 실측 OK), `Decimal`·`date` 나
+    `ValueError` 를 `ctx` 에 담는 커스텀 validator 가 하나라도 들어오면 **응답 렌더링 단계**에서
+    터져 422 가 500 으로 바뀐다. 핸들러 밖에서 터지므로 원인 추적도 어렵다.
+
     출처: https://pydantic.dev/docs/validation/latest/errors/errors/
     """
     redacted = [
@@ -139,7 +146,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         request.method,
         redacted,
     )
-    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(exc.errors())})
 
 
 @app.exception_handler(Exception)
