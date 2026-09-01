@@ -1,7 +1,7 @@
 ---
 type: design
-status: proposed
-pr: null
+status: in-progress
+pr: 164
 related_inc: null
 supersedes: null
 target_version: versionCode 34+ (Android 빌드 설정) / 백엔드는 앱 버전 무관
@@ -17,6 +17,29 @@ tags: [refactoring, upgrade, kotlin, gradle-dsl, dependabot, backlog]
 - **연관 작업**: `docs/plans/2026-09-01-entra-external-id-migration-{design,plan}.md` — **같은 파일(`app/build.gradle.kts`, `gradle/libs.versions.toml`)을 건드리므로 순서 결정 필요**(§3)
 - **대상 버전**: Android 빌드 설정 변경 → versionCode 34+
 - **선행 작업**: 없음
+
+---
+
+## 0. 진행 상황 (2026-09-01)
+
+**Task A · B1 · B2 · B3 · B4 완료 — dependabot 백로그 10건 → 0건.**
+
+| 항목 | 결과 |
+|---|---|
+| Task A (DSL + Kotlin 2.4) | ✅ PR [#164](https://github.com/gunnysis/eundunHealth/pull/164) — Kotlin **2.4.10** / KSP **2.3.11** / coroutines-test 1.11.0 |
+| Task B4 (AGP) | ✅ #164 — AGP **9.3.2** (#157 의 9.3.0 대신 최신 안정판) |
+| Task B3 (Android 런타임) | ✅ #164 — sentry **8.54.0**(+plugin 6.20.0) / okhttp **5.5.0** / vico **3.3.1** |
+| Task B1 (CI 액션) | ✅ #163 #160 #153 머지 |
+| Task B2 (백엔드) | ✅ #162(10종) #151 머지 → 프로덕션 배포 성공, `/health`·`/health/ready` 200 |
+| Task C (openapi-generator) | ⏸ 보류 유지 (§4 Task C 사유대로) |
+
+**검증**: 전 커밋에서 `compileDebugKotlin`·`spotlessCheck`·`detektDebug`·`testDebugUnitTest`·**`assembleRelease`(R8)** 통과. PR CI 는 **CodeQL java-kotlin(릴리스 variant 빌드)까지** 통과. 백엔드는 `Docker compose smoke (uvicorn lifespan)` 통과로 starlette 1.3.1→1.6.0 의 룰 4 회귀 위험 해소.
+
+**§2 근본원인 검증 결과**: 가설대로였다. "script compilation errors 4건"은 **전부 단일 `kotlinOptions` 블록**에서 나온 것이었고, DSL 교체 후 Kotlin 2.4.10 이 에러 0으로 통과했다. `dependency-deferred.md` §1 은 해소 종결 처리했다.
+
+**버전 선정에서 얻은 교훈(전 항목에 적용)**: dependabot 제안은 PR 이 43일 전이라 **6건 중 5건이 이미 낡아** 있었다. 그리고 `maven-metadata.xml` 의 `<latest>`/`<release>` 는 **pre-release 를 그대로 가리킨다** — Kotlin 은 2.4.20-**RC2**, AGP 는 9.5.0-**alpha03**. AGP 는 Maven Central 이 아니라 **Google Maven** 게시라는 점도 함정. → **버전 pin 전 ① 1차 출처 조회 ② pre-release 필터링 ③ 게시 저장소 확인** 3단계를 거칠 것.
+
+**남은 후속**: AGP 9 built-in Kotlin 이관(`org.jetbrains.kotlin.android` 플러그인 불필요 경고) · vico `lineSeries`→`lineModel` · detekt baseline 61건 재생성(§WS3).
 
 ---
 

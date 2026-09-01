@@ -7,11 +7,16 @@
 
 ## 활성 작업 (페어 파일, 3)
 
-### 대기 (proposed / approved) (3)
+### 진행 중 (1)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-09-01 | build-modernization | design | proposed | refactoring, upgrade, kotlin, gradle-dsl, dependabot, backlog |
+| 2026-09-01 | build-modernization | design | in-progress | refactoring, upgrade, kotlin, gradle-dsl, dependabot, backlog |
+
+### 대기 (proposed / approved) (2)
+
+| 날짜 | 주제 | type | status | tags |
+|---|---|---|---|---|
 | 2026-09-01 | entra-external-id-migration | design + plan | proposed | auth, entra-external-id, supabase, migration, ux, rule-5, rule-8, rule-11 |
 | 2026-09-01 | legacy-modernization-program | design | proposed | legacy-cleanup, modernization, program, entra, kotlin, dependabot |
 
