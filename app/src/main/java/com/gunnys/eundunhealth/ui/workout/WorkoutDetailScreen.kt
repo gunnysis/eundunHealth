@@ -1,5 +1,7 @@
 package com.gunnys.eundunhealth.ui.workout
 
+import android.content.ClipData
+import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,15 +28,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,6 +46,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.ui.components.ErrorContent
+import kotlinx.coroutines.launch
 
 /** 복사용 텍스트: 운동 이름 + 번호 매긴 방법. 영어 콘텐츠를 번역기에 붙여넣는 용도로 한 번에 복사. */
 private fun buildCopyText(ex: Exercise): String = buildString {
@@ -100,7 +104,8 @@ fun WorkoutDetailScreen(
             is WorkoutDetailUiState.Loaded -> {
                 val ex = state.exercise
                 val context = LocalContext.current
-                val clipboard = LocalClipboardManager.current
+                val clipboard = LocalClipboard.current
+                val scope = rememberCoroutineScope()
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -163,8 +168,19 @@ fun WorkoutDetailScreen(
                                 DisableSelection {
                                     IconButton(
                                         onClick = {
-                                            clipboard.setText(AnnotatedString(buildCopyText(ex)))
-                                            Toast.makeText(context, "운동 방법을 복사했어요", Toast.LENGTH_SHORT).show()
+                                            scope.launch {
+                                                clipboard.setClipEntry(
+                                                    ClipEntry(ClipData.newPlainText("운동 방법", buildCopyText(ex))),
+                                                )
+                                                // Android 13(API 33)+ 는 시스템이 복사 확인 UI 를 띄운다 —
+                                                // 앱 토스트를 함께 띄우면 같은 내용이 두 번 표시된다. 공식 문서가
+                                                // "remove your custom copy confirmation" 을 명시한다.
+                                                // https://developer.android.com/develop/ui/compose/touch-input/copy-and-paste
+                                                // minSdk 26 이라 12L 이하 기기에는 그대로 토스트가 필요하다.
+                                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                                                    Toast.makeText(context, "운동 방법을 복사했어요", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
                                         },
                                     ) {
                                         Icon(Icons.Default.ContentCopy, "운동 방법 복사")

@@ -7,6 +7,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -161,7 +162,7 @@ class BadgeRepositoryImplTest {
         }
 
         override suspend fun awardBadge(key: String): Response<BadgeResponse> {
-            if (awardFails) return Response.error(500, okhttp3.ResponseBody.create(null, ""))
+            if (awardFails) return Response.error(500, "".toResponseBody(null))
             return Response.success(BadgeResponse(badgeKey = key, earnedAt = "2026-09-01T00:00:00Z"))
         }
     }
