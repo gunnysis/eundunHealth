@@ -31,6 +31,7 @@ Used by:
 from __future__ import annotations
 
 import argparse
+import ast
 import asyncio
 import contextlib
 import json
@@ -114,11 +115,57 @@ def count_routes_in_text(text: str) -> list[dict[str, str]]:
     ]
 
 
+def _parametrize_factor(decorator: ast.expr) -> int:
+    """`@pytest.mark.parametrize(names, [...])` 가 만들어내는 케이스 수. 셀 수 없으면 1.
+
+    두 번째 인자가 리터럴 리스트/튜플일 때만 센다. 변수·컴프리헨션 등은 정적으로 알 수
+    없으므로 **과대계상하지 않고 1로 둔다**(틀린 수보다 보수적인 수가 낫다).
+    """
+    if not isinstance(decorator, ast.Call):
+        return 1
+    func = decorator.func
+    if not (isinstance(func, ast.Attribute) and func.attr == "parametrize"):
+        return 1
+    if len(decorator.args) < 2:
+        return 1
+    argvalues = decorator.args[1]
+    if isinstance(argvalues, (ast.List, ast.Tuple)) and argvalues.elts:
+        return len(argvalues.elts)
+    return 1
+
+
 def count_test_functions(texts: list[str]) -> int:
-    """test 파일 텍스트들에서 `def test_` 개수를 합산한다(pytest pass 수의 정적 근사)."""
-    return sum(
-        len(re.findall(r"^\s*(?:async\s+)?def test_\w+", t, re.MULTILINE)) for t in texts
-    )
+    """test 파일 텍스트들에서 pytest 케이스 수를 센다.
+
+    `def test_` 개수만 세면 **`@pytest.mark.parametrize` 가 def 1개를 케이스 N개로 확장하는
+    것을 놓쳐** pytest 실측보다 작게 나온다. 실제로 이 off-by-one 때문에 수집기가 정확한
+    문서를 드리프트로 오탐했다(수집기 95 vs pytest 96, 2026-09-01).
+
+    `pytest --collect-only` 로 실측하는 방법은 쓸 수 없다 — `doc-audit.yml` 의 어느 잡도
+    백엔드 의존성을 설치하지 않아 import 단계에서 죽는다. 그래서 `ast` 로 정적 분석한다
+    (stdlib 만 쓰므로 CI 에서 추가 설치가 필요 없다).
+
+    파싱에 실패하면 기존 정규식 카운트로 폴백한다 — 문법 오류 하나가 감사 전체를
+    멈추게 하지 않는다.
+    """
+    total = 0
+    for text in texts:
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            total += len(re.findall(r"^\s*(?:async\s+)?def test_\w+", text, re.MULTILINE))
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if not node.name.startswith("test_"):
+                continue
+            cases = 1
+            # 데코레이터가 여러 개면 케이스 수는 곱해진다(pytest 동작).
+            for dec in node.decorator_list:
+                cases *= _parametrize_factor(dec)
+            total += cases
+    return total
 
 
 def extract_json_block(text: str) -> Any | None:

@@ -92,6 +92,45 @@ class TestCountTestFunctions:
     def test_ignores_non_test_defs(self):
         assert count_test_functions(["def helper(): pass\n"]) == 0
 
+    def test_expands_parametrize_literal_list(self):
+        """parametrize 는 def 1개를 케이스 N개로 확장한다 — pytest 실측과 맞추려면 세야 한다.
+
+        이 off-by-one 때문에 수집기가 정확한 문서를 드리프트로 오탐했다(95 vs 96).
+        """
+        text = (
+            "import pytest\n"
+            '@pytest.mark.parametrize("f", ["a.md", "b.md"])\n'
+            "def test_x(f): pass\n"
+        )
+        assert count_test_functions([text]) == 2
+
+    def test_expands_stacked_parametrize_as_product(self):
+        text = (
+            "import pytest\n"
+            '@pytest.mark.parametrize("a", [1, 2])\n'
+            '@pytest.mark.parametrize("b", [3, 4, 5])\n'
+            "def test_x(a, b): pass\n"
+        )
+        assert count_test_functions([text]) == 6
+
+    def test_non_literal_parametrize_counts_once(self):
+        """리터럴이 아니면 정적으로 셀 수 없다 — 과대계상하지 않고 1로 둔다."""
+        text = (
+            "import pytest\n"
+            "CASES = [1, 2, 3]\n"
+            '@pytest.mark.parametrize("a", CASES)\n'
+            "def test_x(a): pass\n"
+        )
+        assert count_test_functions([text]) == 1
+
+    def test_counts_methods_inside_class(self):
+        text = "class TestFoo:\n    def test_a(self): pass\n    def test_b(self): pass\n"
+        assert count_test_functions([text]) == 2
+
+    def test_unparseable_text_falls_back_to_regex(self):
+        """문법 오류가 있어도 수집기가 죽으면 안 된다(감사 전체가 멈춘다)."""
+        assert count_test_functions(["def test_a(: pass\n"]) == 1
+
 
 class TestExtractJsonBlock:
     def test_extracts_last_valid_block(self):
