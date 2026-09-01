@@ -127,27 +127,41 @@ az rest --method PUT \
 - provisioningState 는 `Provisioning` → `Created` → `Succeeded` 순으로 진행(약 2분).
 - **생성 직후 OIDC discovery 를 조회해 design F4-a 의 issuer 오류를 발견**했다. 문자열 조합 대신 discovery 문서에서 읽는 방식으로 설계 변경.
 
-### 0-D. 대표님께 요청드릴 구간
+### 0-D. 대표 수행 구간 — **거의 완료 (2026-09-01)**
 
-Claude 가 대행 불가. 각 항목은 해당 시점에 개별 요청드린다.
+당초 "Claude 대행 불가" 로 분류했던 항목 대부분이 실제로는 Graph API 로 수행 가능했다. 남은 것은 **1건뿐**이다.
 
-| # | 작업 | 완료 판정 |
+| # | 작업 | 상태 |
 |---|---|---|
-| 0-3 | 앱 등록 ① Android public client | client_id 확보. "Allow public client flows" = Yes. redirect URI **서명 3종**(debug/upload/Play App Signing) 모두 등록 |
-| 0-4 | 앱 등록 ② 백엔드 confidential client | client_id + client secret 확보. Expose an API → scope `access_as_user` |
-| 0-5 | Graph `User.ReadWrite.All`(Application) + **관리자 동의** + User Administrator 역할 | Graph `DELETE /users/{id}` 가 403이 아닌 204/404를 반환 |
-| 0-6 | **한국어 추가** — Company branding → Browser language customizations → Korean (Korea) | 브라우저 언어 ko로 로그인 페이지 접속 시 한국어 노출 |
-| 0-7 | 브랜딩 — 로고·배경·파비콘·CSS(`#006D3C`), 푸터에 `/privacy`·`/account-deletion` | 로그인 페이지가 앱 톤과 이어짐 |
-| 0-8 | KV secret 4종 등록 | `az keyvault secret list --vault-name kv-eundunhealth` 에 `entra-*` 4종 존재 |
+| 0-3 | 앱 등록 ① Android public client | ✅ `2bf6134f-…` · public client flows 활성 · redirect URI **2/3** |
+| 0-4 | 앱 등록 ② 백엔드 confidential client | ✅ `903bf44d-…` · scope `access_as_user` · secret(만료 2028-09-01) |
+| 0-5 | Graph `User.ReadWrite.All` + 관리자 동의 | ✅ 동의 완료 + `GET /users` 200 기능 검증 |
+| 0-5b | **delegated 관리자 동의** (초안에 없던 항목) | ✅ AllPrincipals 2건 — Graph 3스코프 + `access_as_user` |
+| 0-6 | 한국어 추가 (ko-KR localization) | ✅ 바이트 검증 통과 |
+| 0-7 | 브랜딩 — 배경색 `#006D3C` | ✅ 색상 적용. 로고·파비콘·푸터 링크는 **미적용**(선택 항목) |
+| 0-8 | KV secret 4종 | ✅ `entra-tenant-id`·`entra-subdomain`·`entra-backend-client-id`·`entra-backend-client-secret` |
+| **0-9** | **Play App Signing 서명 해시 등록** | ⛔ **유일한 잔여 항목** — Play Console 에서만 조회 가능 |
 
-**Phase 0에서 함께 확정할 게이트 질문:**
+**0-9 절차** (대표 수행 → Claude 가 등록):
+1. Play Console → eundunHealth → 테스트 및 출시 → **설정 → 앱 서명**
+2. "앱 서명 키 인증서" 의 **SHA-1 지문**(`AB:CD:…` hex) 복사
+3. 변환 후 redirect URI 등록:
+   ```bash
+   echo "AB:CD:..." | tr -d ':' | xxd -r -p | openssl base64
+   # → msauth://com.gunnys.eundunhealth/<URL 인코딩된 값> 을 앱 등록에 추가
+   ```
 
-| # | 질문 | 잠그는 Task |
+> **차단 시점**: Phase 5(Play 내부 트랙 실기기 E2E) 이전까지만 있으면 된다. Phase 1~4 는 이것 없이 진행 가능.
+> **미등록 채로 출시하면** 디버그·로컬 릴리스는 정상인데 **Play 배포본에서만 로그인 실패**한다(룰 12 와 동일 유형).
+
+**게이트 질문 결과:**
+
+| # | 질문 | 결과 |
 |---|---|---|
-| Q1 | 이메일 검증이 (a) 브라우저 세션 내 코드 입력 (b) 별도 링크 클릭 | **Task 2-5**(Manifest) · **Task 1-4**(`auth.py` 삭제 여부) |
-| Q2 | Graph 호출이 M2M premium 과금 대상인지 | 없음(비용 기록만) |
-| Q3 | 호스팅 페이지 다크모드 CSS 대응 가능 여부 | 0-7 범위 |
-| Q4 | MSAL이 Custom Tab 툴바 색상 커스터마이즈를 노출하는지 | **Task 2-3** 범위 |
+| Q1 | 이메일 검증 방식 | **(a) 브라우저 내 코드 입력** — 가입이 브라우저 세션 안에서 완결됐고(계정 생성 확인), 링크 클릭 단계가 없었다. → `assetlinks.json`·App Links·`/auth/confirm` **삭제 가능** |
+| Q2 | Graph 호출 M2M 과금 | 미확인. 현 규모에서 비용 영향 없음(설계 §3 요금 참조) — **비차단** |
+| Q3 | 호스팅 페이지 다크모드 CSS | 미확인 — 0-7 선택 항목과 함께 **후순위** |
+| Q4 | MSAL Custom Tab 툴바 커스터마이즈 | 미확인 — Task 2-3 착수 시 MSAL API 로 확인 |
 
 ---
 
@@ -464,6 +478,7 @@ curl -s https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontaine
 | R2 | MSAL × R8 릴리스 전용 회귀 (룰 12) | Phase 5 릴리스 빌드 검증 필수. 디버그 통과는 근거가 안 됨 |
 | R3 | client secret 만료 | 만료일 기록. Graph 토큰 발급 실패를 Sentry로 감지 |
 | R4 | Q1~Q4 미확정 상태로 착수 | Phase 0 게이트로 차단 |
+| 정리 | 테스트용 redirect URI `http://localhost` 가 Android 앱 등록에 남아 있음 | Phase 5 완료 후 **제거**. 공개 클라이언트라 시크릿 유출 위험은 없으나 불필요한 표면은 남기지 않는다 |
 | 후속 | `doc_audit.py` 수집기 off-by-one | design §9. 본 전환과 무관, **별도 PR** |
 | 후속 | Auth Tab(Chrome 인증 전용 탭) 적용 | 현 범위 밖. MSAL 지원 여부 확인 후 검토 |
 

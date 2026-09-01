@@ -184,6 +184,40 @@ MSAL 공식 문서: *"MSAL uses **reflection** and generic type information stor
 
 `msauth://<package>/<base64-url-encoded-signature>` + config에 `broker_redirect_uri_registered: true`. 서명 키 3종(debug/upload/Play App Signing)이므로 **redirect URI도 3개** 등록.
 
+### F10. 실제 토큰으로 F1·F1-b·F4-a 동시 검증 — **엔드투엔드 실측 (2026-09-01)**
+
+구현 전에 **살아있는 테넌트에서 실제 액세스 토큰을 발급받아** 설계 단언을 검증했다. 문서 대조가 아니라 실물 검증이다.
+
+방법: 소비자 계정 self-service 가입 → Authorization Code + PKCE(공개 클라이언트, `http://localhost`) → 토큰 교환 → **PyJWT + `PyJWKClient` 로 라이브 JWKS 서명 검증**(`audience`·`issuer` 강제).
+
+실제 액세스 토큰 claims (검증 통과):
+
+| claim | 실측값 | 의미 |
+|---|---|---|
+| `alg` / `kid` | `RS256` / `K8kSE0JOSAiPJeUorccBhbrhv3I` | F4 확인 |
+| `iss` | `https://c7ebcc7f-….ciamlogin.com/c7ebcc7f-…/v2.0` | **F4-a 확인** — 서브도메인이 tenantId |
+| `aud` | `903bf44d-…`(백엔드 appId) | audience 검증 통과 |
+| `oid` | `d2540ae9-916a-465d-b0ed-f364a767ed23` | **F1 확인** |
+| `sub` | `jGuRLV4x0jrHaV8h7jf4S-L71Tw5YrxJB-ASjeQH21Q` | **`oid` 와 다름** — pairwise, DB 키로 쓰면 안 됨 |
+| `scp` | `access_as_user` | **F1-b 확인** |
+| `azp` | `2bf6134f-…`(Android appId) | |
+| `preferred_username` | `qkr133456@gmail.com` | |
+
+**`oid` → Graph 사용자 매핑을 별도 확인**(계정 삭제 경로):
+```
+GET /v1.0/users/d2540ae9-916a-465d-b0ed-f364a767ed23  → HTTP 200
+  id   = d2540ae9-916a-465d-b0ed-f364a767ed23   ← oid 와 완전 일치
+  mail = qkr133456@gmail.com
+```
+→ F1 의 "Graph 가 이 ID 를 `id` 로 반환한다"가 **본 테넌트에서 사실로 확인**됐다. `sub` 를 저장했다면 삭제만 조용히 실패했을 것이라는 F1 의 경고도 `sub != oid` 로 실증됐다.
+
+**부수 발견 2건**:
+
+1. **액세스 토큰에 `email` claim 이 없다.** 이메일은 `preferred_username` 으로만 온다. → 본 앱은 **user id 외의 프로필 claim 을 전혀 쓰지 않으므로**(이메일은 가입·로그인 폼 입력값으로만 쓰이고 화면에 표시하지 않는다) **영향 없음**. 향후 이메일 표시가 필요해지면 `email` optional claim 을 추가하지 말고 `preferred_username` 을 쓴다.
+2. **`name` claim 이 `"unknown"`** — 기본 가입 흐름이 표시 이름을 수집하지 않아 Entra 가 채운 값이다. 앱이 이름을 표시하지 않으므로 무해하나, **표시 이름이 필요해지면 user flow 의 속성 수집을 늘려야 한다**(앱 코드가 아니라 테넌트 설정).
+
+> **재현 스크립트**: 세션 scratchpad `verify_token.py`. 저장소에 두지 않는다 — 실행에 실토큰이 필요하고, 값이 자격증명이다.
+
 ### 참고: 요금 (2026-06-09 메모리 수치 정정)
 
 무료 구간 **0–50,000 MAU $0**는 유지. 초과 구간은 메모리의 세분 구간제($0.0055/$0.0046/…)가 아니라 **P1 $0.00325 / P2 $0.01625** 구조로 바뀌었다. 현 규모에선 양쪽 다 $0이라 결정에 무영향이나, 메모리 수치는 인용하지 말 것.

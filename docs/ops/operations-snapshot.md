@@ -198,7 +198,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | 앱 | appId | 비고 |
 |---|---|---|
 | `eundunhealth-api` (백엔드, confidential) | `903bf44d-d73a-40b5-9601-e9c362699c38` | `api://903bf44d-...` · scope `access_as_user`(id `16f0a6ff-c5ff-46d5-aadf-8481038e7003`) · SP `ccc46d8c-3a56-42b0-9c08-1c8c6fe7ef8a` |
-| Android public client | (미생성) | redirect URI = `msauth://com.gunnys.eundunhealth/<base64 sig hash>` × 서명 3종 |
+| `eundunhealth-android` (public client) | `2bf6134f-6066-48e6-81b0-9f5ddfd0398e` | objId `977011be-ed70-4a5a-b40f-6aa5ecb465ca` · SP `8fa3e002-7bf7-403f-bcb5-21b26de39cdb` · `isFallbackPublicClient: true` · redirect URI 아래 표 |
 
 **권한 상태 — ✅ 동의 완료·기능 검증 통과 (2026-09-01)**
 
@@ -220,6 +220,52 @@ Graph `User.ReadWrite.All`(Application, id `741f803b-c850-494e-b5df-cde7c675a1ca
 - **왜 이 권한인가**: [Delete a user](https://learn.microsoft.com/en-us/graph/api/user-delete?view=graph-rest-1.0) 공식 표에서 Application 유형의 **least privileged 가 `User.ReadWrite.All`** 이다. 더 좁은 대안이 없다.
 - **영향 범위**: 테넌트 전역 사용자 읽기·쓰기·삭제. 계정 삭제 외 용도로 쓰지 않는다.
 - **한계**: 공식 문서상 app-only 로는 **관리자 역할 보유 사용자를 삭제할 수 없다**. 본 앱 사용자는 일반 소비자라 무관.
+
+
+**Android 앱 리다이렉트 URI — 서명 3종 중 2종 등록 (2026-09-01)**
+
+| 서명 키 | SHA-1 base64 | 등록 |
+|---|---|---|
+| debug (`~/.android/debug.keystore`) | `zUYkGo2kG8/CAW3QPXU/TM8o2o8=` | ✅ |
+| upload (`.key/eundunhealth_upload_key`) | `cqNNQa0DrMdbfDML6amWDRDXqdc=` | ✅ |
+| **Play App Signing** | — | ⛔ **미등록** |
+| `http://localhost` (테스트 전용) | — | ✅ **전환 완료 후 제거 대상** |
+
+> URI 는 `msauth://com.gunnys.eundunhealth/<URL 인코딩된 해시>` 형태다. `/` → `%2F`, `=` → `%3D`.
+> **Play App Signing 해시는 Google 이 보관하는 키라 로컬 산출이 불가능**하다. Play Console → 설정 → 앱 서명 → "앱 서명 키 인증서" 의 SHA-1(hex) 을 받아 변환한다:
+> ```bash
+> echo "AB:CD:..." | tr -d ':' | xxd -r -p | openssl base64
+> ```
+> 미등록 상태로 출시하면 **Play 배포본에서만** 로그인이 실패한다(디버그·로컬 릴리스는 정상). 룰 12 와 동일한 "릴리스에서만 터지는" 함정.
+
+**Delegated 권한 — 관리자 동의 완료 (2026-09-01)**
+
+| 대상 | scope | consentType |
+|---|---|---|
+| Microsoft Graph | `openid profile offline_access` | AllPrincipals |
+| `eundunhealth-api` | `access_as_user` | AllPrincipals |
+
+> 가입 흐름이 사용자 동의(`Principal`, `openid` 만) 1건을 자동 생성하지만 **앱 동작에는 부족**하다. 테넌트 전역 동의가 있어야 MSAL 이 조용한 갱신을 할 수 있다.
+
+**엔드투엔드 실증 (2026-09-01)** — 설계 F10
+
+소비자 계정 self-service 가입 → PKCE 인가코드 → 토큰 교환 → **PyJWT + 라이브 JWKS 서명 검증** 전 구간 통과. 실제 토큰에서 `oid`(F1)·`scp`(F1-b)·`iss`(F4-a) 확인. `oid` → `GET /v1.0/users/{oid}` 200 으로 **계정 삭제 경로까지 검증**.
+
+> 테스트 계정 `qkr133456@gmail.com`(oid `d2540ae9-916a-465d-b0ed-f364a767ed23`)이 테넌트에 남아 있다. Phase 5 실기기 E2E 에 재사용하고, 계정 삭제 기능 검증 대상으로 쓴다.
+
+**⚠️ 한국어 브랜딩 텍스트 — 인코딩 함정 (2026-09-01, 실제 손상 발생)**
+
+로그인 페이지의 한국어가 `占쏙옙` 형태로 저장된 사고가 있었다. 원인은 두 가지가 **겹친** 것이라 진단이 어려웠다:
+
+| 층 | 증상 | 원인 | 해결 |
+|---|---|---|---|
+| **저장** | 실제로 깨진 값이 저장됨 | Windows 셸을 거친 `curl -d '<한글>'` 인라인 문자열이 cp949 로 이중 인코딩 | UTF-8 파일로 쓰고 `--data-binary @<파일>` |
+| **표시** | 저장은 정상인데 읽으면 깨져 보임 | 콘솔 출력 경로가 cp949 | **원시 바이트로 판정** (`은둔` = `\xec\x9d\x80\xeb\x91\x94`) |
+
+저장 층을 고친 뒤에도 표시 층 때문에 계속 `FAIL` 로 보여 **이미 고친 것을 반복해서 고치려 드는** 함정이 있었다. 한국어를 외부 API 로 보낼 때는 **파일 경유 + 바이트 검증**을 기본으로 한다.
+
+> 부수 함정: Windows `curl`·`python` 은 Git Bash 의 `/tmp` 경로를 읽지 못한다(`error encountered when reading a file`). Windows 가 해석 가능한 경로를 쓸 것.
+> 같은 뿌리의 기존 가드: `containerapp.yaml` ASCII-only 주석 규칙, `requirements` cp949 pre-commit 가드.
 
 ---
 
