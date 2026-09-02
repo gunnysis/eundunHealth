@@ -316,6 +316,19 @@ _SYSTEM_PROMPT = """\
   보고하라 — Dockerfile / ruff `target-version` / mypy `python_version` 중 어느 것이 뒤처졌는지 짚어라.
 - `api_routes` 에 **없는** 경로를 문서가 현재형으로 안내하면 드리프트다(삭제된 엔드포인트가
   남는 흔한 형태). 반대로 이력 서술에 남는 것은 정상이다.
+- **폐기된 이름이 현재형 구역에 남았는지 보라.** 이 저장소에서 폐기된 것: `Supabase`
+  (인증 제공자 · 2026-09-02 프로젝트까지 삭제, 현행은 Entra External ID) · App Links /
+  `assetlinks.json` / `/auth/confirm`(브라우저 안에서 검증하므로 경로 자체가 없다) ·
+  `LoginScreen`·`SignupScreen`·`ForgotPasswordScreen`(현행 인증 화면은 `AuthGateScreen` 하나).
+  이력 표시 아래 있거나 과거형으로 서술됐으면 정상, **현재 상태를 자처하는 자리에 있으면 드리프트**다.
+- **표·목록의 한 행만 최신이고 이웃 행이 낡은 경우를 특히 노려라.** 이것이 이 저장소에서
+  실제로 가장 오래 살아남은 형태다(2026-09-02 실측: `TRD §2.3` 인증 표에서 "JWT 알고리즘"
+  행만 RS256 으로 갱신되고 "인증 서비스=Supabase Authentication"·"SDK=Supabase Kotlin SDK"·
+  "JWKS={SUPABASE_URL}/..." 세 행이 남아 있었다). 위험한 이유는 셋이다 — ① 최신 행 하나가
+  표 전체에 "관리되고 있음" 신호를 줘 독자가 더 믿는다 ② 폐기된 이름이 정당한 이력 서술
+  사이에 숨는다 ③ **그 사실을 잡으려고 만든 수집기 필드가 대조하는 바로 그 행은 이미 맞아서
+  green 이 난다.** 결정론적 수집기가 구조적으로 못 잡는 지점이므로 **네가 봐야 한다** —
+  같은 표 안에서 행끼리 모순되면 수집기 필드와 무관하게 보고하라.
 
 출력: 사람이 읽을 분석을 먼저 쓰고, **마지막에 단 하나의 ```json 블록**으로 아래 스키마를 채워라.
 findings 가 없으면 clean=true, findings=[] 로.
