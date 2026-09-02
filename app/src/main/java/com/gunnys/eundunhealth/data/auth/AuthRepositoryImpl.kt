@@ -82,7 +82,10 @@ class AuthRepositoryImpl @Inject constructor(
 
         tokenHolder.set(result.accessToken)
         result.account.oidClaim()
-            ?: error("토큰에 oid claim 이 없습니다 — profile scope 확인 필요")
+            // ⚠️ 여기서 `ENTRA_SCOPES` 에 `profile` 을 추가하지 말 것 — MSAL 이 이미 자동으로
+            // 보내며, 명시하면 DeclinedScopeException 으로 로그인이 통째로 깨진다(INC-2026-09-02-31).
+            // oid 가 비었다면 scope 가 아니라 Entra 앱 등록/토큰 구성 쪽을 본다.
+            ?: error("토큰에 oid claim 이 없습니다 — Entra 앱 등록 확인 필요(scope 목록은 건드리지 말 것)")
     }.recoverCatching { e ->
         // 취소는 그대로 올려보낸다. 호출자가 배너 없이 원상복귀하도록.
         if (e is AuthCancelledException) throw e
