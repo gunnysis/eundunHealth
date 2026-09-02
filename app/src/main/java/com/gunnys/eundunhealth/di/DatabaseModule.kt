@@ -23,7 +23,8 @@ object DatabaseModule {
     // **파일이 존재한다는 것만으로**(`root = true` 한 줄로도 재현) ktlint 룰셋이 바뀌어
     // 91파일이 재포맷되고 무관한 `no-consecutive-comments` 위반으로 spotlessApply 가
     // 실패한다 — 3줄 때문에 치를 대가가 아니라 기각했다.
-    // → 충돌 지점만 수술적으로 막는다. 근거: docs/plans/2026-09-01-tech-debt-runtime-modernization-plan.md T7.
+    // → 충돌 지점만 수술적으로 막는다.
+    // 근거: docs/plans/logs/process-infra.md (옛 페어 2026-09-01-tech-debt-runtime-modernization-plan.md T7)
     @Suppress("ktlint:standard:function-signature")
     fun provideDatabase(@ApplicationContext context: Context): EundunDatabase =
         Room.databaseBuilder(context, EundunDatabase::class.java, "eundun_db")

@@ -5,7 +5,7 @@
 #   2) "## 업로드 이력" 표의 구분행(|---|) 바로 아래에 신규 행 삽입
 #
 # 사용법: bash scripts/update-upload-ledger.sh <ledger.md> <versionName> <versionCode> <track>
-# 설계: docs/plans/2026-07-02-android-cd-play-upload-design.md D6 (INC-2026-06-19-28 사람 의존 갭 해소)
+# 설계: docs/plans/logs/process-infra.md (옛 페어 2026-07-02-android-cd-play-upload-design.md D6 흡수 — INC-2026-06-19-28 사람 의존 갭 해소)
 set -euo pipefail
 
 if [ $# -ne 4 ]; then

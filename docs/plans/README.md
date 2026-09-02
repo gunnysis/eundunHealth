@@ -21,7 +21,8 @@
 1. **새 작업 시작**: `_templates/{design,plan}.md` 복사 → `docs/plans/YYYY-MM-DD-<topic>-{design,plan}.md` 페어 작성. frontmatter 의 `ledger_topic` 필드에 `android` / `backend` / `dependencies` / `process-infra` 중 하나.
 2. **작업 진행**: 페어 파일 update. PR 작성 시 페어 link.
 3. **PR 머지 후**: 해당 topic ledger (`logs/<ledger_topic>.md`) 의 `## Recent (last 90 days)` 섹션 맨 위에 압축 entry 추가 (~15-30줄). 페어 파일 `git rm`. 같은 commit 또는 후속 mechanical commit.
-4. **(같은 commit) 참조 리다이렉트**: `git rm` 한 페어를 참조하던 문서가 있으면 함께 고친다 — 길잡이 참조는 경로를 ledger 로 **교체**, 이력 기록(CHANGELOG 의 "Added")은 원문을 두고 **리다이렉트를 병기**한다. 빠뜨리면 링크가 조용히 죽는다(2026-09-01 도입 시점 26건 적체). 검사: `bash scripts/check-plans-links.sh`
+4. **(같은 commit) 참조 리다이렉트**: `git rm` 한 페어를 참조하던 곳이 있으면 함께 고친다 — 길잡이 참조는 경로를 ledger 로 **교체**, 이력 기록(CHANGELOG 의 "Added")은 원문을 두고 **리다이렉트를 병기**한다. 빠뜨리면 링크가 조용히 죽는다(2026-09-01 도입 시점 26건 적체). 검사: `bash scripts/check-plans-links.sh`
+   > **문서만이 아니다.** `# 설계: docs/plans/...` 주석은 워크플로·스크립트·Kotlin 소스에도 달리고, 오히려 그 근거를 가장 자주 읽게 되는 자리다. 가드가 `.md` 만 보던 동안 그쪽에 10건이 죽어 있었다(2026-09-02 실측). 지금은 추적 파일 전체를 검사한다.
 5. **(자동)** `gen-plans-index.sh` 가 매 commit 시 ledger 의 Recent/Older 자동 재정렬 (90일 기준) + 본 INDEX 갱신.
 6. **(가드)** shipped frontmatter 인 페어가 루트에 남아있으면 CI fail (`docs-plans-index.yml`). 같은 워크플로가 끊긴 페어 참조도 차단한다(pre-commit 에도 배선).
 

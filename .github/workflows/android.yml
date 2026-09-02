@@ -1,7 +1,8 @@
 name: Android CI
 
 # PR 반복 push 시 이전 실행 자동취소 — superseded 실행의 러너 점유 제거 + 피드백 속도 개선.
-# main push 는 cancel-in-progress=false 로 보존. 설계: docs/plans/2026-06-29-cicd-recommended-design.md §3.1 (P1)
+# main push 는 cancel-in-progress=false 로 보존.
+# 설계: docs/plans/logs/process-infra.md (옛 페어 2026-06-29-cicd-recommended-design.md §3.1 P1 흡수)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

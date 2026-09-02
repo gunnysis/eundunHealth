@@ -188,8 +188,22 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 
 **자동 경로 (권장)**: 태그 `v*` push → `.github/workflows/release.yml` 이 environment `play-release`
 (required reviewer 승인) 게이트 후 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB 빌드 →
-**Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`scripts/update-upload-ledger.sh`)까지 수행.
-프로덕션 승격은 Play Console 수동 유지. 설계: `docs/plans/logs/process-infra.md`.
+**Play 프로덕션 트랙 업로드**(`status: completed` = 100% 즉시) → 원장 자동 갱신
+커밋(`scripts/update-upload-ledger.sh`)까지 수행. 설계: `docs/plans/logs/process-infra.md`.
+
+> **트랙 변경 2026-09-02: internal → production.** 종전에는 내부 트랙에 올리고 Console 에서
+> 수동 승격했다. v0.2.0(Entra 전환) 시점에 프로덕션 LIVE 인 v0.1.19/33 이 **Supabase 인증
+> 빌드인데 백엔드는 Entra 전용**이라 이미 로그인 불가 상태였고, 단계적 노출은 "정상 버전을
+> 조심스럽게 내보내는" 전제 위의 장치라 여기서는 지연이 곧 손해였다. 실사용자 0명(룰 5 예외와
+> 같은 전제)이라 롤아웃 리스크도 없었다.
+>
+> **되돌리기는 대칭이 아니다** — Play 프로덕션은 이전 versionCode 로 내릴 수 없다. 가능한 것은
+> **출시 중단(halt rollout)** 또는 상위 versionCode 재업로드뿐이다. 단계적 노출이 필요해지면
+> `status: inProgress` + `userFraction` 으로 바꾼다.
+>
+> **서비스 계정 권한**: 프로덕션 트랙 출시는 내부 트랙과 **별도 권한**이다(Play Console → 사용자
+> 및 권한 → 앱 권한). v0.1.19 때도 권한 전파/수준 문제로 403 이 2회 났다 — 첫 프로덕션 자동
+> 업로드에서 403 이 나면 이 경로를 먼저 본다.
 
 ```bash
 bash scripts/bump-version.sh 0.1.19          # 버전 bump (+원장 단조 가드)
@@ -197,8 +211,13 @@ git push origin main && git tag v0.1.19 && git push origin v0.1.19   # 태그가
 # 사전 검증(업로드 없음): gh workflow run release.yml  (dry_run 기본 true)
 ```
 
+**`git push origin main` 을 먼저 하는 이유**: `push: tags` 이벤트는 **태그가 가리키는 커밋의
+워크플로 파일**로 실행된다. `release.yml` 을 고쳐 놓고 그 커밋을 포함하지 않은 지점에 태그를
+달면 **옛 파일이 돌아** 의도한 트랙과 다른 곳으로 올라간다.
+
 **태그 push 후 워크플로 실패 시**: 원인 수정 → 같은 태그 재실행(`gh run rerun <id>`) 또는
 태그 삭제(`git push origin :refs/tags/v0.1.19`) → 재작업 → 재태그. 업로드 실패는 Play 무영향.
+단 `rerun` 은 **태그 시점 yml** 을 다시 돌린다 — 워크플로 자체를 고쳤다면 재태그가 필요하다.
 
 **수동 폴백**: §4~5 의 preflight → Play Console 직접 업로드 경로는 그대로 유효 —
 이 경우 원장 갱신(§8 체크리스트)은 **수동 필수**.
@@ -211,8 +230,13 @@ git push origin main && git tag v0.1.19 && git push origin v0.1.19   # 태그가
 ## 8. 출시 후 체크리스트
 
 - [ ] **업로드 성공 직후 (필수)**: `docs/ops/play-upload-ledger.md` 의 `LAST_UPLOADED_VERSION_CODE=` 를 방금 올린 versionCode 로 갱신 + 이력 표 행 추가 → 다음 빌드의 단조성 가드 기준(INC-2026-06-19-28). 누락 시 다음 업로드가 중복으로 또 거부됨.
-- [ ] (내부/비공개) 참여 링크 옵트인 → 단말 설치 → 핵심 플로우 5건 통과 (로그인 / 온보딩 / 주간 계획 / 운동 완료 / 통계)
-- [ ] 사이드로드 검증: `adb install -r app/build/outputs/apk/release/app-release.apk`
+- [ ] 단말 설치 → 핵심 플로우 5건 통과 (로그인 / 온보딩 / 주간 계획 / 운동 완료 / 통계)
+- [ ] 사이드로드 검증: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
+      ⚠️ **release APK 사이드로드로는 로그인을 검증할 수 없다**(2026-09 Entra 전환 이후).
+      `app/src/release/res/raw/auth_config_ciam.json` 의 `redirect_uri` 해시는 **Play App Signing
+      키** 기준인데 로컬 release 빌드는 **업로드 키**로 서명되므로 MSAL 초기화가 실패한다
+      (설계상 정상 — 커밋 `4c01daf`). 로컬 실기기 검증은 **debug APK**(debug 서명 해시가 Entra 에
+      등록돼 있고 `BACKEND_BASE_URL` 은 프로덕션을 가리킴), 배포본 검증은 **Play 설치본**으로 한다.
 - [ ] Sentry **eundunhealth** 프로젝트에서 현재 release(`0.1.13+27`) crash/transaction 표시 + ProGuard mapping deobfuscation(스택트레이스 복원) 동작 확인
 - [ ] Sentry **eundunhealth-backend** 프로젝트에서 API 호출 트랜잭션 표시 확인
 - [ ] (프로덕션) 단계적 출시 % 모니터링 → 이상 없으면 100% 확대

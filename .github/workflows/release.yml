@@ -1,10 +1,19 @@
-# Android CD — 태그 push 로 서명 AAB 빌드(preflight 전체 게이트) → Play 내부 트랙 업로드 → 원장 자동 갱신.
-# 설계: docs/plans/2026-07-02-android-cd-play-upload-design.md
+# Android CD — 태그 push 로 서명 AAB 빌드(preflight 전체 게이트) → Play 프로덕션 트랙 업로드 → 원장 자동 갱신.
+# 설계: docs/plans/logs/process-infra.md (옛 페어 2026-07-02-android-cd-play-upload-design.md 흡수)
 # - 서명 자료 = environment `play-release` secrets (required reviewer 승인 게이트, D4)
 # - 빌드 = scripts/preflight-release.sh 단일 진입 (룰 2·13·Sentry 매핑 게이트 상속, D5)
 # - 업로드 성공 시 scripts/update-upload-ledger.sh 가 원장 갱신 커밋 push (INC-2026-06-19-28 사람 의존 갭 해소, D6)
-# - 프로덕션 승격은 Play Console 수동 (Out-of-scope). 실패 시 Play 무영향, 수동 업로드 경로는 폴백으로 유지.
-name: Release (Play internal)
+# - 실패 시 Play 무영향, 수동 업로드 경로는 폴백으로 유지.
+#
+# 트랙 = production (2026-09-02 변경, 종전 internal + Console 수동 승격).
+#   근거: 프로덕션에 LIVE 인 v0.1.19/33 은 Supabase 인증 빌드인데 백엔드는 Entra 전용으로
+#   전환됐다 — 즉 **지금 스토어에서 받는 앱은 이미 로그인이 불가능**하다. 내부 트랙에 먼저
+#   올리는 단계적 노출은 "정상 버전을 조심스럽게 내보내는" 상황을 전제하는데, 여기서는
+#   프로덕션이 이미 깨져 있어 승격이 늦어질수록 손해다. 실사용자 0명(룰 5 전환 근거와 동일
+#   전제)이라 롤아웃 리스크도 없다.
+#   되돌리려면 tracks 를 internal 로 되돌리는 것으로 부족하다 — Play 프로덕션은 이전 버전으로
+#   내릴 수 없고 "출시 중단(halt rollout)" 또는 상위 versionCode 재업로드만 가능하다.
+name: Release (Play production)
 
 on:
   push:
@@ -23,7 +32,7 @@ concurrency:
 
 jobs:
   release:
-    name: Build, Gate & Upload (internal)
+    name: Build, Gate & Upload (production)
     runs-on: ubuntu-latest
     environment: play-release
     timeout-minutes: 45
@@ -57,9 +66,12 @@ jobs:
         run: |
           mkdir -p .key
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > .key/eundunhealth_upload_key
+          # SUPABASE_URL / SUPABASE_ANON_KEY 는 2026-09-02 제거 — Entra 전환으로 SupabaseModule
+          # 이 삭제돼 읽는 코드가 없다(build.gradle.kts 의 buildConfigField 는 BACKEND_BASE_URL·
+          # SENTRY_DSN·ENTRA_API_SCOPE 3개뿐).
+          # ENTRA_API_SCOPE 는 **일부러 쓰지 않는다** — build.gradle.kts 에 기본값이 있고,
+          # 여기서 빈 값으로 쓰면 getProperty 가 기본값 대신 ""를 돌려줘 로그인이 깨진다.
           cat > local.properties <<EOF
-          SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}
-          SUPABASE_ANON_KEY=${{ secrets.PROD_SUPABASE_ANON_KEY }}
           BACKEND_BASE_URL=${{ secrets.PROD_BACKEND_BASE_URL }}
           eundunhealth-app_SENTRY_DSN=${{ secrets.PROD_SENTRY_DSN_ANDROID }}
           RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}
@@ -84,14 +96,16 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ (github.event_name == 'push' || !inputs.dry_run) && secrets.SENTRY_AUTH_TOKEN || '' }}
 
-      - name: Play 내부 트랙 업로드
+      - name: Play 프로덕션 트랙 업로드
         if: github.event_name == 'push' || !inputs.dry_run
         uses: r0adkll/upload-google-play@v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.gunnys.eundunhealth
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          tracks: internal   # 'track'(단수) 은 v1.1.5 에서 deprecated — 실행 로그 경고로 확인(2026-07-03)
+          tracks: production   # 'track'(단수) 은 v1.1.5 에서 deprecated — 실행 로그 경고로 확인(2026-07-03)
+          # completed = 100% 즉시 롤아웃. 단계적 롤아웃을 원하면 status: inProgress + userFraction.
+          # 여기서는 현재 프로덕션이 이미 깨져 있어 부분 노출이 의미가 없다(위 헤더 근거).
           status: completed
           mappingFile: app/build/outputs/mapping/release/mapping.txt
 
@@ -105,7 +119,7 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git fetch origin main
           git checkout -B ledger-update origin/main
-          bash scripts/update-upload-ledger.sh docs/ops/play-upload-ledger.md "$VN" "$VC" internal
+          bash scripts/update-upload-ledger.sh docs/ops/play-upload-ledger.md "$VN" "$VC" production
           git add docs/ops/play-upload-ledger.md
-          git commit -m "docs(ledger): v$VN/$VC 내부 트랙 업로드 — 원장 자동 갱신 (release.yml)"
+          git commit -m "docs(ledger): v$VN/$VC 프로덕션 트랙 업로드 — 원장 자동 갱신 (release.yml)"
           git push origin ledger-update:main

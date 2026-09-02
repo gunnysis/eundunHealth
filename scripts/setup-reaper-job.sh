@@ -5,7 +5,9 @@
 #       Container App(eundunhealth-api)과 별개 리소스로, 같은 backend 이미지를 재사용해
 #       `python scripts/reap_orphaned_accounts.py` 를 cron 스케줄에 1회 실행 후 종료.
 # 왜:  계정삭제 Step2(DB purge) 실패로 생긴 고아 데이터(Auth엔 없고 DB엔 남음)를 청소.
-# 설계: docs/plans/2026-06-17-orphan-reaper-job-design.md
+# 런북(정본): docs/ops/azure-container-apps-jobs.md — 프로비저닝 재현 패턴 + az CLI 함정 E1~E4.
+# (설계 페어 2026-06-17-orphan-reaper-job-design.md 은 ledger 이관 없이 삭제됐다 — 커밋 cfe4c3f.
+#  운영 지식은 위 런북이 이어받았으므로 그쪽을 본다.)
 # IaC: 잡 정의는 backend/reaper-job.yaml(UAI registry/secret). 이 스크립트가 image 만 현재
 #      앱 이미지로 치환해 `az containerapp job create --yaml` 로 생성한다.
 #

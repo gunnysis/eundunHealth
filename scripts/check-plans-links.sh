@@ -11,8 +11,14 @@
 #   죽은 링크는 "그 근거를 읽을 수 없다" 는 뜻이라 문서의 추적성이 통째로 무너진다.
 #
 # 무엇을 검사하는가:
-#   추적되는 모든 .md 안의 `docs/plans/....md` 경로가 실제로 존재하는지.
+#   추적되는 모든 텍스트 파일 안의 `docs/plans/....md` 경로가 실제로 존재하는지.
 #   존재하지 않으면 파일명의 날짜로 ledger 후보를 찾아 함께 알려준다.
+#
+#   **범위가 .md 였던 시절의 구멍(2026-09-02 발견, 실측 10건)**: 설계 근거 주석은 문서보다
+#   오히려 코드·워크플로에 많이 달린다 — `# 설계: docs/plans/...` 는 워크플로 4개·스크립트 2개·
+#   `gradle.properties`·Kotlin 3파일에 있었고 전부 죽어 있었다. 가드가 .md 만 보는 동안
+#   "문서 링크는 0건" 이라는 green 이 나왔지만 정작 그 근거를 가장 자주 읽게 되는 자리는
+#   방치돼 있었다. 그래서 추적 파일 전체로 넓혔다(`grep -I` 로 바이너리는 자동 제외).
 #
 # 예외 규칙 — **같은 줄에 리다이렉트가 있으면 통과**:
 #   죽은 페어 참조라도 그 줄이 실재하는 `docs/plans/logs/<topic>.md` 를 함께 가리키면
@@ -30,6 +36,8 @@
 #   - `docs/plans/_templates/**` — 템플릿의 예시 경로.
 #   - `docs/plans/_staging/**` 로의 참조 — gitignored scratch 폴더라 애초에 참조하면 안 된다.
 #     (참조가 있으면 그것 자체가 오류이므로 일반 규칙대로 걸린다.)
+#   - 이 스크립트 자신 — 위 설명문의 `docs/plans/....md` 는 실제 참조가 아니라 패턴 예시다.
+#   - `scripts/test_gen_plans_index.py` — 테스트 픽스처의 가짜 경로(`docs/plans/foo.md`).
 #
 # 사용:
 #   bash scripts/check-plans-links.sh          # 검사 (위반 시 exit 1)
@@ -44,10 +52,11 @@ LIST_ONLY=0
 LEDGERS="docs/plans/logs"
 violations=0
 
-# 추적 대상 .md (ledger·템플릿 제외)
+# 추적 대상 전체 (ledger·템플릿·자기참조·테스트 픽스처 제외)
 while IFS= read -r file; do
   case "$file" in
     docs/plans/logs/*|docs/plans/_templates/*) continue ;;
+    scripts/check-plans-links.sh|scripts/test_gen_plans_index.py) continue ;;
   esac
   [ -f "$file" ] || continue
 
@@ -107,8 +116,8 @@ while IFS= read -r file; do
 
     echo "$file:${line:-?}: 존재하지 않는 페어 참조 '$ref'$hint"
     # `{design,plan}` 축약형을 함께 뽑도록 `{`,`,`,`}` 를 문자 클래스에 포함한다.
-  done < <(grep -oE 'docs/plans/[A-Za-z0-9._/{},-]+\.md' -- "$file" 2>/dev/null | sort -u)
-done < <(git ls-files '*.md')
+  done < <(grep -I -oE 'docs/plans/[A-Za-z0-9._/{},-]+\.md' -- "$file" 2>/dev/null | sort -u)
+done < <(git ls-files)
 
 if [ "$violations" -eq 0 ]; then
   echo "OK: docs/plans/ 페어 참조 링크 정상 (끊긴 참조 0건)"

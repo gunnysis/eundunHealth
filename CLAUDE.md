@@ -75,7 +75,9 @@ bash C:/programming/docker/eundunhealth-api/redeploy.sh [tag]
 ```
 FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central) 업데이트 → /health 헬스체크 → timestamp 태그 자동 정리(최근 5개만 보존). 환경변수 변경은 별도 `az containerapp update --set-env-vars` 또는 `secret set`. 자세한 절차는 `docs/ops/migration-runbook.md`.
 
-**Android 출시 (자동 — Play 내부 트랙)** — 태그 `v*` push 로 `release.yml` 이 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB → Play **내부 트랙** 업로드 → 원장 자동 갱신 커밋까지 수행. environment `play-release`(required reviewer) 승인 게이트. 프로덕션 승격은 Play Console 수동. 사전 검증: `gh workflow run release.yml`(dry_run 기본 true = 업로드 생략). 절차·실패 대응: `docs/ops/play-store-release.md` §7. 수동 업로드 폴백 시 원장 수동 갱신 필수(룰 13).
+**Android 출시 (자동 — Play 프로덕션 트랙)** — 태그 `v*` push 로 `release.yml` 이 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB → Play **프로덕션 트랙** 업로드(`status: completed` = 100% 즉시) → 원장 자동 갱신 커밋까지 수행. environment `play-release`(required reviewer) 승인 게이트. 사전 검증: `gh workflow run release.yml`(dry_run 기본 true = 업로드 생략). 절차·실패 대응: `docs/ops/play-store-release.md` §7. 수동 업로드 폴백 시 원장 수동 갱신 필수(룰 13).
+> 트랙은 2026-09-02 에 internal → production 으로 바뀌었다(v0.2.0 Entra 전환 — 프로덕션 LIVE 인 v0.1.19/33 이 Supabase 빌드라 이미 로그인 불가였다). **태그는 반드시 고친 `release.yml` 이 포함된 커밋에 단다** — `push: tags` 는 태그 시점 워크플로 파일로 실행된다. 프로덕션은 이전 버전으로 롤백되지 않는다(halt rollout 또는 상위 versionCode 재업로드만 가능).
+> **로컬 release APK 로는 로그인 검증 불가** — release 소스셋 `redirect_uri` 해시가 Play App Signing 키 기준이라 업로드 키 서명본은 MSAL 초기화가 실패한다(설계상 정상). 실기기 검증은 debug APK 또는 Play 설치본.
 
 **Azure 로그인 (CI)** — OIDC 연합(PR #141/#142, 2026-07-02)이 유일 경로: `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` secrets + federated credential `github-main`. 장수명 `AZURE_CREDENTIALS` 는 **2026-07-03 완전 제거됨**(GitHub secret + Entra 앱 비밀번호 — 만료 점검 불요). OIDC 장애 시 긴급 폴백만:
 ```powershell
@@ -208,7 +210,7 @@ DELETE /account
 - **Azure PostgreSQL** Flexible Server `healthapp` (B1ms, 32GB, Korea Central). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
 - **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미지원). 상세: `docs/ops/operations-snapshot.md` §5-A
 - **Sentry**: Android `eundunhealth`, Backend `eundunhealth-backend` (각 별도 project)
-- CI: GitHub Actions 6 workflows — `backend.yml`(빌드→Trivy→ACR→deploy) · `android.yml`(test/detekt/spotless/collectAsState 가드) · `release.yml`(태그 push → Play 내부 트랙 CD, environment `play-release` 승인 게이트) · `warm-baseline-check.yml`(매일 minReplicas 회귀 감지) · `doc-audit.yml`(주간 문서 드리프트) · `docs-plans-index.yml`(plans 인덱스 drift) + Dependabot. Azure 로그인은 **OIDC 연합**(backend deploy·warm-baseline, PR #141/#142 — 장수명 SP secret 대신 단기 토큰; `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` secrets)
+- CI: GitHub Actions 6 workflows — `backend.yml`(빌드→Trivy→ACR→deploy) · `android.yml`(test/detekt/spotless/collectAsState 가드) · `release.yml`(태그 push → Play **프로덕션 트랙** CD, environment `play-release` 승인 게이트) · `warm-baseline-check.yml`(매일 minReplicas 회귀 감지) · `doc-audit.yml`(주간 문서 드리프트) · `docs-plans-index.yml`(plans 인덱스 drift) + Dependabot. Azure 로그인은 **OIDC 연합**(backend deploy·warm-baseline, PR #141/#142 — 장수명 SP secret 대신 단기 토큰; `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` secrets)
 
 ## 운영 안전 규칙 (Claude 작업 시 필독)
 
