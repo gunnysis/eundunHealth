@@ -14,6 +14,7 @@
 - Supabase Auth → **Microsoft Entra External ID** 외부 테넌트(`eundunhealthciam`, Asia Pacific). MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE).
 - JWT **ES256 → RS256**. `issuer` 검증 신규 추가 — Entra 는 발급자 URL 패턴을 테넌트 간 공유하므로 미검증 시 **타 테넌트 토큰이 통과**한다.
 - `scp` 에 `access_as_user` 검증 추가(공식 권장). app-only 토큰 차단 효과 포함.
+- **MSAL 요청 scope 를 우리 API scope 하나로 축소** — `profile` 을 함께 요청하다 **로그인이 100% 실패**하고 있었다(INC-2026-09-02-31, 실기기에서만 재현). MSAL 은 `openid`·`profile`·`offline_access` 를 항상 자동 전송하므로 명시하면 이득 없이 `MsalDeclinedScopeException` 이 난다. `oid` 는 그대로 발급된다. 회귀 가드 `EntraScopesTest`.
 - 사용자 식별자 `sub` → **`oid`**. `sub` 는 앱마다 다른 pairwise 값이라 저장하면 **로그인은 되는데 계정 삭제만 조용히 실패**한다.
 - `issuer`/`jwks_uri` 는 문자열 조합이 아니라 **OIDC discovery 에서 읽는다** — 조합식은 서명·audience 를 통과시키고 issuer 에서만 어긋나 추적이 매우 어렵다(실제로 초안이 틀렸다).
 

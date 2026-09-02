@@ -582,6 +582,57 @@ Debian 계층은 **0건**이었다 — Dockerfile 의 `apt-get upgrade` 자가�
 
 ---
 
+## INC-2026-09-02-31 — v0.2.0 로그인 100% 실패: MSAL 예약 scope 를 직접 요청
+
+**증상**: 실기기(Flip3, Android 15) 골든패스에서 **로그인이 항상 실패**. Entra 호스팅 페이지에서
+계정 선택까지는 정상이고 앱으로 돌아온 직후 룰 8 배너("로그인에 실패했습니다")가 뜬다.
+**출시 차단급** — 이 상태로 태그를 밀었다면 프로덕션 100% 롤아웃으로 나갔다.
+
+**발견 경로**: 디버그 빌드·단위테스트·CI 어디서도 재현되지 않는다. 실제 Entra 왕복에서만 난다.
+골든패스를 돌리지 않았다면 잡히지 않았을 결함이다.
+
+**근본 원인**: `MsalSilentAuth.kt` 의 `ENTRA_SCOPES` 가 우리 API scope 와 함께 **`profile` 을
+명시적으로 요청**하고 있었다. logcat 의 결정적 한 줄:
+
+```
+Returning DeclinedScopeException as not all requested scopes are granted,
+  Requested scopes: [api://903bf44d-…/access_as_user, profile]
+  Granted  scopes: [api://903bf44d-…/access_as_user]
+```
+
+커스텀 API 리소스의 액세스 토큰은 `scp` 에 **그 API 의 scope 만** 담는다. OIDC scope 는 ID 토큰
+쪽에 반영되므로 "요청했는데 부여되지 않은 scope" 로 판정돼 MSAL 이 예외를 던진다.
+
+**공식 문서로 확인한 두 사실** — 이 둘을 같이 봐야 결론이 나온다.
+
+| 출처 | 내용 |
+|---|---|
+| MSAL Android Javadoc (`IPublicClientApplication#acquireToken`) | *"MSAL always sends the scopes `openid profile offline_access`"* — 직접 넘기지 말 것 |
+| [Entra 액세스 토큰 claims 레퍼런스](https://learn.microsoft.com/en-us/entra/identity-platform/access-token-claims-reference) | `oid` 수신에는 **`profile` scope 가 필요**하다 |
+
+즉 종전 코드 주석("`profile` 이 빠지면 `oid` 가 발급되지 않는다")은 **요건 자체는 옳았고 구현이
+틀렸다.** MSAL 이 자동으로 보내므로 요건은 이미 충족돼 있었고, 명시적으로 넣은 것만이 순수한
+해악이었다. `oid` 는 DB 의 user_id 이자 Graph 계정 삭제의 키다.
+
+**복구**: `ENTRA_SCOPES = listOf(BuildConfig.ENTRA_API_SCOPE)` — 우리 API scope 하나만.
+
+**실증(실기기 전 구간)**: 로그인 성공 → 온보딩 → 주간 계획 6일 생성(운동 목록 정상) →
+완료 토글 1/6 → 해제 0/6 → **force-stop 후 재시작에도 해제 보존**(무음 갱신 동작 확인) →
+통계·배지·프로필 렌더 정상 → **계정 삭제**. 삭제 후 재로그인 시 계정 선택기가 아니라 빈 이메일
+폼이 떠 Entra 사용자가 실제로 파기됐음을 확인 — `oid` 가 정확했다는 결정적 증거다.
+
+**재발 방지**:
+- `EntraScopesTest` 로 예약 scope(`openid`·`profile`·`offline_access`) 혼입을 차단. 백엔드가
+  `scp` 에서 요구하는 `access_as_user` 와의 일치도 함께 박제.
+- 코드 주석에 **"왜 빼도 안전한지"** 를 남겼다. 근거 없이 지우면 다음 사람이 되돌린다 —
+  실제로 이 값은 "빼면 `oid` 가 사라진다" 는 (부분적으로 옳은) 믿음 때문에 들어가 있었다.
+- 일반화: **SDK 가 자동으로 보내는 값을 명시적으로 다시 보내지 않는다.** 이득이 0이고,
+  라이브러리가 "요청 대비 부여" 를 검증하는 순간 오탐 실패로 바뀐다.
+- 절차: **브라우저 위임 인증은 실기기 왕복이 유일한 검증 경로다.** 룰 2 preflight·CI·단위테스트
+  전부 green 이어도 이 계열 결함은 통과한다. 출시 태그 전 골든패스를 필수 게이트로 둔다.
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
