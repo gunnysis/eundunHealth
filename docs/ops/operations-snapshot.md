@@ -197,7 +197,7 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | User | `gunny` |
 | Alembic head | **`b78b256c2b20`** (user_profile_history `(user_id, recorded_at)` 복합 인덱스 — 진행 차트 정렬; 직전 `c849579de6c4` rest_day server_default 일관화) |
 | Firewall | Container Apps IP allowlist + `allow-azure-services` 만 허용 |
-| 관리자 암호 | **2026-09-02 회전됨** (10자 → 32자). 설계·절차: `docs/plans/2026-09-02-db-credential-rotation-{design,plan}.md` |
+| 관리자 암호 | **2026-09-02 회전됨** (10자 → 32자). 설계·절차: `docs/plans/2026-09-02-db-credential-rotation-{design,plan}.md` → `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수 |
 
 > **회전 이력**
 > — **2026-09-02**: 로컬 백업 아카이브 두 벌의 `.env` 에 당시 유효한 자격증명이 평문으로 있었다(sha256 대조 확인). `.env` 삭제 + 암호 회전. git 노출은 0(두 아카이브 모두 저장소 밖, 저장소 이력에 `.env` 커밋 없음). 다운타임 0 — 옛 복제본이 기존 연결 풀로 계속 응답하는 사이 새 복제본이 교체됐다.

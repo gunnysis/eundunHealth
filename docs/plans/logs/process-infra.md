@@ -25,6 +25,21 @@
 - **Files touched**: `gradle.properties`, `app/build.gradle.kts`, `app/src/**`(AppError 정본화·컨벤션 테스트), `backend/{Dockerfile,app/main.py,tests/**}`, `.github/workflows/{android,backend}.yml`, `scripts/{check-plans-links.sh,agents/doc_audit.py,agents/test_doc_audit.py,setup-reaper-job.sh,setup-azure-alerts.sh}`, `backend/{containerapp,reaper-job}.yaml`, CLAUDE.md/README/TRD/SPEC/PRD/CHANGELOG, `docs/ops/{operations-snapshot,incident-log,dependency-deferred,monitoring-and-cost}.md`, `docs/conventions/naming.md`, `version.properties`
 - **설계 원문**: `2026-09-01-entra-external-id-migration-{design,plan}.md` · `2026-09-01-tech-debt-runtime-modernization-{design,plan}.md` · `2026-09-01-codebase-hardening-{design,plan}.md` · `2026-09-01-azure-resource-naming-and-legacy-{design,plan}.md` · `2026-09-01-legacy-modernization-program-design.md` · `2026-09-02-full-audit-refactor-{design,plan}.md` (본 entry 로 흡수, git rm)
 
+### 2026-09-02 — 유출된 운영 DB 자격증명 회전 (백업 아카이브 평문 노출)
+
+- **PR**: main 직접 (`a26d9d2` 설계·계획·런북 + `c863631` 완료 마감)
+- **Why**: 로컬 백업 아카이브 **두 벌**의 `.env` 에 현재 유효한 운영 PG 자격증명이 평문으로 있었다(sha256 대조로 동일 확인, 값 미출력). git 노출은 0 이었지만 **DB 가 공개 엔드포인트**였다 — `publicNetworkAccess: Enabled` + 방화벽 `allow-azure-services` `0.0.0.0–0.0.0.0` = **임의 Azure 테넌트의 리소스 통과**. 그 자격증명의 암호가 10자였다. 삭제만으로는 암호가 계속 유효하므로 회전이 필요했다.
+- **What**: ① `.env` 2개 삭제(A2) ② PG 관리자 암호 회전 **10자→32자**(A3) ③ KV `database-url` 새 버전 ④ 소비자 **둘** 반영 — Container App `eundunhealth-api`(system MI) + Container Apps Job `eundunhealth-reaper`(UAI) ⑤ 30분 경과 후 버전 고정 해제(C1).
+- **Outcome**: **다운타임 0** — 옛 복제본이 기존 SQLAlchemy 풀로 계속 서빙하는 동안 새 복제본이 올라왔다. `/health`·`/health/ready` 전 구간 200, reaper Job `Succeeded`, Sentry 신규 DB 인증 이슈 0건, 새 암호는 어느 로그·커밋에도 평문으로 남지 않았다(해시·길이만).
+- **Lessons**:
+  ① **버전 없는 KV 참조는 `revision restart` 로 갱신되지 않는다.** 공식 문서는 시크릿이 바뀌면 "Deploy a new revision" 또는 "Restart an existing revision" 하라고만 적었는데, 재시작한 새 복제본과 reaper Job 이 **둘 다** `asyncpg.exceptions.InvalidPasswordError` 로 죽었다. 30분 캐시가 옛 값을 들고 있다. 해법은 **시크릿 정의 자체를 바꾸는 것**(버전 id 로 고정 → 재해석 강제)이고, 30분 뒤 버전 없는 URI 로 되돌려 IaC 와 일치를 복원한다. 문서에 없는 동작이라 `operations-snapshot.md` §Key Vault 에 명령까지 런북화했다.
+  ② **소비자를 하나로 세면 하나가 조용히 죽는다.** 같은 KV 시크릿을 앱과 주간 cron Job 이 공유하는데 Job 은 신원이 UAI 라 명령 형태가 다르다. 앱만 고쳤다면 그 주 일요일 18:00 UTC 에 reaper 가 실패했을 것이고, 그때는 회전과 연결짓기 어려웠을 것이다.
+  ③ **FQDN 을 조립하지 말고 문서를 본다.** 검증 중 `/health` 가 `000`(연결 실패)로 나와 5분을 태웠다. 원인은 장애가 아니라 내가 환경 접미사(`livelyriver-782a792f`)를 빼고 FQDN 을 조립한 것이었다 — 값은 `operations-snapshot.md:45` 에 이미 있었다. 이 오류는 **HTTP 에러와 구별되지 않는 모양**으로 나타난다.
+  ④ **롤백이 "앞으로만" 인 작업은 T3~T5 사이에 사람의 판단을 넣지 않는다.** 계획에 그렇게 박아두고 실행했더니, 중간의 검증 스크립트가 az 인용 문제로 죽었는데도 이미 성공한 T3 뒤에서 멈추지 않고 진행할 수 있었다.
+- **Files touched**: `docs/plans/2026-09-02-db-credential-rotation-{design,plan}.md`(본 entry 로 흡수, git rm), `docs/ops/operations-snapshot.md`(§4 회전 이력 + §Key Vault 캐시 런북)
+- **범위 밖(별건)**: `allow-azure-services` 규칙 제거(reaper 송신 IP 확인 선행) · `minimalTlsVersion` 설정 · Managed Identity 기반 PG 인증 전환(코드 변경 필요)
+- **설계 원문**: `2026-09-02-db-credential-rotation-{design,plan}.md` (본 entry 로 흡수, git rm)
+
 ### 2026-07-29 — RG 이관 apps → rg-eundunhealth-prod-krc (이동 7 + 재생성 9 + RBAC 8 + 구 RG 삭제)
 
 - **PR**: main 직접 (`c954579` 이관 본체 + 후속 점검·개선 커밋)
