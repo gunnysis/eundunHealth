@@ -4,14 +4,28 @@ name: doc-audit
 # 도구: scripts/agents/doc_audit.py (collector=결정론적 + auditor=Claude Agent SDK, read-only).
 # 설계 근거: docs/plans/logs/process-infra.md (2026-06-16 Agent SDK 적용 검토 entry).
 #
-# 트리거는 schedule + 수동만(advisory). PR/push 게이트로 만들지 않은 이유:
-#   - auditor 는 토큰을 쓰고 시크릿이 필요 → 모든 PR/포크에서 돌리면 비용·실패 노이즈.
-#   - 결정론적 collector/파서 검증(collector-test job)은 시크릿 없이 항상 돈다.
-# 하드 게이트가 필요해지면 audit job 에 `--strict` 를 주고 PR 트리거를 추가하면 된다.
+# 두 job 의 트리거가 다르다 — 비용 구조가 다르기 때문이다.
+#   - audit(SDK auditor): 토큰을 쓰고 시크릿이 필요 → schedule + 수동만. 모든 PR/포크에서
+#     돌리면 비용·실패 노이즈. 하드 게이트가 필요해지면 `--strict` 를 주고 트리거를 넓힌다.
+#   - collector-test(결정론적 파서): 시크릿 불필요·초 단위 → `scripts/agents/**` 변경 시 실행.
+#
+# 2026-09-02 이전에는 워크플로 전체가 schedule + 수동뿐이었다. 그래서 `doc_audit.py` 를 고쳐도
+# **다음 월요일까지 아무것도 검증하지 않았다** — 그날 실제로 이 파일을 수정한 커밋이 CI 를
+# 통째로 우회했다(로컬 테스트로만 확인됨). `android.yml` 의 루트 `gradle.properties` 구멍과
+# 같은 형태다: 도구를 고치는 변경이 그 도구의 게이트를 안 타는 것.
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * 1'  # 매주 월요일 00:00 UTC = 09:00 KST (한 주간 머지 드리프트 점검)
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/agents/**'
+      - '.github/workflows/doc-audit.yml'
+  pull_request:
+    paths:
+      - 'scripts/agents/**'
+      - '.github/workflows/doc-audit.yml'
 
 permissions:
   contents: read
@@ -41,7 +55,9 @@ jobs:
         run: python scripts/agents/doc_audit.py --collect-only
 
   # 2) SDK auditor — 구독(OAuth token) 또는 API key 시크릿 필요. 미설정이면 GREEN 으로 스킵.
+  #    push/PR 에서는 돌리지 않는다(위 헤더의 비용 근거) — 트리거 확대는 collector-test 한정.
   audit:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
