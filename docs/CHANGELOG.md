@@ -40,6 +40,13 @@
 - R8: `nimbus-jose-jwt` 가 참조하는 Google Tink 미존재로 `minifyReleaseWithR8` 실패 → `-dontwarn`(없는 클래스는 keep 할 수 없다). Ktor 제거로 무의미해진 규칙 2줄 정리.
 - Container App / Job / CI 시크릿 `SUPABASE_*` → `ENTRA_*` 4종(룰 6 3종 동시 변경).
 - `scripts/alembic-autogen.sh` 가 `SUPABASE_*` 만 export 해 **Settings 검증에서 죽던 상태** 수정.
+- **Supabase 전량 폐기 (2026-09-02)** — 프로젝트 `ttzzbfoksncqazvcsfiu` 삭제(**영구**) + Key Vault secret 2종 + GitHub `play-release` 환경 secret 2종. KV 에서 사본만 지우는 것으로는 노출면이 줄지 않는다 — 프로젝트가 살아 있는 한 `service_role` 키는 **RLS 를 우회하는 유효 자격증명**이고 대시보드에서 다시 조회된다. 삭제 전 참조 0 실측(IaC yaml · 라이브 Container App/Job · 룰 6 `REQUIRED` · GitHub secret 목록), 사후 `/health`·`/health/ready` 200.
+
+### 🚀 출시 경로
+- Play 업로드 트랙 **internal → production**(`release.yml`, `status: completed` = 100% 즉시). 프로덕션 LIVE 인 v0.1.19/33 이 Supabase 인증 빌드인데 백엔드는 Entra 전용이라 **스토어 배포본이 이미 로그인 불가**였다. 단계적 노출은 "정상 버전을 조심스럽게 내보내는" 전제 위의 장치라 여기서는 지연이 곧 손해다.
+- 되돌리기는 **비대칭**이다 — Play 프로덕션은 이전 versionCode 로 내릴 수 없고 출시 중단(halt rollout) 또는 상위 versionCode 재업로드만 가능하다. yml·런북 양쪽에 박제.
+- 태그는 **고친 `release.yml` 이 포함된 커밋에** 달아야 한다 — `push: tags` 는 태그 시점의 워크플로 파일로 실행되므로, 안 그러면 옛 파일이 돌아 다른 트랙으로 올라간다.
+- **로컬 release APK 로는 로그인을 검증할 수 없다** — release 소스셋 `redirect_uri` 해시가 **Play App Signing 키** 기준인데 로컬 빌드는 업로드 키로 서명되므로 MSAL 초기화가 실패한다(설계상 정상). 실기기 검증 = debug APK, 배포본 검증 = Play 설치본. `play-store-release.md` §8 체크리스트가 release APK 를 지시하고 있어 정정.
 
 ### 🔢 버전
 - versionName 0.1.19 → **0.2.0**(user-facing 동작 변화 = MINOR), versionCode 33 → **34**.

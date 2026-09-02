@@ -411,6 +411,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.17** — 공개 출시 전 7-도메인 전체 감사(출시차단 0건) — Rule 8 inline 에러 배너(Onboarding·Home·Profile) + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 프로필 경계 테스트 + account_service 로그 구조화 + 개인정보/계정삭제 백엔드 공개 라우트(`GET /privacy`·`/account-deletion`, md→HTML) + 문서 드리프트 정정 (PR #128)
 - [x] **v0.1.18** — 출시 재업로드 — versionCode 31 Play 중복 거부(INC-2026-06-19-28) → 32 재빌드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13)
 - [x] **v0.1.19** — Android CD 첫 자동 출시(내부 트랙) — 태그 push → `release.yml`(preflight 게이트 → 서명 AAB → Play 내부 트랙 업로드 → 원장 자동 갱신) 실 e2e 실증 + 의존성 배치(#139) + release 서명 keystore 존재-조건부화(INC-2026-07-02-29). 사용자 가시 동작 변화 없음 (PR #143)
+- [x] **v0.2.0** — **인증 제공자 전환 Supabase Auth → Microsoft Entra External ID**(브라우저 위임 MSAL, RS256, `oid` 식별자, 계정삭제 Microsoft Graph) + 기술부채 청산 T0~T7(Python 3.14 · Gradle 9.7.1 · openapi-generator 7.25.0) + 하드닝 H1~H10(R8 릴리스 빌드를 PR 게이트에 추가 포함) + Azure 정리(`acr purge` Task, 2.21→0.60 GiB) (PR #165). 후속: Play 트랙 internal → **production** 전환 + Supabase 전량 폐기(프로젝트·KV·GitHub secret). **사용자 가시 변화가 큰 릴리스** — 로그인이 앱 내 폼에서 브라우저로 이동. **구현·머지·백엔드 배포 완료, Play 출시 대기**
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시
