@@ -1,6 +1,6 @@
 ---
 type: plan
-status: in-progress
+status: shipped
 pr: null
 related_inc: null
 supersedes: null
@@ -65,3 +65,26 @@ T3 직후부터 새 연결이 실패한다. **T3·T4·T5 사이에 사람의 판
 - `minimalTlsVersion` 설정
 - Managed Identity 기반 PG 인증 전환 — 설계 §4-D. 코드 변경 필요
 - `~/CLAUDE.md:31` 의 아카이브 서술 갱신 (B1) — 회전 후 한 번에
+
+## 실행 결과 (2026-09-02)
+
+| AC | 결과 |
+| --- | --- |
+| AC1 `/health` + `/health/ready` 200 | ✅ 전 구간 200 — **다운타임 0** (옛 복제본이 기존 풀로 계속 서빙) |
+| AC2 KV 버전 2개 | ✅ |
+| AC3 reaper Job `Succeeded` | ✅ `eundunhealth-reaper-eyyb51z` |
+| AC4 Sentry 신규 DB 인증 이슈 | ✅ 0건 |
+| AC5 새 암호 평문 미노출 | ✅ 해시·길이만 |
+
+### 계획에 없었던 것 — 30분 캐시가 재시작을 이긴다
+
+T5(리비전 재시작) 만으로는 **새 값이 주입되지 않았다.** 새 복제본과 reaper Job 이 둘 다
+`asyncpg.exceptions.InvalidPasswordError` 로 죽었다. 공식 문서의 "restart an existing revision"
+은 시크릿 *참조* 가 버전 없는 KV URI 일 때는 충분하지 않다 — 30분 캐시가 살아 있다.
+
+해법은 **시크릿 정의 자체를 바꾸는 것**(버전 id 로 고정)이고, 소비자가 둘이라 양쪽 다 해야 했다.
+명령까지 포함한 런북은 `docs/ops/operations-snapshot.md` §Key Vault 에 있다.
+
+30분 경과 후 버전 없는 URI 로 되돌렸다(C1) — IaC(`containerapp.yaml`·`reaper-job.yaml`)와
+일치 복원. 복원 후 `/health` `/health/ready` 200, reaper 실행 `eundunhealth-reaper-1jd58n4`
+`Succeeded` 로 재검증했다.

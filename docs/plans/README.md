@@ -11,7 +11,7 @@
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-09-02 | db-credential-rotation | design + plan | approved | security, database, key-vault, container-apps, credential-rotation |
+| 2026-09-02 | db-credential-rotation | design | approved | security, database, key-vault, container-apps, credential-rotation |
 
 ## Topic Ledgers (완료 작업 history)
 
