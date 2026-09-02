@@ -90,6 +90,38 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | RBAC | 운영자=Secrets Officer · Container App MI=Secrets User · CI SP=Secrets User · MI=AcrPull(ACR) |
 | Audit | `kv-audit` 진단설정 → Log Analytics `workspace-appsDOlM` (AuditEvent) |
 
+#### ⚠ 시크릿 값을 바꿨을 때 — 재시작만으로는 반영되지 않는다 (2026-09-02 실측)
+
+Container App·Job 모두 **버전 없는** KV URI 를 쓴다. 공식 문서는 이렇게만 말한다:
+
+> "the app automatically retrieves the latest version **within 30 minutes**. Any active revisions
+> that reference the secret in an environment variable is automatically restarted"
+> — <https://learn.microsoft.com/en-us/azure/container-apps/manage-secrets>
+
+**문서에 없는 사실**: 그 30분 안에 `az containerapp revision restart` 를 해도 **옛 값이 그대로 주입된다.**
+재시작은 컨테이너만 다시 띄울 뿐 KV 캐시를 무효화하지 않는다. 2026-09-02 DB 암호 회전 때
+새 복제본이 `InvalidPasswordError: password authentication failed for user "gunny"` 로 죽었고,
+reaper Job 도 같은 이유로 `Failed` 했다.
+
+**즉시 반영시키는 법 — 시크릿 *정의* 를 바꾼다** (버전 id 로 고정하면 정의가 달라져 재해석된다):
+
+```bash
+VER=$(az keyvault secret show --vault-name kv-eundunhealth -n <secret> -o tsv --query id | sed 's#.*/##')
+az containerapp secret set -n eundunhealth-api -g rg-eundunhealth-prod-krc \
+  --secrets "<secret>=keyvaultref:https://kv-eundunhealth.vault.azure.net/secrets/<secret>/$VER,identityref:system"
+az containerapp revision restart -n eundunhealth-api -g rg-eundunhealth-prod-krc --revision <활성 리비전>
+
+# Job 도 별도로 해야 한다 (identityref 는 UAI)
+az containerapp job secret set -n eundunhealth-reaper -g rg-eundunhealth-prod-krc \
+  --secrets "<secret>=keyvaultref:.../secrets/<secret>/$VER,identityref:<UAI 리소스 ID>"
+```
+
+**30분 뒤 버전 없는 URI 로 되돌린다** — IaC(`backend/containerapp.yaml`·`reaper-job.yaml`)가 버전 없는
+형태이므로, 고정을 남겨두면 `--yaml` 재배포 때 조용히 되돌아가는 드리프트가 된다.
+
+> **소비자는 둘이다.** Container App `eundunhealth-api` 와 Job `eundunhealth-reaper`(주간 cron
+> `0 18 * * 0`). 앱만 고치면 Job 이 주말에 조용히 실패한다.
+
 ### Container Apps Job (orphan reaper, 2026-06-17)
 
 계정삭제 Step2(DB purge) 실패로 생긴 고아 데이터(Auth엔 없고 DB엔 남음)를 주기 정리하는 안전망 잡. 항상 떠 있는 `eundunhealth-api`와 **별개 리소스**(같은 env·이미지 재사용).
@@ -165,6 +197,10 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | User | `gunny` |
 | Alembic head | **`b78b256c2b20`** (user_profile_history `(user_id, recorded_at)` 복합 인덱스 — 진행 차트 정렬; 직전 `c849579de6c4` rest_day server_default 일관화) |
 | Firewall | Container Apps IP allowlist + `allow-azure-services` 만 허용 |
+| 관리자 암호 | **2026-09-02 회전됨** (10자 → 32자). 설계·절차: `docs/plans/2026-09-02-db-credential-rotation-{design,plan}.md` |
+
+> **회전 이력**
+> — **2026-09-02**: 로컬 백업 아카이브 두 벌의 `.env` 에 당시 유효한 자격증명이 평문으로 있었다(sha256 대조 확인). `.env` 삭제 + 암호 회전. git 노출은 0(두 아카이브 모두 저장소 밖, 저장소 이력에 `.env` 커밋 없음). 다운타임 0 — 옛 복제본이 기존 연결 풀로 계속 응답하는 사이 새 복제본이 교체됐다.
 
 ### 테이블 row 카운트 (2026-05-25 출시 전 정리 직후)
 
