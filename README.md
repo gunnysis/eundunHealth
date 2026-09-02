@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **프로덕션 정식 출시(LIVE)**. 저장소 버전과 스토어 버전이 다르다 — **저장소 = v0.2.0 (versionCode 34, Entra 전환, 미출시)** / **Play 프로덕션 = v0.1.19 (versionCode 33)**. Google Play 프로덕션 출시·승인 완료(2026-06-29) — 2026-07-03 자동 CD(태그 push → `release.yml`, 내부 트랙) 후 같은 날 프로덕션 승격. 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성). 2026-07-29 Azure RG 이관(`apps` → `rg-eundunhealth-prod-krc`, 단일 RG — 서비스 URL 무영향)
+- **현재 단계** — **프로덕션 정식 출시(LIVE)**. 저장소 = 스토어 = **v0.2.0 (versionCode 34, Entra 전환)**. 2026-09-02 태그 `v0.2.0` push → `release.yml` 이 **프로덕션 트랙에 직접 자동 업로드**(`status: completed` = 100% 즉시 롤아웃, run `33581936651`). 첫 프로덕션 출시·승인은 2026-06-29(v0.1.18/32), 2026-07-03 에 v0.1.19/33 으로 승격(내부 트랙 자동 CD → Console 수동 승격). 백엔드는 main 머지 시 자동 배포로 운영 중(앱과 독립). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성). 2026-07-29 Azure RG 이관(`apps` → `rg-eundunhealth-prod-krc`, 단일 RG — 서비스 URL 무영향)
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -380,7 +380,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — 저장소 `0.2.0` (versionCode `34`, Supabase → Entra External ID 전환, **미출시**) / Play 프로덕션 `0.1.19` (versionCode `33`) — **Google Play 프로덕션 정식 출시(LIVE)** — 프로덕션 = v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인). v0.1.19 = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
+**현재 버전** — 저장소 = Play 프로덕션 = `0.2.0` (versionCode `34`, Supabase → Entra External ID 전환) — **Google Play 프로덕션 정식 출시(LIVE)**. v0.2.0 = **프로덕션 트랙 첫 자동 출시**(2026-09-02 태그 push → `release.yml` → `tracks: production`·`status: completed` 100% 즉시 롤아웃 + 원장 자동 갱신, run `33581936651`). 직전 v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인) = Android CD 첫 자동 출시(태그 push → `release.yml` → Play 내부 트랙 업로드 + 원장 자동 갱신, 2026-07-03 실증) + 의존성 배치(#139) — **사용자 가시 동작 변화 없음**. 직전 v0.1.18 = 출시 재업로드(versionCode 31 Play 중복 거부 INC-2026-06-19-28 → 32 재빌드, 앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13). 직전 v0.1.17 = 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너 · a11y · 테스트 보강 · 개인정보/계정삭제 백엔드 공개 라우트, PR #128)
 
 ### 마일스톤 진행
 
@@ -411,7 +411,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.1.17** — 공개 출시 전 7-도메인 전체 감사(출시차단 0건) — Rule 8 inline 에러 배너(Onboarding·Home·Profile) + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 프로필 경계 테스트 + account_service 로그 구조화 + 개인정보/계정삭제 백엔드 공개 라우트(`GET /privacy`·`/account-deletion`, md→HTML) + 문서 드리프트 정정 (PR #128)
 - [x] **v0.1.18** — 출시 재업로드 — versionCode 31 Play 중복 거부(INC-2026-06-19-28) → 32 재빌드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13)
 - [x] **v0.1.19** — Android CD 첫 자동 출시(내부 트랙) — 태그 push → `release.yml`(preflight 게이트 → 서명 AAB → Play 내부 트랙 업로드 → 원장 자동 갱신) 실 e2e 실증 + 의존성 배치(#139) + release 서명 keystore 존재-조건부화(INC-2026-07-02-29). 사용자 가시 동작 변화 없음 (PR #143)
-- [x] **v0.2.0** — **인증 제공자 전환 Supabase Auth → Microsoft Entra External ID**(브라우저 위임 MSAL, RS256, `oid` 식별자, 계정삭제 Microsoft Graph) + 기술부채 청산 T0~T7(Python 3.14 · Gradle 9.7.1 · openapi-generator 7.25.0) + 하드닝 H1~H10(R8 릴리스 빌드를 PR 게이트에 추가 포함) + Azure 정리(`acr purge` Task, 2.21→0.60 GiB) (PR #165). 후속: Play 트랙 internal → **production** 전환 + Supabase 전량 폐기(프로젝트·KV·GitHub secret). **사용자 가시 변화가 큰 릴리스** — 로그인이 앱 내 폼에서 브라우저로 이동. **구현·머지·백엔드 배포 완료, Play 출시 대기**
+- [x] **v0.2.0** — **인증 제공자 전환 Supabase Auth → Microsoft Entra External ID**(브라우저 위임 MSAL, RS256, `oid` 식별자, 계정삭제 Microsoft Graph) + 기술부채 청산 T0~T7(Python 3.14 · Gradle 9.7.1 · openapi-generator 7.25.0) + 하드닝 H1~H10(R8 릴리스 빌드를 PR 게이트에 추가 포함) + Azure 정리(`acr purge` Task, 2.21→0.60 GiB) (PR #165). 후속: Play 트랙 internal → **production** 전환 + Supabase 전량 폐기(프로젝트·KV·GitHub secret) + 실기기 골든패스에서 **로그인 100% 실패 결함 발견·수정**(MSAL 예약 scope 직접 요청, INC-2026-09-02-31 — 디버그·단위테스트·CI 전부 green 이던 결함). **사용자 가시 변화가 큰 릴리스** — 로그인이 앱 내 폼에서 브라우저로 이동. **2026-09-02 Play 프로덕션 출시 완료**(태그 CD → 프로덕션 트랙 100% 즉시 롤아웃)
 
 **다음**
 - [ ] **v1.0** — Closed Testing → Open Testing → Production 출시

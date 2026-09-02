@@ -631,6 +631,13 @@ Returning DeclinedScopeException as not all requested scopes are granted,
 - 절차: **브라우저 위임 인증은 실기기 왕복이 유일한 검증 경로다.** 룰 2 preflight·CI·단위테스트
   전부 green 이어도 이 계열 결함은 통과한다. 출시 태그 전 골든패스를 필수 게이트로 둔다.
 
+**종결(2026-09-02)**: 수정본이 v0.2.0/34 로 **Play 프로덕션에 출시**됐다(태그 `v0.2.0` →
+run `33581936651` → `tracks: production`·`status: completed` 100% 즉시 롤아웃, 원장 커밋
+`45e4051`). 다만 **스토어 배포본에서의 로그인은 아직 미확인**이다 — release 소스셋의 MSAL
+`redirect_uri` 해시가 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 검증이
+불가능하고(설계상 정상), 골든패스는 debug 빌드로 수행했다. Play 설치본 로그인 1회 확인이
+이 건의 마지막 증거로 남아 있다.
+
 ---
 
 ## 변경 이력

@@ -201,9 +201,28 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 > **출시 중단(halt rollout)** 또는 상위 versionCode 재업로드뿐이다. 단계적 노출이 필요해지면
 > `status: inProgress` + `userFraction` 으로 바꾼다.
 >
-> **서비스 계정 권한**: 프로덕션 트랙 출시는 내부 트랙과 **별도 권한**이다(Play Console → 사용자
-> 및 권한 → 앱 권한). v0.1.19 때도 권한 전파/수준 문제로 403 이 2회 났다 — 첫 프로덕션 자동
-> 업로드에서 403 이 나면 이 경로를 먼저 본다.
+> **서비스 계정 권한**: 프로덕션 트랙 출시는 테스트 트랙과 **별개 권한**이다. 공식 문서
+> ([Play Console 도움말 9844686](https://support.google.com/googleplay/android-developer/answer/9844686))
+> 상 정확한 항목명은 두 개다:
+>
+> | 권한 | 범위 |
+> |---|---|
+> | `앱을 테스트 트랙으로 출시` (Release apps to testing tracks) | 테스트 트랙 전용 — **프로덕션 게시 불가**로 문서에 명시 |
+> | `프로덕션으로 출시, 기기 제외, Play 앱 서명 사용` (Release to production, exclude devices, and use Play App Signing) | 프로덕션 생성·수정·롤아웃 가능 |
+>
+> **확인 경로**: Play Console → 사용자 및 권한 → 목록에서 이메일이 `.iam.gserviceaccount.com`
+> 으로 끝나는 행(계정 소유자 행이 **아님** — 소유자는 원래 전 권한이라 판별에 쓸 수 없다) →
+> 앱 권한 → `은둔헬스` → 위 두 번째 항목 체크 여부. 서비스 계정 식별자 자체는 GitHub secret
+> `PLAY_SERVICE_ACCOUNT_JSON` 의 `client_email` 에 있다 — **저장소가 public 이므로 여기에
+> 적지 않는다**(D6 식별자 비기재 정책).
+>
+> 이력: v0.1.19(내부 트랙) 때 403 ×2(인증 성공 + Edit 거부) 후 Console 권한 조정으로 3차 성공.
+> v0.2.0(프로덕션 트랙) 은 위 권한을 **사전 부여**해 403 없이 1차 통과.
+>
+> 403 이 나도 **versionCode 는 소모되지 않는다**(Play 는 업로드 성공 시에만 기록). 권한을 켠 뒤
+> `gh run rerun <id> --failed` + environment 재승인이면 되고, 재태그는 불필요하다. 반대로
+> **업로드는 성공했는데 뒤 스텝이 실패하면 versionCode 는 소모된 것**이므로 원장을 수동 갱신한다
+> (룰 13, `scripts/update-upload-ledger.sh`).
 
 ```bash
 bash scripts/bump-version.sh 0.1.19          # 버전 bump (+원장 단조 가드)

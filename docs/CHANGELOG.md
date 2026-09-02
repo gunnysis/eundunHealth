@@ -44,6 +44,7 @@
 - **Supabase 전량 폐기 (2026-09-02)** — 프로젝트 `ttzzbfoksncqazvcsfiu` 삭제(**영구**) + Key Vault secret 2종 + GitHub `play-release` 환경 secret 2종. KV 에서 사본만 지우는 것으로는 노출면이 줄지 않는다 — 프로젝트가 살아 있는 한 `service_role` 키는 **RLS 를 우회하는 유효 자격증명**이고 대시보드에서 다시 조회된다. 삭제 전 참조 0 실측(IaC yaml · 라이브 Container App/Job · 룰 6 `REQUIRED` · GitHub secret 목록), 사후 `/health`·`/health/ready` 200.
 
 ### 🚀 출시 경로
+- **2026-09-02 Play 프로덕션 출시 완료** — 태그 `v0.2.0`(커밋 `e8f3a07`) push → `release.yml` run `33581936651` success → 프로덕션 트랙 100% 즉시 롤아웃(Play edit `16034799652474038364`) → 원장 자동 갱신 커밋 `45e4051`(`LAST_UPLOADED_VERSION_CODE=34`). 서비스 계정 프로덕션 출시 권한을 사전 부여해 **403 없이 1차 통과**(v0.1.19 때는 같은 지점에서 403 ×2).
 - Play 업로드 트랙 **internal → production**(`release.yml`, `status: completed` = 100% 즉시). 프로덕션 LIVE 인 v0.1.19/33 이 Supabase 인증 빌드인데 백엔드는 Entra 전용이라 **스토어 배포본이 이미 로그인 불가**였다. 단계적 노출은 "정상 버전을 조심스럽게 내보내는" 전제 위의 장치라 여기서는 지연이 곧 손해다.
 - 되돌리기는 **비대칭**이다 — Play 프로덕션은 이전 versionCode 로 내릴 수 없고 출시 중단(halt rollout) 또는 상위 versionCode 재업로드만 가능하다. yml·런북 양쪽에 박제.
 - 태그는 **고친 `release.yml` 이 포함된 커밋에** 달아야 한다 — `push: tags` 는 태그 시점의 워크플로 파일로 실행되므로, 안 그러면 옛 파일이 돌아 다른 트랙으로 올라간다.
