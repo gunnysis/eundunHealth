@@ -25,6 +25,24 @@
 - **Files touched**: `gradle.properties`, `app/build.gradle.kts`, `app/src/**`(AppError 정본화·컨벤션 테스트), `backend/{Dockerfile,app/main.py,tests/**}`, `.github/workflows/{android,backend}.yml`, `scripts/{check-plans-links.sh,agents/doc_audit.py,agents/test_doc_audit.py,setup-reaper-job.sh,setup-azure-alerts.sh}`, `backend/{containerapp,reaper-job}.yaml`, CLAUDE.md/README/TRD/SPEC/PRD/CHANGELOG, `docs/ops/{operations-snapshot,incident-log,dependency-deferred,monitoring-and-cost}.md`, `docs/conventions/naming.md`, `version.properties`
 - **설계 원문**: `2026-09-01-entra-external-id-migration-{design,plan}.md` · `2026-09-01-tech-debt-runtime-modernization-{design,plan}.md` · `2026-09-01-codebase-hardening-{design,plan}.md` · `2026-09-01-azure-resource-naming-and-legacy-{design,plan}.md` · `2026-09-01-legacy-modernization-program-design.md` · `2026-09-02-full-audit-refactor-{design,plan}.md` (본 entry 로 흡수, git rm)
 
+### 2026-09-02 — 레거시 잔여물 정리: 죽은 방화벽 규칙 제거 + KV 감사 공백 발견·신설
+
+- **PR**: main 직접 (`059f72f` 설계·계획 + 실행 커밋)
+- **Why**: 자격증명 회전 마무리 중 KV `database-url` 의 **옛 버전이 유출된 옛 암호를 담은 채 활성**인 것을 발견했다. 같은 성질의 잔여물을 전수 측정(L1~L8)했다.
+- **What**: ① **L1** 옛 KV 버전만 `disabled`(삭제 아님 — 감사 추적 보존) ② **L3** PG 방화벽 `container-apps` 죽은 규칙 제거 ③ **L4** `kv-audit` 진단설정 **신설** ④ **L5** 문서 정정(secret 4→6) ⑤ **L8** 병합된 로컬 브랜치 2개 삭제.
+- **Outcome**: 다운타임 0(`/health/ready` 200 × 3회 · reaper `eundunhealth-reaper-tjhwe9c` Succeeded). KV 활성 버전 2→1. 방화벽 규칙 2→1. **AC4 만 절반** — 진단설정은 생성됐으나 21분간 LA 에 `AzureDiagnostics` 가 생기지 않아 **로그 도착은 미실증**(공식 latency 상한 20분 초과). 설정은 유지한 채 다음 세션 재확인으로 넘겼다.
+- **Lessons**:
+  ① **"정리 대상" 목록을 만들면 "애초에 없는 것" 을 못 본다.** 이번 최대 발견은 지울 것이 아니라 **없던 것**이었다 — 문서 두 곳이 `kv-audit` 진단설정을 현재형으로 적었지만 실측은 4개 리소스 전부 **0건**이었다. 즉 자격증명을 방금 회전한 직후인데 "누가 언제 시크릿을 읽었는가" 를 조회할 수단이 없었다. 워크스페이스 이름까지 정확히 적혀 있어 더 안 보였다(그 워크스페이스는 실제로 쓰인다 — Container Apps `appLogsConfiguration` 용이고, **리소스 진단설정과는 별개**다).
+  ② **죽은 안전장치는 없는 것보다 나쁘다.** `container-apps` 규칙은 **수신 IP** 를 등록해 아무 트래픽도 허용하지 않았는데, 목록에 있다는 이유로 "IP 로 좁혀져 있다" 는 오독을 만들었고 그 오독이 회전 설계 §5 에 그대로 박혔다. 그 전제로 `allow-azure-services` 를 지웠으면 프로덕션 장애였다. 제거하면서 **왜 죽은 규칙이었는지와 IP 를 좁힐 수 없는 구조적 이유**를 `operations-snapshot.md` 에 같이 박제했다.
+  ③ **잔여물은 세 갈래로 갈린다** — 지울 것 / **남길 것**(코드의 `supabase` 문자열 6파일은 전부 이력 근거다. 지우면 왜 지금 구조인지가 사라진다) / 되돌릴 수 없어 **손대지 않을 것**(soft-delete 된 `supabase-*` 는 2026-12-01 자동 purge 로 해소되므로 아무것도 안 하는 게 기본안). 한 덩어리로 "청소" 하면 두 번째가 지워지고 세 번째가 사고가 된다.
+  ④ **차단은 우회하지 않고 사람 몫으로 넘긴다.** `secret-file-guard` 훅이 두 번 막았고 같은 결과를 얻는 우회를 하지 않았다. 회원님이 직접 조회해 주셔서 절반이 채워졌고(환경 시크릿 6종 = 레거시 0건), 반대 방향 드리프트는 **미확인 항목으로 명시**해 남겼다.
+- **CLI 함정 (실측)**:
+  - `az postgres flexible-server firewall-rule delete` 의 규칙 이름은 **`-n`**, 서버는 **`--server-name`** 이다. `list` 는 `-s`/`-r` 이 통하는데 `delete` 는 안 되고, 에러가 `unrecognized arguments` 라 플래그 오타로 오인하기 쉽다.
+  - `az monitor diagnostic-settings *` 는 Git Bash 에서 **`MSYS_NO_PATHCONV=1`** 없이는 리소스 ID(`/subscriptions/...`)를 Windows 경로로 변환해 실패한다. 이때도 메시지가 `usage error: --resource ID | ...` 라 인자 문제로 보인다 — **경로 변환이 원인**이다.
+- **Files touched**: `CLAUDE.md`, `docs/ops/operations-snapshot.md`(방화벽 실상 박제 + audit 생성 시점 명기), `docs/plans/2026-09-02-legacy-residue-cleanup-{design,plan}.md`(본 entry 로 흡수, git rm)
+- **남은 것**: AC4 로그 도착 재확인 · L2 purge 판단(기본안=방치) · L6 워크스페이스 재명명(Won't-do) · L8 `release.yml` 시크릿 드리프트(사람 몫)
+- **설계 원문**: `2026-09-02-legacy-residue-cleanup-{design,plan}.md` (본 entry 로 흡수, git rm)
+
 ### 2026-09-02 — 유출된 운영 DB 자격증명 회전 (백업 아카이브 평문 노출)
 
 - **PR**: main 직접 (`a26d9d2` 설계·계획·런북 + `c863631` 완료 마감)

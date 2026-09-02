@@ -88,7 +88,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | Network | public + RBAC/MI 가 실질 차단막 (Container Apps Consumption 동적 IP → VNet 미통합) |
 | Secrets (6) | database-url, entra-tenant-id, entra-subdomain, entra-backend-client-id, entra-backend-client-secret, sentry-dsn-backend |
 | RBAC | 운영자=Secrets Officer · Container App MI=Secrets User · CI SP=Secrets User · MI=AcrPull(ACR) |
-| Audit | `kv-audit` 진단설정 → Log Analytics `workspace-appsDOlM` (AuditEvent) |
+| Audit | `kv-audit` 진단설정 → Log Analytics `workspace-appsDOlM` (AuditEvent). **2026-09-02 생성** — 그 전까지 이 행은 문서에만 있었고 실제 진단설정은 0건이었다(§레거시 정리) |
 
 #### ⚠ 시크릿 값을 바꿨을 때 — 재시작만으로는 반영되지 않는다 (2026-09-02 실측)
 
@@ -196,8 +196,27 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | Database | `postgres` |
 | User | `gunny` |
 | Alembic head | **`b78b256c2b20`** (user_profile_history `(user_id, recorded_at)` 복합 인덱스 — 진행 차트 정렬; 직전 `c849579de6c4` rest_day server_default 일관화) |
-| Firewall | Container Apps IP allowlist + `allow-azure-services` 만 허용 |
+| Firewall | **`allow-azure-services`(`0.0.0.0–0.0.0.0`) 1개뿐** — 이것이 유일하게 동작하는 규칙이다. ↓ 아래 주의 |
 | 관리자 암호 | **2026-09-02 회전됨** (10자 → 32자). 설계·절차: `docs/plans/2026-09-02-db-credential-rotation-{design,plan}.md` → `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수 |
+
+> **⚠ `allow-azure-services` 를 "중복이니 지워도 된다" 고 읽지 말 것 (2026-09-02 실측)**
+>
+> 2026-09-02 까지 `container-apps`(`20.249.142.177`) 규칙이 함께 있었고, 문서도 "Container Apps
+> IP allowlist" 라고 적어 **IP 로 좁혀져 있는 것처럼** 보였다. 실제로는 **죽은 규칙**이었다 —
+> 그 값은 Container Apps 환경의 `properties.staticIp` = **인바운드(수신) IP** 이고, 실제 송신은
+> **161개 IP 풀**이며 그 안에 이 IP 가 없다(앱·reaper Job 동일 풀). 즉 모든 DB 연결이
+> `allow-azure-services` 를 통과하고 있었다. **이 규칙을 지우면 프로덕션이 즉시 끊긴다.**
+>
+> 죽은 규칙은 2026-09-02 에 제거했다(제거 후 `/health/ready` 200 · reaper Job `Succeeded` 실증).
+> **IP 로 좁히는 것은 현재 구조에서 불가능하다** — 환경이 커스텀 VNet 없이 생성돼
+> (`vnetConfiguration: null`) NAT Gateway 를 붙일 수 없고, 공식 문서상 *"Outbound IPs might
+> change over time"* 이며 네트워크 타입은 **사후 변경 불가**다
+> (<https://learn.microsoft.com/en-us/azure/container-apps/networking>). 좁히려면 환경 재생성
+> = FQDN 변경이다. 대안은 IP 가 아니라 인증 쪽 — PG 에 `activeDirectoryAuth: Enabled` 가 이미
+> 켜져 있어 Managed Identity 인증 + `passwordAuth: Disabled` 전환이 가능하다(코드 변경 필요).
+>
+> 검증 명령: `az containerapp show -n eundunhealth-api -g rg-eundunhealth-prod-krc --query
+> properties.outboundIpAddresses` 로 **송신** IP 를 실측하고 방화벽 등록값과 대조할 것.
 
 > **회전 이력**
 > — **2026-09-02**: 로컬 백업 아카이브 두 벌의 `.env` 에 당시 유효한 자격증명이 평문으로 있었다(sha256 대조 확인). `.env` 삭제 + 암호 회전. git 노출은 0(두 아카이브 모두 저장소 밖, 저장소 이력에 `.env` 커밋 없음). 다운타임 0 — 옛 복제본이 기존 연결 풀로 계속 응답하는 사이 새 복제본이 교체됐다.

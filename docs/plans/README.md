@@ -5,20 +5,16 @@
 > 컨벤션: 본 README 의 "워크플로" 섹션 + memory `plans-folder-archive-preference.md` + `design-plan-docs-convention.md`.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
-## 활성 작업 (페어 파일, 1)
+## 활성 작업 (페어 파일, 0)
 
-### 대기 (proposed / approved) (1)
-
-| 날짜 | 주제 | type | status | tags |
-|---|---|---|---|---|
-| 2026-09-02 | legacy-residue-cleanup | design + plan | proposed | legacy, cleanup, key-vault, security, observability, documentation-drift |
+(없음 — 모든 작업이 ledger 에 흡수됨 또는 신규 작업 없음)
 
 ## Topic Ledgers (완료 작업 history)
 
 - [Android](logs/android.md) — recent 16, older 5
 - [Backend](logs/backend.md) — recent 3, older 1
 - [Dependencies](logs/dependencies.md) — recent 3, older 4
-- [Process & Infra](logs/process-infra.md) — recent 18, older 7
+- [Process & Infra](logs/process-infra.md) — recent 19, older 7
 
 ## 워크플로
 

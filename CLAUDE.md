@@ -205,7 +205,7 @@ DELETE /account
 
 ### Infrastructure
 - **Container App** `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포)
-- **Key Vault** `kv-eundunhealth` (RG `rg-eundunhealth-prod-krc`, Standard, **Azure RBAC**, 90d soft-delete + purge protection) — 백엔드 secret 4개(KV 참조, 직접값 아님). Container App **system MI** = Secrets User(KV) + AcrPull(ACR), CI SP = Secrets User(KV). audit → Log Analytics `workspace-appsDOlM`
+- **Key Vault** `kv-eundunhealth` (RG `rg-eundunhealth-prod-krc`, Standard, **Azure RBAC**, 90d soft-delete + purge protection) — 백엔드 secret **6개**(KV 참조, 직접값 아님). Container App **system MI** = Secrets User(KV) + AcrPull(ACR), CI SP = Secrets User(KV). audit → Log Analytics `workspace-appsDOlM` (`kv-audit` 진단설정 — **2026-09-02 에 실제로 생성**했다. 그 전까지 이 문장은 문서에만 있었고 진단설정은 0건이었다)
 - **ACR** `eundunhealthacr` (Basic SKU — [retention 정책은 Premium 전용](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus). 정기 정리는 **`acr purge` 스케줄 ACR Task 2개**가 담당: `purge-eundunhealth-api`[일 01:00 UTC, 태그 `--ago 30d --keep 10`] + `purge-eundunhealth-api-untagged`[01:30, dangling 스윕]. 2026-09-01 도입 — 태그 56→14·매니페스트 68→13·용량 2.21→0.60 GiB. `redeploy.sh` 의 timestamp 5개 보존은 로컬 수동 경로 전용)
 - **Azure PostgreSQL** Flexible Server `healthapp` (B1ms, 32GB, Korea Central). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
 - **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미지원). 상세: `docs/ops/operations-snapshot.md` §5-A
