@@ -1,6 +1,6 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-09-02 — PR #165(Entra 전환 v0.2.0 + 기술부채 T0~T7 + 하드닝 H1~H10 + Azure 정리 + 전수 점검 리팩토링)** (이전: 2026-07-29 — RG 이관 `apps` → `rg-eundunhealth-prod-krc` 완결(이동 7 + 알림/AG/UAI 재생성 + RBAC 8 재부여 + LA shared key 갱신 + 구 RG 삭제; backend deploy·warm-baseline·reaper·알림 8/8 전부 green — ledger `logs/process-infra.md` 2026-07-29 entry) (이전: 2026-07-03 v0.1.19/33 Android CD 첫 실 e2e + 프로덕션 승격 + AZURE_CREDENTIALS 완전 제거[OIDC 전용화] / 2026-07-02 Play 프로덕션 정식 출시 + repo public 전환))
+> 작성일: 2026-05-25 / 최근 갱신: **2026-09-02 — Play 트랙 production 전환 + Supabase 전량 폐기(프로젝트·KV·GitHub secret) + 링크 가드 범위 확대** (같은 날 앞서: PR #165 Entra 전환 v0.2.0 + 기술부채 T0~T7 + 하드닝 H1~H10 + Azure 정리 + 전수 점검 리팩토링) (이전: 2026-07-29 — RG 이관 `apps` → `rg-eundunhealth-prod-krc` 완결(이동 7 + 알림/AG/UAI 재생성 + RBAC 8 재부여 + LA shared key 갱신 + 구 RG 삭제; backend deploy·warm-baseline·reaper·알림 8/8 전부 green — ledger `logs/process-infra.md` 2026-07-29 entry) (이전: 2026-07-03 v0.1.19/33 Android CD 첫 실 e2e + 프로덕션 승격 + AZURE_CREDENTIALS 완전 제거[OIDC 전용화] / 2026-07-02 Play 프로덕션 정식 출시 + repo public 전환))
 > 작성 기준: 저장소 v0.2.0 (versionCode 34 — Entra External ID 전환, 미출시) — **Google Play 프로덕션 = v0.1.19/33**(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인). v0.1.19 = Android CD 첫 실 e2e(release.yml, 사용자 가시 동작 변화 없음). 이전 v0.1.18: 출시 재업로드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드. 이전 v0.1.17: 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너[Onboarding·Home·Profile] + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 경계 테스트 2 + account_service 로그 구조화 + 문서 드리프트 정정) (이전: v0.1.16 출시 후 심층 감사 개선 A~E + Tier2/3 PR #126·#127 / v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
@@ -184,19 +184,30 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 
 ---
 
-## 5. Supabase — **폐기 (2026-09 전환)**
+## 5. Supabase — **폐기 완료 (2026-09-02 전량 삭제)**
 
-인증은 §5-A(Microsoft Entra External ID)로 이관됐다. Android/백엔드 코드에 Supabase 참조는 0이다.
+인증은 §5-A(Microsoft Entra External ID)로 이관됐다. Android/백엔드 코드에 Supabase 참조는 0이다
+— 남은 문자열은 전부 "왜 이렇게 됐는지" 를 설명하는 이력 주석이다(MainActivity·SessionRefresher·
+TokenAuthenticator·conftest·doc_audit·setup-reaper-job).
 
 | 항목 | 상태 |
 |---|---|
-| Project `ttzzbfoksncqazvcsfiu` (Korea) | **미사용** — 무료 티어 저사용량으로 자동 일시중지된 상태. 삭제는 전환 안정화 확인 후 |
+| Project `ttzzbfoksncqazvcsfiu` (Korea) | **삭제됨** (2026-09-02, `supabase projects delete`) — **영구, 복구 경로 없음** |
+| 옛 프로젝트 `hcowzkqapzlvrvmawfcd` (US) | 삭제됨 (프로젝트 목록에 부재 — 실측) |
 | Container App / Job secret | `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY` **제거됨** (`ENTRA_*` 4종으로 교체) |
-| Key Vault secret | `supabase-url`·`supabase-service-role-key` — **아직 남아 있음**(롤백 여지). 전환 종결 시 삭제 |
-| 옛 프로젝트 `hcowzkqapzlvrvmawfcd` (US) | 미사용 |
+| Key Vault secret | `supabase-url`·`supabase-service-role-key` **삭제됨** (2026-09-02, 소프트 삭제 90일 · purge protection) |
+| GitHub `play-release` 환경 secret | `PROD_SUPABASE_URL`·`PROD_SUPABASE_ANON_KEY` **삭제됨** (2026-09-02) |
 
-> **정리 순서**: Phase 5 운영 검증 통과 → KV secret 2종 삭제 → Supabase 프로젝트 삭제.
-> 순서를 바꾸면 롤백 경로가 먼저 사라진다.
+> **왜 프로젝트까지 지웠나**: Key Vault 에서 사본을 지우는 것만으로는 노출면이 줄지 않는다.
+> 프로젝트가 살아 있는 한 `service_role` 키는 **RLS 를 우회하는 유효 자격증명**으로 남고, 그 키는
+> 대시보드에서 언제든 다시 조회된다. 노출면을 실제로 없애는 건 프로젝트 삭제 또는 키 회전이다.
+>
+> **실행 순서 정정**: 본 문서는 "KV secret 삭제 → 프로젝트 삭제" 를 정해뒀는데 실제로는 **프로젝트
+> → KV** 순으로 실행했다. 롤백 경로는 프로젝트 삭제 시점에 어차피 소멸하므로(KV 사본만 남아도
+> 되돌릴 대상이 없다) 최종 상태는 동일하다. 사전 검증이 순서보다 중요했고 그쪽은 지켰다 —
+> 삭제 전 **참조 0 을 실측**했다: IaC `containerapp.yaml`/`reaper-job.yaml` · 라이브 Container App
+> 및 Job secret 목록 · `backend.yml` 의 룰 6 `REQUIRED` · GitHub secret 목록(환경·저장소 양쪽).
+> 사후 검증: KV 잔여 6개 전부 Entra/인프라 · `/health`·`/health/ready` **200**.
 
 ---
 
@@ -244,7 +255,7 @@ Graph `User.ReadWrite.All`(Application, id `741f803b-c850-494e-b5df-cde7c675a1ca
 > **백엔드 구현 시**: `httpx` 의 `data={...}` dict 형태는 자동 URL 인코딩하므로 안전하다. 문자열을 직접 조립해 body 를 만들지 말 것.
 
 **Key Vault 등록 완료** (`kv-eundunhealth`): `entra-tenant-id` · `entra-subdomain` · `entra-backend-client-id` · `entra-backend-client-secret`
-> 구 Supabase secret 2종(`supabase-url`·`supabase-service-role-key`)은 롤백 여지를 위해 **아직 삭제하지 않았다**(전환 완료 후 정리).
+> 구 Supabase secret 2종(`supabase-url`·`supabase-service-role-key`)은 **2026-09-02 삭제됨**(§5). Key Vault 잔여 = 위 4종 + `database-url` + `sentry-dsn-backend` 총 6개.
 
 > ⚠️ **시크릿 만료 2028-09-01** — 만료 시 계정 삭제가 조용히 실패한다(토큰 발급 단계). 캘린더 등록 + Sentry 로 Graph 토큰 발급 실패 감지 필요(plan R3).
 
@@ -331,7 +342,8 @@ Alert 룰 (총 8개 — `scripts/setup-sentry-alerts.ps1` 으로 설정, 2026-06
 | 서비스 | URL | 인증 | 비고 |
 |--------|-----|------|------|
 | OSS ExerciseDB | `https://oss.exercisedb.dev/api/v1/` | 없음 | 부위 카탈로그 10종, 운동 ~1500개 |
-| Supabase Auth | 위 §5 | anon key / service_role | JWKS ES256 |
+| Microsoft Entra External ID | `https://eundunhealthciam.ciamlogin.com/…` (§5-A) | MSAL 브라우저 위임(PKCE) / 백엔드 JWKS | **RS256**. `issuer`·`jwks_uri` 는 OIDC discovery 로 읽는다(조합 금지) |
+| Microsoft Graph | `https://graph.microsoft.com/v1.0` | client credentials (KV `entra-backend-client-secret`) | 계정 삭제 204 + `deletedItems` 즉시 파기 |
 | Sentry | `o4510919956430848.ingest.us.sentry.io` | DSN | US org, 두 project |
 
 ---
@@ -365,7 +377,7 @@ GitHub Actions:
 | PostgreSQL Flexible B1ms + 32GB | ~30,000원 | |
 | Azure Monitor Alerts (metric 4) | ~550-700원 | Activity Log 4개 무료 |
 | Sentry | 0원 | 무료 plan (10K events/mo) |
-| Supabase | 0원 | 무료 plan |
+| ~~Supabase~~ | — | **2026-09-02 프로젝트 삭제**(§5). 종전 0원 무료 plan |
 | **합계** | **~43,700원** | budget 70,000원(1.6배 buffer) |
 
 ---
@@ -510,3 +522,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-09-01 | **Azure 리소스 정리** (같은 PR). 빈 RG 2개 삭제 → 단일 RG. **`acr purge` 스케줄 ACR Task 2개** 도입(§3) — 태그 56→14 · 매니페스트 68→13 · dangling 14→0 · 용량 2.21→**0.60 GiB**. alert 8개 CAF 재명명(`psql`→`pgsql`, **생성→검증→삭제** 순으로 알림 공백 0). reaper Job 갱신 경로를 `--image` → **`--yaml` 전체 적용**으로 교체 — IaC 파일을 고쳐도 라이브에 전파되지 않아 잡이 7주간 Supabase 시크릿을 들고 있던 근본 원인 해소 |
 | 2026-09-02 | **전수 점검 리팩토링 — 게이트가 보지 않던 6건** (같은 PR). ① AGP 폐기 플래그 6→2(APK **−153 KB**, 앱 리소스 손실 0) + 남은 2개의 **틀린 사유**("Hilt 미지원")를 실측 사유(detekt 1.23.8 이 AGP 9 새 DSL 에서 `detektDebug` 미등록)와 해제 조건(detekt 2.0.0 정식)으로 교체 ② `android.yml` paths 가 루트 `gradle.properties` 를 안 잡아 **빌드 설정 변경이 CI 를 우회**하던 구멍 봉합 ③ Sentry 보고 2단 호출(철자 3종) → `toReportedAppError()` 정본 + 컨벤션 테스트 ④ 로컬 `.venv` 3.13 vs 대상 3.14 스큐 해소(잘못 잰 coverage 로 옳은 문서를 고칠 뻔함) ⑤ 422 가 500 으로 뒤집히는 경로(`jsonable_encoder` 누락) + 회귀 테스트 ⑥ 문서 드리프트 8종 정정 + `doc_audit.py` 수집기에 `python_runtime`(3출처 대조)·`jwt_algorithms` 추가로 재발 차단. 게이트: android @Test **131** · backend pytest **115** · coverage 97% · CI 7체크 전부 green |
 | 2026-09-02 | **PR #165 머지 + 백엔드 배포 실증**(merge commit `049b643`). 머지 후 첫 배포가 **Trivy 에서 차단**(INC-2026-09-01-30) — 지적 2건이 전부 requirements 밖이었다: `setuptools 70.3.0`(base 동봉) · `msgpack 1.1.2`(**pip vendored**, 버전 상향 불가). 런타임 이미지에서 `pip`/`setuptools`/`wheel` 제거로 근본 해소(`786692a`) 후 재배포 성공. **라이브 검증**: revision `0000058` · 이미지 `786692a` · **reaper Job 이미지 == 앱 이미지**(B2-a 불변식 첫 실증 — 직전까지 `de612e9` 로 7주 어긋나 있었다) · Container App/Job secret 이 `supabase-*` → **`entra-*` 로 완전 교체**(잔존 0) · `/health`·`/health/ready` **200** · 무토큰/위조토큰 `/profile` **401**(RS256 검증 동작) · `/privacy`·`/account-deletion` 200 · 삭제된 `/auth/confirm`·`/.well-known/assetlinks.json` **404**. **남음**: 실기기 골든패스(회원님) → Android v0.2.0 태그 push |
+| 2026-09-02 | **Play 출시 트랙 internal → production + Supabase 전량 폐기 + 링크 가드 범위 확대** (커밋 `8c8aa33` 외). ① **트랙 전환** — 프로덕션 LIVE 인 v0.1.19/33 이 Supabase 인증 빌드인데 백엔드는 Entra 전용이라 **스토어 배포본이 이미 로그인 불가**였다. 단계적 노출은 "정상 버전을 조심스럽게 내보내는" 전제 위의 장치라 지연이 곧 손해 → `tracks: production`·`status: completed`. 되돌리기 비대칭(이전 versionCode 로 하향 불가 = halt rollout 또는 상위 재업로드만) 을 yml·런북 양쪽에 박제. `release.yml` 의 죽은 `SUPABASE_*` 2줄 제거하되 **`ENTRA_API_SCOPE` 는 의도적 미기재**(빈 값이 `getProperty` 기본값을 덮어 로그인이 깨진다). ② **Supabase 전량 폐기** — 프로젝트 `ttzzbfoksncqazvcsfiu` 삭제(영구) + KV secret 2종 + GitHub 환경 secret 2종. KV 사본만 지우면 프로젝트가 살아 있는 한 `service_role` 키가 유효하다는 것이 근거(§5). 삭제 전 참조 0 실측, 사후 `/health`·`/health/ready` 200. ③ **가드 사각지대** — `check-plans-links.sh` 가 `.md` 만 훑어 워크플로 4·스크립트 2·`gradle.properties`·Kotlin 3파일의 **죽은 설계 참조 10건**을 못 보고 green 을 내고 있었다(전날 고친 축약형 사각지대와 같은 종류 = 범위 문제). 추적 파일 전체로 확대 + 프로브로 발화 증명. ④ **서명 릴리스 경로 첫 검증**(Entra 전환 후 최초) — 단조성 34>33 · spotless/detekt exit 0 · @Test **131/131** · 서명 AAB **10.76 MB**(v0.1.18 8.35 → +29%, MSAL·nimbus) · APK V2 서명 실측. ⑤ PRD 헤더가 v0.2.0 을 v0.1.19 내용("사용자 가시 동작 변화 없음")으로 설명하던 bump blind-replace 드리프트 정정 |

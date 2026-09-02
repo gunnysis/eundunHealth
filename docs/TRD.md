@@ -168,16 +168,16 @@ v0.1.1~v0.1.19 누적 (Android UI + Auth + Backend 안정화):
 
 | 항목 | 상세 |
 |------|------|
-| 인증 서비스 | Supabase Authentication |
-| 인증 방식 | 이메일/비밀번호 |
-| 클라이언트 SDK | Supabase Kotlin SDK 3.6.0 (`auth-kt`) |
+| 인증 서비스 | **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미제공) |
+| 인증 방식 | **브라우저 위임** — Authorization Code + PKCE. 가입·이메일 검증·비밀번호 재설정은 Entra 호스팅 페이지 소관이고 앱에는 CTA 하나(`AuthGateScreen`)만 있다 |
+| 클라이언트 SDK | **MSAL Android 8.4.2** (`com.microsoft.identity.client:msal`). client_id·authority·redirect_uri 는 `app/src/{debug,release}/res/raw/auth_config_ciam.json` (`R.raw` 요구라 BuildConfig 주입 불가) |
 | JWT 알고리즘 | **RS256** (Entra External ID, 2026-09 전환). ES256 은 Supabase 시절 값 |
-| 토큰 검증 (백엔드) | JWKS 기반 공개키 검증 |
-| JWKS 엔드포인트 | `{SUPABASE_URL}/auth/v1/.well-known/jwks.json` |
-| JWKS 캐시 | 10키, 24시간 TTL, 분당 10회 제한 |
+| 토큰 검증 (백엔드) | JWKS 공개키 서명 + `audience`(백엔드 client_id) + `issuer` + **`scp` 에 `access_as_user` 포함** (app-only 토큰 차단 부수효과) |
+| JWKS 엔드포인트 | **OIDC discovery 의 `jwks_uri`** — 문자열 조합 금지. Entra 는 `jwks_uri` 엔 친숙한 서브도메인을, `issuer` 엔 tenantId 를 쓴다 → 조합하면 서명·audience 는 통과하고 issuer 에서만 어긋나 전 API 401 |
+| JWKS 캐시 | `PyJWKClient(cache_keys=True, lifespan=86400, timeout=5)` — 24시간 TTL, timeout 은 기본 30s 에서 축소(느린 JWKS 가 워커 스레드를 점유하지 못하게) |
 | JWT Accept Leeway | 5초 |
-| 세션 관리 | 자동 저장/복원 (`autoSaveToStorage`, `autoLoadFromStorage`) |
-| 토큰 갱신 | 자동 (`alwaysAutoRefresh` + OkHttp TokenAuthenticator) |
+| 세션 관리 | MSAL 계정 캐시 + `MsalSilentAuth`(무음 갱신·계정 조회를 Repository 와 SessionRefresher 가 공유) |
+| 토큰 갱신 | `EntraSessionRefresher`(**`forceRefresh=true`** — false 면 방금 401 받은 캐시 토큰을 그대로 돌려받아 무한 루프) + OkHttp `TokenAuthenticator` |
 | 백엔드 JWT 라이브러리 | com.auth0:java-jwt 4.5.0 + com.auth0:jwks-rsa 0.22.1 |
 
 **인증 플로우:**

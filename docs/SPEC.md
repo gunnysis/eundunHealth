@@ -68,19 +68,17 @@ AGP · Gradle · KSP · Sentry Gradle Plugin · Detekt · Spotless — 버전은
 - 저장된 세션 확인 후 자동 라우팅
   - 세션 있음 + 프로필 있음 → Home
   - 세션 있음 + 프로필 없음 → Onboarding
-  - 세션 없음 → Login
+  - 세션 없음 → AuthGate
 
-### 2. 로그인 화면 (`LoginScreen`)
-- 이메일/비밀번호 입력
-- 로그인 버튼
-- 회원가입 화면 이동 링크
-- 에러 메시지 표시 (SnackBar)
+### 2. 인증 게이트 화면 (`AuthGateScreen`)
+- **CTA 하나뿐이다.** 이메일/비밀번호 입력란이 앱에 없다 — 누르면 브라우저(Custom Tab)로 나가 Entra 호스팅 페이지에서 로그인·가입·비밀번호 재설정을 모두 처리하고 돌아온다(Authorization Code + PKCE)
+- 실패 표시는 룰 8 준수 — `AuthErrorBanner` inline + persistent + `liveRegion` + Sentry breadcrumb
+- 브라우저로 전환된다는 사실을 a11y 로 미리 알린다
+- 상태는 `Authenticating` 하나로 합쳤다 — MSAL 이 "Custom Tab 표시됨" 콜백을 주지 않아 Launching/AwaitingReturn 을 나눌 근거가 런타임에 없고 두 상태의 UI 도 같다(나누면 죽은 상태가 생긴다)
 
-### 3. 회원가입 화면 (`SignupScreen`)
-- 이메일/비밀번호 입력
-- 가입 요청 성공 시 Supabase가 확인 메일을 발송하며, 화면은 `AwaitingEmailConfirmation` 안내 상태로 전환됨
-- 안내 상태에서 60초 쿨다운으로 확인 메일을 재전송 가능 (남은 시간을 버튼에 노출)
-- 메일 인증 완료 후 사용자는 직접 Login 화면으로 이동해 로그인하며, 이메일 입력란은 이전 가입 입력값으로 자동 채워짐
+### 3. ~~회원가입 화면 (`SignupScreen`)~~ — **폐기 (2026-09 Entra 전환)**
+- 가입·이메일 검증·재발송·비밀번호 재설정이 전부 Entra 호스팅 페이지 소관이 되면서 화면·ViewModel 이 함께 삭제됐다(`LoginScreen`/`SignupScreen`/`ForgotPasswordScreen` + VM 3종). 현재 인증 진입점은 위 §2 하나뿐이다
+- 전환 이전의 가입 흐름 기록은 아래 "회원가입 이메일 확인 흐름" 절 참조(이력)
 
 ### 4. 온보딩 화면 (`OnboardingScreen`)
 - 신체 정보 입력 (키, 몸무게, 체지방률, 골격근량)
