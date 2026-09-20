@@ -8,16 +8,16 @@ fastapi==0.141.1
 # app/main.py registers middleware at module level (post INC-2026-05-24-03), unaffected
 # by starlette 1.x's lifespan policy.
 starlette==1.6.0
-uvicorn[standard]==0.52.4
-sqlalchemy[asyncio]==2.0.52
+uvicorn[standard]==0.53.0
+sqlalchemy[asyncio]==2.0.54
 asyncpg==0.31.0
-alembic==1.19.1
+alembic==1.20.0
 # 2.14.2 fixes GHSA-4xgf-cpjx-pc3j (symlink traversal in NestedSecretsSettingsSource;
 # we only use env vars, bumped to keep pip-audit --strict green).
 pydantic-settings==2.15.0
-PyJWT[crypto]==2.13.0
+PyJWT[crypto]==2.14.0
 httpx==0.28.1
-sentry-sdk[fastapi]==2.68.1
+sentry-sdk[fastapi]==2.69.2
 # Renders legal notices (privacy / account-deletion) md -> HTML for GET /privacy and
 # /account-deletion (Play Store registration URLs). Only our own docs/store/*.md is
 # rendered (never user input), so no injection surface. See routers/legal.py.
