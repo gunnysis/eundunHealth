@@ -40,7 +40,13 @@ class OnboardingViewModel @Inject constructor(
     private val _sideEffect = Channel<OnboardingSideEffect>(Channel.BUFFERED)
     val sideEffect = _sideEffect.receiveAsFlow()
 
-    fun saveProfile(heightCm: Float, weightKg: Float, bodyFatPct: Float, muscleMassKg: Float) = viewModelScope.launch {
+    fun saveProfile(
+        heightCm: Float,
+        weightKg: Float,
+        gender: com.gunnys.eundunhealth.domain.model.Gender,
+        bodyFatPct: Float,
+        muscleMassKg: Float,
+    ) = viewModelScope.launch {
         _uiState.value = OnboardingUiState(isLoading = true, error = null)
         val userId = authRepo.getCurrentUserId()
         if (userId == null) {
@@ -49,7 +55,7 @@ class OnboardingViewModel @Inject constructor(
         }
         runCatching {
             userRepo.saveProfile(
-                UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg),
+                UserProfile(userId, heightCm, weightKg, gender, bodyFatPct, muscleMassKg),
             ).getOrThrow()
         }
             .onSuccess { _sideEffect.send(OnboardingSideEffect.NavigateToHome) }

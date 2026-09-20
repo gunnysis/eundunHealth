@@ -95,3 +95,10 @@ class MealPlanService:
                 self.db.add(new_item)
                 
         await self.db.commit()
+
+    async def delete_all_by_user(self, user_id: str) -> None:
+        """사용자의 모든 식단 계획을 삭제합니다."""
+        from sqlalchemy import delete
+        stmt = delete(MealPlan).where(MealPlan.user_id == user_id)
+        await self.db.execute(stmt)
+

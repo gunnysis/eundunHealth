@@ -48,9 +48,24 @@ async def test_delete_account_purges_all_user_data(
     await client.post("/weekly-plan", json=sample_plan)  # weekly_plans
     await client.post("/badges/first_workout")  # badges
     await client.put("/goals", json={"goalType": "weight", "targetValue": 65.0})  # goals
+    
+    # 식단 자동 생성 API는 외부 연동을 타므로, 직접 DB에 밀어넣는다
+    import datetime
+
+    from app.models.meal_plan import MealPlan
+    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        session.add(
+            MealPlan(
+                user_id=user_id,
+                week_start_date=datetime.date(2026, 5, 25),
+                summary="Test plan"
+            )
+        )
+        await session.commit()
 
     models = _user_id_models()
-    assert len(models) >= 5, f"per-user 모델 수 예상 미달: {[m.__tablename__ for m in models]}"
+    assert len(models) >= 6, f"per-user 모델 수 예상 미달: {[m.__tablename__ for m in models]}"
 
     session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 

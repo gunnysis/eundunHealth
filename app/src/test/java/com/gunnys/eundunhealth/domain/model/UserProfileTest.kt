@@ -5,33 +5,67 @@ import org.junit.Test
 
 class UserProfileTest {
     @Test
-    fun `bmi above 30 returns BEGINNER`() {
-        val profile = UserProfile("u1", 170f, 90f, 35f, 30f)
+    fun `bmi is calculated correctly`() {
+        val profile = UserProfile(
+            userId = "test_user",
+            heightCm = 175f,
+            weightKg = 70f,
+            gender = Gender.MALE,
+            bodyFatPercent = 15f,
+            muscleMassKg = 35f,
+        )
+        assertEquals(22.857143f, profile.bmi)
+    }
+
+    @Test
+    fun `fitnessLevel is BEGINNER if bodyFatPercent is high`() {
+        val profile = UserProfile(
+            userId = "test_user",
+            heightCm = 175f,
+            weightKg = 70f,
+            gender = Gender.MALE,
+            bodyFatPercent = 35f,
+            muscleMassKg = 30f,
+        )
         assertEquals(FitnessLevel.BEGINNER, profile.fitnessLevel)
     }
 
     @Test
-    fun `normal body fat returns ADVANCED`() {
-        val profile = UserProfile("u1", 175f, 70f, 15f, 35f)
-        assertEquals(FitnessLevel.ADVANCED, profile.fitnessLevel)
-    }
-
-    @Test
-    fun `intermediate body fat returns INTERMEDIATE`() {
-        val profile = UserProfile("u1", 175f, 75f, 25f, 30f)
+    fun `fitnessLevel is INTERMEDIATE if bodyFatPercent is medium`() {
+        val profile = UserProfile(
+            userId = "test_user",
+            heightCm = 175f,
+            weightKg = 70f,
+            gender = Gender.MALE,
+            bodyFatPercent = 25f,
+            muscleMassKg = 30f,
+        )
         assertEquals(FitnessLevel.INTERMEDIATE, profile.fitnessLevel)
     }
 
     @Test
-    fun `bmi calculated correctly`() {
-        val profile = UserProfile("u1", 170f, 70f, 20f, 30f)
-        val expected = 70f / (1.7f * 1.7f)
-        assertEquals(expected, profile.bmi, 0.1f)
+    fun `fitnessLevel is ADVANCED if bodyFatPercent is low`() {
+        val profile = UserProfile(
+            userId = "test_user",
+            heightCm = 175f,
+            weightKg = 70f,
+            gender = Gender.MALE,
+            bodyFatPercent = 15f,
+            muscleMassKg = 35f,
+        )
+        assertEquals(FitnessLevel.ADVANCED, profile.fitnessLevel)
+    }
+
+    @Test
+    fun `fitnessLevel uses BMI if bodyFatPercent is null`() {
+        val profile = UserProfile(userId = "test_user", heightCm = 170f, weightKg = 90f, gender = Gender.MALE, bodyFatPercent = null, muscleMassKg = null)
+        // BMI = 90 / (1.7 * 1.7) = 31.14 (BEGINNER)
+        assertEquals(FitnessLevel.BEGINNER, profile.fitnessLevel)
     }
 
     // --- nullable bodyFatPercent tests ---
 
-    private fun profile(bodyFat: Float?, weight: Float = 70f, height: Float = 175f) = UserProfile("u", height, weight, bodyFat, null)
+    private fun profile(bodyFat: Float?, weight: Float = 70f, height: Float = 175f) = UserProfile("u", height, weight, Gender.UNSPECIFIED, bodyFat, null)
 
     @Test
     fun `bodyFat null이면 BMI 기준으로 판정 — 정상 BMI는 ADVANCED`() {

@@ -77,6 +77,7 @@ class AzureMaaSMealClient(MealAIClient):
         - 탄수화물: {target_macros.get("carbs_g")} g
         - 지방: {target_macros.get("fat_g")} g
 
+
         [이번 주 운동 스케줄]
         {', '.join(workout_dates) if workout_dates else '없음'}
 

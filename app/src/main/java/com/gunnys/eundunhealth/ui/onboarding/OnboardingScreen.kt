@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -26,8 +27,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
+import com.gunnys.eundunhealth.ui.components.GenderSelector
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
@@ -36,6 +39,7 @@ fun OnboardingScreen(
     onComplete: () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
+    var gender by rememberSaveable { mutableStateOf(Gender.UNSPECIFIED) }
     var height by rememberSaveable { mutableFloatStateOf(170f) }
     var weight by rememberSaveable { mutableFloatStateOf(65f) }
     var bodyFat by rememberSaveable { mutableFloatStateOf(20f) }
@@ -76,6 +80,10 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            GenderSelector(gender = gender, onGenderChange = { gender = it })
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             BodyMetricsSliders(
                 height = height,
                 onHeightChange = { height = it },
@@ -105,7 +113,7 @@ fun OnboardingScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = { viewModel.saveProfile(height, weight, bodyFat, muscleMass) },
+                onClick = { viewModel.saveProfile(height, weight, gender, bodyFat, muscleMass) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isLoading,
             ) {

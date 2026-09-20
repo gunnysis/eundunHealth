@@ -27,10 +27,15 @@ async def generate_meal_plan(
     # 1. 프로필 조회 (예외 처리 내장됨)
     profile = await profile_service.get_profile(user_id)
     
-    # 성별 필드는 현재 스키마에 없으므로 (향후 추가될 예정), 기본값(또는 유추)으로 계산
     # BMR 계산 (Mifflin-St Jeor 공식 기준 대략적 산출)
-    # 남성(기본 가정): 10 * weight + 6.25 * height - 5 * age + 5 (나이는 임의 30세 가정)
-    bmr = (10 * profile.weight_kg) + (6.25 * profile.height_cm) - (5 * 30) + 5
+    # 남성: 10 * weight + 6.25 * height - 5 * age + 5 (나이는 임의 30세 가정)
+    # 여성: 10 * weight + 6.25 * height - 5 * age - 161
+    bmr_base = (10 * profile.weight_kg) + (6.25 * profile.height_cm) - (5 * 30)
+    if profile.gender == "female":
+        bmr = bmr_base - 161
+    else:
+        bmr = bmr_base + 5
+        
     tdee = bmr * 1.55  # 적당한 활동량 가정
     
     # 매크로 목표 (탄단지 4:4:2 비율)
@@ -46,7 +51,9 @@ async def generate_meal_plan(
         "fat_g": fat_g,
     }
 
+    gender_str = "여성" if profile.gender == "female" else "남성" if profile.gender == "male" else "성별 무관"
     profile_summary = f"""
+    - 성별: {gender_str}
     - 키: {profile.height_cm}cm
     - 몸무게: {profile.weight_kg}kg
     - 체지방률: {profile.body_fat_pct or '모름'}%

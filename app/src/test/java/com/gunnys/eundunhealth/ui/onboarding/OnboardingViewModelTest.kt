@@ -43,7 +43,7 @@ class OnboardingViewModelTest {
         coEvery { authRepo.getCurrentUserId() } returns null
         val vm = OnboardingViewModel(userRepo, authRepo)
 
-        vm.saveProfile(175f, 70f, 18f, 33f)
+        vm.saveProfile(175f, 70f, com.gunnys.eundunhealth.domain.model.Gender.MALE, 18f, 33f)
         advanceUntilIdle()
 
         assertNotNull("로그인 필요 에러 상태", vm.uiState.value.error)
@@ -59,7 +59,7 @@ class OnboardingViewModelTest {
         val effects = mutableListOf<OnboardingSideEffect>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.sideEffect.collect { effects.add(it) } }
 
-        vm.saveProfile(175f, 70f, 18f, 33f)
+        vm.saveProfile(175f, 70f, com.gunnys.eundunhealth.domain.model.Gender.MALE, 18f, 33f)
         advanceUntilIdle()
 
         assertTrue(effects.any { it is OnboardingSideEffect.NavigateToHome })

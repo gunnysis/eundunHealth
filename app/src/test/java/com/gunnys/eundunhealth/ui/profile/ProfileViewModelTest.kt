@@ -28,7 +28,7 @@ class ProfileViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var userRepo: UserRepository
     private lateinit var authRepo: AuthRepository
-    private val profile = UserProfile("user-1", 175f, 70f, 18f, 33f, restDay = 7)
+    private val profile = UserProfile("user-1", 175f, 70f, com.gunnys.eundunhealth.domain.model.Gender.MALE, 18f, 33f, restDay = 7)
 
     @Before
     fun setup() {
@@ -49,7 +49,7 @@ class ProfileViewModelTest {
         val vm = createViewModel()
         advanceUntilIdle()
 
-        vm.saveProfile(175f, 70f, 18f, 33f)
+        vm.saveProfile(175f, 70f, com.gunnys.eundunhealth.domain.model.Gender.MALE, 18f, 33f)
         advanceUntilIdle()
 
         val state = vm.uiState.value as ProfileUiState.Loaded

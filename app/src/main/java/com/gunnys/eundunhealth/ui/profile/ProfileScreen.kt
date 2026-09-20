@@ -50,6 +50,7 @@ import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
+import com.gunnys.eundunhealth.ui.components.GenderSelector
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
 import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
@@ -108,6 +109,7 @@ fun ProfileScreen(
             }
             is ProfileUiState.Loaded -> {
                 ProfileEditContent(
+                    initialGender = state.profile.gender,
                     initialHeight = state.profile.heightCm,
                     initialWeight = state.profile.weightKg,
                     initialBodyFat = state.profile.bodyFatPercent ?: 20f,
@@ -156,6 +158,7 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileEditContent(
+    initialGender: com.gunnys.eundunhealth.domain.model.Gender,
     initialHeight: Float,
     initialWeight: Float,
     initialBodyFat: Float,
@@ -165,10 +168,11 @@ private fun ProfileEditContent(
     isDeleting: Boolean,
     saveError: AppError?,
     deleteError: AppError?,
-    onSave: (Float, Float, Float, Float, Int) -> Unit,
+    onSave: (Float, Float, com.gunnys.eundunhealth.domain.model.Gender, Float, Float, Int) -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var gender by rememberSaveable { mutableStateOf(initialGender) }
     var height by rememberSaveable { mutableFloatStateOf(initialHeight) }
     var weight by rememberSaveable { mutableFloatStateOf(initialWeight) }
     var bodyFat by rememberSaveable { mutableFloatStateOf(initialBodyFat) }
@@ -188,6 +192,10 @@ private fun ProfileEditContent(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        GenderSelector(gender = gender, onGenderChange = { gender = it })
+
         Spacer(modifier = Modifier.height(24.dp))
 
         BodyMetricsSliders(
@@ -226,7 +234,7 @@ private fun ProfileEditContent(
             isSaving = isSaving,
             isDeleting = isDeleting,
             deleteError = deleteError,
-            onSave = { onSave(height, weight, bodyFat, muscleMass, restDay) },
+            onSave = { onSave(height, weight, gender, bodyFat, muscleMass, restDay) },
             onDeleteClick = onDeleteClick,
         )
 

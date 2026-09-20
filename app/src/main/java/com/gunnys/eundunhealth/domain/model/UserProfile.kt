@@ -7,6 +7,7 @@ data class UserProfile(
     val userId: String,
     val heightCm: Float,
     val weightKg: Float,
+    val gender: Gender,
     val bodyFatPercent: Float?,
     val muscleMassKg: Float?,
     /** 휴식일 — ISO DayOfWeek 값 (1=월 ~ 7=일). 기본값 7(일요일). */
@@ -24,3 +25,5 @@ data class UserProfile(
 }
 
 enum class FitnessLevel { BEGINNER, INTERMEDIATE, ADVANCED }
+
+enum class Gender { MALE, FEMALE, UNSPECIFIED }

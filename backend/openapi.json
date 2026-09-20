@@ -271,6 +271,12 @@
             ],
             "title": "Bodyfatpct"
           },
+          "gender": {
+            "default": "unspecified",
+            "pattern": "^(male|female|unspecified)$",
+            "title": "Gender",
+            "type": "string"
+          },
           "heightCm": {
             "maximum": 300.0,
             "minimum": 50.0,
@@ -324,6 +330,10 @@
             ],
             "title": "Bodyfatpct"
           },
+          "gender": {
+            "title": "Gender",
+            "type": "string"
+          },
           "heightCm": {
             "title": "Heightcm",
             "type": "number"
@@ -357,6 +367,7 @@
           "userId",
           "heightCm",
           "weightKg",
+          "gender",
           "bodyFatPct",
           "muscleMassKg"
         ],

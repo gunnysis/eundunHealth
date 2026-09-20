@@ -19,6 +19,8 @@ class UserRepositoryImpl @Inject constructor(
             userId = dto.userId,
             heightCm = dto.heightCm.toFloat(),
             weightKg = dto.weightKg.toFloat(),
+            gender = runCatching { com.gunnys.eundunhealth.domain.model.Gender.valueOf(dto.gender.uppercase()) }
+                .getOrDefault(com.gunnys.eundunhealth.domain.model.Gender.UNSPECIFIED),
             bodyFatPercent = dto.bodyFatPct?.toFloat(),
             muscleMassKg = dto.muscleMassKg?.toFloat(),
             restDay = dto.restDay ?: 7,
@@ -30,6 +32,7 @@ class UserRepositoryImpl @Inject constructor(
             UserProfileRequest(
                 heightCm = BigDecimal.valueOf(profile.heightCm.toDouble()),
                 weightKg = BigDecimal.valueOf(profile.weightKg.toDouble()),
+                gender = profile.gender.name.lowercase(),
                 bodyFatPct = profile.bodyFatPercent?.let { BigDecimal.valueOf(it.toDouble()) },
                 muscleMassKg = profile.muscleMassKg?.let { BigDecimal.valueOf(it.toDouble()) },
                 restDay = profile.restDay,

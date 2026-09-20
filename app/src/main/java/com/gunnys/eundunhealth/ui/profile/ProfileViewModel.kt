@@ -76,6 +76,7 @@ class ProfileViewModel @Inject constructor(
     fun saveProfile(
         heightCm: Float,
         weightKg: Float,
+        gender: com.gunnys.eundunhealth.domain.model.Gender,
         bodyFatPct: Float,
         muscleMassKg: Float,
         restDay: Int = 7,
@@ -93,7 +94,7 @@ class ProfileViewModel @Inject constructor(
         }
         runCatching {
             userRepo.saveProfile(
-                UserProfile(userId, heightCm, weightKg, bodyFatPct, muscleMassKg, restDay),
+                UserProfile(userId, heightCm, weightKg, gender, bodyFatPct, muscleMassKg, restDay),
             ).getOrThrow()
         }
             .onSuccess {

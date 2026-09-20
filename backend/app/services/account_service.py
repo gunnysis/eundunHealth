@@ -28,6 +28,8 @@ class AccountService:
         self.badge_repo = BadgeRepository(db)
         self.goal_repo = GoalRepository(db)
         self.history_repo = ProfileHistoryRepository(db)
+        from app.services.meal_plan_service import MealPlanService
+        self.meal_plan_service = MealPlanService(db)
         # 인스턴스 수명 동안 토큰 재사용 — reaper 가 사용자마다 토큰을 재발급하지 않게.
         self._graph_token: str | None = None
         self._graph_token_expires_at: float = 0.0
@@ -77,6 +79,7 @@ class AccountService:
         await self.plan_repo.delete_all_by_user(user_id)
         await self.goal_repo.delete_all_by_user(user_id)
         await self.history_repo.delete_all_by_user(user_id)
+        await self.meal_plan_service.delete_all_by_user(user_id)
         await self.profile_repo.delete_by_user_id(user_id)
 
     async def reap_orphaned_data(self) -> list[str]:

@@ -225,6 +225,7 @@ class AuthViewModelTest {
         userId = "user-1",
         heightCm = 170f,
         weightKg = 65f,
+        gender = com.gunnys.eundunhealth.domain.model.Gender.MALE,
         bodyFatPercent = 20f,
         muscleMassKg = 30f,
     )
