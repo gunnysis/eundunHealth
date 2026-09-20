@@ -23,5 +23,5 @@ sentry-sdk[fastapi]==2.69.2
 # rendered (never user input), so no injection surface. See routers/legal.py.
 markdown==3.10.3
 # AI Client for Azure MaaS
-openai>=1.40.0
+openai>=3.14.1
 tenacity>=9.0.0
