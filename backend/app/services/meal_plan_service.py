@@ -1,3 +1,4 @@
+import typing
 from datetime import date
 
 from sqlalchemy import select
@@ -29,7 +30,7 @@ class MealPlanService:
             
         # 맵핑 (MealPlan -> WeeklyMealPlanResponse)
         # items 배열을 요일별(day)로 그룹화하여 DailyMealPlan 리스트를 만듭니다.
-        daily_plans = {}
+        daily_plans: dict[str, dict[str, typing.Any]] = {}
         for item in plan.items:
             if item.day not in daily_plans:
                 daily_plans[item.day] = {
@@ -50,7 +51,7 @@ class MealPlanService:
         return WeeklyMealPlanResponse(weekly_plan=weekly_plan_list, summary=plan.summary)
 
     async def save_plan(
-        self, user_id: str, week_start_date: date, meal_plan_data: dict | WeeklyMealPlanResponse
+        self, user_id: str, week_start_date: date, meal_plan_data: dict[str, typing.Any] | WeeklyMealPlanResponse
     ) -> None:
         """Save a new meal plan into the database, replacing the existing one if any."""
         if isinstance(meal_plan_data, WeeklyMealPlanResponse):

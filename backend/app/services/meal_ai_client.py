@@ -1,5 +1,6 @@
 import json
 import logging
+import typing
 from abc import ABC, abstractmethod
 
 import openai
@@ -19,7 +20,7 @@ class MealAIClient(ABC):
 
     @abstractmethod
     async def generate_meal_plan(
-        self, profile_summary: str, target_macros: dict, workout_dates: list[str]
+        self, profile_summary: str, target_macros: dict[str, typing.Any], workout_dates: list[str]
     ) -> WeeklyMealPlanResponse:
         """사용자 프로필과 목표 매크로를 기반으로 주간 식단(JSON)을 생성한다."""
         pass
@@ -63,7 +64,9 @@ class AzureMaaSMealClient(MealAIClient):
             f"[JSON SCHEMA]\n{schema_str}"
         )
 
-    def _build_user_prompt(self, profile_summary: str, target_macros: dict, workout_dates: list[str]) -> str:
+    def _build_user_prompt(
+        self, profile_summary: str, target_macros: dict[str, typing.Any], workout_dates: list[str]
+    ) -> str:
         prompt = f"""
         [사용자 프로필 및 목표]
         {profile_summary}
@@ -84,7 +87,7 @@ class AzureMaaSMealClient(MealAIClient):
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def generate_meal_plan(
-        self, profile_summary: str, target_macros: dict, workout_dates: list[str]
+        self, profile_summary: str, target_macros: dict[str, typing.Any], workout_dates: list[str]
     ) -> WeeklyMealPlanResponse:
         """DeepSeek 모델을 호출하여 Pydantic 스키마 형태의 응답을 반환한다.
         
