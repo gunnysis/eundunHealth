@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -36,6 +37,7 @@ internal fun HomeTopBarActions(
     onStatisticsClick: () -> Unit,
     onGoalClick: () -> Unit,
     onBadgesClick: () -> Unit,
+    onMealPlanClick: () -> Unit,
     onLogout: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -113,6 +115,14 @@ internal fun HomeTopBarActions(
                     onBadgesClick()
                 },
                 leadingIcon = { Icon(Icons.Default.EmojiEvents, null) },
+            )
+            DropdownMenuItem(
+                text = { Text("주간 식단") },
+                onClick = {
+                    menuExpanded = false
+                    onMealPlanClick()
+                },
+                leadingIcon = { Icon(Icons.Default.Restaurant, null) },
             )
             DropdownMenuItem(
                 text = { Text("로그아웃") },

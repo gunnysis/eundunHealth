@@ -8,7 +8,8 @@ os.environ.setdefault("ENTRA_TENANT_ID", "c7ebcc7f-fc6b-4674-a3d5-8fbc419561a8")
 os.environ.setdefault("ENTRA_SUBDOMAIN", "eundunhealthciam")
 os.environ.setdefault("ENTRA_BACKEND_CLIENT_ID", "903bf44d-d73a-40b5-9601-e9c362699c38")
 os.environ.setdefault("ENTRA_BACKEND_CLIENT_SECRET", "test-client-secret")
-
+os.environ.setdefault("DEEPSEEK_ENDPOINT", "https://test-endpoint.openai.azure.com/openai/v1")
+os.environ.setdefault("DEEPSEEK_KEY", "test-key")
 from contextlib import contextmanager  # noqa: E402
 from unittest.mock import AsyncMock, patch  # noqa: E402
 
@@ -56,6 +57,8 @@ async def client(db_engine):
     def override_get_settings() -> Settings:
         return Settings(
             database_url="sqlite+aiosqlite:///:memory:",
+            deepseek_endpoint="https://test-endpoint.openai.azure.com/openai/v1",
+            deepseek_key="test-key",
         )
 
     app.dependency_overrides[get_db] = override_get_db
@@ -111,6 +114,8 @@ async def client_no_auth(db_engine):
     def override_get_settings() -> Settings:
         return Settings(
             database_url="sqlite+aiosqlite:///:memory:",
+            deepseek_endpoint="https://test-endpoint.openai.azure.com/openai/v1",
+            deepseek_key="test-key",
         )
 
     app.dependency_overrides[get_db] = override_get_db

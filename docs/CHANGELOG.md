@@ -1,6 +1,18 @@
-# eundunHealth 작업 내역서
+# eundunHealth 작업 내역
 
-> 형식: 큰 변화 순서대로 위에서 아래로. 각 릴리스의 세부 커밋은 git log 참조.
+> 목적: 큰 아키텍처 변화 추적 및 장애 이력 인덱싱. 단순 기능 추가는 깃허브 커밋 로그로 대체.
+
+---
+
+## [v0.3.0] — Unreleased : AI 식단 자동 생성 기능 통합
+
+> **주요 기능 추가.** 사용자의 체격 조건과 목표를 바탕으로 "Azure AI Foundry MaaS (DeepSeek-V3.2)" 모델을 활용해 주간 식단을 자동 생성하는 기능을 구현했습니다.
+
+### ✨ 식단 생성 (Meal Plan) 기능
+- **프론트엔드 (Android)**: `MealPlanScreen` 및 `DailyMealCard` 컴포저블 신규 구현. `rememberSaveable` 적용을 통해 스크롤 시에도 아코디언 상태가 소실되지 않도록 UX 최적화. Dagger Hilt 기반 `MealsApi` 레트로핏 연동.
+- **백엔드 (FastAPI)**: `/api/v1/meal-plans` 엔드포인트 구현. `AzureMaaSMealClient` 추상화를 통해 Azure에 배포된 DeepSeek-V3.2 모델을 활용.
+- **AI 연동 안정화**: OpenAI SDK의 베타 기능(`beta.parse`) 호환성 한계 극복을 위해 명시적인 JSON Mode(`{"type": "json_object"}`)와 `WeeklyMealPlanResponse.model_validate_json()` 수동 파싱 조합으로 견고한 에러 핸들링 및 재시도(Tenacity) 로직 완성.
+- **데이터 모델**: SQLAlchemy ORM을 통한 `MealPlan`, `DailyPlan`, `Meal` 계층적 구조 DB 스키마 설계 및 Alembic 마이그레이션 적용.
 
 ---
 

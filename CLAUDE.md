@@ -502,3 +502,12 @@ backend/.venv/Scripts/python.exe -m pytest scripts/agents/test_doc_audit.py -q
 - 출력: `app/build/generated/openapi/src/main/kotlin/com/gunnys/eundunhealth/api/generated/` (gitignored, `:app:openApiGenerate`로 자동 생성, `preBuild` 의존성으로 컴파일 전 항상 최신)
 - Repository는 generated client 사용 (`EundunApi.kt`·`ApiDtos.kt` 제거됨). `di/NetworkModule.kt` 에 5개 generated Api provider, `data/repository/*RepositoryImpl.kt` 에서 `bodyOrThrow()` 사용.
 - 라우터에 추가/변경 시 체크리스트: ① 라우터에 `operation_id="..."` 명시(Android 함수명과 일치) ② Query param은 `alias="..."`로 camelCase 노출 ③ `bash scripts/sync-openapi.sh` ④ 같은 PR에 `backend/openapi.json` 포함
+
+## Multi-AI 협업 (Claude ↔ Gemini)
+
+이 프로젝트는 Claude와 Gemini(Antigravity IDE)가 함께 교대로 작업하는 **Multi-AI Harness** 환경입니다.
+- **컨텍스트 공유 (Handoff)**: 작업을 인계할 때는 반드시 루트의 `AI_HANDOFF.md` 파일에 현재 상태, 다음 작업(TODO), 그리고 상대 AI(Gemini)에게 남기는 주의사항을 기록해야 합니다.
+- **작업 시작 전 스캔**: 작업을 시작할 때는 항상 `AI_HANDOFF.md`를 스캔하여 이전 작업자가 남긴 지시사항이나 컨텍스트가 있는지 확인하십시오.
+- **역할 분담**:
+  - **Claude**: 터미널, 빠른 CLI 작업, 반복적 스크립트 작성 등에 강점을 가집니다.
+  - **Gemini**: 복잡한 아키텍처 설계, 대규모 리팩토링, 코드 리뷰, IDE 통합 개발, 시각적 UI 작업에 주로 활용됩니다.

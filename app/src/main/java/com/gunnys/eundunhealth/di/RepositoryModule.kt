@@ -5,12 +5,14 @@ import com.gunnys.eundunhealth.data.auth.AuthRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.BadgeRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.GoalRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.HealthRepositoryImpl
+import com.gunnys.eundunhealth.data.repository.MealPlanRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.UserRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.WorkoutRepositoryImpl
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.BadgeRepository
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
+import com.gunnys.eundunhealth.domain.repository.MealPlanRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import dagger.Binds
@@ -37,6 +39,8 @@ abstract class RepositoryModule {
     @Binds abstract fun bindAuthRepo(impl: AuthRepositoryImpl): AuthRepository
 
     @Binds abstract fun bindGoalRepo(impl: GoalRepositoryImpl): GoalRepository
+
+    @Binds abstract fun bindMealPlanRepo(impl: MealPlanRepositoryImpl): MealPlanRepository
 
     companion object {
         @Provides

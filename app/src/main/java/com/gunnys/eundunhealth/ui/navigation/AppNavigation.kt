@@ -17,6 +17,7 @@ import com.gunnys.eundunhealth.ui.badge.BadgeScreen
 import com.gunnys.eundunhealth.ui.goal.GoalScreen
 import com.gunnys.eundunhealth.ui.history.HistoryScreen
 import com.gunnys.eundunhealth.ui.home.HomeScreen
+import com.gunnys.eundunhealth.ui.mealplan.MealPlanScreen
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
 import com.gunnys.eundunhealth.ui.profile.ProfileScreen
 import com.gunnys.eundunhealth.ui.splash.SplashScreen
@@ -74,6 +75,7 @@ fun AppNavigation(
                 onStatisticsClick = { navController.navigate(Screen.Statistics.route) },
                 onGoalClick = { navController.navigate(Screen.Goal.route) },
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
+                onMealPlanClick = { navController.navigate(Screen.MealPlan.route) },
                 onLogout = { authViewModel.logout() },
                 onRequestHealthPermissions = onRequestHealthPermissions,
             )
@@ -106,6 +108,9 @@ fun AppNavigation(
         }
         composable(Screen.Goal.route) {
             GoalScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.MealPlan.route) {
+            MealPlanScreen(onBack = { navController.popBackStack() })
         }
     }
 }

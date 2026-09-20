@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-09-02 — v0.2.0/34 Play 프로덕션 출시 완료(트랙 production 전환 + 태그 CD 실 e2e) + 실기기 골든패스 출시차단 결함 수정(INC-31) + Supabase 전량 폐기(프로젝트·KV·GitHub secret) + 링크 가드 범위 확대** (같은 날 앞서: PR #165 Entra 전환 v0.2.0 + 기술부채 T0~T7 + 하드닝 H1~H10 + Azure 정리 + 전수 점검 리팩토링) (이전: 2026-07-29 — RG 이관 `apps` → `rg-eundunhealth-prod-krc` 완결(이동 7 + 알림/AG/UAI 재생성 + RBAC 8 재부여 + LA shared key 갱신 + 구 RG 삭제; backend deploy·warm-baseline·reaper·알림 8/8 전부 green — ledger `logs/process-infra.md` 2026-07-29 entry) (이전: 2026-07-03 v0.1.19/33 Android CD 첫 실 e2e + 프로덕션 승격 + AZURE_CREDENTIALS 완전 제거[OIDC 전용화] / 2026-07-02 Play 프로덕션 정식 출시 + repo public 전환))
-> 작성 기준: 저장소 = **Google Play 프로덕션 = v0.2.0/34**(2026-09-02 태그 CD 로 프로덕션 트랙 직접 업로드, `status: completed` 100% 즉시 롤아웃 — run `33581936651`, 원장 자동 커밋 `45e4051`). 직전 프로덕션 v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인) = Android CD 첫 실 e2e(release.yml, 사용자 가시 동작 변화 없음). 이전 v0.1.18: 출시 재업로드(앱 동작 변화 없음=v0.1.17 빌드 동일) + versionCode 단조성 가드. 이전 v0.1.17: 공개 출시 전 7-도메인 전체 감사(Rule 8 inline 에러 배너[Onboarding·Home·Profile] + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 경계 테스트 2 + account_service 로그 구조화 + 문서 드리프트 정정) (이전: v0.1.16 출시 후 심층 감사 개선 A~E + Tier2/3 PR #126·#127 / v0.1.15 감사 LOW 후속 PR #123 / v0.1.14 출시 준비 종합 PR #122 / v0.1.13 코드베이스 리팩토링 #107~#112 / v0.1.12 HC 체성분 가져오기 제거·권한 회수·수동 단일화 / v0.1.11 Play Store 계정 삭제·완전성 + HC 권한 rationale(Android 14+ 무반응))
+> 작성일: 2026-05-25 / 최근 갱신: **2026-09-20 — v0.3.0 AI 식단 자동 생성 기능 (Azure DeepSeek-V3.2 MaaS) 적용 완료** (이전 갱신: 2026-09-02 — v0.2.0/34 Play 프로덕션 출시 완료(트랙 production 전환 + 태그 CD 실 e2e) + 실기기 골든패스 출시차단 결함 수정(INC-31) + Supabase 전량 폐기(프로젝트·KV·GitHub secret) + 링크 가드 범위 확대)
+> 작성 기준: 저장소 = **Google Play 프로덕션 = v0.3.0 (예정)**. (2026-09-20 기준 개발 완료 및 CD 대기 상태). 직전 프로덕션 v0.2.0/34.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.2.0` / `34`** — SSoT 루트 `version.properties` (bump: `scripts/bump-version.sh`, 이력: `docs/CHANGELOG.md`) |
+| versionName / versionCode | **`0.3.0` (예정)** — SSoT 루트 `version.properties` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.10 / 9.3.2 / 9.7.1** (KSP 2.3.11, Hilt 2.60.1) |
 | Compose BOM | 2026.06.01 |
@@ -61,6 +61,8 @@
 | `ENTRA_BACKEND_CLIENT_ID` | secretref | `entra-backend-client-id` |
 | `ENTRA_BACKEND_CLIENT_SECRET` | secretref | `entra-backend-client-secret` |
 | `SENTRY_DSN` | secretref | `sentry-dsn-backend` |
+| `DEEPSEEK_ENDPOINT` | secretref | `deepseek-endpoint` |
+| `DEEPSEEK_KEY` | secretref | `deepseek-key` |
 | `ENVIRONMENT` | value | `production` |
 | `CORS_ORIGINS` | value | `[]` (PR #123 — 와일드카드 차단; 네이티브 앱이라 웹 origin 불필요. live 검증: 임의 origin 에 `Access-Control-Allow-Origin` 미반환) |
 
@@ -74,9 +76,11 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 - `entra-backend-client-id` → KeyVault `entra-backend-client-id`
 - `entra-backend-client-secret` → KeyVault `entra-backend-client-secret`
 - `sentry-dsn-backend` → KeyVault `sentry-dsn-backend`
+- `deepseek-endpoint` → KeyVault `deepseek-endpoint`
+- `deepseek-key` → KeyVault `deepseek-key`
 - ~~`eundunhealthacrazurecrio-eundunhealthacr`~~ (ACR pull) — **제거**: registries 가 MI(`identity: system`) pull 로 전환.
 
-> backend.yml deploy job 직전 "Verify required **Key Vault** secrets exist" step 이 6개 KeyVault secret 존재를 사전 점검(CI SP = Key Vault Secrets User). 누락 시 fast-fail (INC-18 재발 방지 — 룰 6 KeyVault 적응).
+> backend.yml deploy job 직전 "Verify required **Key Vault** secrets exist" step 이 8개 KeyVault secret 존재를 사전 점검(CI SP = Key Vault Secrets User). 누락 시 fast-fail (INC-18 재발 방지 — 룰 6 KeyVault 적응).
 
 ### Key Vault (`kv-eundunhealth`)
 
@@ -86,7 +90,7 @@ Container App secret 은 `kv-eundunhealth` Key Vault 참조(값은 KeyVault 에�
 | SKU / 권한 모델 | Standard / **Azure RBAC** (legacy access policy 미사용) |
 | Soft-delete / Purge protection | 90일 / **활성**(생성 후 불변) |
 | Network | public + RBAC/MI 가 실질 차단막 (Container Apps Consumption 동적 IP → VNet 미통합) |
-| Secrets (6) | database-url, entra-tenant-id, entra-subdomain, entra-backend-client-id, entra-backend-client-secret, sentry-dsn-backend |
+| Secrets (8) | database-url, entra-tenant-id, entra-subdomain, entra-backend-client-id, entra-backend-client-secret, sentry-dsn-backend, deepseek-endpoint, deepseek-key |
 | RBAC | 운영자=Secrets Officer · Container App MI=Secrets User · CI SP=Secrets User · MI=AcrPull(ACR) |
 | Audit | `kv-audit` 진단설정 → Log Analytics `workspace-appsDOlM` (AuditEvent). **2026-09-02 생성** — 그 전까지 이 행은 문서에만 있었고 실제 진단설정은 0건이었다(§레거시 정리) |
 

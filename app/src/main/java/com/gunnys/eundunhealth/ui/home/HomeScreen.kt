@@ -56,6 +56,7 @@ fun HomeScreen(
     onStatisticsClick: () -> Unit = {},
     onGoalClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onMealPlanClick: () -> Unit = {},
     onLogout: () -> Unit,
     onRequestHealthPermissions: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -78,6 +79,7 @@ fun HomeScreen(
                         onStatisticsClick = onStatisticsClick,
                         onGoalClick = onGoalClick,
                         onBadgesClick = onBadgesClick,
+                        onMealPlanClick = onMealPlanClick,
                         onLogout = onLogout,
                     )
                 },

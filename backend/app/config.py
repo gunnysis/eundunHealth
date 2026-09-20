@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     environment: str = "production"
     cors_origins: list[str] = []  # 기본 차단 — 네이티브 앱은 CORS 비적용. 웹 표면 필요 시 CORS_ORIGINS 로 명시
 
+    # Azure AI Foundry MaaS (DeepSeek)
+    deepseek_endpoint: str
+    deepseek_key: str
+
     model_config = {"env_file": ".env"}
 
 

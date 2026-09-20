@@ -48,6 +48,35 @@
         "title": "CompletionRequest",
         "type": "object"
       },
+      "DailyMealPlan": {
+        "properties": {
+          "day": {
+            "description": "요일 (예: 월요일)",
+            "title": "Day",
+            "type": "string"
+          },
+          "isRestDay": {
+            "description": "휴식일 여부 (휴식일인 경우 가벼운 식단 구성)",
+            "title": "Isrestday",
+            "type": "boolean"
+          },
+          "meals": {
+            "description": "해당 일자의 식사 목록 (보통 2끼 구성)",
+            "items": {
+              "$ref": "#/components/schemas/MealInfo"
+            },
+            "title": "Meals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day",
+          "isRestDay",
+          "meals"
+        ],
+        "title": "DailyMealPlan",
+        "type": "object"
+      },
       "GoalRequest": {
         "description": "PUT /goals — goal_type별 1개. 동일 type 재등록 시 target_value 갱신.",
         "properties": {
@@ -107,6 +136,50 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "MealInfo": {
+        "properties": {
+          "calories": {
+            "description": "예상 칼로리 (kcal)",
+            "title": "Calories",
+            "type": "integer"
+          },
+          "carbsG": {
+            "description": "탄수화물 함량 (g)",
+            "title": "Carbsg",
+            "type": "integer"
+          },
+          "fatG": {
+            "description": "지방 함량 (g)",
+            "title": "Fatg",
+            "type": "integer"
+          },
+          "mealType": {
+            "description": "식사 구분 (예: 점심, 저녁, 운동 후 간식 등)",
+            "title": "Mealtype",
+            "type": "string"
+          },
+          "menuName": {
+            "description": "식단 메뉴 이름 (한국어, 한식 위주 권장)",
+            "title": "Menuname",
+            "type": "string"
+          },
+          "proteinG": {
+            "description": "단백질 함량 (g)",
+            "title": "Proteing",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mealType",
+          "menuName",
+          "calories",
+          "proteinG",
+          "carbsG",
+          "fatG"
+        ],
+        "title": "MealInfo",
         "type": "object"
       },
       "ProfileHistoryEntry": {
@@ -328,6 +401,29 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WeeklyMealPlanResponse": {
+        "properties": {
+          "summary": {
+            "description": "이번 주 식단 구성의 핵심 요약 및 조언 (1~2문장)",
+            "title": "Summary",
+            "type": "string"
+          },
+          "weeklyPlan": {
+            "description": "월요일부터 토요일까지의 주간 식단 리스트",
+            "items": {
+              "$ref": "#/components/schemas/DailyMealPlan"
+            },
+            "title": "Weeklyplan",
+            "type": "array"
+          }
+        },
+        "required": [
+          "weeklyPlan",
+          "summary"
+        ],
+        "title": "WeeklyMealPlanResponse",
         "type": "object"
       },
       "WeeklyPlanHistoryResponse": {
@@ -681,6 +777,60 @@
         "summary": "Health Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/meals/current": {
+      "get": {
+        "description": "이번 주의 식단(DB에 저장된 가장 최근 생성본)을 반환한다.",
+        "operationId": "get_current_meal_plan_meals_current_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyMealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Current Meal Plan",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
+    "/meals/generate": {
+      "post": {
+        "description": "사용자의 프로필 및 이번 주 운동 계획을 바탕으로 주간 맞춤형 식단을 자동 생성한다.",
+        "operationId": "generate_meal_plan_meals_generate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyMealPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Meal Plan",
+        "tags": [
+          "meals"
         ]
       }
     },
