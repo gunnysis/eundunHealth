@@ -112,6 +112,11 @@ async def request_id_middleware(
 # 글로벌 에러 핸들러
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+    if exc.status_code >= 500:
+        logger.exception("AppException (status_code=%s, code=%s): %s", exc.status_code, exc.code, exc.message)
+        if sentry_sdk.is_initialized():
+            sentry_sdk.capture_exception(exc)
+            
     return JSONResponse(
         status_code=exc.status_code,
         content={"code": exc.code, "message": exc.message},

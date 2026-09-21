@@ -86,7 +86,7 @@ class AzureMaaSMealClient(MealAIClient):
         """
         return prompt
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
     async def generate_meal_plan(
         self, profile_summary: str, target_macros: dict[str, typing.Any], workout_dates: list[str]
     ) -> WeeklyMealPlanResponse:

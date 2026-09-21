@@ -94,7 +94,8 @@ class MealPlanService:
                 )
                 self.db.add(new_item)
                 
-        await self.db.commit()
+        # UoW 패턴 준수: commit()은 라우터 계층(get_db 의존성)에서 일괄 처리되도록 위임합니다.
+        await self.db.flush()
 
     async def delete_all_by_user(self, user_id: str) -> None:
         """사용자의 모든 식단 계획을 삭제합니다."""

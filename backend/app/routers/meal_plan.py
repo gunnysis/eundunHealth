@@ -99,6 +99,8 @@ async def generate_meal_plan(
         
         return meal_plan
     except Exception as e:
+        if isinstance(e, AppException):
+            raise
         raise AppException(
             status_code=500,
             code="MEAL_GENERATE_FAILED",
