@@ -15,7 +15,7 @@ class UserProfile(Base):
     user_id: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     height_cm: Mapped[float] = mapped_column(Float, nullable=False)
     weight_kg: Mapped[float] = mapped_column(Float, nullable=False)
-    gender: Mapped[str] = mapped_column(String(10), nullable=False, server_default="unspecified")
+    gender: Mapped[str] = mapped_column(String(20), nullable=False, server_default="unspecified")
     body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     muscle_mass_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     rest_day: Mapped[int] = mapped_column(Integer, default=7, server_default="7")
