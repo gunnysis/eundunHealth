@@ -47,6 +47,12 @@ properties:
     - name: sentry-dsn-backend
       keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/sentry-dsn-backend
       identity: system
+    - name: deepseek-endpoint
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/deepseek-endpoint
+      identity: system
+    - name: deepseek-key
+      keyVaultUrl: https://kv-eundunhealth.vault.azure.net/secrets/deepseek-key
+      identity: system
   template:
     containers:
     - name: eundunhealth-api
@@ -68,6 +74,10 @@ properties:
         secretRef: entra-backend-client-secret
       - name: SENTRY_DSN
         secretRef: sentry-dsn-backend
+      - name: DEEPSEEK_ENDPOINT
+        secretRef: deepseek-endpoint
+      - name: DEEPSEEK_KEY
+        secretRef: deepseek-key
       - name: ENVIRONMENT
         value: production
       - name: CORS_ORIGINS
