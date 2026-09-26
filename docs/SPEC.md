@@ -5,7 +5,7 @@
 >
 > **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트, 브라우저 위임). IdP 는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계이며 현재 구현과 다르다** — 현행은 `docs/plans/2026-09-01-entra-external-id-migration-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) §5 참조.
 > 
-> **AI 식단 생성 (2026-09 통합):** 주간 식단 자동 생성 기능은 Azure AI Foundry MaaS(DeepSeek-V3.2)를 통해 구현 완료되었다 (v0.3.0). 프론트엔드는 Compose UI와 Hilt+Retrofit 통신을 사용하고, 백엔드는 FastAPI 서버 환경에서 pydantic JSON 검증 및 에러 분리 아키텍처를 채택했다. 상세 내용은 `docs/plans/2026-09-20-meal-plan-api-selection-design.md` 참조.
+> **AI 식단 생성 (2026-09 통합):** 주간 식단 자동 생성 기능은 Azure AI Foundry MaaS(DeepSeek-V3.2)를 통해 구현 완료되었다 (v0.3.0). 프론트엔드는 Compose UI와 Hilt+Retrofit 통신을 사용하고, 백엔드는 FastAPI 서버 환경에서 pydantic JSON 검증 및 에러 분리 아키텍처를 채택했다. 상세 내용은 `docs/plans/2026-09-20-meal-plan-api-selection-design.md`(→ `docs/plans/logs/backend.md` 2026-09-20 entry 로 흡수) 참조.
 
 ## 프로젝트 개요
 

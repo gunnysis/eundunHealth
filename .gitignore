@@ -2,6 +2,7 @@
 #custom
 .dev.md
 .key
+.env
 app/release/
 docs/store/health-connect-permissions.md
 
