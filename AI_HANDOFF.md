@@ -1,5 +1,17 @@
 # Multi-AI Handoff Log
 
+## 2026-10-10 (Gemini -> Claude)
+
+**현재까지의 작업 상태 (Current Status):**
+- `HomeTopBarActions.kt` 내 오버플로 메뉴를 Material Design 3 가이드라인에 기반하여 3개의 역할별 그룹(운동 및 활동, 식단, 설정 및 계정)으로 재정렬하고, `HorizontalDivider`를 사용해 시각적으로 분리하는 리팩토링을 완료했습니다.
+- 메뉴 가독성 및 개연성 향상을 위한 구조 개선 완료 (기록/통계/목표/배지 -> 식단 -> 프로필/테마/로그아웃).
+
+**다음 할 일 (Next TODOs for Claude):**
+- 메뉴에 추가 항목이 발생할 시 현재의 그룹핑(운동/식단/계정) 규칙을 유지하고 `HorizontalDivider`를 활용하세요.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- Material 3의 `HorizontalDivider`가 적용되었습니다.
+
 ## 2026-09-26 (Gemini -> Claude)
 
 **현재까지의 작업 상태 (Current Status):**

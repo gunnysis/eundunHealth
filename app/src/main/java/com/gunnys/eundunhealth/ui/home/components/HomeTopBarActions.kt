@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -52,39 +53,6 @@ internal fun HomeTopBarActions(
             onDismissRequest = { menuExpanded = false },
         ) {
             DropdownMenuItem(
-                text = { Text("프로필") },
-                onClick = {
-                    menuExpanded = false
-                    onProfileClick()
-                },
-                leadingIcon = { Icon(Icons.Default.Person, null) },
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        when (themeMode) {
-                            ThemeMode.SYSTEM -> "테마 (시스템)"
-                            ThemeMode.DARK -> "테마 (다크)"
-                            ThemeMode.LIGHT -> "테마 (라이트)"
-                        },
-                    )
-                },
-                onClick = {
-                    menuExpanded = false
-                    onCycleTheme()
-                },
-                leadingIcon = {
-                    Icon(
-                        when (themeMode) {
-                            ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
-                            ThemeMode.DARK -> Icons.Default.DarkMode
-                            ThemeMode.LIGHT -> Icons.Default.LightMode
-                        },
-                        null,
-                    )
-                },
-            )
-            DropdownMenuItem(
                 text = { Text("기록") },
                 onClick = {
                     menuExpanded = false
@@ -116,6 +84,9 @@ internal fun HomeTopBarActions(
                 },
                 leadingIcon = { Icon(Icons.Default.EmojiEvents, null) },
             )
+
+            HorizontalDivider()
+
             DropdownMenuItem(
                 text = { Text("주간 식단") },
                 onClick = {
@@ -123,6 +94,42 @@ internal fun HomeTopBarActions(
                     onMealPlanClick()
                 },
                 leadingIcon = { Icon(Icons.Default.Restaurant, null) },
+            )
+
+            HorizontalDivider()
+
+            DropdownMenuItem(
+                text = { Text("프로필") },
+                onClick = {
+                    menuExpanded = false
+                    onProfileClick()
+                },
+                leadingIcon = { Icon(Icons.Default.Person, null) },
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        when (themeMode) {
+                            ThemeMode.SYSTEM -> "테마 (시스템)"
+                            ThemeMode.DARK -> "테마 (다크)"
+                            ThemeMode.LIGHT -> "테마 (라이트)"
+                        },
+                    )
+                },
+                onClick = {
+                    menuExpanded = false
+                    onCycleTheme()
+                },
+                leadingIcon = {
+                    Icon(
+                        when (themeMode) {
+                            ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                            ThemeMode.DARK -> Icons.Default.DarkMode
+                            ThemeMode.LIGHT -> Icons.Default.LightMode
+                        },
+                        null,
+                    )
+                },
             )
             DropdownMenuItem(
                 text = { Text("로그아웃") },
