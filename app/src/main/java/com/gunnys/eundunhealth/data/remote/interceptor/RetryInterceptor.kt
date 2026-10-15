@@ -11,6 +11,10 @@ class RetryInterceptor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
+        // RFC 9110의 멱등 메서드만 자동 재시도한다. POST/PATCH를 재전송하면 서버가
+        // 첫 요청을 처리한 뒤 응답만 유실된 경우 중복 변경·유료 AI 호출이 발생한다.
+        if (request.method !in IDEMPOTENT_METHODS) return chain.proceed(request)
+
         var lastException: IOException? = null
 
         repeat(maxRetries) { attempt ->
@@ -30,5 +34,9 @@ class RetryInterceptor(
             }
         }
         throw lastException ?: IOException("Request failed after $maxRetries retries")
+    }
+
+    private companion object {
+        val IDEMPOTENT_METHODS = setOf("GET", "HEAD", "OPTIONS", "PUT", "DELETE")
     }
 }

@@ -4,9 +4,11 @@
 - GET/PUT /goals: 목표 upsert / 목록
 - PUT /profile + rest_day: 휴식일 변경
 """
+
 import pytest
 
 # === GET /profile/history ===
+
 
 @pytest.mark.asyncio
 async def test_profile_history_records_every_upsert(client):
@@ -45,6 +47,7 @@ async def test_profile_history_limit_query(client):
 
 
 # === GET/PUT /goals ===
+
 
 @pytest.mark.asyncio
 async def test_goals_empty_by_default(client):
@@ -96,6 +99,7 @@ async def test_goal_rejects_non_positive_value(client):
 
 # === PUT /profile + rest_day (§L) ===
 
+
 @pytest.mark.asyncio
 async def test_profile_rest_day_default_is_7(client):
     # rest_day 미지정 → 기본 7 (Sunday)
@@ -119,6 +123,7 @@ async def test_profile_rest_day_out_of_range_rejected(client):
 
 
 # === 배지 keys (§N) — VALID_BADGE_KEYS 확장 검증 ===
+
 
 @pytest.mark.asyncio
 async def test_award_v0_3_milestone_badge(client):

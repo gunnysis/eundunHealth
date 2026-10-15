@@ -113,6 +113,12 @@ fun MealPlanScreen(
                                     Text("AI 식단 조언", style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(state.plan.summary, style = MaterialTheme.typography.bodyMedium)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "AI가 생성한 참고용 정보이며 의료 조언이 아닙니다. 알레르기나 질환이 있으면 전문가와 확인하세요.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                             }
                         }

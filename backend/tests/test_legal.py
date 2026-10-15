@@ -1,4 +1,5 @@
 """법적 고지 공개 페이지(개인정보/계정삭제) — 라우트 + SSoT 드리프트 가드."""
+
 from pathlib import Path
 
 import pytest
@@ -59,6 +60,4 @@ def test_legal_docs_in_sync_with_ssot(filename):
     """
     src = (_DOCS_STORE / filename).read_text(encoding="utf-8")
     dst = (_BACKEND_LEGAL / filename).read_text(encoding="utf-8")
-    assert src == dst, (
-        f"{filename} 가 SSoT 와 어긋남 — `bash scripts/sync-legal-docs.sh` 실행 후 커밋하세요."
-    )
+    assert src == dst, f"{filename} 가 SSoT 와 어긋남 — `bash scripts/sync-legal-docs.sh` 실행 후 커밋하세요."

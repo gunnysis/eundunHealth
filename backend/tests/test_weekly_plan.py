@@ -79,14 +79,10 @@ async def test_creating_plan_for_same_week_overwrites(client):
     GetOrCreateWeeklyPlanUseCase 가 재생성으로 덮어써 그 주 내내 고착되는 것을 막는다
     (룰 12 / 2026-06-15 빈 운동계획 회귀). 새 행이 쌓이면 자가치유가 무력화된다.
     """
-    first = await client.post(
-        "/weekly-plan", json={"weekStart": "2026-05-04", "dayPlans": '[{"marker": "old"}]'}
-    )
+    first = await client.post("/weekly-plan", json={"weekStart": "2026-05-04", "dayPlans": '[{"marker": "old"}]'})
     assert first.status_code in (200, 201)
 
-    second = await client.post(
-        "/weekly-plan", json={"weekStart": "2026-05-04", "dayPlans": '[{"marker": "new"}]'}
-    )
+    second = await client.post("/weekly-plan", json={"weekStart": "2026-05-04", "dayPlans": '[{"marker": "new"}]'})
     assert second.status_code in (200, 201)
     assert second.json()["id"] == first.json()["id"]  # 새 행이 아니라 같은 행
 

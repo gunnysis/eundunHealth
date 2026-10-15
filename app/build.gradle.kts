@@ -1,4 +1,5 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import io.gitlab.arturbosch.detekt.Detekt
+import io.gitlab.arturbosch.detekt.DetektCreateBaselineTask
 import java.util.Properties
 
 val localProperties =
@@ -15,32 +16,14 @@ val versionProps =
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.sentry)
-    alias(libs.plugins.detekt)
     alias(libs.plugins.spotless)
     alias(libs.plugins.openapi.generator)
 }
-
-detekt {
-    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
-    buildUponDefaultConfig = true
-    parallel = true
-    autoCorrect = false
-    // baseline은 점진적 정리용 — CI·preflight가 실행하는 detektDebug가 baseline-debug.xml(추적)을 소비.
-    // 재생성: ./gradlew :app:detektBaselineDebug. baseline.xml(base)은 미사용이라 제거됨(design 2026-06-11 §8.2).
-    baseline = file("$rootDir/config/detekt/baseline.xml")
-}
-
-// AGP-integrated detekt task(detektDebug 등)는 android.sourceSets.main을 source로 가져가는데,
-// 거기에 `build/generated/openapi`를 srcDir로 추가한 영향으로 generated 코드까지 분석함.
-// source filter / exclude predicate / extension source.setFrom 모두 AGP variant task에 적용 안 됨.
-// 실용적 fallback: generated 코드의 issue를 baseline에 박제 (detekt 1.23.x 표준 패턴).
-// baseline은 `./gradlew :app:detektBaselineDebug`로 갱신.
 
 spotless {
     kotlin {
@@ -136,16 +119,15 @@ android {
     }
 }
 
-// AGP 의 android { kotlinOptions {} } 는 폐기 경로다(Kotlin 2.4 + AGP 9 에서 에러로 승격).
-// KGP 최상위 kotlin { compilerOptions {} } 가 대체이며, 문자열 대입은 불가 —
-// JvmTarget 열거형이어야 한다. 출처: https://kotlinlang.org/docs/gradle-compiler-options.html
-kotlin {
-    compilerOptions {
-        jvmTarget = JvmTarget.fromTarget("17")
+val detektCli =
+    configurations.create("detektCli") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        description = "Detekt CLI runtime for custom AGP-independent analysis tasks."
     }
-}
 
 dependencies {
+    detektCli("io.gitlab.arturbosch.detekt:detekt-cli:${libs.versions.detekt.get()}")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -257,8 +239,12 @@ val openApiGeneratedDir = layout.buildDirectory.dir("generated/openapi")
 openApiGenerate {
     generatorName.set("kotlin")
     library.set("jvm-retrofit2")
-    // Windows 절대 경로의 `C:` 가 URI scheme으로 오인되지 않도록 toURI() 사용.
-    inputSpec.set(rootProject.file("backend/openapi.json").toURI().toString())
+    // 생성기 클래스를 Gradle daemon Metaspace에 누적하지 않는다. 공식 plugin 문서상
+    // process 격리는 약간의 시작 비용 대신 반복/CI 빌드의 daemon 고갈을 방지한다.
+    workerIsolation.set("process")
+    // RegularFile Provider로 로컬 입력임을 명시해 Gradle이 내용 변경을 캐시 키로 추적한다.
+    // file:// URI는 OpenAPI plugin 7.25+에서 remoteInputSpec으로 분류되어 stale-cache 경고를 낸다.
+    inputSpec.set(rootProject.layout.projectDirectory.file("backend/openapi.json"))
     outputDir.set(openApiGeneratedDir.get().asFile.absolutePath)
     apiPackage.set("com.gunnys.eundunhealth.api.generated.api")
     modelPackage.set("com.gunnys.eundunhealth.api.generated.model")
@@ -279,12 +265,70 @@ openApiGenerate {
     )
 }
 
-// AGP 9.x의 `android.sourceset.disallowProvider=true`(기본) 때문에 Provider를 srcDir에 넣을 수 없음.
-// → config 시점에 즉시 resolve된 File을 전달. preBuild dependsOn openApiGenerate가 빌드 의존성 보장.
+// built-in Kotlin은 Kotlin 디렉터리를 AndroidSourceSet.kotlin에만 등록할 수 있다.
+// Provider는 AGP 기본 disallowProvider 때문에 직접 전달하지 않고 config 시점 File을 사용한다.
 android.sourceSets.named("main") {
-    java.srcDir(openApiGeneratedDir.get().asFile.resolve("src/main/kotlin"))
+    kotlin.directories.add(
+        openApiGeneratedDir
+            .get()
+            .asFile
+            .resolve("src/main/kotlin")
+            .absolutePath,
+    )
 }
 
 tasks.named("preBuild").configure {
     dependsOn(tasks.named("openApiGenerate"))
+}
+
+// detekt 1.23.8 플러그인은 AGP 레거시 variant API와 Gradle 10에서 제거될 ReportingExtension
+// API를 사용한다. 플러그인을 적용하지 않고 공식 custom-task 경로로 기존 CI 태스크 이름과
+// 타입 해석 품질을 보존한다. detekt 2.x는 2026-10-15 현재 alpha라 안정판 정책상 채택하지 않는다.
+val detektSource = files("src/main/java", openApiGeneratedDir.get().asFile.resolve("src/main/kotlin"))
+androidComponents.onVariants(androidComponents.selector().withBuildType("debug")) { variant ->
+    val analysisClasspath =
+        objects
+            .fileCollection()
+            .from(
+                configurations.named("${variant.name}CompileClasspath"),
+                androidComponents.sdkComponents.bootClasspath,
+            )
+    // 삭제되는 getJavaCompile()/Variant.getCompileClasspath() 대신 새 API의 제한된 configurator를
+    // 사용한다. JavaCompile classpath에는 AGP 생성 R jar와 compile variant 의존성이 포함되고,
+    // destination에는 BuildConfig/Hilt 등 Java 생성 타입이 있어 detekt 타입 해석 오탐을 막는다.
+    variant.configureJavaCompileTask { compileTask ->
+        // AGP가 callback 뒤에 classpath를 완성하므로 현재 값을 복사하지 않고 실행 시점에 읽는다.
+        analysisClasspath.from(provider { compileTask.classpath }, compileTask.destinationDirectory)
+    }
+    val javaCompileTaskName = variant.computeTaskName("compile", "JavaWithJavac")
+
+    tasks.register<Detekt>("detektDebug") {
+        group = "verification"
+        description = "Runs detekt with type resolution for the debug variant."
+        dependsOn(tasks.named("openApiGenerate"), javaCompileTaskName)
+        setSource(detektSource)
+        detektClasspath.setFrom(detektCli)
+        classpath.setFrom(analysisClasspath)
+        jvmTarget = "17"
+        config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+        baseline.set(file("$rootDir/config/detekt/baseline-debug.xml"))
+        buildUponDefaultConfig = true
+        // detekt 1.23.x type-resolution rules can race inside IntelliJ PSI on large Android sources.
+        parallel = false
+        autoCorrect = false
+    }
+
+    tasks.register<DetektCreateBaselineTask>("detektBaselineDebug") {
+        group = "verification"
+        description = "Creates the detekt baseline for the debug variant."
+        dependsOn(tasks.named("openApiGenerate"), javaCompileTaskName)
+        setSource(detektSource)
+        detektClasspath.setFrom(detektCli)
+        classpath.setFrom(analysisClasspath)
+        jvmTarget = "17"
+        config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+        baseline.set(file("$rootDir/config/detekt/baseline-debug.xml"))
+        buildUponDefaultConfig = true
+        parallel = false
+    }
 }

@@ -4,6 +4,14 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-15 — PyJWT 2.14.0 → 2.15.1 보안 업데이트
+
+- `pip-audit --strict`가 `PYSEC-2026-4141`/`CVE-2026-101918`과
+  `PYSEC-2026-4183`/`CVE-2026-102275`를 검출했다. 두 건의 최초 수정판은 2.15.0이며,
+  최신 패치 2.15.1로 고정했다.
+- Python 3.14에서 pytest 117건, mypy strict, Ruff, Bandit, pip-audit, Docker runtime smoke를 재검증했다.
+
+
 ### 2026-09-01 — 빌드 현대화 · dependabot 백로그 10건 → 0건 (WS2)
 
 - **PR**: [#164](https://github.com/gunnysis/eundunHealth/pull/164) (merged) + #163 #162 #160 #153 #151 머지 / #154~#158 흡수
@@ -45,11 +53,10 @@
   - **L4 — 연기 사유의 *종류*가 바뀌면 그 자체가 트리거다.** "외부 대기" → "우리 작업" 으로
     바뀐 순간(2026-07-10) 큐에 넣었어야 했다. `dependency-deferred.md` 는 재개 조건을 적지만
     **조건이 충족된 것을 알려주는 장치는 없다** — 보류 항목은 주기적으로 능동 점검할 것.
-- **잔여 (미해결, 후속 대상)**: `gradle.properties:6` 의 `android.builtInKotlin=false` 는
-  주석에 근거를 **"Hilt 2.59.2가 새 DSL 미지원"** 이라 적어 두었으나 현재 Hilt 는 **2.60.1**
-  이다(2026-09-01 실측). 즉 **적힌 근거가 낡았다** — 플래그를 지금 켤 수 있는지는 검증하지
-  않았다(끄고 빌드해봐야 확정). 근거가 소멸한 플래그를 그대로 두면 다음 사람이 "Hilt 때문"
-  이라는 틀린 전제로 판단한다.
+- **후속 해소 (2026-10-15)**: 원인은 Hilt가 아니라 detekt 1.23.8의 레거시 Android variant
+  연동이었다. app에서 detekt 플러그인 적용을 제거하고 `androidComponents` 기반 custom task로
+  대체해 `builtInKotlin`/`newDsl` opt-out을 제거했다. 상세는
+  `docs/plans/2026-10-15-agp10-build-modernization-design.md`를 참조한다.
 - **Files touched**: `gradle/libs.versions.toml`, `app/build.gradle.kts`, `backend/requirements*.txt`,
   `.github/workflows/*.yml`, `docs/ops/dependency-deferred.md`
 

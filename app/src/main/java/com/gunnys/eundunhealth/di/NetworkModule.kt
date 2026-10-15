@@ -46,7 +46,14 @@ object NetworkModule {
     fun provideBackendOkHttpClient(
         tokenHolder: AtomicReference<String?>,
         msalProvider: MsalClientProvider,
-    ): OkHttpClient = OkHttpClient.Builder()
+    ): OkHttpClient = backendOkHttpBuilder(tokenHolder, msalProvider)
+        .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build()
+
+    private fun backendOkHttpBuilder(
+        tokenHolder: AtomicReference<String?>,
+        msalProvider: MsalClientProvider,
+    ): OkHttpClient.Builder = OkHttpClient.Builder()
         .addInterceptor(RetryInterceptor())
         .addInterceptor { chain ->
             val token = tokenHolder.get()
@@ -71,8 +78,6 @@ object NetworkModule {
             },
         )
         .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .build()
 
     // Backend Retrofit은 generated API 5개가 공유한다. baseUrl/converter는 한 곳에서 관리.
     @Provides
@@ -106,7 +111,28 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideMealsApi(@Named("backend") retrofit: Retrofit): MealsApi = retrofit.create(MealsApi::class.java)
+    @Named("meals")
+    fun provideMealsOkHttpClient(
+        tokenHolder: AtomicReference<String?>,
+        msalProvider: MsalClientProvider,
+    ): OkHttpClient = backendOkHttpBuilder(tokenHolder, msalProvider)
+        // 생성형 모델 응답은 일반 CRUD보다 오래 걸린다. 서버 SDK timeout(60초)과
+        // bounded retry 1회를 수용하되 무한 대기는 막는다.
+        .readTimeout(130L, TimeUnit.SECONDS)
+        .build()
+
+    @Provides
+    @Singleton
+    @Named("meals")
+    fun provideMealsRetrofit(@Named("meals") client: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl(BuildConfig.BACKEND_BASE_URL)
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    @Provides
+    @Singleton
+    fun provideMealsApi(@Named("meals") retrofit: Retrofit): MealsApi = retrofit.create(MealsApi::class.java)
 
     @Provides
     @Singleton

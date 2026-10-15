@@ -154,11 +154,11 @@ git diff app/build/generated/openapi/   # 생성 코드 변동 확인
 
 ---
 
-## 3. detekt 1.23.8 → 2.0.0 — ⏸ **보류 (2026-09-02 등재)**
+## 3. detekt 1.23.8 → 2.0.0 — ✅ **AGP 차단 해소, 버전 업만 보류 (2026-10-15)**
 
-**dependabot PR 아님** — 이 항목은 의존성 번프 요청이 아니라 **AGP 내장 Kotlin 전환의 유일한
-차단 요인**으로서 등재한다. `gradle.properties` 의 `android.builtInKotlin=false` ·
-`android.newDsl=false` 가 이것 때문에 남아 있다.
+**dependabot PR 아님.** AGP 내장 Kotlin 전환 차단 항목이었으나 2026-10-15에 해소했다.
+두 opt-out은 제거했고, 1.23.8 플러그인의 Android 연동을 적용하지 않는 대신 공식 custom
+`Detekt` 태스크를 AGP `androidComponents` debug variant에 연결했다.
 
 ### 보류 사유
 
@@ -173,9 +173,9 @@ variant 태스크(`detektDebug`/`detektBaselineDebug`)가 **등록되지 않고*
 의존처 4곳: `.githooks/pre-commit:34` · `.github/workflows/android.yml` ·
 `scripts/preflight-release.sh:98` · `config/detekt/detekt.yml`(generated 제외 전제).
 
-### 재개 조건
+### 현재 상태와 재개 조건
 
-**detekt 2.0.0 정식(non-alpha) 릴리스.** AGP 9 새 DSL 지원은 2.0.0 마일스톤이다
+**detekt 2.0.0 정식(non-alpha) 릴리스 후 버전 업을 재검토한다.** AGP 9 새 DSL 지원은 2.0.0 마일스톤이다
 (issue [#8981](https://github.com/detekt/detekt/issues/8981), PR #9100 ·
 built-in Kotlin 은 [#8320](https://github.com/detekt/detekt/issues/8320)).
 
@@ -188,30 +188,29 @@ curl -s https://repo1.maven.org/maven2/io/gitlab/arturbosch/detekt/detekt-gradle
 
 프리릴리스는 채택하지 않는다(Kotlin 2.4.20-RC2 도 같은 이유로 보류 중).
 
-### 검증 절차 (재개 시)
+### 적용 결과와 검증 절차
 
-전환 자체는 **이미 검증해 두었다**. 필요한 변경은 다음 3개뿐이다.
+적용한 변경은 다음과 같다.
 
 ```bash
-# 1) 플러그인 제거 — AGP 9 는 Kotlin 이 내장이다
-#    build.gradle.kts + app/build.gradle.kts 에서 alias(libs.plugins.kotlin.android) 삭제
-# 2) generated OpenAPI 소스 등록을 Kotlin 소스셋으로
-#    app/build.gradle.kts:  java.srcDir(...)  →  kotlin.srcDir(...)
-#    (내장 Kotlin 은 java/kotlin 소스셋이 분리돼 java.srcDir 을 Kotlin 컴파일이 못 본다)
-# 3) gradle.properties 에서 builtInKotlin / newDsl 두 줄 삭제
+# 1) Kotlin Android 플러그인 제거 + builtInKotlin/newDsl opt-out 제거
+# 2) generated OpenAPI 소스를 AndroidSourceSet.kotlin에 등록
+# 3) detekt 플러그인은 app에 적용하지 않고 CLI runtime + custom Detekt task 등록
+# 4) classpath는 debugCompileClasspath + configureJavaCompileTask + SDK bootClasspath 사용
 
-./gradlew :app:tasks --all | grep detekt        # detektDebug 가 다시 보이는지 먼저 확인
+./gradlew :app:tasks --all -Pandroid.debug.obsoleteApi=true --warning-mode all
 ./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleRelease
 ```
 
-`detektDebug` 가 목록에 없으면 **거기서 멈춘다.** 그것이 이 항목의 전부다.
+2026-10-15 실측으로 legacy variant 및 Gradle 10 ReportingExtension 경고 0건,
+`detektDebug` 타입 해석 실행과 빌드가 통과했다. 상세 설계는
+`docs/plans/2026-10-15-agp10-build-modernization-design.md`를 따른다.
 
 ### 머지 패턴
 
-detekt 번프 + 위 3개 변경을 **한 PR** 로. baseline 재생성이 필요하면 수치 변화를 커밋
-메시지에 남긴다(baseline drift 는 이 저장소의 만성 CI 실패 원인).
+정식 2.x 전환 시 custom task 제거 가능 여부와 baseline 차이를 함께 검증한다. baseline 재생성이
+필요하면 수치 변화를 커밋 메시지에 남긴다(baseline drift 는 이 저장소의 만성 CI 실패 원인).
 
-> AGP 10 이 먼저 오면 플래그가 사라져 전환이 강제된다. 그 경우에도 절차는 위와 같다.
 > 상세: `docs/plans/2026-09-02-full-audit-refactor-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) §4
 
 ---

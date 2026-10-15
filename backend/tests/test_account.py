@@ -32,9 +32,7 @@ def _user_id_models() -> list:
 
 
 @pytest.mark.asyncio
-async def test_delete_account_purges_all_user_data(
-    client, db_engine, sample_profile, sample_plan, entra_delete_mock
-):
+async def test_delete_account_purges_all_user_data(client, db_engine, sample_profile, sample_plan, entra_delete_mock):
     """계정 삭제는 user_id 를 가진 *모든* 테이블에서 사용자 데이터를 제거해야 한다 (회귀 가드).
 
     과거 goals(v0.3)·user_profile_history(v0.3) 가 account_service 누락으로 계정 삭제 후에도
@@ -48,20 +46,15 @@ async def test_delete_account_purges_all_user_data(
     await client.post("/weekly-plan", json=sample_plan)  # weekly_plans
     await client.post("/badges/first_workout")  # badges
     await client.put("/goals", json={"goalType": "weight", "targetValue": 65.0})  # goals
-    
+
     # 식단 자동 생성 API는 외부 연동을 타므로, 직접 DB에 밀어넣는다
     import datetime
 
     from app.models.meal_plan import MealPlan
+
     session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
-        session.add(
-            MealPlan(
-                user_id=user_id,
-                week_start_date=datetime.date(2026, 5, 25),
-                summary="Test plan"
-            )
-        )
+        session.add(MealPlan(user_id=user_id, week_start_date=datetime.date(2026, 5, 25), summary="Test plan"))
         await session.commit()
 
     models = _user_id_models()
@@ -71,9 +64,7 @@ async def test_delete_account_purges_all_user_data(
 
     async def count(model: type) -> int:
         async with session_factory() as session:
-            return await session.scalar(
-                select(func.count()).select_from(model).where(model.user_id == user_id)
-            )
+            return await session.scalar(select(func.count()).select_from(model).where(model.user_id == user_id))
 
     # seed 가 실제로 들어갔는지 먼저 확인 — false-green(0→0 통과) 방지
     for model in models:
@@ -239,7 +230,7 @@ async def test_reap_orphaned_data_isolates_per_user_failure(db_engine):
     async with session_factory() as session:
         repo = ProfileRepository(session)
         assert await repo.get_by_user_id("orphan-a") is not None  # 실패 → 롤백·보존
-        assert await repo.get_by_user_id("orphan-b") is None      # 성공 → purge·commit
+        assert await repo.get_by_user_id("orphan-b") is None  # 성공 → purge·commit
 
 
 def test_reaper_script_imports_resolve_when_run_directly():
@@ -405,8 +396,9 @@ async def test_graph_token_failure_returns_502(client, sample_profile):
     with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
         instance = AsyncMock()
         instance.post = AsyncMock(
-            return_value=httpx.Response(401, json={"error": "invalid_client"},
-                                        request=httpx.Request("POST", "http://mock/token"))
+            return_value=httpx.Response(
+                401, json={"error": "invalid_client"}, request=httpx.Request("POST", "http://mock/token")
+            )
         )
         instance.__aenter__ = AsyncMock(return_value=instance)
         instance.__aexit__ = AsyncMock(return_value=False)
@@ -434,8 +426,9 @@ async def test_db_purge_failure_after_auth_deletion_is_logged_as_orphan(client, 
 
     await client.put("/profile", json=sample_profile)
 
-    with patch("app.services.account_service.httpx.AsyncClient") as mock_cls, patch.object(
-        AccountService, "_purge_app_data", side_effect=RuntimeError("db down")
+    with (
+        patch("app.services.account_service.httpx.AsyncClient") as mock_cls,
+        patch.object(AccountService, "_purge_app_data", side_effect=RuntimeError("db down")),
     ):
         instance = AsyncMock()
         instance.post = AsyncMock(return_value=graph_token_response())

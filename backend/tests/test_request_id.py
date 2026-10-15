@@ -2,6 +2,7 @@
 
 다중 replica(min/max 1/3) 환경에서 한 요청의 로그를 추적할 핸들을 제공한다.
 """
+
 import pytest
 
 

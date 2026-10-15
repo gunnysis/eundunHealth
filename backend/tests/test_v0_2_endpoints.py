@@ -3,6 +3,7 @@
 - GET /weekly-plan/previous: 직전 주 plan 또는 null
 - GET /weekly-plan/statistics: 최근 N주 완료율 + 스트릭
 """
+
 import json
 
 import pytest
@@ -36,6 +37,7 @@ def _plan_payload(week_start: str, completed_workout_days: int = 0, workout_days
 
 # === GET /weekly-plan/previous ===
 
+
 @pytest.mark.asyncio
 async def test_previous_returns_null_when_no_prior_plan(client):
     resp = await client.get("/weekly-plan/previous", params={"weekStart": "2026-05-25"})
@@ -64,6 +66,7 @@ async def test_previous_excludes_same_week(client):
 
 
 # === GET /weekly-plan/statistics ===
+
 
 @pytest.mark.asyncio
 async def test_statistics_empty_user(client):

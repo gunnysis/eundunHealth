@@ -14,6 +14,13 @@
 - **AI 연동 안정화**: OpenAI SDK의 베타 기능(`beta.parse`) 호환성 한계 극복을 위해 명시적인 JSON Mode(`{"type": "json_object"}`)와 `WeeklyMealPlanResponse.model_validate_json()` 수동 파싱 조합으로 견고한 에러 핸들링 및 재시도(Tenacity) 로직 완성.
 - **데이터 모델**: SQLAlchemy ORM을 통한 `MealPlan`, `DailyPlan`, `Meal` 계층적 구조 DB 스키마 설계 및 Alembic 마이그레이션 적용.
 
+### 🛡️ 배포 전 하드닝 (2026-10-15)
+- AI SDK 기본 재시도와 Tenacity의 중첩을 제거하고, SDK retry 1회·60초 timeout·출력 2,500 token 상한으로 비용과 지연을 제한했다.
+- Android 공통 retry는 멱등 HTTP 메서드만 재시도한다. `POST /meals/generate` 응답 유실 시 중복 유료 호출을 만들던 경로를 회귀 테스트로 차단했다.
+- 식단 API 전용 130초 read timeout, AI 응답의 7일/중복요일/문자열/영양값 경계 검증, 같은 주 재생성 unique-key 충돌 방지를 추가했다.
+- 프로필에 없는 나이 30세·활동계수 1.55와 고정 4:4:2 매크로를 개인 목표처럼 계산하던 가짜 정밀도를 제거했다. 화면과 프롬프트에 참고용·비의료 정보임을 명시했다.
+- **배포 보류**: 신체정보·운동일이 Azure AI Foundry 모델 처리로 전달된다. 모델 배포 지역·데이터 처리/보존 조건 확인과 개인정보 처리방침/Play 데이터 안전 고지 정합화 전에는 v0.3 배포하지 않는다.
+
 ---
 
 ## [v0.2.0] — 2026-09-01 — 인증 제공자 전환: Supabase Auth → Microsoft Entra External ID

@@ -3,6 +3,7 @@
 weekly_plan_service / statistics_service 가 각자 중복하던 json.loads + isinstance(list)
 가드를 한 모듈로 통합한 것의 계약을 박제한다(쓰기=400 거부, 읽기=관대한 None).
 """
+
 import pytest
 
 from app.exceptions import BadRequestException

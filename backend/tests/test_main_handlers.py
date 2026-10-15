@@ -1,4 +1,5 @@
 """전역 예외 핸들러 — 예기치 못한 예외가 사용자에게 새지 않는지 고정한다."""
+
 import httpx
 import pytest
 from fastapi import APIRouter
@@ -72,9 +73,7 @@ async def test_validation_error_with_non_serializable_ctx_still_returns_422():
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
             resp = await ac.post("/__validate__", json={"amount": "1.5"})
     finally:
-        app.router.routes = [
-            r for r in app.router.routes if getattr(r, "path", None) != "/__validate__"
-        ]
+        app.router.routes = [r for r in app.router.routes if getattr(r, "path", None) != "/__validate__"]
 
     assert resp.status_code == 422, f"500 으로 뒤집혔다: {resp.status_code} {resp.text[:200]}"
     assert "detail" in resp.json()

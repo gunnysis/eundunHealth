@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -239,7 +240,20 @@ private fun ProfileEditContent(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
+        ExerciseDataAttribution(modifier = Modifier.align(Alignment.CenterHorizontally))
+        Spacer(modifier = Modifier.height(4.dp))
         AppVersionLabel(modifier = Modifier.align(Alignment.CenterHorizontally))
+    }
+}
+
+@Composable
+private fun ExerciseDataAttribution(modifier: Modifier = Modifier) {
+    val uriHandler = LocalUriHandler.current
+    TextButton(
+        onClick = { uriHandler.openUri("https://oss.exercisedb.dev/docs") },
+        modifier = modifier,
+    ) {
+        Text("운동 데이터 제공: AscendAPI ExerciseDB", style = MaterialTheme.typography.bodySmall)
     }
 }
 

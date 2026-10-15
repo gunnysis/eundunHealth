@@ -161,9 +161,7 @@ async def test_missing_required_scope_returns_401(monkeypatch):
 @pytest.mark.asyncio
 async def test_unrelated_scope_returns_401(monkeypatch):
     monkeypatch.setattr(dependencies, "_get_jwk_client", lambda uri: _FakeJwk())
-    monkeypatch.setattr(
-        dependencies.jwt, "decode", lambda *a, **k: _valid_payload(scp="User.Read other.scope")
-    )
+    monkeypatch.setattr(dependencies.jwt, "decode", lambda *a, **k: _valid_payload(scp="User.Read other.scope"))
 
     with pytest.raises(HTTPException) as ei:
         await dependencies.get_current_user_id(_creds(), _settings())
@@ -174,9 +172,7 @@ async def test_unrelated_scope_returns_401(monkeypatch):
 async def test_scope_matched_among_multiple(monkeypatch):
     """scp 는 공백 구분 목록이다. 부분 문자열 매칭이 아니라 토큰 단위여야 한다."""
     monkeypatch.setattr(dependencies, "_get_jwk_client", lambda uri: _FakeJwk())
-    monkeypatch.setattr(
-        dependencies.jwt, "decode", lambda *a, **k: _valid_payload(scp="openid access_as_user")
-    )
+    monkeypatch.setattr(dependencies.jwt, "decode", lambda *a, **k: _valid_payload(scp="openid access_as_user"))
 
     assert await dependencies.get_current_user_id(_creds(), _settings())
 
@@ -185,9 +181,7 @@ async def test_scope_matched_among_multiple(monkeypatch):
 async def test_issuer_mismatch_returns_401(monkeypatch):
     """Entra 는 발급자 URL 패턴을 테넌트 간 공유한다 — 미검증 시 타 테넌트 토큰이 통과한다."""
     monkeypatch.setattr(dependencies, "_get_jwk_client", lambda uri: _FakeJwk())
-    monkeypatch.setattr(
-        dependencies.jwt, "decode", lambda *a, **k: _raise(InvalidIssuerError("wrong issuer"))
-    )
+    monkeypatch.setattr(dependencies.jwt, "decode", lambda *a, **k: _raise(InvalidIssuerError("wrong issuer")))
 
     with pytest.raises(HTTPException) as ei:
         await dependencies.get_current_user_id(_creds(), _settings())
@@ -197,9 +191,7 @@ async def test_issuer_mismatch_returns_401(monkeypatch):
 @pytest.mark.asyncio
 async def test_audience_mismatch_returns_401(monkeypatch):
     monkeypatch.setattr(dependencies, "_get_jwk_client", lambda uri: _FakeJwk())
-    monkeypatch.setattr(
-        dependencies.jwt, "decode", lambda *a, **k: _raise(InvalidAudienceError("wrong aud"))
-    )
+    monkeypatch.setattr(dependencies.jwt, "decode", lambda *a, **k: _raise(InvalidAudienceError("wrong aud")))
 
     with pytest.raises(HTTPException) as ei:
         await dependencies.get_current_user_id(_creds(), _settings())
@@ -218,9 +210,7 @@ async def test_invalid_token_returns_401(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_jwks_client_error_returns_503_not_401(monkeypatch):
-    monkeypatch.setattr(
-        dependencies, "_get_jwk_client", lambda uri: _FakeJwk(PyJWKClientError("jwks down"))
-    )
+    monkeypatch.setattr(dependencies, "_get_jwk_client", lambda uri: _FakeJwk(PyJWKClientError("jwks down")))
 
     with pytest.raises(HTTPException) as ei:
         await dependencies.get_current_user_id(_creds(), _settings())
@@ -341,9 +331,7 @@ def test_discovery_http_error_becomes_jwk_client_error(monkeypatch, real_get_oid
 
 def test_discovery_missing_key_becomes_jwk_client_error(monkeypatch, real_get_oidc_config):
     """스펙에 없는 문서(키 누락)도 인증 서버 문제로 다룬다 — KeyError 로 500 이 되면 안 된다."""
-    monkeypatch.setattr(
-        dependencies.httpx, "get", lambda url, timeout: _FakeResponse({"issuer": ISSUER})
-    )
+    monkeypatch.setattr(dependencies.httpx, "get", lambda url, timeout: _FakeResponse({"issuer": ISSUER}))
 
     with pytest.raises(PyJWKClientError):
         real_get_oidc_config(SUBDOMAIN)

@@ -17,7 +17,7 @@ tags: [TBD]
 
 **Architecture (요약):** (핵심 패턴 한 문단)
 
-**Tech Stack:** Python 3.12 / Kotlin 2.2.10 / ...
+**Tech Stack:** Python 3.14 / Kotlin 2.4.10 / ...
 
 **참고:**
 - Design: `docs/plans/YYYY-MM-DD-{topic}-design.md`

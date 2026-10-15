@@ -3,7 +3,6 @@ package com.gunnys.eundunhealth.data.remote.exercisedb
 import com.google.gson.Gson
 import com.gunnys.eundunhealth.domain.model.ExerciseType
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -48,9 +47,9 @@ class ExerciseDtoTest {
         val response = gson.fromJson(ossFixture, ExerciseListResponse::class.java)
 
         assertTrue(response.success)
-        assertNotNull(response.meta)
-        assertEquals(191, response.meta!!.total)
-        assertEquals("11wrviz", response.meta!!.nextCursor)
+        val meta = requireNotNull(response.meta)
+        assertEquals(191, meta.total)
+        assertEquals("11wrviz", meta.nextCursor)
         assertEquals(1, response.data.size)
     }
 
