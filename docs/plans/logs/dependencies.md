@@ -11,7 +11,6 @@
   최신 패치 2.15.1로 고정했다.
 - Python 3.14에서 pytest 117건, mypy strict, Ruff, Bandit, pip-audit, Docker runtime smoke를 재검증했다.
 
-
 ### 2026-09-01 — 빌드 현대화 · dependabot 백로그 10건 → 0건 (WS2)
 
 - **PR**: [#164](https://github.com/gunnysis/eundunHealth/pull/164) (merged) + #163 #162 #160 #153 #151 머지 / #154~#158 흡수
