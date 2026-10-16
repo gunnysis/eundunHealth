@@ -842,6 +842,19 @@
       "post": {
         "description": "사용자의 프로필 및 이번 주 운동 계획을 바탕으로 주간 맞춤형 식단을 자동 생성한다.",
         "operationId": "generate_meal_plan_meals_generate_post",
+        "parameters": [
+          {
+            "description": "사용자가 개인 신체정보의 Azure AI Foundry 처리에 명시적으로 동의했는지 여부",
+            "in": "header",
+            "name": "X-AI-Data-Processing-Consent",
+            "required": true,
+            "schema": {
+              "description": "사용자가 개인 신체정보의 Azure AI Foundry 처리에 명시적으로 동의했는지 여부",
+              "title": "X-Ai-Data-Processing-Consent",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -852,6 +865,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

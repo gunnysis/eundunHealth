@@ -4,6 +4,14 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-16 — OpenAI Python SDK 재현성 고정
+
+- `openai>=1.40.0` 범위 지정 때문에 동일 커밋의 새 Docker 빌드가 그날의 최신 SDK를
+  선택하던 비결정성을 제거했다. 배포 전 전체 게이트와 컨테이너 런타임에서 검증한
+  `openai==3.16.2`로 고정했다.
+- SDK 공식 동작에 맞춰 자동 retry는 한 계층(`max_retries=1`)만 유지하고, 60초 요청
+  timeout의 최대 2회 시도를 Android 식단 전용 130초 read timeout 안에 수용한다.
+
 ### 2026-10-15 — PyJWT 2.14.0 → 2.15.1 보안 업데이트
 
 - `pip-audit --strict`가 `PYSEC-2026-4141`/`CVE-2026-101918`과

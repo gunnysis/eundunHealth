@@ -1,8 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import Settings, get_settings
 from app.database import get_db
 from app.dependencies import get_current_user_id
 from app.exceptions import AppException, NotFoundException
@@ -19,8 +20,29 @@ router = APIRouter(prefix="/meals", tags=["meals"])
 async def generate_meal_plan(
     user_id: Annotated[str, Depends(get_current_user_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    ai_data_processing_consent: Annotated[
+        bool,
+        Header(
+            alias="X-AI-Data-Processing-Consent",
+            description="사용자가 개인 신체정보의 Azure AI Foundry 처리에 명시적으로 동의했는지 여부",
+        ),
+    ],
 ) -> WeeklyMealPlanResponse:
     """사용자의 프로필 및 이번 주 운동 계획을 바탕으로 주간 맞춤형 식단을 자동 생성한다."""
+    if not ai_data_processing_consent:
+        raise AppException(
+            status_code=400,
+            code="AI_DATA_PROCESSING_CONSENT_REQUIRED",
+            message="AI 식단 생성을 위해 데이터 처리 동의가 필요합니다.",
+        )
+    if not settings.meal_ai_enabled:
+        raise AppException(
+            status_code=503,
+            code="MEAL_AI_DISABLED",
+            message="데이터 처리 지역 검토가 완료될 때까지 식단 자동 생성을 일시 중단했습니다.",
+        )
+
     profile_service = ProfileService(db)
     weekly_plan_service = WeeklyPlanService(db)
 

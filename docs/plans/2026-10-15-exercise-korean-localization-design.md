@@ -4,7 +4,7 @@ status: in-progress
 pr: null
 related_inc: null
 supersedes: null
-target_version: Android 0.3.0 (35)
+target_version: Android 0.3.1 (36)
 ledger_topic: android
 tags: [android, localization, exercisedb, cost, reliability]
 ---
@@ -13,7 +13,7 @@ tags: [android, localization, exercisedb, cost, reliability]
 
 - **작성일**: 2026-10-15
 - **상태**: 구현·검증 중. 커밋/PR 병합 후 Android ledger로 흡수한다.
-- **대상 버전**: Android 0.3.0 / versionCode 35
+- **대상 버전**: Android 0.3.1 / versionCode 36
 - **현재 운영 전제**: 2026-10-15 현재 사용자 제공 정보상 무료·비상업 앱이다. 이는 영구 정책이 아니며 운영 방식은 추후 변경될 수 있다.
 
 ## 1. 목표와 범위

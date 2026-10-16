@@ -24,5 +24,6 @@ sentry-sdk[fastapi]==2.69.2
 # /account-deletion (Play Store registration URLs). Only our own docs/store/*.md is
 # rendered (never user input), so no injection surface. See routers/legal.py.
 markdown==3.10.3
-# AI Client for Azure MaaS
-openai>=1.40.0
+# AI client for Azure MaaS. Pin exactly so retry/timeout behavior and Docker
+# rebuilds cannot change when a new SDK version is published.
+openai==3.16.2

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,6 +51,37 @@ fun MealPlanScreen(
     viewModel: MealPlanViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showAiDataConsent by rememberSaveable { mutableStateOf(false) }
+
+    if (showAiDataConsent) {
+        AlertDialog(
+            onDismissRequest = { showAiDataConsent = false },
+            title = { Text("AI 식단 데이터 처리 동의") },
+            text = {
+                Text(
+                    "맞춤형 식단 생성을 위해 성별, 키, 몸무게, 체지방률, 골격근량과 이번 주 운동일을 " +
+                        "Microsoft Azure AI Foundry(DeepSeek)에 암호화해 전송합니다. Global Standard " +
+                        "서비스 특성상 한국 외 Azure 리전에서 처리될 수 있습니다. 이 정보는 식단 생성 " +
+                        "목적으로만 사용되며 AI 모델 학습에는 사용되지 않습니다.",
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showAiDataConsent = false
+                        viewModel.generatePlan()
+                    },
+                ) {
+                    Text("동의하고 생성")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAiDataConsent = false }) {
+                    Text("취소")
+                }
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -87,7 +120,7 @@ fun MealPlanScreen(
                             textAlign = TextAlign.Center,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.generatePlan() }) {
+                        Button(onClick = { showAiDataConsent = true }) {
                             Text("식단 자동 생성하기")
                         }
                     }

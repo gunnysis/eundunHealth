@@ -6,11 +6,11 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.3.0-blue)
-![versionCode](https://img.shields.io/badge/versionCode-35-blue)
+![versionName](https://img.shields.io/badge/versionName-0.3.1-blue)
+![versionCode](https://img.shields.io/badge/versionCode-36-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB)
 ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
 
 ---

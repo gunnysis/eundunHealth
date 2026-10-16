@@ -4,7 +4,7 @@
 
 ---
 
-## [v0.3.0] — Unreleased : AI 식단 자동 생성 기능 통합
+## [v0.3.1] — Unreleased : 운동 한국어 현지화 및 AI 식단 배포 전 하드닝
 
 > **주요 기능 추가.** 사용자의 체격 조건과 목표를 바탕으로 "Azure AI Foundry MaaS (DeepSeek-V3.2)" 모델을 활용해 주간 식단을 자동 생성하는 기능을 구현했습니다.
 
@@ -14,12 +14,13 @@
 - **AI 연동 안정화**: OpenAI SDK의 베타 기능(`beta.parse`) 호환성 한계 극복을 위해 명시적인 JSON Mode(`{"type": "json_object"}`)와 `WeeklyMealPlanResponse.model_validate_json()` 수동 파싱 조합으로 견고한 에러 핸들링 및 재시도(Tenacity) 로직 완성.
 - **데이터 모델**: SQLAlchemy ORM을 통한 `MealPlan`, `DailyPlan`, `Meal` 계층적 구조 DB 스키마 설계 및 Alembic 마이그레이션 적용.
 
-### 🛡️ 배포 전 하드닝 (2026-10-15)
+### 🛡️ 배포 전 하드닝 (2026-10-15~16)
 - AI SDK 기본 재시도와 Tenacity의 중첩을 제거하고, SDK retry 1회·60초 timeout·출력 2,500 token 상한으로 비용과 지연을 제한했다.
 - Android 공통 retry는 멱등 HTTP 메서드만 재시도한다. `POST /meals/generate` 응답 유실 시 중복 유료 호출을 만들던 경로를 회귀 테스트로 차단했다.
 - 식단 API 전용 130초 read timeout, AI 응답의 7일/중복요일/문자열/영양값 경계 검증, 같은 주 재생성 unique-key 충돌 방지를 추가했다.
 - 프로필에 없는 나이 30세·활동계수 1.55와 고정 4:4:2 매크로를 개인 목표처럼 계산하던 가짜 정밀도를 제거했다. 화면과 프롬프트에 참고용·비의료 정보임을 명시했다.
-- **배포 보류**: 신체정보·운동일이 Azure AI Foundry 모델 처리로 전달된다. 모델 배포 지역·데이터 처리/보존 조건 확인과 개인정보 처리방침/Play 데이터 안전 고지 정합화 전에는 v0.3 배포하지 않는다.
+- **AI 개인정보 처리 정합화**: 개인화 기획을 유지한다. 식단 생성 직전에 성별·키·몸무게·체지방률·골격근량·운동일의 Azure AI Foundry `GlobalStandard` 국외 처리 가능성을 앱 안에서 고지하고 “동의하고 생성”을 요구한다. backend도 필수 동의 헤더가 없는 구버전·우회 요청을 거부한다. 개인정보 처리방침·삭제 문서·Play Data safety runbook을 같은 사실로 동기화했다.
+- **배포 안전화**: backend required-reviewer environment/OIDC, target revision 검증, SHA rollback, Play production 10% staged rollout을 구현했다. ACR admin user를 비활성화하고 월 70,000 Azure budget(80%·100% 알림)을 구성했다.
 
 ---
 

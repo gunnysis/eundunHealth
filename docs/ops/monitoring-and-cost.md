@@ -90,39 +90,22 @@ az acr manifest delete --name eundunhealthacr --image eundunhealth-api@sha256:<d
 > az acr config retention update --registry eundunhealthacr --type UntaggedManifests --days 30 --status enabled
 > ```
 
-## 3. Azure 비용 알림 (월 예산 70,000원)
+## 3. Azure 비용 알림 (구성 완료)
 
-```bash
-# 구독 ID
-SUB_ID=$(az account show --query id -o tsv)
+2026-10-16 Microsoft Cost Management REST API로 subscription budget을 생성하고 GET으로 재검증했다.
 
-# 월 70,000원 예산 + 80% / 100% 알림
-az consumption budget create \
-  --amount 70000 \
-  --budget-name eundunhealth-budget \
-  --category Cost \
-  --time-grain Monthly \
-  --start-date "$(date +%Y-%m-01)" \
-  --end-date "$(date -d '+12 months' +%Y-%m-01)" \
-  --notifications "{
-    'Actual_GreaterThan_80_Percent': {
-      'enabled': true,
-      'operator': 'GreaterThan',
-      'threshold': 80,
-      'contactEmails': ['qkr133456@gmail.com'],
-      'notificationLanguage': 'ko-kr'
-    },
-    'Actual_GreaterThan_100_Percent': {
-      'enabled': true,
-      'operator': 'GreaterThan',
-      'threshold': 100,
-      'contactEmails': ['qkr133456@gmail.com'],
-      'notificationLanguage': 'ko-kr'
-    }
-  }"
-```
+| 항목 | 값 |
+|---|---|
+| 이름 | `eundunhealth-monthly` |
+| 금액 / 주기 | 70,000 / Monthly (구독 청구 통화 기준) |
+| 기간 | 2026-10-01 ~ 2036-10-01 |
+| 실제 비용 알림 | 80%, 100% (`GreaterThan`) |
+| 수신자 | `qkr133456@gmail.com` |
+| 언어 | `ko-kr` |
 
-> Azure Portal → Cost Management + Billing → Budgets에서 GUI로도 동일 작업 가능.
+`az consumption budget` 명령 그룹은 Preview이고 현재 CLI의 create 인자는 notification 설정을
+지원하지 않아, 공식 `Microsoft.CostManagement/budgets` REST API `2026-06-01`을 사용했다.
+운영 확인 경로는 Azure Portal → Cost Management + Billing → Budgets이다.
 
 ## 4. 예상 비용 (참고)
 
@@ -135,7 +118,9 @@ az consumption budget create \
 | Azure Monitor Alerts (metric 4개) | ~550-700원 |
 | **합계** | **~43,700원** |
 
-70,000원 budget 알림은 약 1.6배 buffer (cold start 제거로 Container Apps warm 단가 ~6,000원 반영). Monitor Alert 비용 = metric alert 4개 × ~$0.10/월. Activity Log alert 4개는 무료.
+70,000원 budget은 약 1.6배 buffer (cold start 제거로 Container Apps warm 단가 ~6,000원 반영)다.
+Monitor Alert 비용 = metric alert
+4개 × ~$0.10/월. Activity Log alert 4개는 무료.
 
 ## 5. 운영 점검 체크리스트 (월 1회)
 
@@ -143,7 +128,7 @@ az consumption budget create \
 - [ ] `az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api`로 이미지 수 확인 (30개 미만)
 - [ ] Container App revision 수 정리: `az containerapp revision list --name eundunhealth-api -o table` → 활성 외 inactive revision 정리
 - [ ] PostgreSQL slow query 확인: Azure Portal → Insights
-- [ ] 월간 비용 actual vs budget 비교
+- [ ] `eundunhealth-monthly` 월간 actual vs 70,000 budget 비교, 80%·100% 알림 수신 확인
 - [ ] Azure Monitor alert 확인: `az monitor metrics alert list -g rg-eundunhealth-prod-krc -o table` + `az monitor activity-log alert list -g rg-eundunhealth-prod-krc -o table` (8개 enabled)
 - [x] ~~(분기별) GitHub Actions `AZURE_CREDENTIALS` service principal 만료 점검~~ — **소멸(2026-07-03)**: OIDC 연합 전환(PR #141/#142) + `AZURE_CREDENTIALS` 완전 제거(GitHub secret + Entra 앱 비밀번호)로 만료되는 장수명 secret 없음. §6.7 참조.
 

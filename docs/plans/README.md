@@ -5,12 +5,13 @@
 > 컨벤션: 본 README 의 "워크플로" 섹션 + memory `plans-folder-archive-preference.md` + `design-plan-docs-convention.md`.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
-## 활성 작업 (페어 파일, 2)
+## 활성 작업 (페어 파일, 3)
 
-### 진행 중 (2)
+### 진행 중 (3)
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
+| 2026-10-16 | production-deployment-hardening | design + plan | in-progress | deployment, azure, github-actions, play, rollback, privacy, reliability |
 | 2026-10-15 | agp10-build-modernization | design | in-progress | android, agp, gradle, kotlin, detekt, cost |
 | 2026-10-15 | exercise-korean-localization | design | in-progress | android, localization, exercisedb, cost, reliability |
 
@@ -18,7 +19,7 @@
 
 - [Android](logs/android.md) — recent 0, older 21
 - [Backend](logs/backend.md) — recent 1, older 4
-- [Dependencies](logs/dependencies.md) — recent 2, older 6
+- [Dependencies](logs/dependencies.md) — recent 3, older 6
 - [Process & Infra](logs/process-infra.md) — recent 4, older 22
 
 ## 워크플로

@@ -5,14 +5,9 @@
 # - 업로드 성공 시 scripts/update-upload-ledger.sh 가 원장 갱신 커밋 push (INC-2026-06-19-28 사람 의존 갭 해소, D6)
 # - 실패 시 Play 무영향, 수동 업로드 경로는 폴백으로 유지.
 #
-# 트랙 = production (2026-09-02 변경, 종전 internal + Console 수동 승격).
-#   근거: 프로덕션에 LIVE 인 v0.1.19/33 은 Supabase 인증 빌드인데 백엔드는 Entra 전용으로
-#   전환됐다 — 즉 **지금 스토어에서 받는 앱은 이미 로그인이 불가능**하다. 내부 트랙에 먼저
-#   올리는 단계적 노출은 "정상 버전을 조심스럽게 내보내는" 상황을 전제하는데, 여기서는
-#   프로덕션이 이미 깨져 있어 승격이 늦어질수록 손해다. 실사용자 0명(룰 5 전환 근거와 동일
-#   전제)이라 롤아웃 리스크도 없다.
-#   되돌리려면 tracks 를 internal 로 되돌리는 것으로 부족하다 — Play 프로덕션은 이전 버전으로
-#   내릴 수 없고 "출시 중단(halt rollout)" 또는 상위 versionCode 재업로드만 가능하다.
+# 트랙 = production, 최초 노출 = 10% 단계적 출시.
+# Play 프로덕션은 이전 versionCode로 내릴 수 없으므로, 장애 시 먼저 rollout을 중단하고
+# 수정한 상위 versionCode를 다시 배포한다. 100% 확대는 운영 지표 확인 후 Console에서 수행한다.
 name: Release (Play production)
 
 on:
@@ -104,9 +99,8 @@ jobs:
           packageName: com.gunnys.eundunhealth
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
           tracks: production   # 'track'(단수) 은 v1.1.5 에서 deprecated — 실행 로그 경고로 확인(2026-07-03)
-          # completed = 100% 즉시 롤아웃. 단계적 롤아웃을 원하면 status: inProgress + userFraction.
-          # 여기서는 현재 프로덕션이 이미 깨져 있어 부분 노출이 의미가 없다(위 헤더 근거).
-          status: completed
+          status: inProgress
+          userFraction: 0.1
           mappingFile: app/build/outputs/mapping/release/mapping.txt
 
       - name: 원장 자동 갱신 (룰 13 — 업로드 성공 직후)

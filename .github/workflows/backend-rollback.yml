@@ -1,0 +1,135 @@
+name: Backend production rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: '복구할 ACR 이미지 태그 (배포 커밋 SHA 7자리)'
+        required: true
+        type: string
+      confirmation:
+        description: 'ROLLBACK을 정확히 입력'
+        required: true
+        type: string
+      reason:
+        description: '롤백 사유/인시던트 번호'
+        required: true
+        type: string
+
+concurrency:
+  group: backend-production
+  cancel-in-progress: false
+
+env:
+  ACR_NAME: eundunhealthacr
+  CONTAINER_APP_NAME: eundunhealth-api
+  REAPER_JOB_NAME: eundunhealth-reaper
+  RESOURCE_GROUP: rg-eundunhealth-prod-krc
+  IMAGE_NAME: eundunhealth-api
+
+jobs:
+  rollback:
+    name: Restore immutable image
+    runs-on: ubuntu-latest
+    environment:
+      name: backend-production
+      url: https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
+      INPUT_CONFIRMATION: ${{ inputs.confirmation }}
+      INPUT_REASON: ${{ inputs.reason }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate destructive-operation guard
+        shell: bash
+        run: |
+          if [ "$INPUT_CONFIRMATION" != "ROLLBACK" ]; then
+            echo "::error::confirmation에 ROLLBACK을 정확히 입력해야 합니다."
+            exit 1
+          fi
+          if [[ ! "$INPUT_IMAGE_TAG" =~ ^[0-9a-f]{7}$ ]]; then
+            echo "::error::image_tag는 CI가 생성한 소문자 7자리 Git SHA 태그여야 합니다."
+            exit 1
+          fi
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve current and target images
+        shell: bash
+        run: |
+          TARGET_IMAGE="${ACR_NAME}.azurecr.io/${IMAGE_NAME}:${INPUT_IMAGE_TAG}"
+          az acr repository show \
+            --name "$ACR_NAME" --image "${IMAGE_NAME}:${INPUT_IMAGE_TAG}" \
+            --output none
+          CURRENT_IMAGE=$(az containerapp show \
+            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "properties.template.containers[0].image" --output tsv)
+          echo "TARGET_IMAGE=$TARGET_IMAGE" >> "$GITHUB_ENV"
+          echo "CURRENT_IMAGE=$CURRENT_IMAGE" >> "$GITHUB_ENV"
+          echo "Rollback target exists: $TARGET_IMAGE"
+
+      - name: Restore Container App
+        working-directory: backend
+        shell: bash
+        run: |
+          SUB_ID=$(az account show --query id --output tsv)
+          sed -e "s|__IMAGE__|${TARGET_IMAGE}|g" -e "s|__SUBSCRIPTION_ID__|${SUB_ID}|g" \
+            containerapp.yaml > /tmp/containerapp.rollback.yaml
+          az containerapp update \
+            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --yaml /tmp/containerapp.rollback.yaml
+
+      - name: Verify restored revision and public endpoints
+        run: |
+          python scripts/verify_containerapp_deployment.py \
+            --resource-group "$RESOURCE_GROUP" \
+            --app "$CONTAINER_APP_NAME" \
+            --expected-image "$TARGET_IMAGE" \
+            --timeout-seconds 240
+
+      - name: Restore reaper Job to the same image
+        working-directory: backend
+        shell: bash
+        run: |
+          SUB_ID=$(az account show --query id --output tsv)
+          sed -e "s|__IMAGE__|${TARGET_IMAGE}|g" -e "s|__SUBSCRIPTION_ID__|${SUB_ID}|g" \
+            reaper-job.yaml > /tmp/reaper-job.rollback.yaml
+          az containerapp job update \
+            --name "$REAPER_JOB_NAME" --resource-group "$RESOURCE_GROUP" \
+            --yaml /tmp/reaper-job.rollback.yaml --output none
+          JOB_IMAGE=$(az containerapp job show \
+            --name "$REAPER_JOB_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "properties.template.containers[0].image" --output tsv)
+          test "$JOB_IMAGE" = "$TARGET_IMAGE"
+
+      - name: Write rollback summary
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo "## Backend rollback completed"
+            echo ""
+            echo "- From: \`$CURRENT_IMAGE\`"
+            echo "- To: \`$TARGET_IMAGE\`"
+            echo "- Reason: $INPUT_REASON"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dump Container App diagnostics on failure
+        if: failure()
+        run: |
+          az containerapp revision list \
+            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "[].{name:name,active:properties.active,health:properties.healthState,running:properties.runningState,image:properties.template.containers[0].image}" \
+            --output table || true
+          az containerapp logs show \
+            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --type system --tail 100 || true

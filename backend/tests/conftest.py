@@ -59,6 +59,7 @@ async def client(db_engine):
             database_url="sqlite+aiosqlite:///:memory:",
             deepseek_endpoint="https://test-endpoint.openai.azure.com/openai/v1",
             deepseek_key="test-key",
+            meal_ai_enabled=True,
         )
 
     app.dependency_overrides[get_db] = override_get_db
