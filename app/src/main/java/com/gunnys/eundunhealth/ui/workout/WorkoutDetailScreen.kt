@@ -48,7 +48,7 @@ import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import kotlinx.coroutines.launch
 
-/** 복사용 텍스트: 운동 이름 + 번호 매긴 방법. 영어 콘텐츠를 번역기에 붙여넣는 용도로 한 번에 복사. */
+/** 복사용 텍스트: 운동 이름과 번호를 매긴 방법을 한 번에 복사한다. */
 private fun buildCopyText(ex: Exercise): String = buildString {
     append(ex.name)
     append("\n\n")
@@ -135,7 +135,6 @@ fun WorkoutDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     // 운동 이름·방법을 길게 눌러 선택·복사할 수 있게 SelectionContainer 로 감싼다.
-                    // 콘텐츠가 영어라 사용자가 방법을 복사해 번역기에 붙여넣는 동선을 지원한다.
                     SelectionContainer {
                         Column {
                             Text(

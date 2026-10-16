@@ -24,6 +24,7 @@ on:
       - 'gradlew'
       - 'gradlew.bat'
       - 'config/detekt/**'
+      - 'scripts/check-agp10-compat.sh'
       - '.github/workflows/android.yml'
   pull_request:
     branches: [main]
@@ -41,6 +42,7 @@ on:
       - 'gradlew'
       - 'gradlew.bat'
       - 'config/detekt/**'
+      - 'scripts/check-agp10-compat.sh'
       - '.github/workflows/android.yml'
 
 jobs:
@@ -72,6 +74,9 @@ jobs:
 
       - name: Spotless check
         run: ./gradlew :app:spotlessCheck
+
+      - name: Check AGP 10 compatibility invariants
+        run: bash scripts/check-agp10-compat.sh
 
       - name: Check collectAsState anti-pattern
         run: |

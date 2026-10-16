@@ -52,6 +52,8 @@
         "properties": {
           "day": {
             "description": "요일 (예: 월요일)",
+            "maxLength": 20,
+            "minLength": 1,
             "title": "Day",
             "type": "string"
           },
@@ -61,10 +63,12 @@
             "type": "boolean"
           },
           "meals": {
-            "description": "해당 일자의 식사 목록 (보통 2끼 구성)",
+            "description": "해당 일자의 식사 목록",
             "items": {
               "$ref": "#/components/schemas/MealInfo"
             },
+            "maxItems": 6,
+            "minItems": 1,
             "title": "Meals",
             "type": "array"
           }
@@ -142,31 +146,43 @@
         "properties": {
           "calories": {
             "description": "예상 칼로리 (kcal)",
+            "maximum": 5000.0,
+            "minimum": 0.0,
             "title": "Calories",
             "type": "integer"
           },
           "carbsG": {
             "description": "탄수화물 함량 (g)",
+            "maximum": 1000.0,
+            "minimum": 0.0,
             "title": "Carbsg",
             "type": "integer"
           },
           "fatG": {
             "description": "지방 함량 (g)",
+            "maximum": 1000.0,
+            "minimum": 0.0,
             "title": "Fatg",
             "type": "integer"
           },
           "mealType": {
-            "description": "식사 구분 (예: 점심, 저녁, 운동 후 간식 등)",
+            "description": "식사 구분",
+            "maxLength": 50,
+            "minLength": 1,
             "title": "Mealtype",
             "type": "string"
           },
           "menuName": {
-            "description": "식단 메뉴 이름 (한국어, 한식 위주 권장)",
+            "description": "식단 메뉴 이름",
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Menuname",
             "type": "string"
           },
           "proteinG": {
             "description": "단백질 함량 (g)",
+            "maximum": 1000.0,
+            "minimum": 0.0,
             "title": "Proteing",
             "type": "integer"
           }
@@ -417,15 +433,19 @@
       "WeeklyMealPlanResponse": {
         "properties": {
           "summary": {
-            "description": "이번 주 식단 구성의 핵심 요약 및 조언 (1~2문장)",
+            "description": "참고용 요약 및 주의사항",
+            "maxLength": 1000,
+            "minLength": 1,
             "title": "Summary",
             "type": "string"
           },
           "weeklyPlan": {
-            "description": "월요일부터 토요일까지의 주간 식단 리스트",
+            "description": "7일 주간 식단",
             "items": {
               "$ref": "#/components/schemas/DailyMealPlan"
             },
+            "maxItems": 7,
+            "minItems": 7,
             "title": "Weeklyplan",
             "type": "array"
           }
@@ -822,6 +842,19 @@
       "post": {
         "description": "사용자의 프로필 및 이번 주 운동 계획을 바탕으로 주간 맞춤형 식단을 자동 생성한다.",
         "operationId": "generate_meal_plan_meals_generate_post",
+        "parameters": [
+          {
+            "description": "사용자가 개인 신체정보의 Azure AI Foundry 처리에 명시적으로 동의했는지 여부",
+            "in": "header",
+            "name": "X-AI-Data-Processing-Consent",
+            "required": true,
+            "schema": {
+              "description": "사용자가 개인 신체정보의 Azure AI Foundry 처리에 명시적으로 동의했는지 여부",
+              "title": "X-Ai-Data-Processing-Consent",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -832,6 +865,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

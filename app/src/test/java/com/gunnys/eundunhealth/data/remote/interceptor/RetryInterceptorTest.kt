@@ -6,6 +6,7 @@ import io.mockk.verify
 import okhttp3.Interceptor
 import okhttp3.Protocol
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
@@ -15,6 +16,8 @@ import java.io.IOException
 class RetryInterceptorTest {
 
     private val request = Request.Builder().url("http://localhost/test").build()
+
+    private val postRequest = Request.Builder().url("http://localhost/test").post("".toRequestBody(null)).build()
 
     private fun response(code: Int): Response = Response.Builder()
         .request(request)
@@ -83,5 +86,17 @@ class RetryInterceptorTest {
         every { chain.request() } returns request
         every { chain.proceed(request) } throws IOException("down")
         RetryInterceptor(maxRetries = 3, initialDelayMs = 0L).intercept(chain)
+    }
+
+    @Test
+    fun `POST 500은 중복 부작용 방지를 위해 재시도하지 않는다`() {
+        val chain = mockk<Interceptor.Chain>()
+        every { chain.request() } returns postRequest
+        every { chain.proceed(postRequest) } returns response(500)
+
+        val result = RetryInterceptor(maxRetries = 3, initialDelayMs = 0L).intercept(chain)
+
+        assertEquals(500, result.code)
+        verify(exactly = 1) { chain.proceed(postRequest) }
     }
 }

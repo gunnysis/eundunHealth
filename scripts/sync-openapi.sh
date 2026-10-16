@@ -33,10 +33,27 @@ export ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-00000000-0000-0000-0000-000000000000}
 export ENTRA_SUBDOMAIN="${ENTRA_SUBDOMAIN:-dummy}"
 export ENTRA_BACKEND_CLIENT_ID="${ENTRA_BACKEND_CLIENT_ID:-00000000-0000-0000-0000-000000000000}"
 export ENTRA_BACKEND_CLIENT_SECRET="${ENTRA_BACKEND_CLIENT_SECRET:-dummy}"
+export DEEPSEEK_ENDPOINT="${DEEPSEEK_ENDPOINT:-dummy}"
+export DEEPSEEK_KEY="${DEEPSEEK_KEY:-dummy}"
 
 "${PY}" - <<'PY'
 import json
+import os
 from pathlib import Path
+
+# WSL에서 Windows python.exe를 실행하면 shell export가 기본적으로 전달되지 않는다.
+# 실제 자격증명은 필요 없는 schema introspection이므로 프로세스 내부 기본값으로 보장한다.
+_DUMMY_SETTINGS = {
+    "DATABASE_URL": "postgresql+asyncpg://dummy:dummy@localhost/dummy",
+    "ENTRA_TENANT_ID": "00000000-0000-0000-0000-000000000000",
+    "ENTRA_SUBDOMAIN": "dummy",
+    "ENTRA_BACKEND_CLIENT_ID": "00000000-0000-0000-0000-000000000000",
+    "ENTRA_BACKEND_CLIENT_SECRET": "dummy",
+    "DEEPSEEK_ENDPOINT": "dummy",
+    "DEEPSEEK_KEY": "dummy",
+}
+for key, value in _DUMMY_SETTINGS.items():
+    os.environ.setdefault(key, value)
 
 from app.main import app
 

@@ -29,6 +29,7 @@ class AccountService:
         self.goal_repo = GoalRepository(db)
         self.history_repo = ProfileHistoryRepository(db)
         from app.services.meal_plan_service import MealPlanService
+
         self.meal_plan_service = MealPlanService(db)
         # 인스턴스 수명 동안 토큰 재사용 — reaper 가 사용자마다 토큰을 재발급하지 않게.
         self._graph_token: str | None = None
@@ -186,9 +187,7 @@ class AccountService:
         """
         try:
             headers = await self._graph_headers(client)
-            resp = await client.delete(
-                f"{GRAPH_BASE}/directory/deletedItems/{user_id}", headers=headers, timeout=10
-            )
+            resp = await client.delete(f"{GRAPH_BASE}/directory/deletedItems/{user_id}", headers=headers, timeout=10)
         except (httpx.HTTPError, AppException) as e:
             logger.error("Deleted user 영구 파기 실패(30일 후 자동 파기) user_id=%s: %s", user_id, e)
             return

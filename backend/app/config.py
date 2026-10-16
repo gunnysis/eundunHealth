@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     # Azure AI Foundry MaaS (DeepSeek)
     deepseek_endpoint: str
     deepseek_key: str
+    # Operational kill switch. User consent is enforced separately at the API boundary.
+    meal_ai_enabled: bool = True
 
     model_config = {"env_file": ".env"}
 

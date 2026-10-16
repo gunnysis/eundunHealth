@@ -21,6 +21,14 @@ SCRIPT="${REPO_ROOT}/scripts/gen_plans_index.py"
 # Python interpreter resolution
 if [ -x "${REPO_ROOT}/backend/.venv/Scripts/python.exe" ]; then
     PY="${REPO_ROOT}/backend/.venv/Scripts/python.exe"     # Windows venv
+    # WSL can execute a Windows binary, but python.exe cannot resolve /mnt/c/...
+    # arguments. Convert only the script argument; the executable path remains
+    # valid to the POSIX shell. Git Bash uses cygpath instead of wslpath.
+    if command -v wslpath >/dev/null 2>&1; then
+        SCRIPT="$(wslpath -w "${SCRIPT}")"
+    elif command -v cygpath >/dev/null 2>&1; then
+        SCRIPT="$(cygpath -w "${SCRIPT}")"
+    fi
 elif [ -x "${REPO_ROOT}/backend/.venv/bin/python" ]; then
     PY="${REPO_ROOT}/backend/.venv/bin/python"             # Linux/macOS venv
 elif command -v python3 >/dev/null 2>&1; then

@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-09-20 — v0.3.0 AI 식단 자동 생성 기능 (Azure DeepSeek-V3.2 MaaS) 적용 완료** (이전 갱신: 2026-09-02 — v0.2.0/34 Play 프로덕션 출시 완료(트랙 production 전환 + 태그 CD 실 e2e) + 실기기 골든패스 출시차단 결함 수정(INC-31) + Supabase 전량 폐기(프로젝트·KV·GitHub secret) + 링크 가드 범위 확대)
-> 작성 기준: 저장소 = **Google Play 프로덕션 = v0.3.0 (예정)**. (2026-09-20 기준 개발 완료 및 CD 대기 상태). 직전 프로덕션 v0.2.0/34.
+> 작성일: 2026-05-25 / 최근 갱신: **2026-10-16 — v0.3.1/36 운동 한국어 현지화 및 AI 식단 배포 전 하드닝 출시 후보 검증**
+> 작성 기준: 저장소는 **v0.3.1/36 출시 후보**, Google Play 프로덕션은 **v0.3.0/35**.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.3.0` (예정)** — SSoT 루트 `version.properties` |
+| versionName / versionCode | **`0.3.1` / `36` (출시 후보)** — SSoT 루트 `version.properties` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.10 / 9.3.2 / 9.7.1** (KSP 2.3.11, Hilt 2.60.1) |
 | Compose BOM | 2026.06.01 |
@@ -22,14 +22,14 @@
 | Sentry SDK | Android **8.54.0** / Gradle plugin **6.20.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (로컬 최신 = **v0.2.0/34 로컬 빌드, 2026-09-02 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (10.76 MB — v0.1.18 8.35 → +29%, MSAL·nimbus 추가분)
-- APK: `app/build/outputs/apk/release/app-release.apk` (7.70 MB)
+산출물 경로 (로컬 최신 = **v0.3.1/36 로컬 빌드, 2026-10-16 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (10,828,371 bytes)
+- APK: `app/build/outputs/apk/release/app-release.apk` (7,756,270 bytes)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: 프로덕션 정식 출시(LIVE).** 프로덕션 = **v0.2.0/34** — 2026-09-02 태그 `v0.2.0` push → `release.yml` 이 **프로덕션 트랙에 직접 업로드**(`tracks: production`·`status: completed` = 100% 즉시 롤아웃). run `33581936651` success, Play edit `16034799652474038364`, 원장 자동 커밋 `45e4051`. 서비스 계정에 프로덕션 출시 권한이 **사전 부여돼 403 없이 1차 통과**(v0.1.19 때는 같은 지점에서 403 ×2). 심사/게시 진행 상태는 Console 기준.
-> 이력: v0.1.19/33(2026-07-03 내부 트랙 자동 CD → 같은 날 Console 수동 승격) ← v0.1.18/32 첫 출시(2026-06-19 preflight 산출물 AAB 8.35MB·APK 5.97MB·Sentry 매핑 `af1a233a`; 2026-06-29 승인). 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=34` — 다음 릴리스 versionCode ≥ 35(룰 13 가드).
+> **출시 상태: 프로덕션 정식 출시.** 원장 기준 프로덕션 = **v0.3.0/35**(2026-09-21 자동 업로드). v0.3.1/36부터 `release.yml`은 10% staged rollout으로 시작하며 100% 확대는 Console에서 운영 지표 확인 후 수행한다.
+> 이력: v0.2.0/34(2026-09-02 production 직접 업로드) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=35` — 다음 릴리스 versionCode ≥ 36(룰 13 가드).
 > **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·TRUNCATE 금지), 스키마 변경은 alembic 마이그레이션만. 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
 
@@ -43,8 +43,8 @@
 | Resource Group | `rg-eundunhealth-prod-krc` (2026-07-29 `apps` 에서 이관 — 이동 7 + 알림/AG/UAI 재생성, RBAC 8건 재부여, LA shared key 갱신, 구 RG 삭제. 상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry — 원문 페어 `2026-07-29-rg-migration-{design,plan}.md` 는 흡수 후 git rm) |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
-| 활성 revision | latest auto-deploy (100% traffic, **warm — min=1**) |
-| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:<SHA>` (latest auto-deploy, **MI pull**) |
+| 활성 revision | `eundunhealth-api--0000061` (100% traffic, **warm — min=1**, 2026-10-16 실측) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:9c906fa` (**MI pull**, app/reaper 일치) |
 | Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
@@ -148,12 +148,13 @@ az containerapp job secret set -n eundunhealth-reaper -g rg-eundunhealth-prod-kr
 
 ## 3. ACR (Azure Container Registry)
 
-MEASURED 2026-09-02 (`az acr repository show-tags` · `az acr manifest list-metadata` · `az acr show-usage`):
+MEASURED 2026-10-16 (`az acr show` 및 RBAC, 태그/용량 수치는 2026-09-02):
 
 | 항목 | 값 |
 |------|---|
 | Registry | `eundunhealthacr` |
 | SKU | Basic — [retention 정책 미지원](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus)(Premium 전용) |
+| Admin user | **Disabled** — CI=OIDC/AcrPush, app·reaper=Managed Identity/AcrPull |
 | 태그 | **14** |
 | 매니페스트 | **13** |
 | Untagged(dangling) | **0** |
@@ -406,6 +407,7 @@ Alert 룰 (총 8개 — `scripts/setup-sentry-alerts.ps1` 으로 설정, 2026-06
 | OSS ExerciseDB | `https://oss.exercisedb.dev/api/v1/` | 없음 | 부위 카탈로그 10종, 운동 ~1500개 |
 | Microsoft Entra External ID | `https://eundunhealthciam.ciamlogin.com/…` (§5-A) | MSAL 브라우저 위임(PKCE) / 백엔드 JWKS | **RS256**. `issuer`·`jwks_uri` 는 OIDC discovery 로 읽는다(조합 금지) |
 | Microsoft Graph | `https://graph.microsoft.com/v1.0` | client credentials (KV `entra-backend-client-secret`) | 계정 삭제 204 + `deletedItems` 즉시 파기 |
+| Azure AI Foundry DeepSeek-V3.2 | AI Services endpoint | Key Vault `deepseek-*` | `GlobalStandard`; 앱 내 국외 처리 고지·명시 동의 + API 필수 동의 헤더 적용, `MEAL_AI_ENABLED` 긴급 kill switch |
 | Sentry | `o4510919956430848.ingest.us.sentry.io` | DSN | US org, 두 project |
 
 ---
@@ -413,11 +415,13 @@ Alert 룰 (총 8개 — `scripts/setup-sentry-alerts.ps1` 으로 설정, 2026-06
 ## 8. CI / 자동화
 
 GitHub Actions:
-- **`.github/workflows/backend.yml`** — `backend/**` 또는 `backend.yml` 변경 시: ruff + mypy + pytest + Codecov → docker compose runtime smoke (INC-03 차단) → pip-audit + bandit + gitleaks → (main push) Trivy + ACR push + **secret precheck (INC-18 차단)** → Container App 배포 → /health
-  - `workflow_dispatch` 지원 — 수동 실행 가능 (`gh workflow run backend.yml --ref main`)
-  - Azure 로그인 = **OIDC federated**(P2, PR #142 — secrets `AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID`). 구 `AZURE_CREDENTIALS` 는 **2026-07-03 완전 제거**(GitHub secret + Entra 앱 비밀번호 credential 모두 — push deploy·schedule cron 양 트리거 OIDC 실측 green 후 조기 종결, CI/CD design §6.2 사후②). OIDC 장애 시 롤백 = 워크플로 yml revert + `pwsh -File scripts/register-azure-credentials.ps1`(SP credential 재생성+재등록, 기존 secret 불요)
+- **`.github/workflows/backend.yml`** — ruff + mypy + pytest + 배포 검증기 test → docker compose runtime smoke → pip-audit + bandit + gitleaks → (`backend-production` 승인) Trivy + ACR push + secret precheck → Container App 배포 → **이번 SHA의 latest=ready revision + 공개 endpoint 검증** → reaper 동일 이미지 동기화
+  - `workflow_dispatch` 기본은 CI-only. 운영 재배포는 `deploy=true`와 environment 승인이 모두 필요
+  - **`.github/workflows/backend-rollback.yml`** — 존재하는 SHA 7자리 이미지와 `ROLLBACK` 확인 문자열을 받아 app/reaper를 함께 복구하고 같은 검증기를 실행
+  - `backend-production` required reviewer=`gunnysis`, deployment branch=`main` only; Entra OIDC subject=`repo:gunnysis/eundunHealth:environment:backend-production` (2026-10-16 생성·조회 검증)
+  - Azure 로그인 = **OIDC federated**(secrets `AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID`). 구 `AZURE_CREDENTIALS` 는 2026-07-03 완전 제거. OIDC 장애 시 롤백 = 워크플로 yml revert + `pwsh -File scripts/register-azure-credentials.ps1`
 - **`.github/workflows/android.yml`** — `app/**` 변경 시 spotlessCheck + **collectAsState anti-pattern 검사** (룰 11) + detektDebug + testDebugUnitTest + assembleDebug + PR이면 APK artifact 업로드
-- **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play 내부 트랙 업로드** → 원장 자동 갱신 커밋(`update-upload-ledger.sh`, 룰 13). 프로덕션 승격은 Console 수동. 설계: `docs/plans/logs/process-infra.md`
+- **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play production 10% staged rollout** → 원장 자동 갱신. 25→50→100%는 지표 확인 후 Console 수동
 - **`.github/dependabot.yml`** — pip + github-actions + gradle 주간 PR (KST 월 06:00, 보안 패치는 단일 PR로 그룹화)
 
 로컬 자동화:
@@ -440,7 +444,7 @@ GitHub Actions:
 | Azure Monitor Alerts (metric 4) | ~550-700원 | Activity Log 4개 무료 |
 | Sentry | 0원 | 무료 plan (10K events/mo) |
 | ~~Supabase~~ | — | **2026-09-02 프로젝트 삭제**(§5). 종전 0원 무료 plan |
-| **합계** | **~43,700원** | budget 70,000원(1.6배 buffer) |
+| **합계** | **~43,700원** | `eundunhealth-monthly` 70,000 budget 구성(80%·100% 알림) |
 
 ---
 

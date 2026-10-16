@@ -17,36 +17,35 @@ class MealPlanService:
 
     async def get_current_plan(self, user_id: str, week_start_date: date) -> WeeklyMealPlanResponse | None:
         """Fetch the current meal plan for a specific user and week start date."""
-        stmt = select(MealPlan).where(
-            MealPlan.user_id == user_id,
-            MealPlan.week_start_date == week_start_date
-        ).options(selectinload(MealPlan.items))
-        
+        stmt = (
+            select(MealPlan)
+            .where(MealPlan.user_id == user_id, MealPlan.week_start_date == week_start_date)
+            .options(selectinload(MealPlan.items))
+        )
+
         result = await self.db.execute(stmt)
         plan = result.scalar_one_or_none()
-        
+
         if not plan:
             return None
-            
+
         # 맵핑 (MealPlan -> WeeklyMealPlanResponse)
         # items 배열을 요일별(day)로 그룹화하여 DailyMealPlan 리스트를 만듭니다.
         daily_plans: dict[str, dict[str, typing.Any]] = {}
         for item in plan.items:
             if item.day not in daily_plans:
-                daily_plans[item.day] = {
-                    "day": item.day,
-                    "is_rest_day": item.is_rest_day,
-                    "meals": []
+                daily_plans[item.day] = {"day": item.day, "is_rest_day": item.is_rest_day, "meals": []}
+            daily_plans[item.day]["meals"].append(
+                {
+                    "meal_type": item.meal_type,
+                    "menu_name": item.menu_name,
+                    "calories": item.calories,
+                    "protein_g": item.protein_g,
+                    "carbs_g": item.carbs_g,
+                    "fat_g": item.fat_g,
                 }
-            daily_plans[item.day]["meals"].append({
-                "meal_type": item.meal_type,
-                "menu_name": item.menu_name,
-                "calories": item.calories,
-                "protein_g": item.protein_g,
-                "carbs_g": item.carbs_g,
-                "fat_g": item.fat_g,
-            })
-            
+            )
+
         weekly_plan_list = list(daily_plans.values())
         return WeeklyMealPlanResponse(weekly_plan=weekly_plan_list, summary=plan.summary)
 
@@ -56,27 +55,23 @@ class MealPlanService:
         """Save a new meal plan into the database, replacing the existing one if any."""
         if isinstance(meal_plan_data, WeeklyMealPlanResponse):
             meal_plan_data = meal_plan_data.model_dump()
-            
+
         # 기존 주간 식단이 있으면 삭제
-        stmt = select(MealPlan).where(
-            MealPlan.user_id == user_id,
-            MealPlan.week_start_date == week_start_date
-        )
+        stmt = select(MealPlan).where(MealPlan.user_id == user_id, MealPlan.week_start_date == week_start_date)
         result = await self.db.execute(stmt)
         existing_plan = result.scalar_one_or_none()
-        
+
         if existing_plan:
             await self.db.delete(existing_plan)
-            
+            # 같은 (user_id, week_start_date) unique key를 다시 INSERT하기 전에 DELETE를
+            # 확정해 PostgreSQL flush 순서에 따른 간헐적 unique violation을 막는다.
+            await self.db.flush()
+
         # 새 식단 저장
-        new_plan = MealPlan(
-            user_id=user_id,
-            week_start_date=week_start_date,
-            summary=meal_plan_data.get("summary", "")
-        )
+        new_plan = MealPlan(user_id=user_id, week_start_date=week_start_date, summary=meal_plan_data.get("summary", ""))
         self.db.add(new_plan)
-        await self.db.flush() # new_plan.id를 얻기 위해
-        
+        await self.db.flush()  # new_plan.id를 얻기 위해
+
         for daily in meal_plan_data.get("weekly_plan", []):
             day = daily.get("day")
             is_rest_day = daily.get("is_rest_day", False)
@@ -93,12 +88,13 @@ class MealPlanService:
                     fat_g=meal.get("fat_g"),
                 )
                 self.db.add(new_item)
-                
-        await self.db.commit()
+
+        # UoW 패턴 준수: commit()은 라우터 계층(get_db 의존성)에서 일괄 처리되도록 위임합니다.
+        await self.db.flush()
 
     async def delete_all_by_user(self, user_id: str) -> None:
         """사용자의 모든 식단 계획을 삭제합니다."""
         from sqlalchemy import delete
+
         stmt = delete(MealPlan).where(MealPlan.user_id == user_id)
         await self.db.execute(stmt)
-

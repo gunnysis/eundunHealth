@@ -1,11 +1,10 @@
 name: Backend CI/CD
 
 # PR 반복 push 시 이전 실행 자동취소 — superseded 실행의 러너 점유 제거 + 피드백 속도 개선.
-# main push(deploy 경로)는 cancel-in-progress=false 로 보존 — 진행 중 배포는 끊지 않고,
-# 같은 그룹의 pending 은 최신 1건만 남아 순차 배포가 최신 코드로 수렴한다.
+# main/dispatch는 rollback workflow와 같은 backend-production 그룹으로 직렬화해 상호 덮어쓰기를 막는다.
 # 설계: docs/plans/logs/process-infra.md (옛 페어 2026-06-29-cicd-recommended-design.md §3.1 P1 흡수)
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.event_name == 'pull_request' && format('{0}-{1}', github.workflow, github.ref) || 'backend-production' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
@@ -13,15 +12,23 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'scripts/verify_containerapp_deployment.py'
+      - 'scripts/test_verify_containerapp_deployment.py'
       - '.github/workflows/backend.yml'
   pull_request:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'scripts/verify_containerapp_deployment.py'
+      - 'scripts/test_verify_containerapp_deployment.py'
       - '.github/workflows/backend.yml'
-  # 수동 트리거 — secret rotation 검증, 긴급 재배포, paths 필터 우회용.
-  # `gh workflow run backend.yml --ref main` 또는 Actions UI에서 실행.
+  # 수동 트리거 기본값은 CI-only. 운영 배포는 deploy=true + environment 승인이 모두 필요하다.
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: '운영 배포 실행 (false면 CI/보안 검사만)'
+        type: boolean
+        default: false
 
 env:
   ACR_NAME: eundunhealthacr
@@ -58,11 +65,17 @@ jobs:
       - name: Lint (ruff)
         run: ruff check app/ tests/
 
+      - name: Format check (ruff)
+        run: ruff format --check app/ tests/
+
       - name: Type check (mypy strict)
         run: mypy app/
 
       - name: Run tests with coverage
         run: pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
+
+      - name: Test deployment verifier
+        run: python ../scripts/test_verify_containerapp_deployment.py
 
       # backend/openapi.json은 Android openapi-generator의 입력 + drift 방지의 단일 출처.
       # 라우터/스키마를 변경했다면 `bash scripts/sync-openapi.sh`로 재생성 후 같은 PR에 커밋해야 한다.
@@ -196,7 +209,13 @@ jobs:
     name: Build, Scan & Deploy
     runs-on: ubuntu-latest
     needs: [test, runtime-smoke, security]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy))
+    environment:
+      name: backend-production
+      url: https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io
     permissions:
       contents: read
       id-token: write   # OIDC 토큰 발급 (P2 2단계)
@@ -217,15 +236,15 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: ACR login
-        run: az acr login --name $ACR_NAME
+        run: az acr login --name "$ACR_NAME"
 
       - name: Build image
         run: |
           TAG="${ACR_NAME}.azurecr.io/${IMAGE_NAME}:${GITHUB_SHA::7}"
           LATEST="${ACR_NAME}.azurecr.io/${IMAGE_NAME}:latest"
           docker build -t "$TAG" -t "$LATEST" .
-          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
-          echo "IMAGE_LATEST=$LATEST" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "IMAGE_LATEST=$LATEST" >> "$GITHUB_ENV"
 
       - name: Trivy 이미지 스캔 (CRITICAL/HIGH 차단)
         uses: aquasecurity/trivy-action@v0.36.0
@@ -274,24 +293,15 @@ jobs:
             --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --yaml /tmp/containerapp.rendered.yaml
 
-      - name: Health check
+      # FQDN만 확인하면 새 리비전이 실패해도 이전 리비전 응답으로 false-green이 된다.
+      # 이번 SHA 이미지 == latest revision == latest ready revision을 먼저 확인한 뒤 엔드포인트를 검증한다.
+      - name: Verify target revision and public endpoints
         run: |
-          sleep 10
-          FQDN=$(az containerapp show \
-            --name "$CONTAINER_APP_NAME" \
+          python ../scripts/verify_containerapp_deployment.py \
             --resource-group "$RESOURCE_GROUP" \
-            --query "properties.configuration.ingress.fqdn" -o tsv)
-          echo "Probing https://${FQDN}/health"
-          for i in 1 2 3 4 5; do
-            if curl -sf "https://${FQDN}/health"; then
-              echo "OK"
-              exit 0
-            fi
-            echo "Attempt $i failed, retrying in 5s..."
-            sleep 5
-          done
-          echo "Health check failed after 5 attempts"
-          exit 1
+            --app "$CONTAINER_APP_NAME" \
+            --expected-image "$IMAGE_TAG" \
+            --timeout-seconds 240
 
       # reaper Job 은 Container App 과 **같은 이미지**를 다른 entrypoint 로 쓴다. 예전에는 CI 가
       # 앱만 갱신하고 잡은 수동 스크립트로만 바뀌어 둘이 벌어졌다 — 실측 2026-09-01 기준 7주,
@@ -323,3 +333,14 @@ jobs:
             exit 1
           fi
           echo "reaper Job synced: $JOB_IMAGE"
+
+      - name: Dump Container App diagnostics on failure
+        if: failure()
+        run: |
+          az containerapp revision list \
+            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "[].{name:name,active:properties.active,health:properties.healthState,running:properties.runningState,image:properties.template.containers[0].image}" \
+            --output table || true
+          az containerapp logs show \
+            --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --type system --tail 100 || true

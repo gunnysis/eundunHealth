@@ -40,7 +40,9 @@ class MealPlanRepositoryImpl @Inject constructor(
     }
 
     override suspend fun generatePlan(): Result<WeeklyMealPlan> = runCatching {
-        val response = api.generateMealPlanMealsGeneratePost()
+        // The UI presents a prominent disclosure immediately before this call.
+        // The required header also blocks older clients that did not obtain affirmative consent.
+        val response = api.generateMealPlanMealsGeneratePost(xAIDataProcessingConsent = true)
         if (!response.isSuccessful) throw retrofit2.HttpException(response)
 
         val dto: ApiWeeklyMealPlanResponse = response.body() ?: error("Empty body")

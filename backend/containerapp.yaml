@@ -78,6 +78,9 @@ properties:
         secretRef: deepseek-endpoint
       - name: DEEPSEEK_KEY
         secretRef: deepseek-key
+      # Operational kill switch. Consent is enforced by a required request header.
+      - name: MEAL_AI_ENABLED
+        value: 'true'
       - name: ENVIRONMENT
         value: production
       - name: CORS_ORIGINS

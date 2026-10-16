@@ -33,7 +33,7 @@ async def test_health_ready_db_down_returns_503(client):
         async def execute(self, _stmt):
             raise RuntimeError("db down")
 
-    app.dependency_overrides[get_session_factory] = lambda: (lambda: _BoomSession())
+    app.dependency_overrides[get_session_factory] = lambda: lambda: _BoomSession()
     resp = await client.get("/health/ready")
     assert resp.status_code == 503
     assert resp.json() == {"status": "not ready"}

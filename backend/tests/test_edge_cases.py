@@ -1,4 +1,5 @@
 """권장사항으로 추가된 엣지 케이스 테스트 (커버리지 + 회귀 안전망)."""
+
 import json
 
 import pytest
@@ -9,6 +10,7 @@ _ONE_DAY = '[{"isRestDay": false, "isCompleted": false, "exercises": []}]'
 
 
 # === 완료 토글 "수동 우선" (manualOverride) ===
+
 
 @pytest.mark.asyncio
 async def test_manual_toggle_sets_manually_set_flag(client):
@@ -39,7 +41,9 @@ async def test_auto_complete_does_not_set_manually_set_flag(client):
     days = json.loads((await client.get("/weekly-plan", params={"weekStart": "2026-05-25"})).json()["dayPlans"])
     assert days[0].get("manuallySet") is not True
 
+
 # === 입력 검증: 잘못된 클라이언트 입력은 500 이 아니라 400 ===
+
 
 @pytest.mark.asyncio
 async def test_complete_day_offset_beyond_stored_days_returns_400(client):
@@ -102,7 +106,9 @@ async def test_create_plan_invalid_dayplans_returns_400(client):
     resp = await client.post("/weekly-plan", json={"weekStart": "2026-05-25", "dayPlans": "not json"})
     assert resp.status_code == 400
 
+
 # === PATCH /weekly-plan/complete (가장 큰 커버리지 갭) ===
+
 
 @pytest.mark.asyncio
 async def test_complete_exercise_toggles_flag(client, sample_plan):
@@ -133,6 +139,7 @@ async def test_complete_when_plan_missing_returns_404(client):
 
 
 # === Graph API 실패 / 멱등 경로 ===
+
 
 @pytest.mark.asyncio
 async def test_delete_account_graph_500_raises_502(client, sample_profile, entra_delete_mock):
@@ -165,6 +172,7 @@ async def test_delete_account_graph_404_is_idempotent(client, sample_profile, en
 
 # === Pydantic validation — 프로필 경계값 ===
 
+
 @pytest.mark.asyncio
 async def test_profile_validation_rejects_out_of_range(client):
     """heightCm < 50 → 422 (기존 회귀가드)."""
@@ -188,6 +196,7 @@ async def test_profile_height_above_maximum_returns_422(client):
 
 # === FastAPI Query 제약 (size > 50) ===
 
+
 @pytest.mark.asyncio
 async def test_history_size_above_50_rejected(client):
     """Query(le=50) → size=51은 API 레벨에서 422."""
@@ -196,6 +205,7 @@ async def test_history_size_above_50_rejected(client):
 
 
 # === user isolation (서로 다른 사용자의 데이터 분리) ===
+
 
 @pytest.mark.asyncio
 async def test_user_data_is_isolated(client, sample_profile):
@@ -218,6 +228,7 @@ async def test_user_data_is_isolated(client, sample_profile):
 
 # === JWT 미존재 (HTTPBearer가 403 반환) ===
 
+
 @pytest.mark.asyncio
 async def test_missing_authorization_header_is_rejected(client_no_auth):
     """Authorization 헤더 없이 보호 엔드포인트 호출 시 401/403으로 거부.
@@ -229,6 +240,7 @@ async def test_missing_authorization_header_is_rejected(client_no_auth):
 
 
 # === CORS — 임의 origin 을 허용하지 않음 (네이티브 앱은 CORS 비적용) ===
+
 
 @pytest.mark.asyncio
 async def test_cors_does_not_allow_arbitrary_origin(client):

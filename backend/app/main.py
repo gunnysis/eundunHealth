@@ -58,9 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # DB 엔진 + 세션팩토리 1회 생성 → app.state에 저장
     # pool_pre_ping: idle 후 PG/방화벽이 끊은 연결을 checkout 시 SELECT 1 로 사전 검증해
     # warm baseline 인스턴스의 첫 요청이 "connection closed" 500 으로 떨어지는 것을 방지한다.
-    engine = create_async_engine(
-        settings.database_url, pool_size=3, max_overflow=0, pool_pre_ping=True
-    )
+    engine = create_async_engine(settings.database_url, pool_size=3, max_overflow=0, pool_pre_ping=True)
     app.state.session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     if settings.sentry_dsn:
@@ -93,9 +91,7 @@ app.add_middleware(
 # 요청 상관관계 미들웨어 — 모듈 레벨 등록(룰 4: lifespan 내부 add_middleware 금지).
 # CORS 뒤에 등록되어 가장 바깥에서 동작 → 모든 처리 전에 request_id 를 설정한다.
 @app.middleware("http")
-async def request_id_middleware(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
+async def request_id_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     supplied = request.headers.get("X-Request-ID")
     # 형식 위반이면 400 이 아니라 조용히 자체 생성으로 대체한다 — 중간 프록시가 붙인 헤더
     # 때문에 정상 요청이 깨지면 안 된다. 추적성보다 로그 무결성이 우선이다.
@@ -112,6 +108,11 @@ async def request_id_middleware(
 # 글로벌 에러 핸들러
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+    if exc.status_code >= 500:
+        logger.exception("AppException (status_code=%s, code=%s): %s", exc.status_code, exc.code, exc.message)
+        if sentry_sdk.is_initialized():
+            sentry_sdk.capture_exception(exc)
+
     return JSONResponse(
         status_code=exc.status_code,
         content={"code": exc.code, "message": exc.message},
@@ -137,9 +138,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
     출처: https://pydantic.dev/docs/validation/latest/errors/errors/
     """
-    redacted = [
-        {"loc": e.get("loc"), "type": e.get("type"), "msg": e.get("msg")} for e in exc.errors()
-    ]
+    redacted = [{"loc": e.get("loc"), "type": e.get("type"), "msg": e.get("msg")} for e in exc.errors()]
     logger.warning(
         "Request validation failed | path=%s method=%s errors=%s",
         request.url.path,

@@ -6,11 +6,11 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.3.0-blue)
-![versionCode](https://img.shields.io/badge/versionCode-35-blue)
+![versionName](https://img.shields.io/badge/versionName-0.3.1-blue)
+![versionCode](https://img.shields.io/badge/versionCode-36-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB)
 ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
 
 ---
@@ -89,7 +89,7 @@
 | HTTP 코어 | starlette 1.3.1 | PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix |
 | Auth 검증 | PyJWT 2.13.0 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | 모니터링 | Sentry SDK 2.64.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 115/115 PASS, coverage ~97% (sysmon core) |
+| 품질 도구 | ruff + mypy strict + bandit + pip-audit | pytest 117/117 PASS, coverage 94% (sysmon core) |
 
 ### 인프라
 
@@ -179,7 +179,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 ├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: b78b256c2b20)
-│   ├── tests/                # pytest (87 PASS, coverage ~97%)
+│   ├── tests/                # pytest (117 PASS, coverage 94%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
@@ -208,7 +208,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션
 | JDK | 17 | Android / Gradle |
 | Android Studio | Hedgehog 이상 권장 | 빌드 / 디바이스 디버깅 |
 | Android SDK | API 37 | Target SDK |
-| Python | 3.12 | Backend |
+| Python | 3.14 | Backend |
 | Docker Desktop | latest | Backend 로컬 실행 + Alembic autogenerate |
 | Git | 2.40+ | hooks (`core.hooksPath`) |
 | (선택) Azure CLI | latest | 운영 / 시크릿 관리 |

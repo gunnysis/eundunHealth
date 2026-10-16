@@ -13,6 +13,7 @@ import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbDataSource
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDto
 import com.gunnys.eundunhealth.data.remote.exercisedb.toDomain
 import com.gunnys.eundunhealth.data.remote.util.bodyOrThrow
+import com.gunnys.eundunhealth.data.translation.ExerciseTranslationProvider
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.domain.model.ExerciseType
@@ -25,6 +26,7 @@ import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.WeeklyPlanGenerator
 import io.sentry.Sentry
+import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -37,6 +39,7 @@ class WorkoutRepositoryImpl @Inject constructor(
     private val weeklyPlanDao: WeeklyPlanDao,
     private val gson: Gson,
     private val authRepo: AuthRepository,
+    private val translationProvider: ExerciseTranslationProvider,
 ) : WorkoutRepository {
 
     // 주 시작(월요일)은 KST 고정 — 디바이스 타임존과 무관하게 plan/통계 key(weekStart)가 흔들리지 않도록.
@@ -46,26 +49,30 @@ class WorkoutRepositoryImpl @Inject constructor(
     // 폴백해야 하고, 예외 종류를 좁히면 새 실패 유형이 생길 때 조용히 폴백을 잃는다.
     // 삼키지 않는다: 캐시가 없으면 원래 예외를 그대로 rethrow 한다(아래).
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun getCurrentWeekPlan(): Result<WeeklyPlan?> = runCatching {
+    override suspend fun getCurrentWeekPlan(): Result<WeeklyPlan?> = runSuspendCatching {
         val weekStart = currentWeekStart()
         try {
             val response = api.getWeeklyPlan(weekStart.toString())
-            if (response.code() == 404) return@runCatching null
+            if (response.code() == 404) return@runSuspendCatching null
             val dto = response.bodyOrThrow()
             // read 경로에서도 캐시를 갱신 → 오프라인 시 stale(미완료) plan 대신 최신 완료상태를 보인다(F3).
             weeklyPlanDao.insertPlan(WeeklyPlanEntity(dto.id, dto.userId, weekStart.toString(), dto.dayPlans))
-            return@runCatching dto.toDomain()
+            return@runSuspendCatching translationProvider.localize(dto.toDomain())
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             // 네트워크 실패 → 캐시 폴백. Sentry 보고는 ViewModel 의 toReportedAppError() 가 처리
             val userId = authRepo.getCurrentUserId()
             if (userId != null) {
                 val cached = weeklyPlanDao.getPlan(userId, weekStart.toString())
                 if (cached != null) {
-                    return@runCatching WeeklyPlan(
-                        id = cached.id,
-                        userId = cached.userId,
-                        weekStart = LocalDate.parse(cached.weekStart),
-                        days = parseDayPlans(cached.dayPlansJson),
+                    return@runSuspendCatching translationProvider.localize(
+                        WeeklyPlan(
+                            id = cached.id,
+                            userId = cached.userId,
+                            weekStart = LocalDate.parse(cached.weekStart),
+                            days = parseDayPlans(cached.dayPlansJson),
+                        ),
                     )
                 }
             }
@@ -73,7 +80,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getExerciseById(exerciseId: String): Result<Exercise?> = runCatching {
+    override suspend fun getExerciseById(exerciseId: String): Result<Exercise?> = runSuspendCatching {
         // 1) 로컬 캐시(현재 주) 우선 — 네트워크 없이 즉시. 운동 콘텐츠는 주중 불변이라 캐시로 충분하고,
         //    상세 진입마다 전체 주간계획을 재 GET 하던 비효율/오프라인 취약을 제거한다.
         val weekStart = currentWeekStart()
@@ -82,19 +89,19 @@ class WorkoutRepositoryImpl @Inject constructor(
             ?.let { parseDayPlans(it.dayPlansJson) }
             ?.flatMap { it.exercises }
             ?.find { it.id == exerciseId }
-        if (cached != null) return@runCatching cached
+        if (cached != null) return@runSuspendCatching translationProvider.localize(cached)
 
         // 2) 캐시 미스 → 네트워크 폴백 (현재 주 계획)
         getCurrentWeekPlan().getOrNull()
             ?.days?.flatMap { it.exercises }?.find { it.id == exerciseId }
     }
 
-    override suspend fun createWeeklyPlan(profile: UserProfile): Result<WeeklyPlan> = runCatching {
+    override suspend fun createWeeklyPlan(profile: UserProfile): Result<WeeklyPlan> = runSuspendCatching {
         val weekStart = currentWeekStart()
         val (sets, reps) = exerciseDb.getSetsAndReps(profile.fitnessLevel)
 
         // 1) 이전 주 plan에서 운동 ID를 추출 (실패해도 빈 집합으로 폴백)
-        val excludeIds: Set<String> = runCatching {
+        val excludeIds: Set<String> = runSuspendCatching {
             val prevResp = api.getPreviousWeeklyPlan(weekStart.toString())
             // 404나 null body → 빈 집합
             val prev = prevResp.body()
@@ -106,7 +113,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         }.getOrDefault(emptySet())
 
         // 2) 부위·카디오 운동 풀을 한 번씩만 fetch (이전 주 ID는 reorderExcludingPrevious 로 후순위 정렬)
-        suspend fun pool(bodyPart: String, type: ExerciseType): List<Exercise> = runCatching {
+        suspend fun pool(bodyPart: String, type: ExerciseType): List<Exercise> = runSuspendCatching {
             reorderExcludingPrevious(exerciseDb.getStrengthExercises(bodyPart, limit = 6), excludeIds, bodyPart) {
                 it.toDomain(sets, reps, type)
             }
@@ -116,7 +123,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         val pull = pool("back", ExerciseType.STRENGTH) + pool("upper arms", ExerciseType.STRENGTH)
         val legs = pool("upper legs", ExerciseType.STRENGTH) + pool("lower legs", ExerciseType.STRENGTH)
 
-        val cardioPool: List<Exercise> = runCatching {
+        val cardioPool: List<Exercise> = runSuspendCatching {
             reorderExcludingPrevious(exerciseDb.getCardioExercises(limit = 10), excludeIds, "cardio") {
                 it.toDomain(1, 30, ExerciseType.CARDIO)
             }
@@ -154,7 +161,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         weeklyPlanDao.insertPlan(
             WeeklyPlanEntity(savedPlan.id, savedPlan.userId, weekStart.toString(), dayPlansJson),
         )
-        savedPlan
+        translationProvider.localize(savedPlan)
     }
 
     override suspend fun updateDayCompletion(
@@ -162,7 +169,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         date: LocalDate,
         completed: Boolean,
         manual: Boolean,
-    ): Result<Unit> = runCatching {
+    ): Result<Unit> = runSuspendCatching {
         val weekStart = date.with(DayOfWeek.MONDAY)
         val response = api.updateDayCompletion(
             CompletionRequest(
@@ -175,13 +182,13 @@ class WorkoutRepositoryImpl @Inject constructor(
         if (!response.isSuccessful) throw HttpException(response)
     }
 
-    override suspend fun getHistory(page: Int, size: Int): Result<Pair<List<WeeklyPlan>, Int>> = runCatching {
+    override suspend fun getHistory(page: Int, size: Int): Result<Pair<List<WeeklyPlan>, Int>> = runSuspendCatching {
         val response = api.getWeeklyPlanHistory(page, size).bodyOrThrow()
-        val plans = response.plans.map { it.toDomain() }
+        val plans = response.plans.map { translationProvider.localize(it.toDomain()) }
         plans to response.totalCount
     }
 
-    override suspend fun getStatistics(weeks: Int): Result<Statistics> = runCatching {
+    override suspend fun getStatistics(weeks: Int): Result<Statistics> = runSuspendCatching {
         val dto = api.getStatistics(weeks).bodyOrThrow()
         Statistics(
             weeklyRates = dto.weeklyRates.map {
@@ -227,4 +234,14 @@ class WorkoutRepositoryImpl @Inject constructor(
         e.toReportedAppError()
         emptyList()
     }
+}
+
+/** Kotlin runCatching은 CancellationException도 실패 값으로 바꾸므로 suspend 경계에서는 취소를 명시적으로 보존한다. */
+@Suppress("TooGenericExceptionCaught") // Repository Result 계약은 취소 외 모든 작업 실패를 Result.failure로 반환한다.
+private suspend fun <T> runSuspendCatching(block: suspend () -> T): Result<T> = try {
+    Result.success(block())
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    Result.failure(e)
 }

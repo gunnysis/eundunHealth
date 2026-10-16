@@ -90,6 +90,6 @@ class AppErrorTest {
             .request(Request.Builder().url("http://test").build())
             .body("".toResponseBody("application/json".toMediaTypeOrNull()))
             .build()
-        return HttpException(RetrofitResponse.error<Any>(code, response.body!!))
+        return HttpException(RetrofitResponse.error<Any>(code, response.body))
     }
 }

@@ -7,6 +7,7 @@ Pydantic 공식 문서의 `ErrorDetails` 표에 따르면 `errors()` 의 각 항
 
 출처: https://pydantic.dev/docs/validation/latest/errors/errors/
 """
+
 import logging
 
 import pytest

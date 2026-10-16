@@ -59,6 +59,7 @@ async def client(db_engine):
             database_url="sqlite+aiosqlite:///:memory:",
             deepseek_endpoint="https://test-endpoint.openai.azure.com/openai/v1",
             deepseek_key="test-key",
+            meal_ai_enabled=True,
         )
 
     app.dependency_overrides[get_db] = override_get_db
@@ -71,6 +72,7 @@ async def client(db_engine):
 
 
 # === Shared payload fixtures ===
+
 
 @pytest.fixture
 def sample_profile() -> dict:
@@ -86,12 +88,14 @@ def sample_plan() -> dict:
 
 # === Auth helpers ===
 
+
 def set_test_user(user_id: str) -> None:
     """런타임에 get_current_user_id override를 교체한다.
 
     user isolation 테스트처럼 한 테스트 안에서 사용자 컨텍스트를 바꿔야 할 때 사용.
     `client` fixture가 이미 활성화된 상태여야 한다.
     """
+
     async def _override() -> str:
         return user_id
 
@@ -154,9 +158,7 @@ def entra_delete_mock():
     @contextmanager
     def _mock(status_code: int = 204):
         # Graph 의 삭제 성공은 200 이 아니라 204 다(Supabase 와 다름).
-        mock_response = httpx.Response(
-            status_code, request=httpx.Request("DELETE", "http://mock")
-        )
+        mock_response = httpx.Response(status_code, request=httpx.Request("DELETE", "http://mock"))
         with patch("app.services.account_service.httpx.AsyncClient") as mock_cls:
             instance = AsyncMock()
             instance.post = AsyncMock(return_value=graph_token_response())

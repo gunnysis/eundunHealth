@@ -8,6 +8,7 @@ brittle 표면이므로 단일 출처로 관리한다.
 - 쓰기 경로: 잘못된 입력을 400(BadRequestException)으로 거부 → `parse_day_plans`
 - 읽기 경로: 손상된 저장 데이터를 관대하게 무시(None) → `parse_day_plans_or_none`
 """
+
 import json
 from typing import Any
 

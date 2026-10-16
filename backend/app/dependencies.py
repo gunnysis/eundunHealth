@@ -30,10 +30,7 @@ def _get_oidc_config(subdomain: str) -> dict[str, str]:
     """
     global _oidc_config
     if _oidc_config is None:
-        url = (
-            f"https://{subdomain}.ciamlogin.com/"
-            f"{subdomain}.onmicrosoft.com/v2.0/.well-known/openid-configuration"
-        )
+        url = f"https://{subdomain}.ciamlogin.com/{subdomain}.onmicrosoft.com/v2.0/.well-known/openid-configuration"
         try:
             resp = httpx.get(url, timeout=5)
             resp.raise_for_status()
