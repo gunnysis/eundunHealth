@@ -26,4 +26,4 @@ sentry-sdk[fastapi]==2.69.2
 markdown==3.10.3
 # AI client for Azure MaaS. Pin exactly so retry/timeout behavior and Docker
 # rebuilds cannot change when a new SDK version is published.
-openai==3.16.2
+openai==3.29.0
