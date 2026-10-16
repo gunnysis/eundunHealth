@@ -1,13 +1,13 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-09-01, 저장소 v0.2.0/34 = Supabase → Entra External ID 전환[미출시] — Play 프로덕션 = v0.1.19/33[2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29]):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-10-16, 저장소 = Play 프로덕션 = v0.3.1/36 [10% 단계 출시 LIVE, 직전 v0.3.0/35 ← v0.2.0/34 ← v0.1.19/33 ← 첫 출시 v0.1.18/32]):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
 ---
 
-## 구현 후 변경 사항 (v0.1.0 → v0.1.19)
+## 구현 후 변경 사항 (v0.1.0 → v0.3.1)
 
 
 > ⚠️ **인증 관련 본문 주의:** 아래 v1.0 본문의 인증 서술(**§2.3 인증 시스템 표**·§3 인증 플로우
@@ -17,35 +17,36 @@
 > 현행은 바로 아래 변경 사항 표의 "인증 제공자"~"App Links / `/auth/confirm`" 행 + `CLAUDE.md` +
 > `docs/plans/2026-09-01-entra-external-id-migration-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) 를 본다.
 
-본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.1.19 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
+본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.3.1 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
-| 영역 | TRD v1.0 | 현재 (v0.2.0) |
+| 영역 | TRD v1.0 | 현재 (v0.3.1) |
 |------|----------|------------|
-| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.139.0 (Python 3.14)** + uvicorn |
+| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.141.1 (Python 3.14)** + uvicorn 0.53.0 |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
-| ORM | Exposed 0.61.0 | **SQLAlchemy 2.0 async + asyncpg** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (117 PASS, cov 94% / coverage core `sysmon`) |
+| ORM | Exposed 0.61.0 | **SQLAlchemy 2.0.54 async + asyncpg 0.31.0** |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (119 PASS, cov 94% / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
-| 운동 API | RapidAPI ExerciseDB | **OSS** `oss.exercisedb.dev` (인증 불필요) |
+| 운동 API & 현지화 | RapidAPI ExerciseDB (영문) | **OSS** `oss.exercisedb.dev` (인증 불필요) + 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) |
+| AI 맞춤 식단 | 미포함 | **Azure AI Foundry `DeepSeek-V3.2` MaaS** (`openai 3.16.2` AsyncOpenAI, `POST /meals/generate` & `GET /meals/current`, `X-AI-Data-Processing-Consent: true` 동의 헤더 필수, `MEAL_AI_ENABLED` kill switch) |
 | **인증 제공자** | Supabase Auth (SDK 3.6.0, ES256) | **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` — MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE), **RS256** (2026-09 전환) |
 | **인증 데이터 위치** | Supabase Korea 리전 | **Asia Pacific** — Entra 외부 테넌트가 한국 리전을 제공하지 않는다. 건강 데이터는 그대로 Korea Central. 방침 국외이전 고지: `docs/store/privacy-policy.md` §3-1 |
 | **사용자 식별자** | Supabase JWT `sub` | 액세스 토큰 **`oid`** claim — `sub` 는 앱마다 다른 pairwise 값이라 Graph 계정 삭제가 매칭되지 않는다 |
 | **계정 삭제** | Supabase Admin API (200) | **Microsoft Graph** `DELETE /users/{oid}`(**204**) + `deletedItems` 즉시 파기 — 30일 소프트 삭제를 방침의 "즉시 영구 삭제" 문구에 맞춤 |
 | **인증 화면 수** | 3 (Login/Signup/ForgotPassword, 959줄) | **1** (`AuthGateScreen`, ui/auth 283줄) — 입력·검증·재발송·비밀번호 재설정이 Entra 호스팅 페이지로 이관 |
 | **App Links / `/auth/confirm`** | 이메일 확인 링크용으로 존재 | **삭제** — Entra 는 브라우저 안에서 검증 코드를 입력받는다 |
-| Sentry 프로젝트 | 단일 `eundunhealth` | **두 프로젝트 분리** — Android `eundunhealth`, Backend `eundunhealth-backend` |
-| Android 정적 분석 | 미적용 | **Detekt 1.23.8 + Spotless 8.6.0 + ktlint 1.5.0** |
-| 차트 라이브러리 | 미사용 | **Vico 3.2.2** (compose-m3) — 통계 + 목표 진행 차트 |
+| Sentry 프로젝트 | 단일 `eundunhealth` | **두 프로젝트 분리** — Android `eundunhealth` (8.57.0 / Gradle 6.21.0), Backend `eundunhealth-backend` (2.69.2) |
+| Android 정적 분석 & 빌드 | 미적용 | **Detekt 1.23.8 (`detekt-cli` + `androidComponents` 커스텀 태스크) + Spotless 8.10.1 + ktlint 1.5.0** · AGP 9.3.2 내장 Kotlin + 새 DSL 기본 활성 (`org.jetbrains.kotlin.android` 제거) |
+| 차트 라이브러리 | 미사용 | **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
-| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.3.1** (PYSEC-2026-161 + GHSA-82w8-qh3p-5jfq + GHSA-jp82-jpqv-5vv3 fix — v0.1.5 #54 에서 1.1.0 도입 → 1.2.1 → PR #123 에서 1.3.1) |
-| versionCode / versionName | (미정) | **34 / 0.2.0** (저장소 SSoT — Play 프로덕션은 33 / 0.1.19) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
-| Alembic head | (미정) | `b78b256c2b20` (user_profile_history `(user_id, recorded_at)` 복합 인덱스; 직전 `c849579de6c4` rest_day server_default 일관화) |
+| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.6.0** |
+| versionCode / versionName | (미정) | **36 / 0.3.1** (저장소 = Play 프로덕션 10% 단계 출시 LIVE) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| Alembic head | (미정) | `0dda67f1638a` (`add_gender_to_user_profile`; 직전 `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
 
-신규 도메인 / 화면 (v0.2·v0.3): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, 비밀번호 재설정.
+신규 도메인 / 화면 (v0.2·v0.3·v0.3.0·v0.3.1): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, AI 맞춤 주간 식단(`MealPlanScreen`), 추천 운동 46종 한국어 현지화.
 
-v0.1.1~v0.1.19 누적 (Android UI + Auth + Backend 안정화):
+v0.1.1~v0.3.1 누적 (Android UI + Auth + Backend 안정화 및 기능 확장):
 - v0.1.1 (#40) signup 가입 이메일 확인 흐름 + 인증 상태 모델 리팩터 (`SessionState` / `AuthOpState` / `SignupState` 분리)
 - v0.1.2 (#41) supabase-kt 3.6.0 `SupabaseEncodingException` 처리 hotfix
 - v0.1.3 (#42) Android App Links 자동 로그인 (intent-filter autoVerify + supabase-kt `handleDeeplinks` + assetlinks.json + `/auth/confirm` fallback)
@@ -66,7 +67,10 @@ v0.1.1~v0.1.19 누적 (Android UI + Auth + Backend 안정화):
 - v0.1.17 (#128) 공개 출시 전 7-도메인 전체 감사(출시차단 0건) — Rule 8 inline 에러 배너(Onboarding·Home·Profile) + HistoryScreen a11y + BadgeViewModel 테스트 + 백엔드 프로필 경계 테스트 + account_service 로그 구조화 + 개인정보/계정삭제 백엔드 공개 라우트(`GET /privacy`·`/account-deletion`, md→HTML) + 문서 드리프트 정정.
 - v0.1.18 출시 재업로드 — versionCode 31 Play 중복 거부(INC-2026-06-19-28) → 32 재빌드(**앱 동작 변화 없음**=v0.1.17 빌드 동일) + versionCode 단조성 가드(원장 `play-upload-ledger.md` · `check-version-monotonic.sh` · 룰 13).
 - **2026-06-29 Google Play 프로덕션 정식 출시(LIVE)** — v0.1.18/32 출시·승인. 2026-07-02 repo public 전환(사전 보안감사 + 인프라 식별자 스크럽 PR #137 + secret scanning·push protection·CodeQL 활성) + release 서명 keystore 존재-조건부화(clean checkout/CodeQL autobuild 빌드 가능, INC-2026-07-02-29).
-- v0.1.19 (#143) Android CD 첫 실 e2e 릴리스(내부 트랙) — 태그 `v*` push → `release.yml`(preflight 전체 게이트 → 서명 AAB → Play 내부 트랙 업로드 → 원장 자동 갱신 커밋 `32f0ebe`, 2026-07-03 실증) + 의존성 배치(#139: sentry-gradle 6.12.0·Compose BOM 2026.06.00·lifecycle 2.11.0·Gradle 9.6.0). **사용자 가시 동작 변화 없음**. Azure CI 로그인 OIDC 전용화(`AZURE_CREDENTIALS` 완전 제거, PR #141/#142).
+- v0.1.19 (#143) Android CD 첫 실 e2e 릴리스(내부 트랙) — 태그 `v*` push → `release.yml`(preflight 전체 게이트 → 서명 AAB → Play 내부 트랙 업로드 → 원장 자동 갱신 커밋 `32f0ebe`, 2026-07-03 실증) + 의존성 배치(#139). Azure CI 로그인 OIDC 전용화(`AZURE_CREDENTIALS` 완전 제거, PR #141/#142).
+- v0.2.0 (#165) 인증 제공자 전환 Supabase Auth → **Microsoft Entra External ID**(MSAL 브라우저 위임, RS256 JWKS, `oid` 식별자, Microsoft Graph 계정 삭제) + 기술부채 청산 T0~T7(Python 3.14, Gradle 9.7.1, openapi-generator 7.25.0) + 하드닝 H1~H10(R8 릴리스 빌드 PR 게이트 포함) + Play 프로덕션 직접 CD 전환(2026-09-02).
+- v0.3.0 (#170/#171) **AI 맞춤 주간 식단 출시** — Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 + `meal_plans`/`meal_plan_items` 테이블(`718783053fcd`) + `user_profiles.gender`(`0dda67f1638a`) + `POST /meals/generate` & `GET /meals/current` + Android `MealPlanScreen`/`MealPlanViewModel` (2026-09-21).
+- v0.3.1 (#178/#181/#186/#188/#191) **프로덕션 배포 하드닝 & 운동 한국어 현지화** — 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) + AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents`, `check-agp10-compat.sh`) + AI 식단 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) & `MEAL_AI_ENABLED` kill switch + `backend-production` 환경 게이트 & `backend-rollback.yml` + `verify_containerapp_deployment.py` 불변 조건 검증 + Play 프로덕션 **10% 단계 출시 LIVE** (2026-10-16).
 
 ---
 
@@ -678,7 +682,7 @@ eundunHealth/                          # 루트 Gradle 프로젝트
 > |---|---|
 > | Android `local.properties` | `BACKEND_BASE_URL` · `eundunhealth-app_SENTRY_DSN` · `ENTRA_API_SCOPE`(선택, 기본값 있음) · release 서명 3종 |
 > | Android MSAL 설정 | `app/src/{debug,release}/res/raw/auth_config_ciam.json` (client_id·authority·redirect_uri — `R.raw` 라 BuildConfig 주입 불가) |
-> | Backend | `DATABASE_URL` · `ENTRA_TENANT_ID` · `ENTRA_SUBDOMAIN` · `ENTRA_BACKEND_CLIENT_ID` · `ENTRA_BACKEND_CLIENT_SECRET` · `SENTRY_DSN` · `ENVIRONMENT` · `CORS_ORIGINS` |
+> | Backend | `DATABASE_URL` · `ENTRA_TENANT_ID` · `ENTRA_SUBDOMAIN` · `ENTRA_BACKEND_CLIENT_ID` · `ENTRA_BACKEND_CLIENT_SECRET` · `DEEPSEEK_ENDPOINT` · `DEEPSEEK_KEY` · `MEAL_AI_ENABLED` · `SENTRY_DSN` · `ENVIRONMENT` · `CORS_ORIGINS` |
 >
 > 정본은 `local.properties.example` · `backend/.env.example` · `docs/ops/operations-snapshot.md` §2.
 

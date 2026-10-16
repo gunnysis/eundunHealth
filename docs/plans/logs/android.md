@@ -4,6 +4,19 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-15 — ExerciseDB 운동 콘텐츠 한국어 로컬라이징 (v0.3.1, PR #178·#186)
+
+- **PR**: [#178](https://github.com/gunnysis/eundunHealth/pull/178) · [#186](https://github.com/gunnysis/eundunHealth/pull/186)
+- **Why**: ExerciseDB API가 영문 운동 이름과 지침만 제공하여 한국어 사용자 경험이 저하됐다. 런타임 번역 비용이나 자체 백엔드/DB 추가 없이 앱이 추천 풀로 사용하는 46개 운동을 안전하게 한국어화해야 했다.
+- **What**:
+  - `app/src/main/assets/exercises/korean_exercises.json` 및 `ExerciseLocalization.kt` 도입: 추천 풀 46개 운동의 한국어 이름·단계별 지침(`instructions`)·자세 팁(`tips`) 및 근육(15종)·신체 부위(10종)·장비(7종) 한국어 매핑 제공.
+  - 원문 이름+지침 정규화 SHA-256 지문 대조를 통해 상류 원문이 변경되거나 미번역 운동이 유입되면 자동으로 영문 원문으로 안전 폴백.
+  - 서버/Room plan JSON은 영문 canonical로 유지하고 `WorkoutRepositoryImpl` 반환 경계 및 `ExerciseDetailScreen`에서 한국어를 적용.
+  - `scripts/verify-exercise-translations.ps1`로 릴리스 전 46개 운동 ID 및 원문 지문 드리프트를 검증.
+- **Outcome**: 46/46 운동 지문 일치 및 단위 테스트 통과. 런타임 번역 API/DB 추가 비용 0원.
+- **Files touched**: `app/src/main/assets/exercises/korean_exercises.json`, `app/src/main/java/com/gunnys/eundunhealth/data/local/ExerciseLocalization.kt`, `app/src/main/java/com/gunnys/eundunhealth/data/repository/WorkoutRepositoryImpl.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/detail/ExerciseDetailScreen.kt`, `scripts/verify-exercise-translations.ps1`
+- **설계 원문**: `2026-10-15-exercise-korean-localization-design.md` (본 entry 로 흡수, git rm)
+
 ## Older
 
 - 2026-06-16 감사 LOW 후속: SideEffect 라이프사이클 헬퍼 (v0.1.15) ([#123](https://github.com/gunnysis/eundunHealth/pull/123)) — 직전 v0.

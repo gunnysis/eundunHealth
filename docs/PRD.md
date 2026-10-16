@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v2.7 (2026-10-16 — AI 식단 동의·국외 처리 고지 및 운영 배포 안전화)
-**제품 버전:** v0.3.1 (versionCode 36, 출시 후보) — **운동 한국어 현지화 및 AI 식단 배포 전 하드닝**. 현재 Play 프로덕션은 v0.3.0/versionCode 35.
+**문서 버전:** v2.8 (2026-10-16 — v0.3.1 프로덕션 10% 단계 출시 LIVE 및 문서 동기화)
+**제품 버전:** v0.3.1 (versionCode 36, **Play 프로덕션 10% 단계 출시 LIVE**) — **운동 한국어 현지화 및 AI 식단·프로덕션 배포 하드닝**. 직전 프로덕션은 v0.3.0/versionCode 35.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -11,11 +11,11 @@
 
 **은둔헬스(eundunHealth)** 는 PT 트레이너 없이 헬스장에서 혼자 운동하는 사용자를 위한 Android 헬스 앱이다.
 
-사용자의 신체 정보(키, 몸무게, 골격근량, 체지방률)를 기반으로 맞춤형 주간 운동 계획을 자동 생성하고, 운동 완료를 추적하며, 지속적인 운동 동기부여를 위한 배지 시스템을 제공한다.
+사용자의 신체 정보(키, 몸무게, 골격근량, 체지방률, 성별)를 기반으로 맞춤형 주간 운동 계획과 AI 주간 식단을 자동 생성하고, 운동 완료를 추적하며, 지속적인 운동 동기부여를 위한 배지 시스템을 제공한다.
 
 ### 핵심 가치
 
-- **접근성**: 트레이너 없이도 체계적인 운동 계획 제공
+- **접근성**: 트레이너 없이도 체계적인 운동 계획 제공 (추천 운동 46종 한국어 현지화 번들)
 - **자동화**: 신체 정보 기반 주간 운동 계획 자동 생성
 - **개인화 영양 보조**: 명시적 데이터 처리 동의 후 신체 정보·운동일 기반 참고용 AI 주간 식단 생성
 - **동기부여**: 운동 완료 추적 및 배지 보상 시스템
@@ -33,20 +33,23 @@
 
 ### 2.1. 회원가입 및 로그인
 
+> **v0.2.0(2026-09) 전환 반영**: 앱 내 개별 로그인/회원가입/비밀번호 재설정 폼은 `AuthGateScreen` 단일 인증 게이트 + **Microsoft Entra External ID 브라우저 위임(PKCE)** 흐름으로 통합되었다.
+
 #### 시나리오 A: 신규 사용자 (첫 설치)
 
 ```
-앱 설치 → Splash 화면 → 로그인 화면
-  ├─ [회원가입] → 이메일/비밀번호 입력 → 회원가입 완료 → 자동 로그인
+앱 설치 → Splash 화면 → 인증 게이트(AuthGateScreen)
+  ├─ [로그인 / 회원가입] → Entra 호스팅 페이지(브라우저)에서 가입/인증 완료
   │   └─ 온보딩 화면 → 신체 정보 입력 → 홈 화면
-  └─ [로그인] → 이메일/비밀번호 입력 → 로그인 완료
+  └─ 기존 계정 인증 완료
       ├─ 프로필 있음 → 홈 화면
       └─ 프로필 없음 → 온보딩 화면 → 신체 정보 입력 → 홈 화면
 ```
 
-**신체 정보 입력 (온보딩)**
+**신체 정보 입력 (온보딩 / 프로필)**
 | 항목 | 입력 방식 | 범위 |
 |------|----------|------|
+| 성별 | 선택 (남성 / 여성) | `male` / `female` (v0.3.0 추가) |
 | 키 (cm) | 슬라이더 + 키보드 | 100 ~ 250 |
 | 몸무게 (kg) | 슬라이더 + 키보드 | 30 ~ 200 |
 | 골격근량 (kg) | 슬라이더 + 키보드 | 10 ~ 100 |
@@ -61,7 +64,7 @@
 ```
 앱 실행 → Splash 화면
   ├─ 저장된 세션 있음 → 자동 로그인 → 홈 화면
-  └─ 세션 만료/없음 → 로그인 화면 → 이메일/비밀번호 입력 → 홈 화면
+  └─ 세션 만료/없음 → 인증 게이트(AuthGateScreen) → 브라우저 인증 → 홈 화면
 ```
 
 - MSAL 계정 캐시의 무음 갱신으로 매번 로그인 불필요
@@ -108,9 +111,9 @@
 각 운동의 상세 정보를 확인할 수 있다.
 
 - 운동 GIF 애니메이션 (동작 시각화)
-- 운동명, 타겟 부위, 사용 장비
+- 운동명, 타겟 부위, 사용 장비, 보조 근육 (추천 운동 46종은 번들된 `korean_exercises.json` v2 기반 한국어 제공, SHA-256 지문 불일치 또는 미수록 운동은 영문 원문 폴백)
 - 세트 x 횟수
-- 운동 방법 (단계별 안내)
+- 운동 방법 (한국어 단계별 안내)
 
 ### 2.4. 운동 기록 히스토리
 
@@ -260,22 +263,24 @@
 │   Android App       │────▶│ Backend (FastAPI) │────▶│ Azure PostgreSQL│
 │   (Jetpack Compose) │     │  Azure Container  │     │                 │
 │                     │     │  Apps             │     │                 │
-└────────┬────────────┘     └──────────────────┘     └─────────────────┘
-         │
-         ├──▶ Entra External ID (인증)
-         ├──▶ ExerciseDB API (운동 데이터)
+└────────┬────────────┘     └────────┬─────────┘     └─────────────────┘
+         │                           │
+         ├──▶ Entra External ID      ├──▶ Azure AI Foundry (DeepSeek-V3.2)
+         ├──▶ ExerciseDB API         └──▶ Microsoft Graph (계정 삭제)
          ├──▶ Health Connect (운동 세션 감지)
          └──▶ Sentry (에러 모니터링)
 ```
 
-### Backend API (FastAPI Python 3.14)
+### Backend API (FastAPI Python 3.14 — 총 20개 = JWT 필요 16 + 공개 4)
 
 | Method | Path | 설명 | 도입 |
 |--------|------|------|-----|
-| `GET` | `/health` | liveness 헬스 체크 (Container App probe) | v0.1 |
-| `GET` | `/health/ready` | readiness probe (DB `SELECT 1` → 200/503) | v0.1 |
+| `GET` | `/health` | 공개 — liveness 헬스 체크 (Container App probe) | v0.1 |
+| `GET` | `/health/ready` | 공개 — readiness probe (DB `SELECT 1` → 200/503) | v0.1 |
+| `GET` | `/privacy` | 공개 — 개인정보 처리방침 HTML (Play 등록 URL) | v0.1.17 |
+| `GET` | `/account-deletion` | 공개 — 계정·데이터 삭제 안내 HTML (Play 등록 URL) | v0.1.17 |
 | `GET` | `/profile` | 프로필 조회 | v0.1 |
-| `PUT` | `/profile` | 프로필 생성/수정 (restDay 포함, 매 호출마다 history 자동 기록) | v0.1 / v0.3 |
+| `PUT` | `/profile` | 프로필 생성/수정 (gender·restDay 포함, 매 호출마다 history 자동 기록) | v0.1 / v0.3 / v0.3.0 |
 | `GET` | `/profile/history?limit=50` | 프로필 변경 이력 (체형 진행 차트용) | v0.3 |
 | `GET` | `/weekly-plan?weekStart=` | 주간 계획 조회 | v0.1 |
 | `POST` | `/weekly-plan` | 주간 계획 생성 | v0.1 |
@@ -287,22 +292,27 @@
 | `POST` | `/badges/{key}` | 배지 수여 | v0.1 |
 | `GET` | `/goals` | 목표 목록 (체중·체지방) | v0.3 |
 | `PUT` | `/goals` | 목표 upsert | v0.3 |
+| `POST` | `/meals/generate` | AI 주간 식단 생성 (`X-AI-Data-Processing-Consent: true` 필수) | v0.3.0 / v0.3.1 |
+| `GET` | `/meals/current` | 현재 주간 식단 조회 | v0.3.0 |
 | `DELETE` | `/account` | 회원 탈퇴 (Entra 사용자 + 앱 DB 일괄 삭제) | v0.1 |
 
-공개 라우트(`/health`·`/health/ready`·`/privacy`·`/account-deletion`)를 제외한 나머지 14개는 Entra JWT(**RS256** / JWKS) 검증 필요. 응답은 camelCase JSON.
+공개 라우트 4개(`/health`·`/health/ready`·`/privacy`·`/account-deletion`)를 제외한 나머지 16개는 Entra JWT(**RS256** / JWKS) 검증 필요. 응답은 camelCase JSON.
 > `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 인증 전환으로 **삭제**됐다 — Entra 는 이메일 검증을 브라우저 안에서 처리하므로 App Links 경로가 필요 없다.
 
 ---
 
-## 6. 화면 구성 (Screen Map)
+## 6. 화면 구성 (Screen Map — 총 11개 화면)
 
 ```
 Splash
-  ├─ Login ──── Signup
-  │                └─ Onboarding ─┐
-  ├─ Onboarding ──────────────────┤
-  └─ Home ◀───────────────────────┘
+  ├─ AuthGateScreen (Entra 브라우저 위임 로그인/회원가입)
+  │    └─ Onboarding ─┐
+  ├─ Onboarding ──────┤
+  └─ Home ◀───────────┘
        ├─ WorkoutDetail
+       ├─ MealPlan (v0.3.0 AI 주간 식단)
+       ├─ Statistics (v0.2 통계)
+       ├─ Goal (v0.3 목표)
        ├─ History
        ├─ Badge
        └─ Profile
@@ -311,14 +321,16 @@ Splash
 | 화면 | 주요 기능 |
 |------|----------|
 | Splash | 세션 확인 후 자동 라우팅 |
-| Login | 이메일/비밀번호 로그인 |
-| Signup | 회원가입 후 자동 로그인 → 온보딩 |
-| Onboarding | 신체 정보 입력 (키, 몸무게, 골격근량, 체지방) |
-| Home | 주간 운동 계획, 진행률, 오늘 하이라이트 |
-| WorkoutDetail | 운동 GIF, 세트/횟수, 운동 방법 |
+| AuthGate | Microsoft Entra External ID 브라우저 위임 로그인/회원가입 진입 |
+| Onboarding | 신체 정보 입력 (성별, 키, 몸무게, 골격근량, 체지방) |
+| Home | 주간 운동 계획, 오늘의 활동(HC), 진행률, 오늘 하이라이트 |
+| WorkoutDetail | 한국어 현지화 운동명/방법(46종 번들 + 영문 폴백), GIF, 세트/횟수 |
+| MealPlan | AI 맞춤 주간 식단 조회 및 국외 처리 명시 동의 후 자동 생성 (v0.3.0/v0.3.1) |
+| Statistics | 12주 완료율 막대 차트 + 현재/최장 스트릭 (v0.2) |
+| Goal | 체중·체지방 목표 설정 및 신체 변화 추이 차트 (v0.3) |
 | History | 과거 주간 운동 기록 |
-| Badge | 배지 목록 (획득/미획득) |
-| Profile | 신체 정보 편집 |
+| Badge | 배지 목록 9종 (획득/미획득) |
+| Profile | 신체 정보·성별·휴식일 편집, 로그아웃, 회원 탈퇴 |
 
 ---
 
@@ -334,20 +346,21 @@ Splash
 | 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
 | 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
 
-### v0.1.1에서 추가 (2026-05-26)
+### v0.2.0 ~ v0.3.1에서 추가 완료 (2026-09 ~ 2026-10)
 
-| 영역 | 비고 |
-|------|------|
-| ~~회원가입 이메일 확인 흐름 (AwaitingEmailConfirmation + 60초 재전송)~~ | 2026-09 전환으로 **제거** — Entra 호스팅 페이지가 담당 |
-| Login 미인증 사용자에게 인증 메일 재전송 inline 액션 | `EmailNotConfirmed` AppError 도입 |
-| 인증 상태 모델 리팩터: `SessionState` / `AuthOpState` / `SignupState` | 가입/로그인 실패 시 화면 튕김 + 스낵바 잘림 버그 해소 |
+| 영역 | 도입 버전 | 비고 |
+|------|----------|------|
+| Microsoft Entra External ID 브라우저 위임 인증 전환 | v0.2.0 | `AuthGateScreen` 단일화, RS256 JWKS, Graph 계정 삭제 |
+| AI 맞춤 주간 식단 (`DeepSeek-V3.2` MaaS) + 프로필 `gender` | v0.3.0 | `POST /meals/generate`, `GET /meals/current`, `MealPlanScreen` |
+| 추천 운동 46종 한국어 현지화 번들 (`korean_exercises.json` v2) | v0.3.1 | SHA-256 지문 대조 + 영문 폴백, 부위·장비·근육 태그 한글화 |
+| AI 식단 국외 처리 사전 동의 헤더 강제 & 프로덕션 배포 하드닝 | v0.3.1 | `X-AI-Data-Processing-Consent: true`, `MEAL_AI_ENABLED` kill switch, Play 10% 단계 출시 |
 
 ### 향후 확장 후보
 
 | 기능 | 설명 |
 |------|------|
 | 소셜 기능 | 친구 추가, 운동 현황 공유 |
-| 맞춤 추천 고도화 | 운동 이력 기반 AI 추천 |
-| 영양/식단 관리 | 칼로리 추적, 식단 추천 |
+| 맞춤 추천 고도화 | 운동 이력 기반 AI 운동 루틴 추천 |
+| 식단 섭취 체크 및 영양 리포트 | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 |
 | 사용자 정의 루틴 | 자동 생성된 plan을 사용자가 직접 편집 |
 | 추가 배지 / 시즌 챌린지 | 시즌별 한정 배지, 친구 간 챌린지 |

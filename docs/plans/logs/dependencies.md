@@ -63,7 +63,7 @@
 - **후속 해소 (2026-10-15)**: 원인은 Hilt가 아니라 detekt 1.23.8의 레거시 Android variant
   연동이었다. app에서 detekt 플러그인 적용을 제거하고 `androidComponents` 기반 custom task로
   대체해 `builtInKotlin`/`newDsl` opt-out을 제거했다. 상세는
-  `docs/plans/2026-10-15-agp10-build-modernization-design.md`를 참조한다.
+  `docs/plans/2026-10-15-agp10-build-modernization-design.md`(→ `docs/plans/logs/process-infra.md` 2026-10-15 entry 로 흡수)를 참조한다.
 - **Files touched**: `gradle/libs.versions.toml`, `app/build.gradle.kts`, `backend/requirements*.txt`,
   `.github/workflows/*.yml`, `docs/ops/dependency-deferred.md`
 

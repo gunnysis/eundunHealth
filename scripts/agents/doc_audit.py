@@ -102,17 +102,24 @@ def parse_cors_default(config_text: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+_ROUTER_PREFIX_RE = re.compile(
+    r'APIRouter\([^)]*?\bprefix\s*=\s*["\']([^"\']+)["\']', re.DOTALL
+)
 _ROUTE_RE = re.compile(
     r'@router\.(get|post|put|patch|delete)\(\s*["\']([^"\']*)["\']', re.IGNORECASE
 )
 
 
 def count_routes_in_text(text: str) -> list[dict[str, str]]:
-    """라우터 파일 텍스트에서 (method, path) 목록을 추출한다."""
-    return [
-        {"method": m.group(1).lower(), "path": m.group(2)}
-        for m in _ROUTE_RE.finditer(text)
-    ]
+    """라우터 파일 텍스트에서 (method, path) 목록을 추출한다 (APIRouter prefix 반영)."""
+    prefix_match = _ROUTER_PREFIX_RE.search(text)
+    prefix = prefix_match.group(1).rstrip("/") if prefix_match else ""
+    routes: list[dict[str, str]] = []
+    for m in _ROUTE_RE.finditer(text):
+        raw_path = m.group(2)
+        full_path = f"{prefix}{raw_path}" if prefix else raw_path
+        routes.append({"method": m.group(1).lower(), "path": full_path})
+    return routes
 
 
 _DOCKER_PY_RE = re.compile(r"^FROM\s+python:(\d+\.\d+)", re.MULTILINE)

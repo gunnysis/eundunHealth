@@ -4,6 +4,31 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-16 — 프로덕션 배포 하드닝 및 AI 식단 개인정보 고지 정합화 (v0.3.1, PR #188·#191)
+
+- **PR**: [#188](https://github.com/gunnysis/eundunHealth/pull/188) · [#191](https://github.com/gunnysis/eundunHealth/pull/191)
+- **Why**: v0.3.1 출시 전 감사에서 ① AI 식단 생성 시 신체·운동 데이터가 Azure AI Foundry(`DeepSeek-V3.2`, `GlobalStandard`)로 전송되나 사전 동의 및 처리방침 국외 처리 고지가 구체적이지 않은 점, ② 비멱등 `POST /meals/generate` 요청의 클라이언트/SDK 중첩 재시도 및 비용 상한 부재, ③ Backend CD(`deploy-backend.yml`)의 승인 게이트·target revision 검증·롤백 부재 및 Play 프로덕션 100% 즉시 노출 위험이 확인됐다.
+- **What**:
+  - **AI 식단 동의 및 방어막**: 앱 식단 생성 직전 국외 처리 사전 동의 다이얼로그 추가 + Backend `X-AI-Data-Processing-Consent: true` 헤더 강제(미포함 시 400) + `MEAL_AI_ENABLED` 킬스위치 + `openai==3.16.2` 고정(`max_retries=1`, timeout 60s, `max_tokens=2500`) + Android 식단 전용 130s read timeout 및 `RetryInterceptor` 멱등 메서드(`GET`/`HEAD`) 제한 + 근거 없는 30세·활동계수 1.55 고정 계산 제거.
+  - **법무·스토어 고지 동기화**: `privacy-policy.html`(시행일 `2026-10-16`)·`delete-account.html`·`docs/ops/play-data-safety.md`에 Azure AI Foundry(`DeepSeek-V3.2`, GlobalStandard) 국외 처리 가능성 및 비보존 조건 명시 + `test_legal.py` 회귀 가드 추가.
+  - **배포 파이프라인·클라우드 하드닝**: `deploy-backend.yml`에 `production-backend` required-reviewer 환경·OIDC 인증·target revision 대기 및 `/health`·`/health/ready` 검증·`rollback_image_tag` 롤백 경로 구현. `release.yml`을 Play production **10% 단계적 출시(`inProgress`, `userFraction: 0.1`)**로 전환. ACR admin user 비활성화(`AcrPull` RBAC 전용) 및 월 70,000원 Azure 예산 알림(`budget-eundunhealth-monthly-krw`, 80%·100%·예측 100%) 구성.
+- **Outcome**: Backend revision `eundunhealth-api--0000062`(image `2610d18`) 배포 및 `/health`·`/health/ready` 200 실증. Play Store `v0.3.1`(`versionCode=36`) 프로덕션 10% 단계적 출시 완료. Android `@Test` 151건 · Backend pytest 119건 통과.
+- **Files touched**: `.github/workflows/{deploy-backend,release,backend}.yml`, `backend/app/{config,routers/meals,services/meal_ai,schemas/meal}.py`, `backend/static/{privacy-policy,delete-account}.html`, `backend/tests/{test_meals,test_legal}.py`, `app/src/main/java/com/gunnys/eundunhealth/{di/NetworkModule,data/remote/RetryInterceptor,data/repository/MealRepository,ui/meal/MealPlanViewModel,ui/meal/MealPlanScreen}.kt`, `docs/ops/{operations-snapshot,play-data-safety,play-store-release,monitoring-and-cost}.md`, `version.properties`
+- **설계 원문**: `2026-10-16-production-deployment-hardening-{design,plan}.md` (본 entry 로 흡수, git rm)
+
+### 2026-10-15 — AGP 10 대비 Android 빌드 현대화 (PR #181)
+
+- **PR**: [#181](https://github.com/gunnysis/eundunHealth/pull/181)
+- **Why**: AGP 10에서 제거 예정인 `android.builtInKotlin=false`와 `android.newDsl=false` opt-out 플래그를 선제 제거해야 했다. 사전 조사 결과 실제 차단 원인은 Hilt가 아니라 `detekt 1.23.8` Gradle 플러그인의 legacy Android variant API 및 Gradle 10 `ReportingExtension.file` 호출이었다.
+- **What**:
+  - `gradle.properties`에서 `android.builtInKotlin=false`, `android.newDsl=false`, `android.dependency.useConstraints=true`, `android.uniquePackageNames=false` 제거 및 AGP 9 기본값 채택.
+  - `app/build.gradle.kts`에서 `kotlin-android` 플러그인 별칭을 제거하고 OpenAPI 생성 소스를 `AndroidSourceSet.kotlin.directories`에 등록.
+  - `app` 모듈에는 detekt 플러그인을 직접 적용하지 않고 `androidComponents` 안에서 `configureJavaCompileTask`의 classpath/destination + SDK bootClasspath를 사용하는 custom `detektDebug`/`detektBaselineDebug` 태스크를 구성.
+  - 재발 방지를 위해 `scripts/check-agp10-compat.sh`를 Android CI(`android.yml`)와 `.githooks/pre-commit`에 연결.
+- **Outcome**: `-Pandroid.debug.obsoleteApi=true --warning-mode all` 기준 legacy variant 및 Gradle 10 경고 0건. `spotlessCheck` · `detektDebug`(타입 해석 포함) · `testDebugUnitTest` · `assembleRelease` 전부 통과.
+- **Files touched**: `gradle.properties`, `build.gradle.kts`, `app/build.gradle.kts`, `scripts/check-agp10-compat.sh`, `.github/workflows/android.yml`, `.githooks/pre-commit`, `docs/ops/dependency-deferred.md`
+- **설계 원문**: `2026-10-15-agp10-build-modernization-design.md` (본 entry 로 흡수, git rm)
+
 ### 2026-09-02 — PR #165: Entra 전환(v0.2.0) + 기술부채 T0~T7 + 하드닝 H1~H10 + Azure 정리 + 전수 점검 리팩토링
 
 - **PR**: [#165](https://github.com/gunnysis/eundunHealth/pull/165) (merge commit `049b643`, 42커밋) + main 직접 `786692a`(배포 차단 해소)

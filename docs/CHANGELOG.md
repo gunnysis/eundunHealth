@@ -4,23 +4,45 @@
 
 ---
 
-## [v0.3.1] — Unreleased : 운동 한국어 현지화 및 AI 식단 배포 전 하드닝
+## [v0.3.1] — 2026-10-16 — 운동 한국어 현지화 · AGP 10 빌드 현대화 · AI 식단 배포 하드닝
 
-> **주요 기능 추가.** 사용자의 체격 조건과 목표를 바탕으로 "Azure AI Foundry MaaS (DeepSeek-V3.2)" 모델을 활용해 주간 식단을 자동 생성하는 기능을 구현했습니다.
+> **2026-10-16 Play 프로덕션 10% 단계적 출시 완료 (`versionCode=36`, 태그 `v0.3.1`).** 운동 카탈로그 46종을 한국어로 전면 현지화하고, AGP 10 대비 빌드 구성을 현대화했으며, AI 식단 생성의 비용/지연/동의/배포 안전장치를 프로덕션 수준으로 하드닝했다.
+
+### 🇰🇷 운동 데이터 한국어 현지화 (`ExerciseLocalization`, PR #178·#186)
+- ExerciseDB 영문 운동 46종의 이름·단계별 수행 방법(`instructions`)·자세 팁(`tips`)을 한국어로 번역한 `ExerciseLocalization.kt` 사전 도입.
+- 근육 15종·신체 부위 10종·장비 7종 라벨 한국어 매핑(`translateMuscle`, `translateBodyPart`, `translateEquipment`) 및 구버전 DB 영문 캐시 실시간 폴백 적용.
+- 운동 상세(`ExerciseDetailScreen`)에서 운동명·타겟 부위·장비·수행 방법·팁이 모두 한국어로 표시되도록 개선.
+
+### 🛠️ AGP 10 대비 빌드 현대화 및 의존성 정리 (PR #181·#184·#185)
+- `gradle.properties`: AGP 9 기본값과 중복되던 플래그(`useAndroidX`, `builtInKotlin`, `newDsl`) 정리 및 `android.disallowKotlinSourceSets=true` 선제 활성화.
+- `app/build.gradle.kts`: `kotlin.compilerOptions`를 `android {}` 블록 밖 top-level DSL로 이동.
+- Detekt **2.0.0-alpha.2** 네이티브 Gradle 플러그인 사용 유지(Spotless 8.4.0 · ktlint 1.6.0 병행).
+- Android/Backend 최신 패치 의존성 일괄 업그레이드(Hilt 2.59.2, Room 2.8.4, Retrofit 3.0.0, OkHttp 5.3.2, Sentry 8.39.0 / FastAPI 0.136.0, SQLAlchemy 2.0.49, Pydantic 2.13.2, OpenAI 2.32.0 등).
+
+### 🛡️ AI 식단 프로덕션 하드닝 및 개인정보 고지 정합화 (PR #188·#191)
+- AI SDK 기본 재시도와 Tenacity의 중첩을 제거하고, SDK retry 1회·60초 timeout·출력 2,500 token 상한으로 비용과 지연을 제한했다(`MEAL_AI_ENABLED` 런타임 킬스위치 추가).
+- Android 공통 retry(`RetryInterceptor`)는 멱등 HTTP 메서드(`GET`/`HEAD`)만 재시도한다. `POST /meals/generate` 응답 유실 시 중복 유료 호출을 만들던 경로를 회귀 테스트로 차단했다.
+- 식단 API 전용 130초 read timeout(`@MealApiHttpClient`), AI 응답의 7일/중복요일/문자열/영양값 경계 검증, 같은 주 재생성 unique-key 충돌 방지(`session.flush()`)를 추가했다.
+- 프로필에 없는 나이 30세·활동계수 1.55와 고정 4:4:2 매크로를 개인 목표처럼 계산하던 가짜 정밀도를 제거하고, 화면과 프롬프트에 참고용·비의료 정보임을 명시했다.
+- **AI 개인정보 국외 처리 동의 강제**: 식단 생성 직전에 성별·키·몸무게·체지방률·골격근량·운동일의 Azure AI Foundry `GlobalStandard` 국외 처리 가능성을 앱 다이얼로그에서 고지하고 "동의하고 생성"을 요구한다. Backend도 필수 헤더(`X-AI-Data-Processing-Consent: true`)가 없는 요청을 `400`으로 거부한다. 개인정보 처리방침(`2026-10-16` 개정)·계정 삭제 안내·Play Data safety 런북을 동기화했다.
+- **배포 안전화**: `deploy-backend.yml`에 `production-backend` required-reviewer environment·OIDC 인증·target revision 대기 및 `/health`·`/health/ready` 검증·`rollback_image_tag` 롤백 경로를 구현했다. `release.yml`은 Play production **10% 단계적 출시(`inProgress`, `userFraction: 0.1`)**로 전환했다. ACR admin user를 비활성화(`AcrPull` RBAC 전용)하고 월 70,000원 Azure 예산 알림(80%·100%·예측 100%)을 구성했다.
+
+### 🔢 버전
+- versionName 0.3.0 → **0.3.1**, versionCode 35 → **36** (`LAST_UPLOADED_VERSION_CODE=36`). Backend active revision `eundunhealth-api--0000062` (image `2610d18`).
+
+---
+
+## [v0.3.0] — 2026-09-21 — Azure AI Foundry (DeepSeek-V3.2) 기반 주간 AI 식단 생성
+
+> **주요 기능 추가 (`versionCode=35`).** 사용자의 신체 프로필과 주간 운동 일정을 바탕으로 Azure AI Foundry Serverless MaaS(`DeepSeek-V3.2`) 모델을 호출해 7일(아침·점심·저녁 21끼) 맞춤 한식 위주 식단을 자동 생성하는 기능을 구현했다.
 
 ### ✨ 식단 생성 (Meal Plan) 기능
-- **프론트엔드 (Android)**: `MealPlanScreen` 및 `DailyMealCard` 컴포저블 신규 구현. `rememberSaveable` 적용을 통해 스크롤 시에도 아코디언 상태가 소실되지 않도록 UX 최적화. Dagger Hilt 기반 `MealsApi` 레트로핏 연동.
-- **백엔드 (FastAPI)**: `/api/v1/meal-plans` 엔드포인트 구현. `AzureMaaSMealClient` 추상화를 통해 Azure에 배포된 DeepSeek-V3.2 모델을 활용.
-- **AI 연동 안정화**: OpenAI SDK의 베타 기능(`beta.parse`) 호환성 한계 극복을 위해 명시적인 JSON Mode(`{"type": "json_object"}`)와 `WeeklyMealPlanResponse.model_validate_json()` 수동 파싱 조합으로 견고한 에러 핸들링 및 재시도(Tenacity) 로직 완성.
-- **데이터 모델**: SQLAlchemy ORM을 통한 `MealPlan`, `DailyPlan`, `Meal` 계층적 구조 DB 스키마 설계 및 Alembic 마이그레이션 적용.
+- **프론트엔드 (Android)**: `MealPlanScreen` 및 요일별 아코디언 카드 UI 신규 구현(`rememberSaveable`로 스크롤 시 펼침 상태 보존), 홈 대시보드 진입 카드 연결, `OnboardingScreen`/`SettingsScreen`에 성별(`gender`) 입력 추가, Dagger Hilt 기반 `MealsApi` Retrofit 연동.
+- **백엔드 (FastAPI)**: `POST /meals/generate`, `GET /meals/current` 엔드포인트 및 `services/meal_ai.py` 구현. OpenAI Python SDK(`AsyncOpenAI`)의 명시적 JSON Mode(`{"type": "json_object"}`)와 Pydantic `WeeklyMealPlanResponse.model_validate_json()` 검증 + Tenacity 재시도 조합으로 구조화 출력 파싱 안정화.
+- **데이터 모델 (Alembic `0dda67f1638a`)**: `meal_plans` · `meal_plan_items` 테이블 신설(사용자·주차별 unique 제약 및 cascade 삭제) 및 `user_profiles.gender` 컬럼 추가.
 
-### 🛡️ 배포 전 하드닝 (2026-10-15~16)
-- AI SDK 기본 재시도와 Tenacity의 중첩을 제거하고, SDK retry 1회·60초 timeout·출력 2,500 token 상한으로 비용과 지연을 제한했다.
-- Android 공통 retry는 멱등 HTTP 메서드만 재시도한다. `POST /meals/generate` 응답 유실 시 중복 유료 호출을 만들던 경로를 회귀 테스트로 차단했다.
-- 식단 API 전용 130초 read timeout, AI 응답의 7일/중복요일/문자열/영양값 경계 검증, 같은 주 재생성 unique-key 충돌 방지를 추가했다.
-- 프로필에 없는 나이 30세·활동계수 1.55와 고정 4:4:2 매크로를 개인 목표처럼 계산하던 가짜 정밀도를 제거했다. 화면과 프롬프트에 참고용·비의료 정보임을 명시했다.
-- **AI 개인정보 처리 정합화**: 개인화 기획을 유지한다. 식단 생성 직전에 성별·키·몸무게·체지방률·골격근량·운동일의 Azure AI Foundry `GlobalStandard` 국외 처리 가능성을 앱 안에서 고지하고 “동의하고 생성”을 요구한다. backend도 필수 동의 헤더가 없는 구버전·우회 요청을 거부한다. 개인정보 처리방침·삭제 문서·Play Data safety runbook을 같은 사실로 동기화했다.
-- **배포 안전화**: backend required-reviewer environment/OIDC, target revision 검증, SHA rollback, Play production 10% staged rollout을 구현했다. ACR admin user를 비활성화하고 월 70,000 Azure budget(80%·100% 알림)을 구성했다.
+### 🔢 버전
+- versionName 0.2.0 → **0.3.0**, versionCode 34 → **35**.
 
 ---
 

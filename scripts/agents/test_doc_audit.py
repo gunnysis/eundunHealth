@@ -85,6 +85,18 @@ class TestCountRoutes:
         assert {"method": "get", "path": "/profile"} in routes
         assert len(routes) == 3
 
+    def test_prepends_router_prefix(self):
+        text = (
+            'router = APIRouter(prefix="/meals", tags=["meals"])\n'
+            '@router.post("/generate")\n'
+            '@router.get("/current")\n'
+        )
+        routes = count_routes_in_text(text)
+        assert routes == [
+            {"method": "post", "path": "/meals/generate"},
+            {"method": "get", "path": "/meals/current"},
+        ]
+
 
 class TestCountTestFunctions:
     def test_counts_sync_and_async(self):

@@ -5,17 +5,18 @@
 >
 > **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트, 브라우저 위임). IdP 는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계이며 현재 구현과 다르다** — 현행은 `docs/plans/2026-09-01-entra-external-id-migration-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) §5 참조.
 > 
-> **AI 식단 생성 (2026-09 통합):** 주간 식단 자동 생성 기능은 Azure AI Foundry MaaS(DeepSeek-V3.2)를 통해 구현 완료되었다 (v0.3.0). 프론트엔드는 Compose UI와 Hilt+Retrofit 통신을 사용하고, 백엔드는 FastAPI 서버 환경에서 pydantic JSON 검증 및 에러 분리 아키텍처를 채택했다. 상세 내용은 `docs/plans/2026-09-20-meal-plan-api-selection-design.md`(→ `docs/plans/logs/backend.md` 2026-09-20 entry 로 흡수) 참조.
+> **AI 식단 생성 및 운동 한국어 현지화 (2026-09~10, v0.3.0~v0.3.1):** 주간 식단 자동 생성 기능은 Azure AI Foundry MaaS(`DeepSeek-V3.2`)를 통해 구현 완료되었다(v0.3.0). 프론트엔드는 `MealPlanScreen` Compose UI와 Hilt+Retrofit(전용 130s read timeout) 통신을 사용하고, 백엔드는 FastAPI에서 `AsyncOpenAI` + Tenacity 재시도·Pydantic JSON 검증·`X-AI-Data-Processing-Consent: true` 국외 이전 사전 동의 헤더 강제 및 `MEAL_AI_ENABLED` 킬스위치를 채택했다(v0.3.1). 운동 카탈로그 46종(이름·수행 방법·팁) 및 근육/부위/장비 라벨도 한국어로 전면 현지화되었다(`ExerciseLocalization`). 상세 내용은 `docs/plans/logs/backend.md`(2026-09-20) 및 `docs/plans/logs/process-infra.md`(2026-10-16) 참조.
 
 ## 프로젝트 개요
 
-**은둔헬스(eundunHealth)** 는 사용자의 신체 정보를 기반으로 맞춤 주간 운동 계획을 자동 생성하고, 운동 달성을 추적하는 Android 앱입니다.
+**은둔헬스(eundunHealth)** 는 사용자의 신체 정보를 기반으로 맞춤 주간 운동 계획과 AI 주간 식단 가이드를 자동 생성하고, 운동 달성을 추적하는 Android 앱입니다.
 
 - **패키지**: `com.gunnys.eundunhealth`
 - **최소 SDK**: 26 (Android 8.0)
 - **대상 SDK**: 37 (Android 17)
 - **백엔드**: FastAPI(Python 3.14) — 본 문서 v1.0 작성 당시 Ktor였으나 v0.1.0에서 전환됨.
-- **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 인증 불필요).
+- **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 인증 불필요) + 앱 내 46종 한국어 현지화 사전(`ExerciseLocalization`).
+- **AI 식단**: Azure AI Foundry Serverless MaaS(`DeepSeek-V3.2`, GlobalStandard).
 - **인증**: Microsoft Entra External ID(외부 테넌트 `eundunhealthciam`, Asia Pacific, JWKS RS256).
 
 ---
@@ -35,7 +36,7 @@
 | Retrofit + OkHttp | 백엔드 API 통신 |
 | Coil 3 | 이미지/GIF 로딩 |
 | DataStore | 설정 영속화 (다크모드) |
-| MSAL Android 8.4.2 | 인증 (Entra External ID) |
+| MSAL Android | 인증 (Entra External ID) |
 | Health Connect | 활동 자동 추적 |
 | Sentry Android SDK | 크래시/에러 모니터링 |
 | Navigation Compose | 화면 전환 |
@@ -49,6 +50,7 @@
 | SQLAlchemy 2.0 async + asyncpg | ORM / 데이터베이스 쿼리 |
 | Alembic | 스키마 마이그레이션 |
 | PyJWT (JWKS, RS256) | 인증 토큰 검증 |
+| OpenAI Python SDK (`AsyncOpenAI`) + Tenacity | AI 식단 생성 (Azure AI Foundry DeepSeek-V3.2) |
 | Sentry Python SDK | 서버 에러 모니터링 |
 
 ### 빌드 도구
@@ -60,8 +62,10 @@ AGP · Gradle · KSP · Sentry Gradle Plugin · Detekt · Spotless — 버전은
 | 기술 | 용도 |
 | ------ | ------ |
 | Azure Container Apps | 백엔드 호스팅 |
-| Azure Container Registry | Docker 이미지 저장 |
+| Azure Container Registry | Docker 이미지 저장 (RBAC `AcrPull`) |
 | Azure PostgreSQL Flexible Server | 데이터베이스 |
+| Azure AI Foundry (Serverless MaaS) | DeepSeek-V3.2 식단 생성 모델 |
+| Azure Key Vault | 운영 시크릿 단일 출처 (Managed Identity 참조) |
 | Sentry.io | 에러 모니터링 대시보드 |
 | Docker | 컨테이너화 배포 |
 

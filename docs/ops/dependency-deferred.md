@@ -204,7 +204,7 @@ curl -s https://repo1.maven.org/maven2/io/gitlab/arturbosch/detekt/detekt-gradle
 
 2026-10-15 실측으로 legacy variant 및 Gradle 10 ReportingExtension 경고 0건,
 `detektDebug` 타입 해석 실행과 빌드가 통과했다. 상세 설계는
-`docs/plans/2026-10-15-agp10-build-modernization-design.md`를 따른다.
+`docs/plans/2026-10-15-agp10-build-modernization-design.md`(→ `docs/plans/logs/process-infra.md` 2026-10-15 entry 로 흡수)를 따른다.
 
 ### 머지 패턴
 
