@@ -4,9 +4,10 @@
 
 ## 결론
 
-로컬 코드·계약·컨테이너 품질 게이트는 통과했다. 운영 배포는 수행하지 않았다.
-배포 승인·정확한 revision 판정·SHA rollback·Play 10% 단계 출시는 로컬 구현과 정적 검증을
-마쳤다. AI 식단은 개인화를 유지하되 앱 내 고지·명시 동의와 API 동의 헤더를 적용했다.
+로컬·PR 품질 게이트를 통과했고 2026-10-16 운영 배포를 완료했다. Backend는 merge SHA
+`2610d18` 이미지와 revision `eundunhealth-api--0000062`로 배포됐고, Android `0.3.1`/36은
+Play production 10% 단계 출시를 시작했다. AI 식단은 개인화를 유지하되 앱 내 고지·명시
+동의와 API 동의 헤더를 적용했다.
 
 ## 검증 증거
 
@@ -34,13 +35,17 @@
   생성하고 Cost Management REST GET으로 재검증했다. Cost query의 청구 통화도 `KRW`로 확인했다.
 - 2026-10-16 사용자가 Play Console Data safety와 Health apps declaration을 실제 AI 신체정보
   처리 및 개인화 목적에 맞게 갱신했다고 확인했다.
+- PR #188의 모든 CI와 CodeQL을 통과한 뒤 merge commit `2610d18`을 배포했다. GitHub Actions
+  backend run `38837975170`에서 target revision/readiness와 app/reaper 이미지 일치를 확인했다.
+- 태그 `v0.3.1`의 release run `38838518612`가 서명·R8·Sentry mapping·Play 업로드와 원장
+  갱신을 모두 성공했다. production 상태는 `inProgress`, 최초 user fraction은 `0.1`이다.
 
 ## 출시 실행·관찰 항목
 
 1. Play 선언 갱신은 완료했다. 단계 출시 후 서명본에서 동의 창→AI 식단 생성, 접근성과 실제
    모델 응답 품질/latency를 운영 관찰한다.
-2. 실제 운영 워크플로 활성화에는 commit/PR과 승인 후 merge가 필요하다. backend 배포 검증 후
-   `v0.3.1` 태그로 Play production 10% 단계 출시를 시작한다.
+2. Crash/ANR·로그인·동의 후 AI 식단 생성 지표를 관찰하고 이상이 없을 때 Play Console에서
+   25%→50%→100%로 수동 승격한다. 장애 시 우선 rollout을 중단하고 상위 versionCode로 수정한다.
 
 ## 비차단 관찰
 

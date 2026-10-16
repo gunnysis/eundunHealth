@@ -87,8 +87,11 @@ tags: [deployment, azure, github-actions, play, rollback, privacy, reliability]
   모델 SKU 조회와 공식 deployment type 확인을 출시 체크에 포함하고, 앱 내 고지·명시 동의와
   API 필수 동의 헤더를 함께 적용한다.
 
-### 남음
+### 출시 결과
 
-- 전체 출시 후보를 `release/v0.3.1-production` 브랜치로 묶어 PR·승인·배포한다.
+- PR #188을 merge commit `2610d18`로 병합하고 backend run `38837975170`에서 revision
+  `eundunhealth-api--0000062`와 app/reaper 이미지 `2610d18` 배포를 검증했다.
 - Play Console Data safety·Health apps declaration은 2026-10-16 사용자 확인으로 완료했다.
-- backend 배포 검증 후 `v0.3.1` 태그를 생성해 Play production 10% staged rollout을 진행한다.
+- `v0.3.1` release run `38838518612`가 versionCode 36을 Play production 10% staged rollout으로
+  업로드하고 원장을 자동 갱신했다.
+- 배포 후 main 외 로컬·원격 브랜치와 연결된 열린 Dependabot PR 7개를 정리했다.
