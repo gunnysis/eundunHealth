@@ -5,9 +5,9 @@
 # - 업로드 성공 시 scripts/update-upload-ledger.sh 가 원장 갱신 커밋 push (INC-2026-06-19-28 사람 의존 갭 해소, D6)
 # - 실패 시 Play 무영향, 수동 업로드 경로는 폴백으로 유지.
 #
-# 트랙 = production, 최초 노출 = 10% 단계적 출시.
-# Play 프로덕션은 이전 versionCode로 내릴 수 없으므로, 장애 시 먼저 rollout을 중단하고
-# 수정한 상위 versionCode를 다시 배포한다. 100% 확대는 운영 지표 확인 후 Console에서 수행한다.
+# 트랙 = production, 단일 운영자 앱 정책상 즉시 100% 출시(status=completed).
+# Play 프로덕션은 이전 versionCode로 내릴 수 없으므로, 장애 시 수정한 상위 versionCode를
+# 다시 배포한다. 공개 사용자가 늘어나면 이 정책을 단계 출시로 재검토한다.
 name: Release (Play production)
 
 on:
@@ -99,8 +99,9 @@ jobs:
           packageName: com.gunnys.eundunhealth
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
           tracks: production   # 'track'(단수) 은 v1.1.5 에서 deprecated — 실행 로그 경고로 확인(2026-07-03)
-          status: inProgress
-          userFraction: 0.1
+          # `completed` 는 Google Play production 100% 출시다. userFraction은
+          # inProgress/halted 단계 출시에서만 유효하므로 함께 전달하지 않는다.
+          status: completed
           mappingFile: app/build/outputs/mapping/release/mapping.txt
 
       - name: 원장 자동 갱신 (룰 13 — 업로드 성공 직후)

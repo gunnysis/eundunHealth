@@ -5,29 +5,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.gunnys.eundunhealth.ui.auth.AuthGateScreen
 import com.gunnys.eundunhealth.ui.auth.AuthViewModel
 import com.gunnys.eundunhealth.ui.auth.SessionState
-import com.gunnys.eundunhealth.ui.badge.BadgeScreen
-import com.gunnys.eundunhealth.ui.goal.GoalScreen
-import com.gunnys.eundunhealth.ui.history.HistoryScreen
-import com.gunnys.eundunhealth.ui.home.HomeScreen
-import com.gunnys.eundunhealth.ui.mealplan.MealPlanScreen
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
-import com.gunnys.eundunhealth.ui.profile.ProfileScreen
 import com.gunnys.eundunhealth.ui.splash.SplashScreen
-import com.gunnys.eundunhealth.ui.statistics.StatisticsScreen
-import com.gunnys.eundunhealth.ui.workout.WorkoutDetailScreen
 
 @Composable
 fun AppNavigation(
     authViewModel: AuthViewModel = hiltViewModel(),
+    healthPermissionsRevision: Int = 0,
     onRequestHealthPermissions: () -> Unit = {},
+    onOpenHealthConnectManagement: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val sessionState by authViewModel.sessionState.collectAsStateWithLifecycle()
@@ -35,7 +27,7 @@ fun AppNavigation(
     LaunchedEffect(sessionState) {
         when (val s = sessionState) {
             is SessionState.Authenticated -> {
-                val dest = if (s.needsOnboarding) Screen.Onboarding.route else Screen.Home.route
+                val dest = if (s.needsOnboarding) Screen.Onboarding.route else Screen.Main.route
                 navController.navigate(dest) {
                     popUpTo(0) { inclusive = true }
                 }
@@ -59,58 +51,20 @@ fun AppNavigation(
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onComplete = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
             )
         }
-        composable(Screen.Home.route) {
-            HomeScreen(
-                onExerciseClick = { exerciseId ->
-                    navController.navigate(Screen.WorkoutDetail.createRoute(exerciseId))
-                },
-                onBadgesClick = { navController.navigate(Screen.Badges.route) },
-                onHistoryClick = { navController.navigate(Screen.History.route) },
-                onStatisticsClick = { navController.navigate(Screen.Statistics.route) },
-                onGoalClick = { navController.navigate(Screen.Goal.route) },
-                onProfileClick = { navController.navigate(Screen.Profile.route) },
-                onMealPlanClick = { navController.navigate(Screen.MealPlan.route) },
-                onLogout = { authViewModel.logout() },
+        composable(Screen.Main.route) {
+            MainAppShell(
+                onLogout = authViewModel::logout,
+                onAccountDeleted = authViewModel::onSessionEnded,
+                healthPermissionsRevision = healthPermissionsRevision,
                 onRequestHealthPermissions = onRequestHealthPermissions,
+                onOpenHealthConnectManagement = onOpenHealthConnectManagement,
             )
-        }
-        composable(
-            Screen.WorkoutDetail.route,
-            arguments = listOf(navArgument("exerciseId") { type = NavType.StringType }),
-        ) {
-            // exerciseId 는 WorkoutDetailViewModel 이 SavedStateHandle 로 읽는다 — 중복 전달하지 않는다.
-            WorkoutDetailScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Profile.route) {
-            ProfileScreen(
-                onBack = { navController.popBackStack() },
-                onAccountDeleted = {
-                    // 계정 삭제 경로가 이미 로그아웃까지 마쳤다 — 세션 상태만 되돌리면
-                    // 상단 LaunchedEffect 가 인증 게이트로 이동시킨다.
-                    authViewModel.onSessionEnded()
-                },
-            )
-        }
-        composable(Screen.Badges.route) {
-            BadgeScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.History.route) {
-            HistoryScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Statistics.route) {
-            StatisticsScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Goal.route) {
-            GoalScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.MealPlan.route) {
-            MealPlanScreen(onBack = { navController.popBackStack() })
         }
     }
 }

@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
@@ -29,9 +31,14 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var themePreferences: ThemePreferences
 
+    private var healthPermissionsRevision by mutableIntStateOf(0)
+
     private val healthPermissionLauncher = registerForActivityResult(
         androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
-    ) { /* permissions granted or denied */ }
+    ) {
+        // 허용·거부 어느 결과든 실제 grant set을 다시 읽어 UI를 갱신한다.
+        healthPermissionsRevision++
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,8 +47,15 @@ class MainActivity : ComponentActivity() {
             val themeMode by themePreferences.themeMode.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
             EundunHealthTheme(themeMode = themeMode) {
                 AppNavigation(
+                    healthPermissionsRevision = healthPermissionsRevision,
                     onRequestHealthPermissions = {
                         healthPermissionLauncher.launch(HealthConnectDataSource.PERMISSIONS)
+                    },
+                    onOpenHealthConnectManagement = {
+                        startActivity(
+                            androidx.health.connect.client.HealthConnectClient
+                                .getHealthConnectManageDataIntent(this),
+                        )
                     },
                 )
             }

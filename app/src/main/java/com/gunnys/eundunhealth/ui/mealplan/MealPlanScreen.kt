@@ -47,7 +47,7 @@ import com.gunnys.eundunhealth.ui.components.ErrorContent
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MealPlanScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     viewModel: MealPlanViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -88,8 +88,10 @@ fun MealPlanScreen(
             TopAppBar(
                 title = { Text("주간 식단") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로가기")
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로가기")
+                        }
                     }
                 },
             )

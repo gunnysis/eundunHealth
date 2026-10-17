@@ -57,7 +57,7 @@ import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(
+fun ProfileEditScreen(
     onBack: () -> Unit,
     onAccountDeleted: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),

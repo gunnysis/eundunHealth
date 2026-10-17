@@ -3,8 +3,6 @@ package com.gunnys.eundunhealth.ui.home
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.gunnys.eundunhealth.data.preferences.ThemeMode
-import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
@@ -16,10 +14,8 @@ import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
@@ -55,20 +51,7 @@ class HomeViewModel @Inject constructor(
     private val syncHealth: SyncHealthDataUseCase,
     private val checkBadges: CheckAndAwardBadgesUseCase,
     private val workoutRepo: WorkoutRepository,
-    private val themePreferences: ThemePreferences,
 ) : ViewModel() {
-
-    val themeMode: StateFlow<ThemeMode> = themePreferences.themeMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
-
-    fun cycleTheme() = viewModelScope.launch {
-        val next = when (themeMode.value) {
-            ThemeMode.SYSTEM -> ThemeMode.DARK
-            ThemeMode.DARK -> ThemeMode.LIGHT
-            ThemeMode.LIGHT -> ThemeMode.SYSTEM
-        }
-        themePreferences.setThemeMode(next)
-    }
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()

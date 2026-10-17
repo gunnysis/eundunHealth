@@ -1,7 +1,5 @@
 package com.gunnys.eundunhealth.ui.home
 
-import com.gunnys.eundunhealth.data.preferences.ThemeMode
-import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
@@ -11,11 +9,9 @@ import com.gunnys.eundunhealth.domain.usecase.HealthSyncResult
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -52,7 +48,6 @@ class HomeViewModelTest {
     private lateinit var syncHealth: SyncHealthDataUseCase
     private lateinit var checkBadges: CheckAndAwardBadgesUseCase
     private lateinit var workoutRepo: WorkoutRepository
-    private lateinit var themePrefs: ThemePreferences
 
     @Before
     fun setup() {
@@ -61,9 +56,6 @@ class HomeViewModelTest {
         syncHealth = mockk()
         checkBadges = mockk()
         workoutRepo = mockk()
-        themePrefs = mockk()
-
-        every { themePrefs.themeMode } returns flowOf(ThemeMode.SYSTEM)
         coEvery { getOrCreate() } returns Result.success(plan)
         coEvery { syncHealth(any()) } returns Result.success(
             HealthSyncResult(plan, isAvailable = true, hasPermission = true, newlyCompletedDates = emptyList()),
@@ -80,7 +72,6 @@ class HomeViewModelTest {
         syncHealth,
         checkBadges,
         workoutRepo,
-        themePrefs,
     )
 
     @Test

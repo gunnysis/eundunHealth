@@ -7,11 +7,14 @@ sealed class Screen(val route: String) {
     // 로그인과 가입의 분기는 Entra 호스팅 페이지 안에서 일어난다.
     object AuthGate : Screen("auth_gate")
     object Onboarding : Screen("onboarding")
+    object Main : Screen("main")
     object Home : Screen("home")
     object WorkoutDetail : Screen("workout/{exerciseId}") {
         fun createRoute(exerciseId: String) = "workout/$exerciseId"
     }
     object Profile : Screen("profile")
+    object ProfileEdit : Screen("profile/edit")
+    object Progress : Screen("progress")
     object Badges : Screen("badges")
     object History : Screen("history")
     object Statistics : Screen("statistics")

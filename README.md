@@ -6,8 +6,8 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.3.1-blue)
-![versionCode](https://img.shields.io/badge/versionCode-36-blue)
+![versionName](https://img.shields.io/badge/versionName-0.4.0-blue)
+![versionCode](https://img.shields.io/badge/versionCode-37-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB)
@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **프로덕션 정식 출시(LIVE)**. 저장소 = 스토어 = **v0.3.1 (versionCode 36, 프로덕션 배포 하드닝 & 운동 한국어 현지화)**. 2026-10-16 태그 `v0.3.1` push → `release.yml` 이 프로덕션 트랙에 **10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)**로 자동 업로드(run `38838518612`, 원장 자동 커밋 `1a19eb7`). 직전 v0.3.0/35(2026-09-21 AI 맞춤 주간 식단 출시) ← v0.2.0/34(2026-09-02 Entra 전환) ← v0.1.19/33(2026-07-03) ← 첫 프로덕션 출시 v0.1.18/32(2026-06-29). 백엔드는 main 머지 시 `backend-production` 환경 승인 후 자동 배포로 운영 중(활성 revision `eundunhealth-api--0000062` / 이미지 `2610d18`). 저장소는 2026-07-02 public 전환(사전 보안감사·식별자 스크럽 후 secret scanning·push protection·CodeQL 활성). 2026-07-29 Azure RG 이관(`apps` → `rg-eundunhealth-prod-krc`, 단일 RG — 서비스 URL 무영향)
+- **현재 단계** — 저장소의 다음 Android 릴리스 후보는 **v0.4.0 (versionCode 37, 적응형 메뉴트리·Health Connect 상태 투명성)**이며 태그·CI gate 대기 상태다. Play 프로덕션의 마지막 확인 업로드는 **v0.3.1/36 10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)**(2026-10-16 run `38838518612`, 원장 커밋 `1a19eb7`)다. v0.4.0 태그 성공 전에는 스토어 버전과 같다고 주장하지 않는다. 백엔드는 main 머지 시 `backend-production` 환경 승인 후 자동 배포로 운영 중(마지막 확인 revision `eundunhealth-api--0000062` / 이미지 `2610d18`).
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -396,7 +396,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — 저장소 = Play 프로덕션 = `0.3.1` (versionCode `36`, 프로덕션 배포 하드닝 & 운동 한국어 현지화) — **Google Play 프로덕션 정식 출시(LIVE)**. v0.3.1 = 2026-10-16 태그 `v0.3.1` push → `release.yml` 이 프로덕션 트랙에 **10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)**로 업로드 + 원장 자동 갱신(`1a19eb7`, run `38838518612`); 백엔드는 `eundunhealth-api--0000062`(이미지 `2610d18`) 활성. 직전 v0.3.0/35(2026-09-21) = **AI 맞춤 주간 식단 출시**(Azure AI Foundry `DeepSeek-V3.2` 연동 · `POST /meals/generate` & `GET /meals/current` · `MealPlanScreen` · 프로필 성별 추가). 직전 v0.2.0/34(2026-09-02) = **프로덕션 트랙 첫 자동 출시**(Supabase → Entra External ID 전환). 직전 v0.1.19/33(2026-07-03 승격; 첫 출시 v0.1.18/32, 2026-06-29 승인) = Android CD 첫 자동 출시.
+**현재 버전** — 저장소 release candidate = `0.4.0` (versionCode `37`, 적응형 메뉴트리·Health Connect 상태 투명성). Play 프로덕션의 마지막 확인 버전은 `0.3.1`/`36`이며, 2026-10-16 태그 `v0.3.1`이 `release.yml`을 통해 **10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)**로 업로드됐다(`1a19eb7`, run `38838518612`). v0.4.0의 태그·업로드 성공 전에는 Play 배포 완료라고 간주하지 않는다.
 
 ### 마일스톤 진행
 

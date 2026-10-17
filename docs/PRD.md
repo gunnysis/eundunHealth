@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v2.8 (2026-10-16 — v0.3.1 프로덕션 10% 단계 출시 LIVE 및 문서 동기화)
-**제품 버전:** v0.3.1 (versionCode 36, **Play 프로덕션 10% 단계 출시 LIVE**) — **운동 한국어 현지화 및 AI 식단·프로덕션 배포 하드닝**. 직전 프로덕션은 v0.3.0/versionCode 35.
+**문서 버전:** v2.9 (2026-10-17 — v0.4.0 적응형 메뉴트리 release candidate)
+**제품 버전:** v0.4.0 (versionCode 37, **태그·Play 업로드 대기**) — **적응형 메뉴트리 및 Health Connect 상태 투명성**. 마지막 확인 Play 프로덕션 업로드는 v0.3.1/versionCode 36의 10% 단계 출시다.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

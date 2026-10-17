@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-10-16 — v0.3.1/36 프로덕션 배포 하드닝 & Play 10% 단계 출시 LIVE**
-> 작성 기준: 저장소 및 Google Play 프로덕션(10% 단계 출시 LIVE) 모두 **v0.3.1/36**.
+> 작성일: 2026-05-25 / 최근 갱신: **2026-10-17 — v0.4.0/37 메뉴트리 release candidate 준비**
+> 작성 기준: 저장소 release candidate는 **v0.4.0/37**, 마지막 확인 Google Play 프로덕션은 **v0.3.1/36 10% 단계 출시**.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.3.1` / `36` (Play 프로덕션 10% 단계 출시 LIVE)** — SSoT 루트 `version.properties` |
+| versionName / versionCode | **`0.4.0` / `37` (태그·Play 업로드 대기)** — SSoT 루트 `version.properties`; 마지막 확인 Play는 v0.3.1/36 10% 단계 출시 |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.10 / 9.3.2 / 9.7.1** (KSP 2.3.11, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거) |
 | Compose BOM | **2026.08.00** |

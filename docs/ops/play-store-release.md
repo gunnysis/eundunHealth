@@ -193,7 +193,7 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 
 **자동 경로 (권장)**: 태그 `v*` push → `.github/workflows/release.yml` 이 environment `play-release`
 (required reviewer 승인) 게이트 후 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB 빌드 →
-**Play 프로덕션 트랙 10% 단계적 업로드**(`status: inProgress`, `userFraction: 0.1`) → 원장 자동 갱신
+**Play 프로덕션 트랙 100% 즉시 업로드**(`status: completed`) → 원장 자동 갱신
 커밋(`scripts/update-upload-ledger.sh`)까지 수행. 설계: `docs/plans/logs/process-infra.md`.
 
 > **트랙 변경 2026-09-02: internal → production.** 종전에는 내부 트랙에 올리고 Console 에서
@@ -202,10 +202,11 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 > 조심스럽게 내보내는" 전제 위의 장치라 여기서는 지연이 곧 손해였다. 실사용자 0명(룰 5 예외와
 > 같은 전제)이라 롤아웃 리스크도 없었다.
 >
-> **2026-10-16 안전화**: 이후 릴리스는 10%에서 시작한다. Play Console에서 crash/ANR, 로그인,
-> 온보딩, 계획·식단 핵심 흐름을 확인한 뒤 25% → 50% → 100%로 수동 확대한다. 이상 시 즉시
-> **출시 중단(halt rollout)** 한다. 이미 설치한 사용자는 이전 versionCode로 내려가지 않으므로
-> 수정한 상위 versionCode를 재배포해야 한다.
+> **2026-10-17 운영 정책 변경**: 현재 실제 운영자·사용자가 1명이므로 이후 릴리스는
+> production `completed`로 100% 즉시 출시한다. 따라서 `userFraction`은 전달하지 않는다.
+> 공개 사용자가 추가되거나 위험도가 높은 변경이면 단계 출시(`inProgress` + fraction)로 되돌리고,
+> 이 정책을 먼저 재검토한다. 이미 설치한 사용자는 이전 versionCode로 내려가지 않으므로 장애는
+> 수정한 상위 versionCode를 재배포해 교정한다.
 >
 > **서비스 계정 권한**: 프로덕션 트랙 출시는 테스트 트랙과 **별개 권한**이다. 공식 문서
 > ([Play Console 도움말 9844686](https://support.google.com/googleplay/android-developer/answer/9844686))

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,7 +65,6 @@ import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
 import com.gunnys.eundunhealth.ui.home.components.HealthConnectPromptCard
 import com.gunnys.eundunhealth.ui.home.components.HealthConnectUnavailableCard
-import com.gunnys.eundunhealth.ui.home.components.HomeTopBarActions
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -76,18 +76,10 @@ private val DAY_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern(
 @Composable
 fun HomeScreen(
     onExerciseClick: (String) -> Unit,
-    onBadgesClick: () -> Unit,
-    onHistoryClick: () -> Unit = {},
-    onStatisticsClick: () -> Unit = {},
-    onGoalClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {},
-    onMealPlanClick: () -> Unit = {},
-    onLogout: () -> Unit,
     onRequestHealthPermissions: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val pullState = rememberPullToRefreshState()
 
     Scaffold(
@@ -95,18 +87,9 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("이번 주 운동 계획") },
                 actions = {
-                    HomeTopBarActions(
-                        themeMode = themeMode,
-                        onProfileClick = onProfileClick,
-                        onCycleTheme = { viewModel.cycleTheme() },
-                        onRefresh = { viewModel.loadPlan() },
-                        onHistoryClick = onHistoryClick,
-                        onStatisticsClick = onStatisticsClick,
-                        onGoalClick = onGoalClick,
-                        onBadgesClick = onBadgesClick,
-                        onMealPlanClick = onMealPlanClick,
-                        onLogout = onLogout,
-                    )
+                    IconButton(onClick = viewModel::loadPlan) {
+                        Icon(Icons.Default.Refresh, contentDescription = "운동 계획 새로고침")
+                    }
                 },
             )
         },

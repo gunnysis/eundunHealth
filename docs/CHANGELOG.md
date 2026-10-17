@@ -4,7 +4,26 @@
 
 ---
 
-## [Unreleased] — 2026-10-16 — '오늘의 활동' 완전 제거 · Health Connect 최소 권한(READ_EXERCISE 단독) · HomeScreen UI/UX 리디자인
+## [v0.4.0] — 2026-10-17 — 메뉴트리 적응형 탐색 · Health Connect 상태 투명성 · 홈 경험 정리
+
+> **릴리스 후보 (`versionCode=37`, 태그 `v0.4.0` 대기).** Play production에 실제 업로드되기 전에는 v0.3.1/36의 10% 단계 출시 상태를 변경했다고 주장하지 않는다. 현재 운영자 1명 정책에 따라 v0.4.0은 `completed`(100%)로 업로드하도록 release workflow를 변경했다.
+
+### 🧭 적응형 메뉴트리 및 화면 책임 분리
+- 로그인 후 탐색을 홈 오버플로 메뉴에서 `오늘·식단·진행·프로필` 4개 최상위 목적지로 이관했다. compact 창은 navigation bar, 그 외에는 adaptive navigation suite가 적절한 탐색 chrome을 선택한다.
+- 인증 root graph와 로그인 후 `MainAppShell` child graph를 분리해 인증 화면에 앱 탐색 chrome이 노출되지 않게 했다. 목적지 전환은 Navigation multiple-back-stack 공식 옵션(`saveState`, `restoreState`, `launchSingleTop`)으로 상태를 보존한다.
+- `진행` 허브에 통계·기록·목표·배지를, `프로필` 허브에 신체 정보·Health Connect·테마·로그아웃을 배치했다. 프로필 편집은 별도 child route로 분리했다.
+
+### 🔒 Health Connect 및 접근성 품질
+- 권한 요청 결과와 프로필 화면 재개 시 실제 grant 상태를 재조회한다. 연결된 경우 `HealthConnectClient.getHealthConnectManageDataIntent()`로 데이터 관리 화면을 연다.
+- Health Connect 상태를 확인 중/사용 불가/권한 필요/연결됨으로 구분하고, 사용 불가 기기에는 설명은 유지하되 클릭 action을 노출하지 않는다.
+- 허브 목록은 작은 높이에서도 세로 스크롤을 지원한다. API 36 emulator instrumentation에서 4개 목적지 선택, 연결 상태 action, 사용 불가 상태의 click action 부재 및 Compose Accessibility Check를 검증했다.
+
+### 🔢 버전
+- versionName 0.3.1 → **0.4.0**, versionCode 36 → **37**. Play 업로드 성공 시 release workflow가 원장을 갱신한다.
+
+---
+
+## [Unreleased]
 
 ### 🧹 '오늘의 활동' 제거 및 Health Connect 권한 최소화 (4 → 1)
 - 홈 화면의 `TodayActivityCard` 및 관련 도메인/데이터 계층(`DailyActivity`, `GetTodayActivityUseCase`, `HealthConnectMappers`)과 전용 단위 테스트 2종을 완전 제거했다.
