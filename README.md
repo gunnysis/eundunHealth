@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — 저장소의 다음 Android 릴리스 후보는 **v0.4.0 (versionCode 37, 적응형 메뉴트리·Health Connect 상태 투명성)**이며 태그·CI gate 대기 상태다. Play 프로덕션의 마지막 확인 업로드는 **v0.3.1/36 10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)**(2026-10-16 run `38838518612`, 원장 커밋 `1a19eb7`)다. v0.4.0 태그 성공 전에는 스토어 버전과 같다고 주장하지 않는다. 백엔드는 main 머지 시 `backend-production` 환경 승인 후 자동 배포로 운영 중(마지막 확인 revision `eundunhealth-api--0000062` / 이미지 `2610d18`).
+- **현재 단계** — Android **v0.4.0 (versionCode 37, 적응형 메뉴트리·Health Connect 상태 투명성)**가 2026-10-17 태그 `v0.4.0`으로 Play production에 `completed`(100%) 업로드됐다(run `39026967924`, 원장 커밋 `48f57c7`). Play의 후속 처리·가시성은 Console에서 확인하되, CI 성공과 업로드 원장은 독립 확인했다. 백엔드는 이 Android-only release로 변경되지 않았고, 현재 revision `eundunhealth-api--0000062` / 이미지 `2610d18`의 health/readiness 200을 재확인했다.
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -396,7 +396,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — 저장소 release candidate = `0.4.0` (versionCode `37`, 적응형 메뉴트리·Health Connect 상태 투명성). Play 프로덕션의 마지막 확인 버전은 `0.3.1`/`36`이며, 2026-10-16 태그 `v0.3.1`이 `release.yml`을 통해 **10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)**로 업로드됐다(`1a19eb7`, run `38838518612`). v0.4.0의 태그·업로드 성공 전에는 Play 배포 완료라고 간주하지 않는다.
+**현재 버전** — `v0.4.0` (versionCode `37`, 적응형 메뉴트리·Health Connect 상태 투명성). 2026-10-17 태그 `v0.4.0`이 `release.yml` run `39026967924`를 통해 Play production `completed`(100%)로 업로드됐고, 원장 자동 갱신 커밋은 `48f57c7`이다. Play Console의 처리·가시성은 별도 외부 상태이므로 CI 성공만으로 즉시 사용자 설치 가능을 단정하지 않는다.
 
 ### 마일스톤 진행
 
@@ -430,6 +430,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.2.0** — **인증 제공자 전환 Supabase Auth → Microsoft Entra External ID**(브라우저 위임 MSAL, RS256, `oid` 식별자, 계정삭제 Microsoft Graph) + 기술부채 청산 T0~T7(Python 3.14 · Gradle 9.7.1 · openapi-generator 7.25.0) + 하드닝 H1~H10(R8 릴리스 빌드를 PR 게이트에 추가 포함) + Azure 정리(`acr purge` Task, 2.21→0.60 GiB) (PR #165). 후속: Play 트랙 internal → **production** 전환 + Supabase 전량 폐기(프로젝트·KV·GitHub secret) + 실기기 골든패스에서 **로그인 100% 실패 결함 발견·수정**(MSAL 예약 scope 직접 요청, INC-2026-09-02-31). **2026-09-02 Play 프로덕션 출시 완료**
 - [x] **v0.3.0** — **AI 맞춤 주간 식단 기능 출시** — Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 + `meal_plans`/`meal_plan_items` 테이블(alembic `718783053fcd`) + 프로필 `gender` 필드(alembic `0dda67f1638a`) + `POST /meals/generate` & `GET /meals/current` + Android `MealPlanScreen`/`MealPlanViewModel` (PR #170/#171). **2026-09-21 Play 프로덕션 출시 완료**
 - [x] **v0.3.1** — **프로덕션 배포 하드닝 & 운동 한국어 현지화** — 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) + AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents`, `check-agp10-compat.sh`) + AI 식단 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) & `MEAL_AI_ENABLED` kill switch + `backend-production` 환경 승인 게이트 & `backend-rollback.yml` 롤백 워크플로 + `verify_containerapp_deployment.py` 배포 사후 불변 조건 검증 + Play 프로덕션 **10% 단계 출시** (PR #178/#181/#186/#188/#191). **2026-10-16 Play 프로덕션 10% 단계 출시 완료**
+- [x] **v0.4.0** — **적응형 메뉴트리·Health Connect 상태 투명성** — `오늘·식단·진행·프로필` 앱 셸, multiple back stack, 진행/프로필 허브, Health Connect 관리 intent·권한 재조회, Compose 접근성 회귀 테스트. **2026-10-17 Play production `completed`(100%) 업로드 성공** (run `39026967924`, 원장 `48f57c7`).
 
 **다음**
 - [ ] **v0.3.1 100% 롤아웃 확대** — Play Console Vitals 및 Sentry 모니터링 확인 후 25% → 50% → 100% 단계 확대

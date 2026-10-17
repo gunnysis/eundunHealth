@@ -6,7 +6,7 @@
 
 ## [v0.4.0] — 2026-10-17 — 메뉴트리 적응형 탐색 · Health Connect 상태 투명성 · 홈 경험 정리
 
-> **릴리스 후보 (`versionCode=37`, 태그 `v0.4.0` 대기).** Play production에 실제 업로드되기 전에는 v0.3.1/36의 10% 단계 출시 상태를 변경했다고 주장하지 않는다. 현재 운영자 1명 정책에 따라 v0.4.0은 `completed`(100%)로 업로드하도록 release workflow를 변경했다.
+> **2026-10-17 Play production 업로드 성공 (`versionCode=37`, 태그 `v0.4.0`).** `release.yml` run `39026967924`가 `completed`(100%) 상태로 업로드하고 원장을 커밋 `48f57c7`에서 갱신했다. 이는 CI·원장으로 교차 확인한 업로드 사실이며, Play Console의 후속 처리·가시성은 별도 관찰 대상이다.
 
 ### 🧭 적응형 메뉴트리 및 화면 책임 분리
 - 로그인 후 탐색을 홈 오버플로 메뉴에서 `오늘·식단·진행·프로필` 4개 최상위 목적지로 이관했다. compact 창은 navigation bar, 그 외에는 adaptive navigation suite가 적절한 탐색 chrome을 선택한다.
@@ -19,7 +19,7 @@
 - 허브 목록은 작은 높이에서도 세로 스크롤을 지원한다. API 36 emulator instrumentation에서 4개 목적지 선택, 연결 상태 action, 사용 불가 상태의 click action 부재 및 Compose Accessibility Check를 검증했다.
 
 ### 🔢 버전
-- versionName 0.3.1 → **0.4.0**, versionCode 36 → **37**. Play 업로드 성공 시 release workflow가 원장을 갱신한다.
+- versionName 0.3.1 → **0.4.0**, versionCode 36 → **37**. Play 업로드 성공 후 release workflow가 원장을 `LAST_UPLOADED_VERSION_CODE=37`로 갱신했다.
 
 ---
 

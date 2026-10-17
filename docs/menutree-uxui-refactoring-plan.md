@@ -12,7 +12,7 @@
 
 ### 1.1 2026-10-17 구현 반영
 
-`NavigationSuiteScaffold` 기반의 4개 최상위 목적지와 root/main graph 분리는 코드에 반영되었다. 홈 더보기 메뉴의 목적지 이동·테마·로그아웃은 제거됐고, 진행/프로필 허브가 이를 맡는다. adaptive artifact `1.2.0`과 Compose BOM 조합은 `:app:assembleDebug`로 해석·빌드 확인했다. 2차에서 Health Connect Manage access 공식 intent와 화면 복귀/권한 결과 재조회도 반영했다. 3차에서 API 36 emulator의 목적지 전환·Compose Accessibility Check instrumentation을 통과했다. 실기기 TalkBack/창 크기 검증 및 배포는 아직 완료되지 않았다.
+`NavigationSuiteScaffold` 기반의 4개 최상위 목적지와 root/main graph 분리는 코드에 반영되었다. 홈 더보기 메뉴의 목적지 이동·테마·로그아웃은 제거됐고, 진행/프로필 허브가 이를 맡는다. adaptive artifact `1.2.0`과 Compose BOM 조합은 `:app:assembleDebug`로 해석·빌드 확인했다. 2차에서 Health Connect Manage access 공식 intent와 화면 복귀/권한 결과 재조회도 반영했다. 3차에서 API 36 emulator의 목적지 전환·Compose Accessibility Check instrumentation을 통과했다. 2026-10-17 태그 `v0.4.0`은 Play production `completed`(100%) 업로드까지 성공(run `39026967924`, ledger `48f57c7`)했다. 실기기 TalkBack/창 크기 검증과 출시 후 관찰은 지속 운영 항목이다.
 
 4차 감사에서는 첫 로드 때 실제 조회 전 `사용 불가`가 잠시 노출될 수 있는 상태 모델을 발견해 `확인 중` 상태를 추가했다. 이 수정은 잘못된 권한·가용성 안내를 방지하며, 작은 높이에서도 설정·진행 허브의 항목이 잘리지 않도록 세로 스크롤을 적용했다. 더 이상 호출되지 않는 홈 오버플로 메뉴 코드는 제거했다.
 
@@ -57,7 +57,7 @@
 | 하단/레일 탐색 구현 여부 | 미구현 | `NavigationBar`/`NavigationRail`/`NavigationSuiteScaffold` 추가가 구현 과제 |
 | adaptive navigation 의존성 | 현재 `app/build.gradle.kts`에 adaptive navigation 의존성은 확인되지 않음 | 구현 시 Material 3 Adaptive 의존성 버전·호환성을 별도 검증 |
 | 기존 앱 deep link | 매니페스트에 앱 기능 route용 deep link는 확인되지 않고 MSAL 인증 callback만 선언됨 | “기존 deep link 호환”은 보장 대상으로 단정하지 않으며, 향후 추가될 링크의 route 계약을 보존하는 것으로 범위를 수정 |
-| 운영·스토어 상태 | README/PRD의 v0.3.1 및 단계 출시 서술은 저장소 문서 기준 | Play Console/CI 운영 상태는 이 문서에서 독립적으로 검증하지 않았으므로 출시 사실의 외부 증거로 사용하지 않음 |
+| 운영·스토어 상태 | `v0.4.0/37` 태그·release workflow·원장을 교차 확인 | run `39026967924`의 preflight/production upload/ledger 단계 성공과 origin/main ledger `48f57c7`을 확인. Play Console의 후속 처리·가시성은 별도 관찰 대상으로 유지 |
 
 ## 3. 목표와 비목표
 
@@ -301,7 +301,7 @@ Health Connect 공식 가이드가 안내하는 “Manage access” 직접 진�
 - [ ] 48dp 터치 영역·contentDescription·TalkBack 순서 점검
 - [ ] Health Connect 권한 취소·재허용·앱 재개 시나리오 테스트
 - [ ] AI 식단 동의/거부/생성 실패/재생성 시나리오 테스트
-- [ ] 단계 출시 후 Android crash/ANR, API 5xx, Health Connect 권한 오류 회귀 확인
+- [ ] production 100% 업로드 후 Android crash/ANR, API 5xx, Health Connect 권한 오류 회귀 관찰
 
 ## 9. 검증 지표 및 수용 기준
 
@@ -314,7 +314,7 @@ Health Connect 공식 가이드가 안내하는 “Manage access” 직접 진�
 | 접근성 | custom interactive element가 48dp 미만이 아님; 모든 의미 있는 아이콘에 라벨 있음 | Accessibility Scanner + TalkBack |
 | 반응형 | 창 크기 변경 시 목적지·선택 상태·스크롤 상태가 의도치 않게 초기화되지 않음 | 에뮬레이터/실기기 |
 | 안정성 | 기존 운동 상세 route, 인증 전환, 계정 삭제 후 인증 게이트 회귀 없음 | 자동/수동 회귀 |
-| 운영 회귀 | 단계 출시 후 crash/ANR, API 5xx, Health Connect 권한 오류가 기준선 대비 악화하지 않음 | Azure·Sentry·Play Console 점검 |
+| 운영 회귀 | production 100% 업로드 후 crash/ANR, API 5xx, Health Connect 권한 오류가 기준선 대비 악화하지 않음 | Azure·Sentry·Play Console 점검 |
 
 사용자 행동 기반 KPI와 별도 analytics는 이 문서의 범위에 포함하지 않는다.
 
@@ -350,7 +350,7 @@ Health Connect 공식 가이드가 안내하는 “Manage access” 직접 진�
 - [x] 웹 WCAG 기준을 Android 기준으로 잘못 전용하지 않도록 구분함
 - [x] Material 3 Adaptive 의존성 버전 및 현재 BOM 호환성 검증 (`material3-adaptive-navigation-suite:1.2.0`, `:app:assembleDebug`)
 - [ ] 실기기 TalkBack/Health Connect 권한 취소 시나리오 검증
-- [ ] 단계 출시 후 crash/ANR·API 5xx·Health Connect 권한 오류 회귀 검증
+- [ ] production 100% 업로드 후 crash/ANR·API 5xx·Health Connect 권한 오류 회귀 관찰
 
 ### 검토 결론
 

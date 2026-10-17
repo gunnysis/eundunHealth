@@ -1,7 +1,7 @@
 # 메뉴트리 UX/UI 구현 설계
 
 > 작성일: 2026-10-17
-> 상태: 1차 앱 셸 구현 완료 / 기기·접근성·운영 검증 대기
+> 상태: 구현·자동 접근성 검증·Play production 업로드 완료 / 실기기 보조기술·출시 후 관찰 진행
 > 운영 위임: 2026-10-17 사용자 승인 — 메뉴트리 구현에 수반되는 release·Play·Azure 변경은 자율 실행 가능
 > 상위 기획: [메뉴트리 리팩토링 및 UX/UI·레이아웃 설계안](menutree-uxui-refactoring-plan.md)
 
@@ -17,7 +17,7 @@
 
 3차 완료: API 36 `Galaxy_S25_Ultra` emulator에서 `:app:connectedDebugAndroidTest`를 통과했다. 네 최상위 목적지의 라벨·선택 전환과 API 34+ Compose Accessibility Check를 실제 instrumentation으로 검사했다. Compose 1.12 v2 rule의 큐잉 특성은 `waitForIdle()`로, Android test DEX의 공백 포함 method-name 제약은 Java 식별자 test name으로 고정했다.
 
-미완료: 실기기 TalkBack·창 크기별 수동 검증, release/Play/Azure 배포 판단. 이 항목들은 완료로 간주하지 않는다.
+잔여 운영 점검: 실기기 TalkBack·창 크기별 수동 검증과 출시 후 Crash/ANR·로그인·Health Connect 관찰이다. 자동 검증·배포는 완료됐지만 이 항목은 지속 관찰 대상으로 남긴다.
 
 4차 감사·개선: 사용하지 않는 `HomeTopBarActions`를 제거하고, 프로필 허브 Health Connect 상태를 `확인 중/사용 불가/권한 필요/연결됨`으로 구분했다. 허브 목록은 작은 높이에서도 스크롤 가능하게 했으며, 연결됨 상태는 관리 화면 진입을 문구로 명시한다. API 36 instrumentation은 사용 불가 상태의 설명·클릭 action 부재와 연결 상태의 관리 action을 검증한다.
 
@@ -275,7 +275,7 @@ Material 3 `Card(enabled = false)`는 `Disabled` semantics 대신 click action�
 
 1. `testDebugUnitTest`, instrumentation tests, `detektDebug`, `lint`, release artifact build를 실행한다.
 2. GitHub Actions의 Android CI·CodeQL·doc-audit를 확인한다.
-3. 단계 출시 직후 Azure Container App revision, API 5xx alert, Sentry/Play crash·ANR을 읽기 전용으로 확인한다.
+3. production `completed` 업로드 직후 Azure Container App revision, API 5xx alert, Sentry/Play crash·ANR을 읽기 전용으로 확인한다.
 
 ## 9. 트러블슈팅·디버깅·재발 방지
 

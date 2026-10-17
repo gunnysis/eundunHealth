@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-10-17 — v0.4.0/37 메뉴트리 release candidate 준비**
-> 작성 기준: 저장소 release candidate는 **v0.4.0/37**, 마지막 확인 Google Play 프로덕션은 **v0.3.1/36 10% 단계 출시**.
+> 작성일: 2026-05-25 / 최근 갱신: **2026-10-17 — v0.4.0/37 메뉴트리 Play production upload 완료**
+> 작성 기준: 태그 `v0.4.0`의 **v0.4.0/37**이 release workflow run `39026967924`로 Play production `completed`(100%) 업로드됐고, 원장 커밋 `48f57c7`이 versionCode 37을 기록한다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.4.0` / `37` (태그·Play 업로드 대기)** — SSoT 루트 `version.properties`; 마지막 확인 Play는 v0.3.1/36 10% 단계 출시 |
+| versionName / versionCode | **`0.4.0` / `37` (태그 `v0.4.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=37` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.10 / 9.3.2 / 9.7.1** (KSP 2.3.11, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거) |
 | Compose BOM | **2026.08.00** |
@@ -22,13 +22,13 @@
 | Sentry SDK | Android **8.57.0** / Gradle plugin **6.21.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (로컬 최신 = **v0.3.1/36 로컬 빌드, 2026-10-16 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (10,833,700 bytes)
-- APK: `app/build/outputs/apk/release/app-release.apk` (7,756,527 bytes)
+산출물 경로 (로컬 최신 = **v0.4.0/37 로컬 빌드, 2026-10-17 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (11,006,835 bytes)
+- APK: `app/build/outputs/apk/release/app-release.apk` (7,809,898 bytes)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: 프로덕션 정식 출시(LIVE).** 원장 기준 프로덕션 = **v0.3.1/36**(2026-10-16 `release.yml` run `38838518612` 가 프로덕션 트랙에 **10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)**로 자동 업로드, 원장 자동 커밋 `1a19eb7`). 25%→50%→100% 확대는 Play Console에서 운영 지표 확인 후 수행한다.
+> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.4.0/37**(2026-10-17 `release.yml` run `39026967924`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 커밋 `48f57c7`). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
 > 이력: v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=36` — 다음 릴리스 versionCode ≥ 37(룰 13 가드).
 > **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·TRUNCATE 금지), 스키마 변경은 alembic 마이그레이션만. 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
@@ -424,7 +424,7 @@ GitHub Actions (7개 워크플로):
   - `backend-production` required reviewer=`gunnysis`, deployment branch=`main` only; Entra OIDC subject=`repo:gunnysis/eundunHealth:environment:backend-production` (2026-10-16 생성·조회 검증)
   - Azure 로그인 = **OIDC federated**(secrets `AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID`). 구 `AZURE_CREDENTIALS` 는 2026-07-03 완전 제거. OIDC 장애 시 롤백 = 워크플로 yml revert + `pwsh -File scripts/register-azure-credentials.ps1`
 - **`.github/workflows/android.yml`** — `app/**`·빌드 파일 변경 시 `check-agp10-compat.sh` + spotlessCheck + **collectAsState anti-pattern 검사** (룰 11) + detektDebug + testDebugUnitTest + assembleDebug + assembleRelease(R8 가드) + PR이면 APK artifact 업로드
-- **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play production 10% staged rollout (`status: inProgress`, `userFraction: 0.1`)** → 원장 자동 갱신. 25→50→100%는 지표 확인 후 Console 수동
+- **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play production `completed`(100%) 업로드** → 원장 자동 갱신. 현재 운영자 1명 정책이며, 공개 사용자가 늘어나거나 고위험 변경이면 단계 출시로 재검토
 - **`.github/workflows/warm-baseline-check.yml`** — 매일 minReplicas < 1 회귀 감지
 - **`.github/workflows/doc-audit.yml`** — 문서 드리프트 수집기 단위 테스트 + 주간 감사
 - **`.github/workflows/docs-plans-index.yml`** — `docs/plans/README.md` 인덱스 및 참조 링크 드리프트 차단

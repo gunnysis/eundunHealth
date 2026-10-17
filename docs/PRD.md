@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v2.9 (2026-10-17 — v0.4.0 적응형 메뉴트리 release candidate)
-**제품 버전:** v0.4.0 (versionCode 37, **태그·Play 업로드 대기**) — **적응형 메뉴트리 및 Health Connect 상태 투명성**. 마지막 확인 Play 프로덕션 업로드는 v0.3.1/versionCode 36의 10% 단계 출시다.
+**문서 버전:** v3.0 (2026-10-17 — v0.4.0 적응형 메뉴트리 production upload 기록)
+**제품 버전:** v0.4.0 (versionCode 37, 태그 `v0.4.0`) — **적응형 메뉴트리 및 Health Connect 상태 투명성**. `release.yml` run `39026967924`가 Play production `completed`(100%) 업로드와 원장 갱신(`48f57c7`)을 성공했다. Play Console의 후속 처리·가시성은 CI 성공과 별도로 관찰한다.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
