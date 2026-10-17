@@ -1,7 +1,6 @@
 package com.gunnys.eundunhealth.data.repository
 
 import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
-import com.gunnys.eundunhealth.domain.model.DailyActivity
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import java.time.LocalDate
 import javax.inject.Inject
@@ -34,14 +33,4 @@ class HealthRepositoryImpl @Inject constructor(
     @Suppress("ktlint:standard:function-signature")
     override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> =
         runCatching { healthConnect.getExerciseDatesThisWeek(weekStart) }
-
-    override suspend fun hasDailyActivityPermissions(): Boolean = try {
-        healthConnect.hasDailyActivityPermissions()
-    } catch (_: Exception) {
-        false
-    }
-
-    override suspend fun getTodayActivity(): Result<DailyActivity> = runCatching {
-        healthConnect.readTodayActivity()
-    }
 }

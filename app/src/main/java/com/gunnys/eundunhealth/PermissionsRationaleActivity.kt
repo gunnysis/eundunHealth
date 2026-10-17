@@ -78,10 +78,6 @@ private fun RationaleScreen(onClose: () -> Unit) {
                 "주간 운동 계획의 완료 여부 판정에만 사용합니다. 원본 세션은 저장하지 않으며, " +
                     "판정된 '완료한 날짜' 만 서버에 기록됩니다.",
             )
-            RationaleItem(
-                "걸음 수·소모 칼로리·심박수 (오늘의 활동)",
-                "홈 화면 요약 표시 용도로만 사용하며, 단말을 벗어나지 않습니다(외부 서버로 전송하지 않음).",
-            )
 
             Spacer(Modifier.height(16.dp))
             Text(

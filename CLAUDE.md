@@ -196,7 +196,7 @@ DELETE /account
 - **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.5.0** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
 - **Detekt 1.23.8 (`detekt-cli` + `androidComponents` 커스텀 태스크) + Spotless 8.10.1 + ktlint 1.5.0**
-- **Android 단위 테스트**: 151 `@Test` 케이스 (JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
+- **Android 단위 테스트**: 146 `@Test` 케이스 (JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
 - Entra JWT algorithm: **RS256** — backend 는 OIDC discovery 로 얻은 `jwks_uri`/`issuer` 로 검증. **issuer 를 문자열로 조합하지 말 것** — 서브도메인이 tenantId 라 조합하면 전 API 401 이 되고 서명·audience 는 통과해 추적이 어렵다
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)

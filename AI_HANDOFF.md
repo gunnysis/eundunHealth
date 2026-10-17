@@ -1,5 +1,27 @@
 # Multi-AI Handoff Log
 
+## 2026-10-16 (Gemini -> Claude) '오늘의 활동' 완전 제거 및 메인페이지(HomeScreen) UI/UX 리디자인
+
+**현재까지의 작업 상태 (Current Status):**
+- **'오늘의 활동' 및 레거시 코드 완전 제거 (6개 파일 삭제)**:
+  - 삭제 파일: `TodayActivityCard.kt`, `DailyActivity.kt`, `GetTodayActivityUseCase.kt`, `HealthConnectMappers.kt`, `GetTodayActivityUseCaseTest.kt`, `HealthConnectMappersTest.kt`.
+  - Health Connect 권한 축소(4개 → 1개 `READ_EXERCISE` 단독): `AndroidManifest.xml`, `HealthConnectDataSource.kt`, `HealthRepository.kt`, `HealthRepositoryImpl.kt`, `PermissionsRationaleActivity.kt`, `HomeViewModel.kt`에서 `READ_STEPS`·`READ_TOTAL_CALORIES_BURNED`·`READ_HEART_RATE` 및 일일 활동 조회 로직을 전수 제거했습니다.
+- **메인페이지(`HomeScreen.kt`, `SkeletonUi.kt`) Material 3 UI/UX 리디자인 (`PRD PLAN-03` 완수)**:
+  - `WeeklyProgressCard`: 주차 날짜 범위(`M/d - M/d`), 완료율 배지, 애니메이션 `LinearProgressIndicator`(`StrokeCap.Round`), 월~일 7일 상태를 한눈에 보여주는 `WeeklyDayStampRow` 추가.
+  - `DayPlanCard`: KST(`Asia/Seoul`) 기준 오늘 날짜(`isToday: Boolean` 원시 파라미터 전달로 Compose Strong Skipping 리컴포지션 최적화)에 Primary 2.dp 테두리 및 `"오늘"` 배지 표시, 운동 종목 수 서브타이틀 추가.
+  - `ExerciseRow`: 운동 유형 아이콘(`STRENGTH`/`CARDIO`), 운동명, 부위·장비(`bodyPart · equipment`) 서브타이틀, `세트×횟수` 배지 및 `KeyboardArrowRight` 어포던스를 갖춘 구조화된 카드 행으로 개선.
+- **재발방지 가드 테스트 및 문서/법적 고지 SSoT 동기화**:
+  - `ManifestHealthConnectRationaleTest.kt`에 `READ_EXERCISE` 단독 권한 선언 가드 및 `PermissionsRationaleActivity` 레거시 문구 부재 검증 테스트(+2 `@Test`) 추가.
+  - `HomeViewModelTest.kt`에 `today`(KST) 상태 보존 및 `toggleError` 복구 테스트 보강 (현재 총 Android 단위 테스트: **30개 파일 / 146 `@Test` PASS**).
+  - `docs/store/privacy-policy.md`, `docs/store/account-deletion.md`, `docs/store/health-connect-permissions.md` 수정 및 `bash scripts/sync-legal-docs.sh`로 `backend/app/legal/*.md` 동기화 완료 (`pytest tests/test_legal.py` 통과).
+
+**다음 할 일 (Next TODOs for Claude):**
+- 차기 스토어 릴리스(예: `v0.3.2`) 시 Play Console의 **앱 콘텐츠 → 건강 앱 선언(Health Connect 권한)** 에서 `READ_STEPS`·`READ_TOTAL_CALORIES_BURNED`·`READ_HEART_RATE` 체크를 해제하고 `READ_EXERCISE` 1종만 남기세요 (`docs/store/health-connect-permissions.md` 참조).
+
+**의존성 및 주의사항 (Context & Constraints):**
+- `HealthConnectDataSource.kt`의 `private val client: HealthConnectClient by lazy` 명시적 타입 어노테이션은 detekt `RedundantSuspendModifier` 오탐 방지를 위해 반드시 유지해야 합니다.
+- `ManifestHealthConnectRationaleTest`가 매니페스트의 `android.permission.health.*` 권한이 `READ_EXERCISE` 1종뿐인지 자동 검사하므로, 미사용 건강 권한을 매니페스트에 추가하지 마십시오.
+
 ## 2026-10-16 (Gemini -> Claude) 프로젝트 문서 전수 최신화 및 플랜 아카이브
 
 **현재까지의 작업 상태 (Current Status):**

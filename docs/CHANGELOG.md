@@ -4,6 +4,21 @@
 
 ---
 
+## [Unreleased] — 2026-10-16 — '오늘의 활동' 완전 제거 · Health Connect 최소 권한(READ_EXERCISE 단독) · HomeScreen UI/UX 리디자인
+
+### 🧹 '오늘의 활동' 제거 및 Health Connect 권한 최소화 (4 → 1)
+- 홈 화면의 `TodayActivityCard` 및 관련 도메인/데이터 계층(`DailyActivity`, `GetTodayActivityUseCase`, `HealthConnectMappers`)과 전용 단위 테스트 2종을 완전 제거했다.
+- `AndroidManifest.xml`, `HealthConnectDataSource`, `HealthRepository`, `PermissionsRationaleActivity`에서 `READ_STEPS`·`READ_TOTAL_CALORIES_BURNED`·`READ_HEART_RATE` 3종 권한을 회수하여 **`READ_EXERCISE` 단일 권한**만 유지한다(Google Play Health Connect 최소 권한 정책 준수).
+- `ManifestHealthConnectRationaleTest`에 `READ_EXERCISE` 단독 선언 및 `PermissionsRationaleActivity` 내 레거시 문구 부재를 강제하는 회귀 가드 단위 테스트 2건을 추가했다.
+- `docs/store/privacy-policy.md`, `docs/store/account-deletion.md`, `docs/store/health-connect-permissions.md` 및 `backend/app/legal/*.md` SSoT를 동기화했다.
+
+### 🎨 메인페이지(`HomeScreen`) Material 3 UI/UX 리디자인 (`PRD PLAN-03` 구현)
+- **`WeeklyProgressCard` 고도화**: 주차 날짜 범위(`M/d - M/d`), 완료율 캡슐 배지, 둥근 애니메이션 진행률 바(`StrokeCap.Round`), 월~일 7일 현황을 스크롤 없이 한눈에 보여주는 **`WeeklyDayStampRow`(7일 미니 스탬프 바)**를 도입했다.
+- **`DayPlanCard` 오늘 하이라이트(`PLAN-03`) 및 `ExerciseRow` 구조화**: KST(`Asia/Seoul`) 기준 오늘 날짜 요일 카드에 Primary 2.dp 테두리와 `"오늘"` 배지를 부여하고(Compose Strong Skipping 안정성을 위해 원시 `isToday: Boolean` 전달), 운동 항목 행에 유형 아이콘(근력/유산소)·부위 및 장비 서브타이틀·`세트×횟수` 배지·상세 이동 화살표 어포던스를 적용했다.
+- `SkeletonHomeContent`와 `SkeletonDayCard` 레이아웃을 리디자인된 홈 화면 구조와 정합화했다.
+
+---
+
 ## [v0.3.1] — 2026-10-16 — 운동 한국어 현지화 · AGP 10 빌드 현대화 · AI 식단 배포 하드닝
 
 > **2026-10-16 Play 프로덕션 10% 단계적 출시 완료 (`versionCode=36`, 태그 `v0.3.1`).** 운동 카탈로그 46종을 한국어로 전면 현지화하고, AGP 10 대비 빌드 구성을 현대화했으며, AI 식단 생성의 비용/지연/동의/배포 안전장치를 프로덕션 수준으로 하드닝했다.

@@ -55,7 +55,7 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 | **이메일 주소** | ✅ | ❌ | Microsoft Entra External ID (저장됨) | 로그인 식별 |
 | **사용자 ID** | ✅ | ❌ | 백엔드 DB(Azure PostgreSQL) | 운동 기록 연결 |
 | **신체 활동(키/몸무게/체지방률/근육량)** | ✅ | ❌ | 백엔드 DB + 동의 후 AI 식단 생성 시 Azure AI Foundry | 앱 기능·개인 맞춤 목적. 식단 생성 직전 명시 동의, 전송 중 암호화, 삭제 요청 지원 |
-| **건강·피트니스(Health Connect 읽기)** | ✅ | ❌ | **READ 권한 4개**(운동 세션·걸음 수·소모 칼로리·심박수) **읽기 전용**(쓰기 없음). ⚠️ #106(v0.1.12)에서 **체중·체지방 HC 읽기 제거**(`READ_WEIGHT`/`READ_BODY_FAT` 회수, 6→4) | 걸음·칼로리·심박수는 단말 표시 전용(미전송). 운동 세션→완료 날짜만 백엔드 전송. **신체 4지표(키·몸무게·체지방·골격근)는 HC 아닌 사용자 직접 입력**. Data safety 폼은 실제 권한과 정확히 일치해야 함(검수 가드). 상세 privacy-policy.md §1 |
+| **건강·피트니스(Health Connect 읽기)** | ✅ | ❌ | **READ 권한 1개(`READ_EXERCISE` 운동 세션 단독)** **읽기 전용**(쓰기 없음). ⚠️ #106(v0.1.12)에서 체중·체지방 HC 읽기 제거(6→4), 2026-10-16 '오늘의 활동' 제거로 걸음·칼로리·심박수 회수(4→1) | 운동 세션→완료 날짜만 백엔드 전송(원본 세션 미저장). **신체 4지표(키·몸무게·체지방·골격근)는 HC 아닌 사용자 직접 입력**. Data safety 폼은 실제 권한(`READ_EXERCISE` 1종)과 정확히 일치해야 함(검수 가드). 상세 privacy-policy.md §1 |
 | **앱 충돌/성능 진단 (Sentry)** | ✅ | ❌ (3rd party 처리) | 익명 crash + transaction | 사용자 PII 자동 스크럽됨 |
 | **광고 ID / IDFA / 위치** | ❌ | ❌ | 미사용 | |
 

@@ -1,6 +1,5 @@
 package com.gunnys.eundunhealth.domain.repository
 
-import com.gunnys.eundunhealth.domain.model.DailyActivity
 import java.time.LocalDate
 
 interface HealthRepository {
@@ -10,8 +9,4 @@ interface HealthRepository {
     suspend fun hasPermissions(): Boolean
 
     suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>>
-
-    suspend fun hasDailyActivityPermissions(): Boolean
-
-    suspend fun getTodayActivity(): Result<DailyActivity>
 }
