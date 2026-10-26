@@ -1,5 +1,37 @@
 # Multi-AI Handoff Log
 
+## 2026-10-26 (Gemini -> Claude) v0.5.0/38 스마일 트레이닝 시작 시 릴리스 전용 NPE 크래시(Sentry EUNDUNHEALTH-E/F) 근본 원인 해결 및 다중 방어선·회귀 가드 구축 완료 (INC-2026-10-26-32)
+
+**현재까지의 작업 상태 (Current Status):**
+- **Sentry 크래시 수집 및 역난독화 원인 규명**:
+  - `v0.5.0`(`versionCode=38`) 릴리스에서 `'스마일 트레이닝 시작하기'` 버튼 클릭 직후 발생한 `"앱이 중단됨"` 크래시 2건(`EUNDUNHEALTH-E` [id: `7812482834`], `EUNDUNHEALTH-F` [id: `7812482966`])을 Sentry API로 조회하여 역난독화된 스택트레이스를 확보했습니다:
+    `NullPointerException: Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference at com.google.mlkit.vision.face.FaceDetection.getClient(FaceDetection.0:3) <- MlKitFaceModuleInstaller.ensureModuleAvailable(MlKitFaceModuleInstaller.kt:43)`.
+  - **Primary Root Cause**: ML Kit(`com.google.mlkit:common:18.5.0` / `play-services-mlkit-face-detection:17.1.0`) 내부 DI(`com.google.firebase:firebase-components:16.1.0`)는 `MlKitComponentDiscoveryService`에 등록된 `FaceRegistrar`, `VisionCommonRegistrar`, `CommonComponentRegistrar`를 `Class.forName(...).getDeclaredConstructor().newInstance()` 리플렉션으로 인스턴스화합니다. 그러나 `firebase-components:16.1.0` 번들 `proguard.txt`는 `-keep class * implements com.google.firebase.components.ComponentRegistrar`에 생성자/멤버 명세(`{ <init>(); *; }`)가 빠져 있어, AGP 9.3.2 **R8 full mode**가 3개 Registrar의 기본 생성자 `<init>()`을 모두 제거했습니다(`mapping.txt` 실측 확인). 그 결과 `MlKitContext.getInstance().get(zzc.class)`가 `null`을 반환하며 `FaceDetection.getClient()` 호출 즉시 NPE가 발생했습니다.
+  - **Secondary Root Cause**: `MlKitFaceModuleInstaller.ensureModuleAvailable()`에서 `FaceDetection.getClient(options)`와 `ModuleInstall.getClient(context)`가 `try` 블록 바깥에 위치해 있어 예외가 `MlKitModuleState.Unavailable`로 전환되지 못하고 메인 스레드 코루틴을 크래시시켰습니다.
+- **근본 원인 해결 및 유지보수/방어선(Defense-in-Depth) 개선**:
+  1. `app/proguard-rules.pro`: `-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); *; }` 추가. `:app:assembleRelease` 후 `app/build/outputs/mapping/release/mapping.txt`에서 `CommonComponentRegistrar`, `VisionCommonRegistrar`, `FaceRegistrar` 3개 클래스 모두 `void <init>() -> <init>` 및 `getComponents()`가 보존됨을 실측 검증했습니다.
+  2. `MlKitFaceModuleInstaller.kt`: `FaceDetection.getClient` 및 `ModuleInstall.getClient`를 `try` 블록 내부로 이동하고 `finally { runCatching { detector?.close() } }`로 리소스 누수를 차단했으며, `Throwable`(`CancellationException` 재던짐) 포착 시 Sentry breadcrumb(`smile.mlkit_init_failed`) + `Sentry.captureException` 기록 후 한국어 안내와 함께 `MlKitModuleState.Unavailable`을 반환하도록 보강했습니다.
+  3. `SmileTrainingViewModel.kt`: `prepareModelAndProceed()` 내부 `moduleManager.ensureModuleAvailable()` 호출을 `try/catch (t: Throwable)`로 이중 방어하고, `MODEL_UNAVAILABLE` 및 `onCameraError` 전환 시 룰 8에 따라 Sentry breadcrumb(`smile.model_unavailable`, `smile.camera_error`)를 남기도록 개선했습니다.
+  4. `SmileCameraStage.kt` & `MlKitSmileSignalAnalyzer.kt`: `MlKitSmileSignalAnalyzer` 생성, `ProcessCameraProvider.getInstance`, `bindFrontCameraUseCases` 전체(`hasCamera`, `Preview`, `ImageAnalysis`, `bindToLifecycle`)를 `runCatching`으로 감싸 `onCameraError` 인라인 복구로 연결하고, `detector.process(inputImage)` 동기 예외 시에도 `imageProxy.close()`가 보장되도록 강화했습니다.
+  5. **회귀 테스트 및 문서화**:
+     - `ProguardKeepRulesTest.kt`: `ComponentRegistrar` `<init>()` keep 규칙 존재 여부를 단위 테스트로 박제(룰 12 확장).
+     - `SmileTrainingViewModelTest.kt`: `moduleManager.ensureModuleAvailable`에서 예기치 않은 `NullPointerException` 발생 시 크래시 없이 `MODEL_UNAVAILABLE`로 전환되고 재시도 시 `READY`로 복구되는 회귀 테스트 추가(Android `@Test` 165 → **167 passed**).
+     - `docs/ops/incident-log.md`(`INC-2026-10-26-32`) 및 `CLAUDE.md`(룰 12 확장, 테스트 수 167 반영) 업데이트 완료.
+- **전체 품질 게이트 검증 결과**:
+  - `bash scripts/check-agp10-compat.sh`: **PASS**
+  - `./gradlew :app:spotlessApply :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleRelease`: **PASS (BUILD SUCCESSFUL, 167 `@Test` passed, detekt 0 issues)**
+  - `pytest backend/tests/ -q`: **126 passed**
+  - `pytest scripts/agents/test_doc_audit.py -q`: **36 passed**
+  - `bash scripts/check-plans-links.sh` & `python scripts/gen_plans_index.py --check`: **PASS**
+
+**다음 할 일 (Next TODOs for Claude / User):**
+- Play 스토어에 핫픽스 릴리스(`v0.5.1`, `versionCode=39`)를 배포하려면 `bash scripts/bump-version.sh 0.5.1` 실행 후 커밋·푸시 및 `v0.5.1` 태그를 푸시하세요(`LAST_UPLOADED_VERSION_CODE=38`).
+
+**의존성 및 주의사항 (Context & Constraints):**
+- AGP R8 full mode에서는 `-keep class ...`에 `{ <init>(); *; }` 멤버 명세가 없으면 리플렉션으로 호출되는 기본 생성자 `<init>()`이 제거됩니다(룰 12).
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
+
 ## 2026-10-26 (Gemini -> Claude) v0.5.0/38 출시 기준 프로젝트 전 문서 최신화 및 플랜 페어 아카이브 완료
 
 **현재까지의 작업 상태 (Current Status):**

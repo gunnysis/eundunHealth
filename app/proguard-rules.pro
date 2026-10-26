@@ -15,6 +15,18 @@
 # generator 설정/버전 변경 시 같은 silent 결함이 재발하므로 방어적으로 명시 keep.
 -keep class com.gunnys.eundunhealth.api.generated.model.** { *; }
 
+# ML Kit 내부 DI(firebase-components 16.1.0)는 MlKitComponentDiscoveryService 메타데이터에 등록된
+# ComponentRegistrar 구현체(FaceRegistrar, VisionCommonRegistrar, CommonComponentRegistrar)를
+# Class.forName(...).getDeclaredConstructor().newInstance() 리플렉션으로 인스턴스화한다.
+# firebase-components 16.1.0 번들 consumer rule 은 `-keep class * implements ...ComponentRegistrar`에
+# 생성자/멤버 명세(`{ <init>(); *; }`)가 빠져 있어, AGP R8 full mode 에서 기본 생성자 `<init>()`가
+# 제거되고 MlKitContext.getInstance().get(...) 이 null 을 반환해 FaceDetection.getClient() 호출 즉시
+# NullPointerException 크래시가 발생한다(Sentry EUNDUNHEALTH-E/F, INC-2026-10-26-31).
+-keep class * implements com.google.firebase.components.ComponentRegistrar {
+    <init>();
+    *;
+}
+
 # MSAL 의 전이 의존성 nimbus-jose-jwt 가 참조하는 Google Tink 클래스.
 # EdDSA(Ed25519)·X25519·XChaCha20Poly1305 JOSE 알고리즘 전용 경로이며 Tink 는 런타임
 # 의존성에 없다. Entra CIAM 은 RS256 을 쓰므로 이 경로는 실행되지 않는다 —

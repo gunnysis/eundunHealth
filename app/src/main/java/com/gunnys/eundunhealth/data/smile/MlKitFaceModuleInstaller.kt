@@ -3,11 +3,16 @@ package com.gunnys.eundunhealth.data.smile
 import android.content.Context
 import androidx.compose.runtime.Immutable
 import com.google.android.gms.common.moduleinstall.ModuleInstall
+import com.google.android.gms.common.moduleinstall.ModuleInstallClient
 import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
 import com.google.android.gms.common.moduleinstall.ModuleInstallStatusUpdate
 import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
@@ -36,37 +41,45 @@ class MlKitFaceModuleInstaller @Inject constructor(
     override suspend fun ensureModuleAvailable(
         onProgress: (MlKitModuleState.Installing) -> Unit,
     ): MlKitModuleState {
-        val options = FaceDetectorOptions.Builder()
-            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-            .build()
-        val detector = FaceDetection.getClient(options)
-        val moduleInstallClient = ModuleInstall.getClient(context)
-
+        var detector: FaceDetector? = null
         return try {
-            val alreadyAvailable = checkAvailability(moduleInstallClient, detector)
+            val options = FaceDetectorOptions.Builder()
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+                .build()
+            val activeDetector = FaceDetection.getClient(options)
+            detector = activeDetector
+            val moduleInstallClient = ModuleInstall.getClient(context)
+
+            val alreadyAvailable = checkAvailability(moduleInstallClient, activeDetector)
             if (alreadyAvailable) {
-                detector.close()
-                return MlKitModuleState.Available
+                MlKitModuleState.Available
+            } else {
+                onProgress(MlKitModuleState.Installing(progressPercent = null))
+                requestInstall(moduleInstallClient, activeDetector, onProgress)
             }
-            onProgress(MlKitModuleState.Installing(progressPercent = null))
-            val result = requestInstall(moduleInstallClient, detector, onProgress)
-            detector.close()
-            result
         } catch (ce: CancellationException) {
-            runCatching { detector.close() }
             throw ce
-        } catch (e: Exception) {
-            runCatching { detector.close() }
-            MlKitModuleState.Unavailable(
-                e.localizedMessage ?: "얼굴 인식 모듈을 준비하지 못했습니다. 네트워크와 Google Play 서비스를 확인해주세요.",
+        } catch (t: Throwable) {
+            Sentry.addBreadcrumb(
+                Breadcrumb().apply {
+                    category = "smile.mlkit_init_failed"
+                    level = SentryLevel.ERROR
+                    message = t.message ?: t::class.java.simpleName
+                },
             )
+            Sentry.captureException(t)
+            MlKitModuleState.Unavailable(
+                "얼굴 인식 모듈을 준비하지 못했습니다. 네트워크와 Google Play 서비스를 확인한 뒤 다시 시도해주세요.",
+            )
+        } finally {
+            runCatching { detector?.close() }
         }
     }
 
     private suspend fun checkAvailability(
-        client: com.google.android.gms.common.moduleinstall.ModuleInstallClient,
-        detector: com.google.mlkit.vision.face.FaceDetector,
+        client: ModuleInstallClient,
+        detector: FaceDetector,
     ): Boolean = suspendCancellableCoroutine { cont ->
         client.areModulesAvailable(detector)
             .addOnSuccessListener { response ->
@@ -78,8 +91,8 @@ class MlKitFaceModuleInstaller @Inject constructor(
     }
 
     private suspend fun requestInstall(
-        client: com.google.android.gms.common.moduleinstall.ModuleInstallClient,
-        detector: com.google.mlkit.vision.face.FaceDetector,
+        client: ModuleInstallClient,
+        detector: FaceDetector,
         onProgress: (MlKitModuleState.Installing) -> Unit,
     ): MlKitModuleState = suspendCancellableCoroutine { cont ->
         val listener = object : com.google.android.gms.common.moduleinstall.InstallStatusListener {
@@ -123,12 +136,12 @@ class MlKitFaceModuleInstaller @Inject constructor(
                     if (cont.isActive) cont.resume(MlKitModuleState.Available)
                 }
             }
-            .addOnFailureListener { err ->
+            .addOnFailureListener {
                 client.unregisterListener(listener)
                 if (cont.isActive) {
                     cont.resume(
                         MlKitModuleState.Unavailable(
-                            err.localizedMessage ?: "얼굴 인식 모듈 설치 요청에 실패했습니다.",
+                            "얼굴 인식 모듈 설치 요청에 실패했습니다. 네트워크와 Google Play 서비스를 확인해주세요.",
                         ),
                     )
                 }

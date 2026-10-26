@@ -200,7 +200,7 @@ DELETE /account
 - **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.5.0** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
 - **Detekt 1.23.8 (`detekt-cli` + `androidComponents` 커스텀 태스크) + Spotless 8.10.1 + ktlint 1.5.0**
-- **Android 단위 테스트**: 165 `@Test` 케이스 (JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
+- **Android 단위 테스트**: 167 `@Test` 케이스 (JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
 - Entra JWT algorithm: **RS256** — backend 는 OIDC discovery 로 얻은 `jwks_uri`/`issuer` 로 검증. **issuer 를 문자열로 조합하지 말 것** — 서브도메인이 tenantId 라 조합하면 전 API 401 이 되고 서명·audience 는 통과해 추적이 어렵다
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)
@@ -352,13 +352,14 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 - `collectAsState()` 호출: **0건** (`grep -rn '\.collectAsState(' app/src/main/java/`)
 - `collectAsStateWithLifecycle` 사용: **20건** across 13 files (2026-06-16 재측정 — 2026-06-06 마이그레이션 시 33건, 이후 리팩토링·`ObserveAsEvents` 도입으로 감소. 핵심 불변식 = `collectAsState()` 0건 유지)
 
-### 룰 12 — Gson 반사 모델은 R8 keep 전수 + 패키지 단위 (INC 2026-06-15 빈 운동계획 회귀)
+### 룰 12 — Gson 반사 모델 및 리플렉션 DI 생성자는 R8 keep 전수 + 패키지/생성자 단위 (INC 2026-06-15 빈 운동계획 회귀 · INC-2026-10-26-32 ML Kit NPE 크래시)
 
-Gson 으로 역직렬화되는 모델(Retrofit 응답 타입 + 그 중첩·래퍼 타입 **전부**)은 **필드에 `@SerializedName` 가 있거나 `-keep class … { *; }`** 로 보호돼야 한다. 둘 다 없으면 릴리스 R8 이 필드/클래스를 제거 → Gson 이 못 채워 nullable/default(예: `List<T>` → `emptyList()`)로 **silent** 폴백한다. 디버그/단위테스트는 R8 미적용이라 못 잡는다.
+Gson 으로 역직렬화되는 모델(Retrofit 응답 타입 + 그 중첩·래퍼 타입 **전부**)은 **필드에 `@SerializedName` 가 있거나 `-keep class … { *; }`** 로 보호돼야 한다. 또한 AGP R8 full mode 에서 리플렉션(`getDeclaredConstructor().newInstance()`)으로 인스턴스화되는 클래스(예: ML Kit `firebase-components` 의 `ComponentRegistrar` 구현체)는 단순 `-keep class ...` 만으로는 기본 생성자 `<init>()` 이 제거되므로 반드시 `{ <init>(); *; }` 멤버 명세를 포함해야 한다. 둘 다 디버그/단위테스트는 R8 미적용이라 못 잡는다.
 
 - **단일 클래스 keep 금지 → 패키지 단위 keep**: `ExerciseDto` 만 keep 하고 래퍼 `ExerciseListResponse`/`PageMeta` 를 빠뜨려 릴리스에서 운동 계획이 통째로 빈 채 생성·저장·고착된 사고(2026-06-15). 새 Gson 모델은 keep 된 패키지(`data.remote.exercisedb.**`, `data.remote.api.dto.**`, `api.generated.model.**`) 안에 두면 자동 보호.
-- **자동 가드**: `app/src/test/.../ProguardKeepRulesTest` 가 위 3개 keep 규칙의 존재를 박제(삭제 시 `:app:testDebugUnitTest` 실패). 새 Gson 모델 패키지 추가 시 `proguard-rules.pro` keep + 이 테스트 목록을 함께 갱신.
-- 검증은 단위테스트 불가 → **릴리스 빌드 실기기/계측**으로만 확인.
+- **리플렉션 생성자 `<init>()` 명시**: `firebase-components:16.1.0` 번들 규칙(`-keep class * implements ...ComponentRegistrar`)에 `{ <init>(); *; }` 가 빠져 R8 full mode 가 `FaceRegistrar.<init>()` 등을 제거 → `FaceDetection.getClient()` 가 NPE 로 즉시 크래시한 사고(INC-2026-10-26-32).
+- **자동 가드**: `app/src/test/.../ProguardKeepRulesTest` 가 위 Gson 패키지 3개 및 `ComponentRegistrar` 생성자 keep 규칙의 존재를 박제(삭제 시 `:app:testDebugUnitTest` 실패). 새 리플렉션/Gson 모델 패키지 추가 시 `proguard-rules.pro` keep + 이 테스트 목록을 함께 갱신.
+- 검증은 단위테스트 불가 → **릴리스 빌드(`mapping.txt` 확인 및 실기기/계측)**로만 확인.
 
 ### 룰 13 — Play 업로드 전 versionCode 는 원장과 대조 (INC-2026-06-19-28)
 

@@ -640,6 +640,54 @@ run `33581936651` → `tracks: production`·`status: completed` 100% 즉시 롤�
 
 ---
 
+## INC-2026-10-26-32 — v0.5.0/38 스마일 트레이닝 시작 시 릴리스 전용 NPE 크래시: R8 full mode 가 ML Kit `ComponentRegistrar` 기본 생성자 `<init>()` 를 제거
+
+**증상**: Play 프로덕션 배포본(`v0.5.0`, `versionCode=38`)에서 `'스마일 트레이닝 시작하기'` 버튼을 누르고 카메라 권한이 허용된 직후 앱이 `"앱이 중단됨"` 으로 즉시 종료. Sentry 에 `EUNDUNHEALTH-E`(`7812482834`) 및 `EUNDUNHEALTH-F`(`7812482966`) 이슈로 다음 역난독화된 스택트레이스가 수집됨:
+
+```
+java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference
+  at com.google.mlkit.vision.face.FaceDetection.getClient(FaceDetection.0:3)
+  at com.gunnys.eundunhealth.data.smile.MlKitFaceModuleInstaller.ensureModuleAvailable(MlKitFaceModuleInstaller.kt:43)
+  at com.gunnys.eundunhealth.ui.smile.SmileTrainingViewModel$prepareModelAndProceed$1.invokeSuspend(SmileTrainingViewModel.kt:196)
+```
+
+**근본 원인 (Primary Root Cause — R8 Full Mode + 구형 `firebase-components` Consumer ProGuard 규칙 불일치)**:
+1. ML Kit(`com.google.mlkit:common:18.5.0` / `play-services-mlkit-face-detection:17.1.0`)는 내부 DI 컨테이너로 `com.google.firebase:firebase-components:16.1.0` 을 사용하며, `AndroidManifest.xml` 의 `MlKitComponentDiscoveryService` 메타데이터에 선언된 3개 `ComponentRegistrar` 구현체(`FaceRegistrar`, `VisionCommonRegistrar`, `CommonComponentRegistrar`)를 `Class.forName(name).asSubclass(ComponentRegistrar.class).getDeclaredConstructor().newInstance()` 리플렉션으로 인스턴스화한다.
+2. 그러나 `firebase-components:16.1.0` 에 번들된 `proguard.txt`(`configuration.txt:1662`)는 AGP 8+ R8 full mode 도입 이전에 작성되어 생성자/멤버 명세 없이 다음 한 줄만 선언하고 있었다:
+   ```proguard
+   -keep class * implements com.google.firebase.components.ComponentRegistrar
+   ```
+3. AGP 9.3.2 **R8 full mode**에서는 `-keep class ...` 에 `{ <init>(); }` 나 `{ *; }` 멤버 명세가 없으면 클래스 심볼만 유지하고 **인자 없는 기본 생성자 `<init>()` 를 제거(strip)**한다(`app/build/outputs/mapping/release/mapping.txt` 에서 `FaceRegistrar`, `VisionCommonRegistrar`, `CommonComponentRegistrar` 3개 클래스 모두 `<init>()` 이 실종된 것을 실측 확인).
+4. 런타임에 `MlKitInitProvider` 가 `ComponentDiscovery.instantiate()` 를 호출할 때 `clazz.getDeclaredConstructor()` 가 `NoSuchMethodException` 을 던지고, `ComponentDiscovery` 가 이를 경고 로그만 남긴 채 `null` 로 삼켜버린다.
+5. 그 결과 `FaceDetectorImpl` 팩토리(`zzc.class`)가 `MlKitContext` 의 `ComponentRuntime` 에 등록되지 않아 `MlKitContext.getInstance().get(zzc.class)` 가 `null` 을 반환하고, `FaceDetection.getClient(options)` 내부의 `((zzc) MlKitContext.getInstance().get(zzc.class)).zzb(options)` 호출에서 R8 이 인라이닝한 `null.getClass()` 체크가 실행되며 `NullPointerException` 이 발생했다.
+
+**보조 원인 (Secondary Cause — `try` 블록 외부 초기화로 인한 방어선 우회)**:
+- `MlKitFaceModuleInstaller.ensureModuleAvailable()` 에서 `FaceDetection.getClient(options)`(43행)와 `ModuleInstall.getClient(context)`(44행)가 `return try { ... } catch (e: Exception)` 블록 **바깥(46행 이전)**에 위치해 있었다.
+- 그 때문에 `FaceDetection.getClient(options)` 가 던진 `NullPointerException` 이 `MlKitModuleState.Unavailable` 로 폴백되지 못하고 `viewModelScope.launch` 코루틴을 타고 메인 스레드 `UncaughtExceptionHandler` 로 전파되어 앱 프로세스를 종료시켰다.
+
+**왜 디버그 빌드와 단위 테스트가 못 잡았나**:
+- INC-2026-06-15-25(Gson R8 strip)와 동일한 구조다. 디버그 빌드와 JVM 단위 테스트는 `isMinifyEnabled = false` 로 동작하므로 `FaceRegistrar.<init>()` 이 그대로 살아 있어 100% 정상 동작한다. R8 full mode 가 적용된 **release 빌드(`assembleRelease` / `bundleRelease`) 런타임**에서만 재현된다.
+
+**복구 및 다중 방어선(Defense-in-Depth) 구축**:
+1. **근본 원인 해결 (`app/proguard-rules.pro`)**:
+   ```proguard
+   -keep class * implements com.google.firebase.components.ComponentRegistrar {
+       <init>();
+       *;
+   }
+   ```
+   릴리스 빌드 후 `mapping.txt` 에서 `FaceRegistrar`, `VisionCommonRegistrar`, `CommonComponentRegistrar` 의 `void <init>() -> <init>` 및 `getComponents()` 보존을 실측 확인.
+2. **초기화·카메라 파이프라인 방어선 강화**:
+   - `MlKitFaceModuleInstaller.kt`: `FaceDetection.getClient(options)` 와 `ModuleInstall.getClient(context)` 를 `try` 블록 내부로 이동하고 `finally { runCatching { detector?.close() } }` 로 리소스 누수를 차단. `Throwable`(`CancellationException` 재던짐) 포착 시 Sentry breadcrumb(`smile.mlkit_init_failed`) + `Sentry.captureException` 기록 후 `MlKitModuleState.Unavailable` 반환.
+   - `SmileTrainingViewModel.kt`: `prepareModelAndProceed()` 내부에서 `moduleManager.ensureModuleAvailable()` 호출을 `try/catch (t: Throwable)` 로 이중 방어하고, `MODEL_UNAVAILABLE` 및 `onCameraError` 전환 시 룰 8에 따라 Sentry breadcrumb(`smile.model_unavailable`, `smile.camera_error`)를 기록.
+   - `SmileCameraStage.kt` & `MlKitSmileSignalAnalyzer.kt`: `MlKitSmileSignalAnalyzer` 생성, `ProcessCameraProvider.getInstance`, `bindFrontCameraUseCases` 전체(`hasCamera`, `Preview`, `ImageAnalysis`, `bindToLifecycle`)를 `runCatching` 으로 감싸 `onCameraError` 인라인 복구로 연결하고, `detector.process(inputImage)` 동기 예외 시에도 `imageProxy.close()` 가 보장되도록 강화.
+
+**재발 방지**:
+- `ProguardKeepRulesTest` 에 `ML Kit ComponentRegistrar 리플렉션 생성자는 R8 full mode 에서 keep 규칙으로 보호된다` 단위 테스트를 추가하여 `-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); ... }` 규칙 삭제·변조를 차단(룰 12 확장).
+- `SmileTrainingViewModelTest` 에 `moduleManager.ensureModuleAvailable` 이 예기치 않은 `NullPointerException` 을 던지더라도 앱이 중단되지 않고 `SmileSessionPhase.MODEL_UNAVAILABLE` 로 안전하게 전환된 뒤 재시도 시 `READY` 로 복구되는 회귀 테스트 추가.
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
@@ -651,3 +699,4 @@ run `33581936651` → `tracks: production`·`status: completed` 100% 즉시 롤�
 | 2026-06-16 (출시 준비 회고) | INC-25~27 추가 — 릴리스 R8 Gson keep 갭(빈 운동계획, 룰 12+ProguardKeepRulesTest), 토글 해제 미보존(manual/manuallySet 수동 우선), bump-version.sh blind-replace 문서 오염(스크립트 앵커 하드닝). PR #122/#123 출시 사이클 전수감사 결과 정착 |
 | 2026-06-19 (출시 재시도) | INC-28 추가 — versionCode 사전검토 누락(Play 중복 업로드 거부). play-upload-ledger.md(원장) + check-version-monotonic.sh(preflight·bump 배선) + 룰 13 정착 |
 | 2026-07-02 (public 전환 후속) | INC-29 추가 — CodeQL java-kotlin autobuild 가 clean checkout 의 release 서명 검증에서 실패. 서명 존재-조건부화 + preflight 서명 자료 fail-fast 가드 |
+| 2026-10-26 (v0.5.0 스마일 트레이닝 핫픽스) | INC-32 추가 — R8 full mode 가 ML Kit `ComponentRegistrar`(`FaceRegistrar` 등)의 기본 생성자 `<init>()` 를 제거해 `FaceDetection.getClient()` 가 NPE 로 크래시(Sentry `EUNDUNHEALTH-E`/`F`). `proguard-rules.pro` keep 규칙 + `ProguardKeepRulesTest` + ML Kit/CameraX 초기화 다중 방어선 정착 |

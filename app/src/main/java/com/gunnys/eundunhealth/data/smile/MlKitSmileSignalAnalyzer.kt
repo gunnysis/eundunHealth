@@ -42,6 +42,7 @@ class MlKitSmileSignalAnalyzer(
             .build(),
     )
 
+    @Suppress("TooGenericExceptionCaught")
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         if (isClosed.get()) {
@@ -70,15 +71,19 @@ class MlKitSmileSignalAnalyzer(
         }
 
         val timestampMs = SystemClock.elapsedRealtime()
-        detector.process(inputImage)
-            .addOnSuccessListener { faces ->
-                if (!isClosed.get()) {
-                    onSignal(faces.toFrameSignal(timestampMs, frameWidth))
+        try {
+            detector.process(inputImage)
+                .addOnSuccessListener { faces ->
+                    if (!isClosed.get()) {
+                        onSignal(faces.toFrameSignal(timestampMs, frameWidth))
+                    }
                 }
-            }
-            .addOnCompleteListener {
-                imageProxy.close()
-            }
+                .addOnCompleteListener {
+                    imageProxy.close()
+                }
+        } catch (_: Throwable) {
+            imageProxy.close()
+        }
     }
 
     override fun close() {

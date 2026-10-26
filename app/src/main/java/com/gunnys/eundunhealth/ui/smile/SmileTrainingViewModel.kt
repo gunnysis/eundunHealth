@@ -16,6 +16,10 @@ import com.gunnys.eundunhealth.domain.smile.FrameSignal
 import com.gunnys.eundunhealth.domain.smile.SmileRoutineRule
 import com.gunnys.eundunhealth.domain.smile.SmileSignalEvaluator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -183,6 +187,7 @@ class SmileTrainingViewModel @Inject constructor(
         _sideEffect.trySend(SmileTrainingSideEffect.OpenAppSettings)
     }
 
+    @Suppress("TooGenericExceptionCaught")
     fun prepareModelAndProceed() {
         viewModelScope.launch {
             _uiState.update {
@@ -193,13 +198,29 @@ class SmileTrainingViewModel @Inject constructor(
                     error = null,
                 )
             }
-            val result = moduleManager.ensureModuleAvailable { installing ->
-                _uiState.update { it.copy(modelDownloadPercent = installing.progressPercent) }
+            val result = try {
+                moduleManager.ensureModuleAvailable { installing ->
+                    _uiState.update { it.copy(modelDownloadPercent = installing.progressPercent) }
+                }
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                t.toReportedAppError()
+                MlKitModuleState.Unavailable(
+                    "얼굴 인식 모듈을 준비하지 못했습니다. 네트워크와 Google Play 서비스를 확인한 뒤 다시 시도해주세요.",
+                )
             }
             when (result) {
                 MlKitModuleState.Available -> moveToReadyPhase()
                 is MlKitModuleState.Installing -> Unit
                 is MlKitModuleState.Unavailable -> {
+                    Sentry.addBreadcrumb(
+                        Breadcrumb().apply {
+                            category = "smile.model_unavailable"
+                            level = SentryLevel.WARNING
+                            message = result.reason
+                        },
+                    )
                     _uiState.update {
                         it.copy(
                             phase = SmileSessionPhase.MODEL_UNAVAILABLE,
@@ -296,6 +317,13 @@ class SmileTrainingViewModel @Inject constructor(
         repTransitionJob?.cancel()
         evaluator.reset()
         activeSessionStartedMs = null
+        Sentry.addBreadcrumb(
+            Breadcrumb().apply {
+                category = "smile.camera_error"
+                level = SentryLevel.WARNING
+                this.message = message
+            },
+        )
         _uiState.update { current ->
             val rule = SmileRoutineRule(current.selectedRoutine, current.selectedDifficulty)
             current.copy(

@@ -131,10 +131,28 @@ internal fun SmileCameraStage(
         lifecycleOwner.lifecycle.addObserver(observer)
 
         val analysisExecutor = Executors.newSingleThreadExecutor()
-        val analyzer = MlKitSmileSignalAnalyzer(
-            onSignal = { signal -> currentOnFrameSignal(signal) },
-        )
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        val analyzer = runCatching {
+            MlKitSmileSignalAnalyzer(
+                onSignal = { signal -> currentOnFrameSignal(signal) },
+            )
+        }.getOrElse {
+            currentOnCameraError("얼굴 인식 분석기를 초기화할 수 없습니다. 잠시 후 다시 시도해주세요.")
+            return@DisposableEffect onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+                analysisExecutor.shutdown()
+            }
+        }
+
+        val cameraProviderFuture = runCatching {
+            ProcessCameraProvider.getInstance(context)
+        }.getOrElse {
+            analyzer.close()
+            currentOnCameraError("카메라 서비스를 초기화할 수 없습니다.")
+            return@DisposableEffect onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+                analysisExecutor.shutdown()
+            }
+        }
         val mainExecutor = ContextCompat.getMainExecutor(context)
 
         val bindRunnable = Runnable {
@@ -222,34 +240,34 @@ private fun bindFrontCameraUseCases(
     onSurfaceRequest: (SurfaceRequest) -> Unit,
     onBindError: (String) -> Unit,
 ) {
-    val selector = when {
-        provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
-        provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
-        else -> {
-            onBindError("이 기기에서 사용 가능한 카메라를 찾을 수 없습니다.")
-            return
-        }
-    }
-
-    val preview = Preview.Builder().build().also { previewUseCase ->
-        previewUseCase.setSurfaceProvider(onSurfaceRequest)
-    }
-    val resolutionSelector = ResolutionSelector.Builder()
-        .setResolutionStrategy(
-            ResolutionStrategy(
-                AnalysisTargetResolution,
-                ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
-            ),
-        )
-        .build()
-
-    val imageAnalysis = ImageAnalysis.Builder()
-        .setResolutionSelector(resolutionSelector)
-        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-        .build()
-        .also { it.setAnalyzer(analysisExecutor, analyzer) }
-
     runCatching {
+        val selector = when {
+            provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
+            provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
+            else -> {
+                onBindError("이 기기에서 사용 가능한 카메라를 찾을 수 없습니다.")
+                return
+            }
+        }
+
+        val preview = Preview.Builder().build().also { previewUseCase ->
+            previewUseCase.setSurfaceProvider(onSurfaceRequest)
+        }
+        val resolutionSelector = ResolutionSelector.Builder()
+            .setResolutionStrategy(
+                ResolutionStrategy(
+                    AnalysisTargetResolution,
+                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                ),
+            )
+            .build()
+
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setResolutionSelector(resolutionSelector)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            .also { it.setAnalyzer(analysisExecutor, analyzer) }
+
         provider.unbindAll()
         provider.bindToLifecycle(lifecycleOwner, selector, preview, imageAnalysis)
     }.onFailure {

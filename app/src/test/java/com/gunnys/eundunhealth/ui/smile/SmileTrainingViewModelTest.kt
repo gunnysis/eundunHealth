@@ -68,6 +68,40 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
+    fun `unexpected NullPointerException from moduleManager transitions to MODEL_UNAVAILABLE without crashing`() = runTest {
+        var shouldThrow = true
+        val flakyModuleManager = object : MlKitFaceModuleManager {
+            override suspend fun ensureModuleAvailable(
+                onProgress: (MlKitModuleState.Installing) -> Unit,
+            ): MlKitModuleState {
+                if (shouldThrow) {
+                    throw NullPointerException(
+                        "Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference",
+                    )
+                }
+                return MlKitModuleState.Available
+            }
+        }
+
+        val vm = SmileTrainingViewModel(FakeSmileTrainingRepository(), flakyModuleManager)
+        advanceUntilIdle()
+
+        vm.onStartClicked(hasCameraPermission = true)
+        advanceUntilIdle()
+
+        assertEquals(SmileSessionPhase.MODEL_UNAVAILABLE, vm.uiState.value.phase)
+        assertNotNull(vm.uiState.value.modelUnavailableReason)
+        assertTrue(vm.uiState.value.modelUnavailableReason!!.contains("얼굴 인식 모듈"))
+
+        // User taps retry after module becomes available -> recovers to READY
+        shouldThrow = false
+        vm.prepareModelAndProceed()
+        advanceUntilIdle()
+
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+    }
+
+    @Test
     fun `full active session flow completes reps, saves reflection, and reaches COMPLETED`() = runTest {
         val fakeRepo = FakeSmileTrainingRepository()
         val vm = SmileTrainingViewModel(fakeRepo, FakeModuleManager(MlKitModuleState.Available))
