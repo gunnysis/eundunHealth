@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-10-17 — v0.4.0/37 메뉴트리 Play production upload 완료**
-> 작성 기준: 태그 `v0.4.0`의 **v0.4.0/37**이 release workflow run `39026967924`로 Play production `completed`(100%) 업로드됐고, 원장 커밋 `48f57c7`이 versionCode 37을 기록한다.
+> 작성일: 2026-05-25 / 최근 갱신: **2026-10-26 — v0.5.0/38 스마일 트레이닝 Play production upload & 백엔드 배포 완료**
+> 작성 기준: 태그 `v0.5.0`의 **v0.5.0/38**이 release workflow run `40274395812`로 Play production `completed`(100%) 업로드됐고, 원장 커밋 `cbd155f`가 versionCode 38을 기록한다. 백엔드는 run `40274391632`로 revision `eundunhealth-api--0000063`(이미지 `869407a`, Alembic head `a3869f575d6a`)에 배포 완료됐다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.5.0` / `38` (태그 `v0.4.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=37` |
+| versionName / versionCode | **`0.5.0` / `38` (태그 `v0.5.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=38` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.10 / 9.3.2 / 9.7.1** (KSP 2.3.11, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거) |
 | Compose BOM | **2026.08.00** |
@@ -28,8 +28,8 @@
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.4.0/37**(2026-10-17 `release.yml` run `39026967924`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 커밋 `48f57c7`). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
-> 이력: v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=36` — 다음 릴리스 versionCode ≥ 37(룰 13 가드).
+> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.5.0/38**(2026-10-26 `release.yml` run `40274395812`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 커밋 `cbd155f`). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
+> 이력: v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=38` — 다음 릴리스 versionCode ≥ 39(룰 13 가드).
 > **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·TRUNCATE 금지), 스키마 변경은 alembic 마이그레이션만. 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
 
@@ -43,8 +43,8 @@
 | Resource Group | `rg-eundunhealth-prod-krc` (2026-07-29 `apps` 에서 이관 — 이동 7 + 알림/AG/UAI 재생성, RBAC 8건 재부여, LA shared key 갱신, 구 RG 삭제. 상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry — 원문 페어 `2026-07-29-rg-migration-{design,plan}.md` 는 흡수 후 git rm) |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
-| 활성 revision | `eundunhealth-api--0000062` (100% traffic, **warm — min=1**, 2026-10-16 실측) |
-| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:2610d18` (**MI pull**, app/reaper 일치 — PR #188 배포 run `38837975170`) |
+| 활성 revision | `eundunhealth-api--0000063` (100% traffic, **warm — min=1**, 2026-10-26 실측) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:869407a` (**MI pull**, app/reaper 일치 — v0.5.0 배포 run `40274391632`) |
 | Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
@@ -227,7 +227,7 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 > **회전 이력**
 > — **2026-09-02**: 로컬 백업 아카이브 두 벌의 `.env` 에 당시 유효한 자격증명이 평문으로 있었다(sha256 대조 확인). `.env` 삭제 + 암호 회전. git 노출은 0(두 아카이브 모두 저장소 밖, 저장소 이력에 `.env` 커밋 없음). 다운타임 0 — 옛 복제본이 기존 연결 풀로 계속 응답하는 사이 새 복제본이 교체됐다.
 
-### 테이블 목록 (총 7개 앱 테이블 + `alembic_version`, 2026-05-25 출시 전 정리 기준 초기 row 0)
+### 테이블 목록 (총 8개 앱 테이블 + `alembic_version`, 2026-05-25 출시 전 정리 기준 초기 row 0)
 
 | 테이블 | 비고 |
 |--------|------|
@@ -604,3 +604,5 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-09-21 | **v0.3.0/35 — AI 맞춤 주간 식단 기능 출시 (PR #170·#171)**. Azure AI Foundry(`eundunhealth-ai-foundry`, East US 2) `DeepSeek-V3.2` MaaS 연동 · Key Vault secret 2종(`deepseek-endpoint`, `deepseek-key`) 추가(총 8개, 룰 6) · 백엔드 `meal_plans`/`meal_plan_items` 테이블(alembic `718783053fcd`) + `user_profiles.gender`(alembic **`0dda67f1638a`**) · `POST /meals/generate` & `GET /meals/current` · Android `MealPlanScreen`/`MealPlanViewModel` 및 프로필 성별 선택 UI · Play 프로덕션 업로드 완료(원장 자동 커밋 `3e2e7b8`, `LAST_UPLOADED_VERSION_CODE=35`) |
 | 2026-10-15 | **ExerciseDB 한국어 현지화 + AGP 10 대비 빌드 현대화 (PR #178·#181·#186)**. ① 추천 운동 46종 한국어 번역 번들(`app/src/main/assets/korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백, `ExerciseTranslationProvider`) + 운동 상세 부위/장비/근육 태그 한국어화 + 검증 스크립트 `scripts/verify-exercise-translations.ps1` ② `gradle.properties` 레거시 플래그 제거 · `org.jetbrains.kotlin.android` 및 레거시 Detekt Android 플러그인 제거 → `detekt-cli` + `androidComponents` 커스텀 태스크 전환 · `scripts/check-agp10-compat.sh` CI 가드 추가 |
 | 2026-10-16 | **v0.3.1/36 — 프로덕션 배포 하드닝 & Play 10% 단계 출시 LIVE (PR #188·#191)**. ① AI 식단 생성 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`, 누락 시 400) + `MEAL_AI_ENABLED` kill switch + 법적 고지(`privacy-policy.md`, `account-deletion.md`) 정합화 ② `backend.yml` 수동 배포 `deploy=true` 게이트 + `backend-production` 환경 승인 게이트 + `scripts/verify_containerapp_deployment.py` 사후 불변 조건 검증 + `backend-rollback.yml` 롤백 워크플로 신설 ③ 백엔드 배포(run `38837975170`) → 활성 revision **`eundunhealth-api--0000062`**(이미지 `2610d18`, reaper Job 동기화) ④ 태그 `v0.3.1` `release.yml`(run `38838518612`) → Play 프로덕션 **10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)** 업로드 성공 + 원장 자동 커밋 `1a19eb7`(`LAST_UPLOADED_VERSION_CODE=36`). backend pytest **119/119** · android @Test **151/151** |
+| 2026-10-17 | **v0.4.0/37 — 메뉴트리 아키텍처 개편 & Play 프로덕션 출시 완료**. 태그 `v0.4.0` `release.yml`(run `39026967924`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `48f57c7`(`LAST_UPLOADED_VERSION_CODE=37`) |
+| 2026-10-26 | **v0.5.0/38 — 온디바이스 스마일 트레이닝(Smile Training) 출시 & 백엔드/스토어 동시 배포 완료**. ① 온디바이스 CameraX 1.6.2 + ML Kit 얼굴 검출(`play-services-mlkit-face-detection:17.1.0`) 미소 근육 운동 + 오프라인 우선 Room(`smile_training.db`) & WorkManager 동기화 + 원격 이력 자동 복원(`refreshRemoteHistoryIfEmpty`) + 계정 삭제 로컬 와이퍼(`LocalDataWiper`) ② 백엔드 `smile_training_sessions` 테이블(alembic **`a3869f575d6a`**) + `/smile-training/sessions`·`/smile-training/statistics` 4개 엔드포인트 + 법적 고지(`privacy-policy.md`, `account-deletion.md`) 온디바이스 카메라 무저장·무전송 명시 ③ 백엔드 배포(run `40274391632`) → 활성 revision **`eundunhealth-api--0000063`**(이미지 `869407a`, reaper Job 동기화, 프로브 4종 200 검증) ④ 태그 `v0.5.0` `release.yml`(run `40274395812`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `cbd155f`(`LAST_UPLOADED_VERSION_CODE=38`). backend pytest **126/126** · android @Test **165/165** |

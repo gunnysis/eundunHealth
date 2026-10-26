@@ -1,9 +1,9 @@
 # Multi-AI Handoff Log
 
-## 2026-10-26 (Gemini -> Claude) 스마일 트레이닝(Smile Training) 풀스택 엔드투엔드 구현, 다중 역할 전수 감사·근본 원인 해결 및 UI/UX 고도화 완료
+## 2026-10-26 (Gemini -> Claude) 스마일 트레이닝(Smile Training) v0.5.0/38 풀스택 엔드투엔드 구현, 다중 역할 전수 감사·근본 원인 해결, UI/UX 고도화 및 프로덕션 배포(Azure Container Apps + Google Play) 완료
 
 **현재까지의 작업 상태 (Current Status):**
-- `docs/plans/2026-10-26-smile-training-design.md` 및 페어 계획 `docs/plans/2026-10-26-smile-training-plan.md`를 기반으로 스마일 트레이닝 기능(Phase 1~5)을 엔드투엔드로 구현하고, 다중 역할(개발자·책임자·운영자·유지보수자·QA/QC·어플 디자이너) 관점의 전수 코드 감사, 근본 원인 해결 및 UI/UX 리팩토링까지 완료했습니다.
+- `docs/plans/2026-10-26-smile-training-design.md` 및 페어 계획 `docs/plans/2026-10-26-smile-training-plan.md`를 기반으로 스마일 트레이닝 기능(Phase 1~5)을 엔드투엔드로 구현하고, 다중 역할(개발자·책임자·운영자·유지보수자·QA/QC·어플 디자이너·DevOps/FDE·PM·CTO) 관점의 전수 코드 감사, 근본 원인 해결, UI/UX 리팩토링 및 **프로덕션 배포(`v0.5.0` / `versionCode=38`)**까지 완료했습니다.
 - **Phase 1: Backend API & PostgreSQL Alembic Migration 완료**:
   - `backend/app/models/smile_training.py`: `SmileTrainingSession`(`smile_training_sessions` 테이블, `sa.Uuid(as_uuid=True)` PK, 체크 제약 3종, `(user_id, occurred_at)` 복합 인덱스).
   - `backend/alembic/versions/a3869f575d6a_create_smile_training_sessions.py`: `scripts/alembic-autogen.sh`로 PostgreSQL 16 컨테이너에서 자동 생성 및 upgrade/downgrade 검증(룰 3).
@@ -13,7 +13,7 @@
     - `GET /smile-training/statistics`: KST(`UTC+9`) 기준 연속일(`currentStreakDays`, `longestStreakDays`) 및 당일 완료 여부(`completedToday`).
     - `DELETE /smile-training/sessions`: 인증 사용자의 전체 세션 삭제(`SmileTrainingDeleteResponse`).
   - 계정 삭제/고아 정리: `AccountService._purge_app_data()`에 `SmileTrainingRepository.delete_all_by_user()` 추가, `ProfileRepository.list_all_user_ids()`를 7개 사용자별 테이블 전체 `UNION`으로 확장.
-  - `backend/openapi.json` 동기화 완료(`scripts/sync-openapi.sh`, 17 paths / 24 routes).
+  - `backend/openapi.json` 동기화 완료(`scripts/sync-openapi.sh`, 17 paths / 24 routes) 및 법적 고지(`docs/store/privacy-policy.md`, `docs/store/account-deletion.md` → `backend/app/legal/*.md`) 온디바이스 카메라 무저장·무전송 명시.
 - **Phase 2: Android Persistence, WorkManager Sync, Remote Hydration & LocalDataWiper 완료**:
   - `SmileTrainingDatabase`(`smile_training.db`, version 1) 및 KSP 스키마 export(`app/schemas/com.gunnys.eundunhealth.data.local.SmileTrainingDatabase/1.json`).
   - `SmileSyncWorker`(`@HiltWorker`, `ExistingWorkPolicy.KEEP`, `NetworkType.CONNECTED`) 및 `EundunHealthApplication`의 `Configuration.Provider` 연동.
@@ -27,14 +27,17 @@
     - `WindowInsets.safeDrawing` Edge-to-Edge 안전 영역 보장, 스프링 물리(`Spring.DampingRatioLowBouncy`) 보간 `SweepGradient` 프로그레스 링, 반복 단계 도트 인디케이터(`RepStepIndicatorRow`), 실시간 정렬 상태 배지(`AlignmentStatusBadge`), `ACTIVE` 단계 일시정지/중단 컨트롤.
     - 기기 카메라 하드웨어 유무(`FEATURE_CAMERA_FRONT`/`FEATURE_CAMERA_ANY`) 사전 검사, 루틴 카드의 난이도별 유효 유지 시간·눈 뜨기 배지, 균등 5분할 목표 반복 선택기 및 총 예상 유지 시간 표시, 한국어 시간 포맷(`formatDurationKorean`), 완료·회고 화면 세션 요약 배너(`SessionOutcomeSummaryBanner`).
   - `AppNavigation.kt` 루트 모달 `Screen.SmileTraining` 및 `ProgressHubScreen.kt` "마음 연습 > 스마일 트레이닝" 진입 카드 연결.
-- **Phase 5: 전수 품질 게이트 통과**:
-  - Backend: `ruff check`, `ruff format --check`, `mypy` (52 files, 0 issues), `bandit` (0 issues), `pytest` (**126 passed**), `test_doc_audit.py` (**36 passed**), Docker Compose 런타임 스모크(`alembic upgrade head` + `/health/ready` 200) **PASS**.
-  - Android: `check-agp10-compat.sh`, `spotlessCheck`, `detektDebug` (0 issues), `testDebugUnitTest` (**165 passed**), `assembleDebug`, `assembleRelease` (R8/Lint Vital 통과, 컴파일 경고 0건) **PASS**.
-  - Docs: `gen-plans-index.sh`, `check-plans-links.sh` **PASS**.
+- **Phase 5: 전수 품질 게이트 및 프로덕션 운영 배포 완료 (`v0.5.0` / `versionCode=38`)**:
+  - Backend: `ruff check`, `ruff format --check`, `mypy` (52 files, 0 issues), `bandit` (0 issues), `pytest` (**126 passed**), `test_doc_audit.py` (**36 passed**), Docker Compose 런타임 스모크 **PASS**.
+  - Android: `check-agp10-compat.sh`, `spotlessCheck`, `detektDebug` (0 issues), `testDebugUnitTest` (**165 passed**), `preflight-release.sh` (AAB 13.10MB + APK 8.79MB + Sentry 매핑 `b32bb97e-99aa-368c-ac1a-6d35b8a1d764` 업로드) **PASS**.
+  - **CI/CD Concurrency 트러블슈팅**: 2026-10-17부터 `waiting` 상태로 방치되어 `backend-production` concurrency 락을 잡고 있던 stale run(`39026541371`)을 식별·취소(`gh run cancel`)하여 배포 파이프라인 차단 근본 해소.
+  - **Azure Container Apps 배포 완료** (`Backend CI/CD` run `40274391632`): 활성 리비전 **`eundunhealth-api--0000063`** (이미지 `eundunhealthacr.azurecr.io/eundunhealth-api:869407a`, `eundunhealth-reaper` Job 동일 이미지 동기화, `/health`·`/health/ready`·`/privacy`·`/account-deletion` 200 및 `/smile-training/sessions` 401 인증 가드 라이브 검증 완료).
+  - **Google Play 프로덕션 배포 완료** (`Release (Play production)` run `40274395812`): 태그 `v0.5.0` (`versionCode=38`) Play 프로덕션 트랙 `completed`(100%) 업로드 및 원장 자동 갱신 커밋 `cbd155f`(`LAST_UPLOADED_VERSION_CODE=38`) 완료.
+  - **Android CI** (run `40274391865`) 및 **docs-plans-index** (run `40274391387`): 모두 `completed (success)`.
 
 **다음 할 일 (Next TODOs for Claude / User):**
-- 실기기(Android)에서 전면 카메라 권한 허용/거부, 최초 실행 시 Google Play services ML Kit 얼굴 모듈 준비, 미러 뷰파인더 및 조도별 미소 유지 피드백을 점검하세요(`docs/plans/2026-10-26-smile-training-design.md` §10 참조).
-- 백엔드 배포 시 `a3869f575d6a` 마이그레이션이 엔트리포인트에서 자동 적용됩니다.
+- 실기기(Android)에서 Play 스토어 업데이트(`v0.5.0`) 또는 로컬 설치 후 전면 카메라 권한 허용/거부, 최초 실행 시 Google Play services ML Kit 얼굴 모듈 준비, 미러 뷰파인더 및 조도별 미소 유지 피드백을 점검하세요(`docs/plans/2026-10-26-smile-training-design.md` §10 참조).
+- 차기 릴리스 시 `LAST_UPLOADED_VERSION_CODE=38`이므로 `versionCode >= 39`를 사용해야 합니다(`bash scripts/bump-version.sh`가 자동 검증).
 
 **의존성 및 주의사항 (Context & Constraints):**
 - `CameraXViewfinder`(`androidx.camera:camera-compose:1.6.2`)와 `SurfaceRequest`를 사용하므로 `androidx.camera.view.PreviewView`를 직접 참조하지 마세요.
