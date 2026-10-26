@@ -1,13 +1,13 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-10-16, 저장소 = Play 프로덕션 = v0.3.1/36 [10% 단계 출시 LIVE, 직전 v0.3.0/35 ← v0.2.0/34 ← v0.1.19/33 ← 첫 출시 v0.1.18/32]):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-10-26, 저장소 = Play 프로덕션 = v0.5.0/38 [`completed` 100% 업로드, 직전 v0.4.0/37 ← v0.3.1/36 ← v0.3.0/35 ← v0.2.0/34 ← v0.1.19/33 ← 첫 출시 v0.1.18/32]):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
 ---
 
-## 구현 후 변경 사항 (v0.1.0 → v0.3.1)
+## 구현 후 변경 사항 (v0.1.0 → v0.5.0)
 
 
 > ⚠️ **인증 관련 본문 주의:** 아래 v1.0 본문의 인증 서술(**§2.3 인증 시스템 표**·§3 인증 플로우
@@ -17,17 +17,18 @@
 > 현행은 바로 아래 변경 사항 표의 "인증 제공자"~"App Links / `/auth/confirm`" 행 + `CLAUDE.md` +
 > `docs/plans/2026-09-01-entra-external-id-migration-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) 를 본다.
 
-본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.3.1 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
+본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.5.0 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
-| 영역 | TRD v1.0 | 현재 (v0.3.1) |
+| 영역 | TRD v1.0 | 현재 (v0.5.0) |
 |------|----------|------------|
 | Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.141.1 (Python 3.14)** + uvicorn 0.53.0 |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0.54 async + asyncpg 0.31.0** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (119 PASS, cov 94% / coverage core `sysmon`) |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (126 PASS, cov 94% / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API & 현지화 | RapidAPI ExerciseDB (영문) | **OSS** `oss.exercisedb.dev` (인증 불필요) + 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) |
 | AI 맞춤 식단 | 미포함 | **Azure AI Foundry `DeepSeek-V3.2` MaaS** (`openai 3.16.2` AsyncOpenAI, `POST /meals/generate` & `GET /meals/current`, `X-AI-Data-Processing-Consent: true` 동의 헤더 필수, `MEAL_AI_ENABLED` kill switch) |
+| 온디바이스 스마일 트레이닝 | 미포함 | **CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0** (온디바이스 무저장·무전송 미소 코칭) + **Room `SmileTrainingDatabase` & WorkManager `SmileSyncWorker`** + 백엔드 `/smile-training/sessions`·`/smile-training/statistics` (4개 API) |
 | **인증 제공자** | Supabase Auth (SDK 3.6.0, ES256) | **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` — MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE), **RS256** (2026-09 전환) |
 | **인증 데이터 위치** | Supabase Korea 리전 | **Asia Pacific** — Entra 외부 테넌트가 한국 리전을 제공하지 않는다. 건강 데이터는 그대로 Korea Central. 방침 국외이전 고지: `docs/store/privacy-policy.md` §3-1 |
 | **사용자 식별자** | Supabase JWT `sub` | 액세스 토큰 **`oid`** claim — `sub` 는 앱마다 다른 pairwise 값이라 Graph 계정 삭제가 매칭되지 않는다 |
@@ -39,14 +40,14 @@
 | 차트 라이브러리 | 미사용 | **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.6.0** |
-| versionCode / versionName | (미정) | **36 / 0.3.1** (저장소 = Play 프로덕션 10% 단계 출시 LIVE) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
-| Alembic head | (미정) | `0dda67f1638a` (`add_gender_to_user_profile`; 직전 `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
+| versionCode / versionName | (미정) | **38 / 0.5.0** (저장소 = Play 프로덕션 `completed` 100% 업로드) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| Alembic head | (미정) | `a3869f575d6a` (`create_smile_training_sessions`; 직전 `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
 
-신규 도메인 / 화면 (v0.2·v0.3·v0.3.0·v0.3.1): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, AI 맞춤 주간 식단(`MealPlanScreen`), 추천 운동 46종 한국어 현지화.
+신규 도메인 / 화면 (v0.2~v0.5.0): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, AI 맞춤 주간 식단(`MealPlanScreen`), 추천 운동 46종 한국어 현지화, 적응형 4탭 메뉴트리(`MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`), 온디바이스 스마일 트레이닝(`SmileTrainingScreen`).
 
-v0.1.1~v0.3.1 누적 (Android UI + Auth + Backend 안정화 및 기능 확장):
+v0.1.1~v0.5.0 누적 (Android UI + Auth + Backend 안정화 및 기능 확장):
 - v0.1.1 (#40) signup 가입 이메일 확인 흐름 + 인증 상태 모델 리팩터 (`SessionState` / `AuthOpState` / `SignupState` 분리)
 - v0.1.2 (#41) supabase-kt 3.6.0 `SupabaseEncodingException` 처리 hotfix
 - v0.1.3 (#42) Android App Links 자동 로그인 (intent-filter autoVerify + supabase-kt `handleDeeplinks` + assetlinks.json + `/auth/confirm` fallback)
@@ -71,6 +72,8 @@ v0.1.1~v0.3.1 누적 (Android UI + Auth + Backend 안정화 및 기능 확장):
 - v0.2.0 (#165) 인증 제공자 전환 Supabase Auth → **Microsoft Entra External ID**(MSAL 브라우저 위임, RS256 JWKS, `oid` 식별자, Microsoft Graph 계정 삭제) + 기술부채 청산 T0~T7(Python 3.14, Gradle 9.7.1, openapi-generator 7.25.0) + 하드닝 H1~H10(R8 릴리스 빌드 PR 게이트 포함) + Play 프로덕션 직접 CD 전환(2026-09-02).
 - v0.3.0 (#170/#171) **AI 맞춤 주간 식단 출시** — Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 + `meal_plans`/`meal_plan_items` 테이블(`718783053fcd`) + `user_profiles.gender`(`0dda67f1638a`) + `POST /meals/generate` & `GET /meals/current` + Android `MealPlanScreen`/`MealPlanViewModel` (2026-09-21).
 - v0.3.1 (#178/#181/#186/#188/#191) **프로덕션 배포 하드닝 & 운동 한국어 현지화** — 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) + AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents`, `check-agp10-compat.sh`) + AI 식단 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) & `MEAL_AI_ENABLED` kill switch + `backend-production` 환경 게이트 & `backend-rollback.yml` + `verify_containerapp_deployment.py` 불변 조건 검증 + Play 프로덕션 **10% 단계 출시 LIVE** (2026-10-16).
+- v0.4.0 **적응형 메뉴트리 & Health Connect 투명성** — `오늘·식단·진행·프로필` 4개 최상위 탭(`MainAppShell`), `ProgressHubScreen`/`ProfileHubScreen`, multiple back stack, Health Connect 권한 재조회 및 관리 intent 연동, Play 프로덕션 `completed`(100%) 출시(2026-10-17).
+- v0.5.0 **온디바이스 스마일 트레이닝(Smile Training) & 오프라인 우선 동기화** — 전면 카메라(`CameraX` 1.6.2) + 온디바이스 `ML Kit Face Detection`(17.1.0) 미소 코칭 + 오프라인 우선 Room(`SmileTrainingDatabase`) & `WorkManager`(`SmileSyncWorker`) + 원격 이력 복원(`refreshRemoteHistoryIfEmpty`) + 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) 및 `/smile-training/*` 4개 API + 계정 삭제 로컬 와이퍼(`LocalDataWiper`) + 백엔드(`0000063`) 및 Play 프로덕션 `completed`(100%) 출시(2026-10-26).
 
 ---
 

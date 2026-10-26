@@ -2,7 +2,7 @@
 
 > PT 트레이너 없이 헬스장에서 혼자 운동하는 사용자를 위한 Android 헬스 앱
 
-신체 정보(키·몸무게·골격근량·체지방률·성별)를 입력하면 [OSS ExerciseDB](https://oss.exercisedb.dev) 운동 라이브러리(추천 운동 46종 한국어 현지화 번들)를 바탕으로 **맞춤형 주간 운동 계획**을 자동 생성하고, **AI 맞춤 주간 식단**(Azure AI Foundry `DeepSeek-V3.2`)을 추천받으며, **Health Connect** 와 연동해 완료를 추적하고, **목표(체중·체지방)** 와 **배지**로 동기를 유지합니다.
+신체 정보(키·몸무게·골격근량·체지방률·성별)를 입력하면 [OSS ExerciseDB](https://oss.exercisedb.dev) 운동 라이브러리(추천 운동 46종 한국어 현지화 번들)를 바탕으로 **맞춤형 주간 운동 계획**을 자동 생성하고, **AI 맞춤 주간 식단**(Azure AI Foundry `DeepSeek-V3.2`)을 추천받으며, **온디바이스 스마일 트레이닝**(CameraX + ML Kit 얼굴 검출 미소 연습)과 **Health Connect** 연동으로 완료를 추적하고, **목표(체중·체지방)** 와 **배지**로 동기를 유지합니다.
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — Android **v0.4.0 (versionCode 37, 적응형 메뉴트리·Health Connect 상태 투명성)**가 2026-10-17 태그 `v0.4.0`으로 Play production에 `completed`(100%) 업로드됐다(run `39026967924`, 원장 커밋 `48f57c7`). Play의 후속 처리·가시성은 Console에서 확인하되, CI 성공과 업로드 원장은 독립 확인했다. 백엔드는 이 Android-only release로 변경되지 않았고, 현재 revision `eundunhealth-api--0000062` / 이미지 `2610d18`의 health/readiness 200을 재확인했다.
+- **현재 단계** — Android **v0.5.0 (versionCode 38, 온디바이스 스마일 트레이닝·풀스택 동기화)**가 2026-10-26 태그 `v0.5.0`으로 Play production에 `completed`(100%) 업로드됐다(run `40274395812`, 원장 커밋 `cbd155f`). 백엔드 또한 `Backend CI/CD` run `40274391632`로 활성 리비전 `eundunhealth-api--0000063` / 이미지 `869407a`(Alembic head `a3869f575d6a`, `eundunhealth-reaper` Job 동기화)에 배포 및 프로브 4종 검증을 완료했다.
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -49,6 +49,7 @@
 
 - **자동 주간 운동 계획 & 한국어 현지화** — 신체 정보(키·몸무게·골격근량·체지방률·성별)와 휴식일 설정 기반으로 OSS ExerciseDB 에서 매주 자동 생성하며, 추천 운동 46종은 번들된 한국어 데이터(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백)로 제공
 - **AI 맞춤 주간 식단** (v0.3.0 / v0.3.1) — 신체 지표·목표·주간 운동량을 바탕으로 Azure AI Foundry `DeepSeek-V3.2` 모델이 7일×4끼 맞춤 식단과 영양소(칼로리·탄단지)를 생성 (국외 이전 사전 고지 및 `X-AI-Data-Processing-Consent: true` 명시적 동의 기반)
+- **온디바이스 스마일 트레이닝** (v0.5.0) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(루틴 3종 × 난이도 3단계 × 1~5회 반복)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db`) 및 `WorkManager`로 세션 요약·연속일을 서버와 동기화
 - **Health Connect 연동** — 운동 세션 자동 감지 및 완료 추적
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
 - **목표 설정 및 진행 시각화** (v0.3) — 체중 / 체지방률 목표 + 프로필 변화 이력 차트
@@ -67,15 +68,16 @@
 | 언어 / 런타임 | Kotlin 2.4.10, Java 17 | KSP 2.3.11 |
 | 빌드 | Gradle 9.7.1, AGP 9.3.2 | Min SDK 26 / Target SDK 37, 내장 Kotlin + 새 DSL 기본 활성 |
 | UI | Jetpack Compose (BOM 2026.08.00) | Material 3 |
-| DI | Hilt 2.60.1 | 5개 모듈 (`NetworkModule`, `DatabaseModule`, `RepositoryModule`, `CoilModule`, `CoroutineModule`) |
+| DI | Hilt 2.60.1 | 4개 모듈 (`NetworkModule`, `DatabaseModule`, `RepositoryModule`, `CoroutineModule`) |
 | 비동기 | kotlinx-coroutines + Flow | |
 | 네트워크 | Retrofit 3.0.0 + OkHttp 5.5.0 + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 |
-| 로컬 DB | Room 2.8.5 (version=2) | `EundunDatabase` |
+| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.10.1 (`hilt-work` 1.3.0) | `EundunDatabase` (v2) + `SmileTrainingDatabase` (v1, KSP 스키마 export) |
+| 카메라 & 온디바이스 비전 | CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0 | Google Play services unbundled (`ModuleInstallClient`) |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
 | Auth | MSAL Android 8.4.2 | RS256 JWT · `oid` claim |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | |
 | 모니터링 | Sentry Android 8.57.0 (Gradle plugin 6.21.0) | 16KB page-aligned native libs |
-| API 클라이언트 | OpenAPI Generator 7.25.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동, 6개 generated API |
+| API 클라이언트 | OpenAPI Generator 7.25.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동, 7개 generated API |
 | 품질 도구 | Detekt 1.23.8 (`detekt-cli` + `androidComponents`) + Spotless 8.10.1 + ktlint 1.5.0 | pre-commit hook + `check-agp10-compat.sh` 가드 |
 
 ### Backend (`backend/`)
@@ -86,18 +88,18 @@
 | 프레임워크 | FastAPI 0.141.1 + uvicorn 0.53.0 | |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.0.54 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
-| 마이그레이션 | Alembic 1.20.0 (head: `0dda67f1638a`) | async 엔진 연동 |
+| 마이그레이션 | Alembic 1.20.0 (head: `a3869f575d6a`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.6.0 | |
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | AI 클라이언트 | openai 3.16.2 (`AsyncOpenAI`) | Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 |
 | 모니터링 | Sentry SDK 2.69.2 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff 0.16.8 + mypy 2.3.1 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 119/119 PASS, coverage 94% (sysmon core) |
+| 품질 도구 | ruff 0.16.8 + mypy 2.3.1 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 126/126 PASS, coverage 94% (sysmon core) |
 
 ### 인프라
 
 | 구성 요소 | 값 |
 |-----------|---|
-| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000062`) |
+| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000063`) |
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret **8개** |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU, 주간 `acr purge` 스케줄 Task 2개) |
 | Database | Azure PostgreSQL Flexible Server `healthapp` (B1ms, 32GB) |
@@ -114,12 +116,12 @@
 ### Android — Clean Architecture
 
 ```
-ui/          # Jetpack Compose 화면 11개 + ViewModel 10개 + Navigation (sealed Screen)
+ui/          # Jetpack Compose 화면 14개 + ViewModel 12개 + Navigation (sealed Screen + 적응형 MainAppShell)
   components/    # 공용 컴포넌트 8개 (AuthErrorBanner, BodyMetricsSliders, LineChart, ProfileSlider, ProfileSummaryCard, Skeleton, Error, Empty)
-  auth/ home/ onboarding/ profile/ statistics/ goal/ meal/ history/ badges/ workout/ splash/
-domain/      # 모델 + 리포지토리 인터페이스 + UseCase + AppError sealed class
-data/        # Repository 구현 + OpenAPI 생성 클라이언트 + Room + Health Connect + MSAL(auth/) + 한국어 번역(translation/) + DataStore
-di/          # Hilt 모듈 5개 (NetworkModule, DatabaseModule, RepositoryModule, CoilModule, CoroutineModule)
+  auth/ home/ onboarding/ profile/ progress/ statistics/ goal/ meal/ smile/ history/ badges/ workout/ splash/
+domain/      # 모델 + 리포지토리 인터페이스 + UseCase + 스마일 신호 평가기(smile/) + AppError sealed class
+data/        # Repository 구현 + OpenAPI 생성 클라이언트 + Room(2종) + WorkManager(sync/) + ML Kit(smile/) + Health Connect + MSAL(auth/) + 한국어 번역(translation/) + DataStore
+di/          # Hilt 모듈 4개 (NetworkModule, DatabaseModule, RepositoryModule, CoroutineModule)
 ```
 
 핵심 패턴
@@ -136,15 +138,15 @@ app/config.py         # pydantic-settings (@lru_cache)
 app/database.py       # DeclarativeBase + get_db() UoW (app.state.session_factory)
 app/dependencies.py   # JWKS 기반 JWT 검증 (RS256, Entra External ID)
 app/exceptions.py     # AppException 계층 (NotFound / Conflict / BadRequest / ServiceUnavailable / BadGateway)
-app/models/           # SQLAlchemy 2.0 Mapped[T] (user_profile, weekly_plan, badge, profile_history, goal, meal_plan)
+app/models/           # SQLAlchemy 2.0 Mapped[T] (user_profile, weekly_plan, badge, profile_history, goal, meal_plan, smile_training)
 app/schemas/          # Pydantic CamelSchema (alias_generator=to_camel)
 app/repositories/     # DB 접근 추상화
-app/services/         # 비즈니스 로직 (account / statistics / goal / meal_plan / meal_ai_client ...)
+app/services/         # 비즈니스 로직 (account / statistics / goal / meal_plan / meal_ai_client / smile_training ...)
 app/routers/          # 얇은 라우터, Service 위임
-alembic/versions/     # async 엔진 연동 마이그레이션 (head: 0dda67f1638a)
+alembic/versions/     # async 엔진 연동 마이그레이션 (head: a3869f575d6a)
 ```
 
-### API 엔드포인트 (20 개 — JWT 필요 16 + 공개 4)
+### API 엔드포인트 (24 개 — JWT 필요 20 + 공개 4)
 
 **공개 (4)**
 
@@ -157,7 +159,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: 0dda67f163
 
 > HTML 브라우저 라우트(`/privacy`·`/account-deletion`)는 `include_in_schema=False` — openapi.json(Android 생성기 입력)에서 제외해 앱이 호출하지 않는 죽은 클라이언트 메서드 생성을 막는다. 라우트 자체는 정상 동작(브라우저·크롤러 직접 접근).
 
-**JWT 필요 (16)**
+**JWT 필요 (20)**
 
 | Method | Path | 비고 |
 |--------|------|------|
@@ -172,6 +174,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: 0dda67f163
 | `GET` / `PUT` | `/goals` | v0.3 |
 | `POST` | `/meals/generate` | v0.3.0 / v0.3.1 AI 주간 식단 생성 (`X-AI-Data-Processing-Consent: true` 필수) |
 | `GET` | `/meals/current` | v0.3.0 현재 주간 식단 조회 |
+| `POST` / `GET` / `DELETE` | `/smile-training/sessions` | v0.5.0 스마일 트레이닝 세션 멱등 기록 · 커서 조회 · 전체 삭제 |
+| `GET` | `/smile-training/statistics` | v0.5.0 KST 기준 연속일 및 누적 통계 조회 |
 | `DELETE` | `/account` | Microsoft Graph 연동 (삭제 204 + `deletedItems` 즉시 파기) |
 
 ---
@@ -183,8 +187,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: 0dda67f163
 ├── app/                      # Android 앱 (Kotlin / Compose)
 ├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
-│   ├── alembic/              # DB 마이그레이션 (head: 0dda67f1638a)
-│   ├── tests/                # pytest (119 PASS, coverage 94%)
+│   ├── alembic/              # DB 마이그레이션 (head: a3869f575d6a)
+│   ├── tests/                # pytest (126 PASS, coverage 94%)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
@@ -383,7 +387,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | [Plans 인덱스](docs/plans/README.md) | design+plan 페어 + 토픽 ledger (자동 생성) |
 | [운영 스냅샷](docs/ops/operations-snapshot.md) | 현재 운영 상태 단일 출처 |
 | [배포 전 체크리스트](docs/ops/predeployment-readiness.md) | v0.3.1 배포 게이트 · 불변 조건 검증 · 롤백 런북 |
-| [Play 업로드 원장](docs/ops/play-upload-ledger.md) | versionCode 단조성 SSoT (`LAST_UPLOADED_VERSION_CODE=36`) |
+| [Play 업로드 원장](docs/ops/play-upload-ledger.md) | versionCode 단조성 SSoT (`LAST_UPLOADED_VERSION_CODE=38`) |
 | [인시던트 로그](docs/ops/incident-log.md) | 인시던트 이력 + root cause + 재발 방지 패턴 |
 | [마이그레이션 런북](docs/ops/migration-runbook.md) | Ktor → FastAPI 절차 + 사후 정리 |
 | [Container Apps Job 런북](docs/ops/azure-container-apps-jobs.md) | orphan reaper Job 프로비저닝 패턴 + 함정 회피(E1~E4, 공식문서 fact-check) |
@@ -396,7 +400,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `v0.4.0` (versionCode `37`, 적응형 메뉴트리·Health Connect 상태 투명성). 2026-10-17 태그 `v0.4.0`이 `release.yml` run `39026967924`를 통해 Play production `completed`(100%)로 업로드됐고, 원장 자동 갱신 커밋은 `48f57c7`이다. Play Console의 처리·가시성은 별도 외부 상태이므로 CI 성공만으로 즉시 사용자 설치 가능을 단정하지 않는다.
+**현재 버전** — `v0.5.0` (versionCode `38`, 온디바이스 스마일 트레이닝·풀스택 동기화). 2026-10-26 태그 `v0.5.0`이 `release.yml` run `40274395812`를 통해 Play production `completed`(100%)로 업로드됐고(원장 자동 갱신 커밋 `cbd155f`), 백엔드는 `Backend CI/CD` run `40274391632`로 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`, Alembic head `a3869f575d6a`)에 배포 완료됐다.
 
 ### 마일스톤 진행
 
@@ -431,6 +435,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.3.0** — **AI 맞춤 주간 식단 기능 출시** — Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 + `meal_plans`/`meal_plan_items` 테이블(alembic `718783053fcd`) + 프로필 `gender` 필드(alembic `0dda67f1638a`) + `POST /meals/generate` & `GET /meals/current` + Android `MealPlanScreen`/`MealPlanViewModel` (PR #170/#171). **2026-09-21 Play 프로덕션 출시 완료**
 - [x] **v0.3.1** — **프로덕션 배포 하드닝 & 운동 한국어 현지화** — 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) + AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents`, `check-agp10-compat.sh`) + AI 식단 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) & `MEAL_AI_ENABLED` kill switch + `backend-production` 환경 승인 게이트 & `backend-rollback.yml` 롤백 워크플로 + `verify_containerapp_deployment.py` 배포 사후 불변 조건 검증 + Play 프로덕션 **10% 단계 출시** (PR #178/#181/#186/#188/#191). **2026-10-16 Play 프로덕션 10% 단계 출시 완료**
 - [x] **v0.4.0** — **적응형 메뉴트리·Health Connect 상태 투명성** — `오늘·식단·진행·프로필` 앱 셸, multiple back stack, 진행/프로필 허브, Health Connect 관리 intent·권한 재조회, Compose 접근성 회귀 테스트. **2026-10-17 Play production `completed`(100%) 업로드 성공** (run `39026967924`, 원장 `48f57c7`).
+- [x] **v0.5.0** — **온디바이스 스마일 트레이닝(Smile Training) 출시** — 전면 카메라(`CameraX` 1.6.2) + 온디바이스 `ML Kit Face Detection`(17.1.0) 미소 근육 코칭(루틴 3종 × 난이도 3단계 × 1~5회 반복) + 오프라인 우선 Room(`smile_training.db`) & `WorkManager` 동기화 + 원격 이력 자동 복원(`refreshRemoteHistoryIfEmpty`) + 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) 및 4개 API + 계정 삭제 로컬 와이퍼(`LocalDataWiper`). **2026-10-26 백엔드 배포(`0000063`) 및 Play production `completed`(100%) 업로드 성공** (run `40274395812`, 원장 `cbd155f`).
 
 **다음**
 - [ ] **v0.3.1 100% 롤아웃 확대** — Play Console Vitals 및 Sentry 모니터링 확인 후 25% → 50% → 100% 단계 확대

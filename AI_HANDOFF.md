@@ -1,9 +1,24 @@
 # Multi-AI Handoff Log
 
+## 2026-10-26 (Gemini -> Claude) v0.5.0/38 출시 기준 프로젝트 전 문서 최신화 및 플랜 페어 아카이브 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- `v0.5.0`(`versionCode=38`, Play 프로덕션 `completed` 100% 출시, 원장 `LAST_UPLOADED_VERSION_CODE=38`, 커밋 `cbd155f`) 및 백엔드 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`, Alembic head `a3869f575d6a`, 배포 run `40274391632`) 기준으로 프로젝트 핵심 문서를 전수 동기화했습니다:
+  - `CLAUDE.md`, `README.md`, `docs/ops/operations-snapshot.md`, `docs/PRD.md`, `docs/TRD.md`, `docs/SPEC.md`, `docs/CHANGELOG.md`
+  - 라우트 수(24개 = 20 JWT + 4 공개), 화면/VM/DI/클라이언트 수(14 Screens / 12 ViewModels / 4 Hilt modules / 7 OpenAPI clients), DB 테이블(앱 8 + `alembic_version`), 테스트 수(Android `@Test` 165 [35 files] · Backend pytest 126 [18 files]), 신규 의존성(CameraX 1.6.2, ML Kit Face Detection 17.1.0, WorkManager 2.10.1)을 코드베이스 실측치와 100% 일치시켰습니다.
+- 완료된 설계/계획 문서(`2026-10-26-smile-training-{design,plan}.md` 및 `implementation_plan.md`)를 `docs/plans/logs/android.md` 토픽 렛저(`Recent` 3건)로 흡수·아카이브(`git rm`)하고 `docs/plans/README.md` 인덱스를 갱신했습니다(활성 작업 0건, 경고 0건).
+
+**다음 할 일 (Next TODOs for Claude / User):**
+- 차기 스토어 릴리스 시 `LAST_UPLOADED_VERSION_CODE=38`이므로 `bash scripts/bump-version.sh <new-ver>`를 통해 `versionCode >= 39`로 상향하세요.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- `scripts/check-plans-links.sh`, `scripts/gen_plans_index.py --check`, `scripts/agents/test_doc_audit.py` 가드가 모두 통과하는 상태를 유지하세요.
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
 ## 2026-10-26 (Gemini -> Claude) 스마일 트레이닝(Smile Training) v0.5.0/38 풀스택 엔드투엔드 구현, 다중 역할 전수 감사·근본 원인 해결, UI/UX 고도화 및 프로덕션 배포(Azure Container Apps + Google Play) 완료
 
 **현재까지의 작업 상태 (Current Status):**
-- `docs/plans/2026-10-26-smile-training-design.md` 및 페어 계획 `docs/plans/2026-10-26-smile-training-plan.md`를 기반으로 스마일 트레이닝 기능(Phase 1~5)을 엔드투엔드로 구현하고, 다중 역할(개발자·책임자·운영자·유지보수자·QA/QC·어플 디자이너·DevOps/FDE·PM·CTO) 관점의 전수 코드 감사, 근본 원인 해결, UI/UX 리팩토링 및 **프로덕션 배포(`v0.5.0` / `versionCode=38`)**까지 완료했습니다.
+- `docs/plans/2026-10-26-smile-training-design.md` 및 페어 계획 `docs/plans/2026-10-26-smile-training-plan.md`(→ `docs/plans/logs/android.md` 2026-10-26 entry 로 흡수)를 기반으로 스마일 트레이닝 기능(Phase 1~5)을 엔드투엔드로 구현하고, 다중 역할(개발자·책임자·운영자·유지보수자·QA/QC·어플 디자이너·DevOps/FDE·PM·CTO) 관점의 전수 코드 감사, 근본 원인 해결, UI/UX 리팩토링 및 **프로덕션 배포(`v0.5.0` / `versionCode=38`)**까지 완료했습니다.
 - **Phase 1: Backend API & PostgreSQL Alembic Migration 완료**:
   - `backend/app/models/smile_training.py`: `SmileTrainingSession`(`smile_training_sessions` 테이블, `sa.Uuid(as_uuid=True)` PK, 체크 제약 3종, `(user_id, occurred_at)` 복합 인덱스).
   - `backend/alembic/versions/a3869f575d6a_create_smile_training_sessions.py`: `scripts/alembic-autogen.sh`로 PostgreSQL 16 컨테이너에서 자동 생성 및 upgrade/downgrade 검증(룰 3).
@@ -36,7 +51,7 @@
   - **Android CI** (run `40274391865`) 및 **docs-plans-index** (run `40274391387`): 모두 `completed (success)`.
 
 **다음 할 일 (Next TODOs for Claude / User):**
-- 실기기(Android)에서 Play 스토어 업데이트(`v0.5.0`) 또는 로컬 설치 후 전면 카메라 권한 허용/거부, 최초 실행 시 Google Play services ML Kit 얼굴 모듈 준비, 미러 뷰파인더 및 조도별 미소 유지 피드백을 점검하세요(`docs/plans/2026-10-26-smile-training-design.md` §10 참조).
+- 실기기(Android)에서 Play 스토어 업데이트(`v0.5.0`) 또는 로컬 설치 후 전면 카메라 권한 허용/거부, 최초 실행 시 Google Play services ML Kit 얼굴 모듈 준비, 미러 뷰파인더 및 조도별 미소 유지 피드백을 점검하세요(`docs/plans/2026-10-26-smile-training-design.md` §10 참조 → `docs/plans/logs/android.md` 2026-10-26 entry 로 흡수).
 - 차기 릴리스 시 `LAST_UPLOADED_VERSION_CODE=38`이므로 `versionCode >= 39`를 사용해야 합니다(`bash scripts/bump-version.sh`가 자동 검증).
 
 **의존성 및 주의사항 (Context & Constraints):**
@@ -46,7 +61,7 @@
 ## 2026-10-26 (Gemini -> Claude) 스마일 트레이닝 종합 설계 r9 ('3.4 진입점 및 내비게이션 아키텍처' 심층 고도화, 딥링크 세션 가드, 화면 켜짐 하드웨어 제어 및 A11y 내비게이션 명세 완료)
 
 **현재까지의 작업 상태 (Current Status):**
-- `docs/plans/2026-10-26-smile-training-design.md`의 **'3.4 진입점 및 내비게이션 아키텍처'**를 실제 안드로이드 코드베이스(`AppNavigation.kt`, `MainAppShell.kt`, `Screen.kt`, `ProgressHubScreen.kt`) 구조 및 안드로이드 최신 가이드라인에 맞추어 심층 조사·연구하여 r9로 전면 개선 완료했습니다.
+- `docs/plans/2026-10-26-smile-training-design.md`(→ `docs/plans/logs/android.md` 2026-10-26 entry 로 흡수)의 **'3.4 진입점 및 내비게이션 아키텍처'**를 실제 안드로이드 코드베이스(`AppNavigation.kt`, `MainAppShell.kt`, `Screen.kt`, `ProgressHubScreen.kt`) 구조 및 안드로이드 최신 가이드라인에 맞추어 심층 조사·연구하여 r9로 전면 개선 완료했습니다.
   - **진입점 다각화 및 심리적 완충 설계 (§3.4.1)**:
     - `ProgressHubScreen` (진행 탭) 신규 "마음 연습" 카드: `ProgressRow` 패턴과 일관성을 유지하며 상시 노출. 당일 완료 체크 및 `🔥 3일 연속` 뱃지 표기.
     - `HomeScreen` (오늘 탭) 맥락형 넛지: `dayPlan.isCompleted == true && !smileState.isCompletedToday` 조건에 따라 운동 완주 직후 부드럽게 제안. DataStore `dismissed_date` 기반 "오늘 하루 닫기(X)" 중복 피로도 방지.
@@ -67,7 +82,7 @@
 - **검증 완료**:
   - `bash scripts/check-plans-links.sh`: **PASS (끊긴 링크 0건)**.
   - `python scripts/gen_plans_index.py --check`: **PASS (정합화 100%)**.
-- `docs/plans/2026-10-26-smile-training-design.md`를 모던 UI/UX 인터랙션 설계와 그래픽 기술 고도화를 반영하여 r8로 전면 개정 완료했습니다.
+- `docs/plans/2026-10-26-smile-training-design.md`(→ `docs/plans/logs/android.md` 2026-10-26 entry 로 흡수)를 모던 UI/UX 인터랙션 설계와 그래픽 기술 고도화를 반영하여 r8로 전면 개정 완료했습니다.
   - **모던 UI/UX 레이아웃 & 비주얼 설계 (§3.5)**:
     - `IntroPhase`: M3 Expressive Card, 루틴 세그먼트 버튼, 난이도 칩, 횟수 스테퍼.
     - `ActivePhase`: Edge-to-Edge 풀스크린 카메라 + 다크 글래스모피즘(Dark Glassmorphism) 플로팅 HUD.
@@ -88,7 +103,7 @@
   - `bash scripts/check-plans-links.sh`: **PASS (끊긴 링크 0건)**.
 
 **다음 할 일 (Next TODOs for Claude):**
-- 사용자가 design을 승인한 뒤에만 `2026-10-26-smile-training-plan.md` 페어를 작성하세요.
+- 사용자가 design을 승인한 뒤에만 `2026-10-26-smile-training-plan.md`(→ `docs/plans/logs/android.md` 2026-10-26 entry 로 흡수) 페어를 작성하세요.
   - Phase 1: 백엔드 Alembic 마이그레이션, Model, Repository, Service, Router, OpenAPI 동기화.
   - Phase 2: 안드로이드 `SmileTrainingDatabase`, 오프라인 우선 동기화 Repository, 계정 삭제 연동.
   - Phase 3: CameraX + ML Kit 파이프라인, 전략 패턴 루틴 엔진, Compose UI 및 ViewModel.

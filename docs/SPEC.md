@@ -6,6 +6,8 @@
 > **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트, 브라우저 위임). IdP 는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계이며 현재 구현과 다르다** — 현행은 `docs/plans/2026-09-01-entra-external-id-migration-design.md`(→ `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수) §5 참조.
 > 
 > **AI 식단 생성 및 운동 한국어 현지화 (2026-09~10, v0.3.0~v0.3.1):** 주간 식단 자동 생성 기능은 Azure AI Foundry MaaS(`DeepSeek-V3.2`)를 통해 구현 완료되었다(v0.3.0). 프론트엔드는 `MealPlanScreen` Compose UI와 Hilt+Retrofit(전용 130s read timeout) 통신을 사용하고, 백엔드는 FastAPI에서 `AsyncOpenAI` + Tenacity 재시도·Pydantic JSON 검증·`X-AI-Data-Processing-Consent: true` 국외 이전 사전 동의 헤더 강제 및 `MEAL_AI_ENABLED` 킬스위치를 채택했다(v0.3.1). 운동 카탈로그 46종(이름·수행 방법·팁) 및 근육/부위/장비 라벨도 한국어로 전면 현지화되었다(`ExerciseLocalization`). 상세 내용은 `docs/plans/logs/backend.md`(2026-09-20) 및 `docs/plans/logs/process-infra.md`(2026-10-16) 참조.
+>
+> **적응형 메뉴트리 및 온디바이스 스마일 트레이닝 (2026-10, v0.4.0~v0.5.0):** 로그인 후 탐색은 `오늘·식단·진행·프로필` 4개 최상위 목적지(`MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`)로 개편되었다(v0.4.0). `진행` 허브에서 진입하는 **스마일 트레이닝**(`SmileTrainingScreen`, v0.5.0)은 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 영상·사진을 저장하거나 전송하지 않고 기기 메모리에서만 실시간 미소 근육 운동을 코칭하며, 오프라인 우선 Room(`SmileTrainingDatabase`) + `WorkManager`(`SmileSyncWorker`)와 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`, `/smile-training/*` 4개 API)로 세션 요약 및 연속일 통계를 동기화한다. 상세 내용은 `docs/plans/logs/android.md`(2026-10-26) 참조.
 
 ## 프로젝트 개요
 
@@ -32,7 +34,8 @@
 | Kotlin | 언어 |
 | Jetpack Compose (BOM) + Material 3 | UI 프레임워크 |
 | Hilt | 의존성 주입 |
-| Room | 로컬 데이터베이스 (오프라인 캐시) |
+| Room + WorkManager | 로컬 데이터베이스 (오프라인 캐시) 및 백그라운드 동기화 |
+| CameraX + ML Kit Face Detection | 온디바이스 전면 카메라 미소 검출 (무저장·무전송) |
 | Retrofit + OkHttp | 백엔드 API 통신 |
 | Coil 3 | 이미지/GIF 로딩 |
 | DataStore | 설정 영속화 (다크모드) |

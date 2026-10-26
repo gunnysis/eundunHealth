@@ -4,6 +4,29 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-26 — 온디바이스 스마일 트레이닝(Smile Training) 풀스택 구현 및 UI/UX 고도화 (v0.5.0, commit `869407a`)
+
+- **Commit**: `869407a` (Play 프로덕션 업로드 run `40274395812` / 원장 `cbd155f`, 백엔드 배포 run `40274391632` / 리비전 `0000063`)
+- **Why**: 은둔·고립 경향이 있거나 혼자 운동하는 사용자가 사진·영상 촬영이나 외부 서버 전송에 대한 심리적·개인정보 부담 없이, 기기 내부 메모리에서만 실시간으로 미소 근육 연습과 짧은 감정 회고를 수행하고 연속일(Streak) 동기를 유지할 수 있는 마음 연습 기능이 필요했다.
+- **What**:
+  - **온디바이스 비전 & 순수 도메인 평가기**: `CameraX` 1.6.2(`CameraXViewfinder` + `ResolutionSelector` 640×480 + `STRATEGY_KEEP_ONLY_LATEST`)와 Google Play 서비스 `ML Kit Face Detection` 17.1.0(`ModuleInstallClient` 사전 준비)을 연동하고, 모든 경로에서 `imageProxy.close()`를 보장해 원시 프레임 무저장·무전송을 구현. `SmileRoutineRule`(루틴 3종 × 난이도 3단계)과 `SmileSignalEvaluator`(단조 시간 `timestampElapsedMs` 누적, 히스테리시스, 1,000ms 슬라이딩 윈도우 >= 75% 충족률, `trackingId` 변경 시 홀드 초기화, 일시정지 시 완료 반복 보존 `clearActiveHold()`)를 순수 Kotlin으로 분리.
+  - **루트 모달 Compose UI (`SmileTrainingScreen`, `SmileCameraStage`)**: `AppNavigation` 루트 모달(`Screen.SmileTraining`)로 하단 탐색 바 가림 원천 차단, `WindowInsets.safeDrawing` 안전 영역, `CompositingStrategy.Offscreen` + `BlendMode.Clear` 타원 비네트, 스프링 보간 `SweepGradient` 프로그레스 링, 반복 단계 도트 인디케이터, 실시간 정렬 상태 배지, `ON_STOP` 자동 일시정지 및 `ON_RESUME` 권한 재검증, `FLAG_KEEP_SCREEN_ON`, TalkBack `LiveRegionMode.Polite` 적용.
+  - **오프라인 우선 Room SSOT + WorkManager 멱등 동기화 + 백엔드 API**: `SmileTrainingDatabase`(`smile_training.db` v1, KSP 스키마 export) + `SmileSyncWorker`(`@HiltWorker`, `ExistingWorkPolicy.KEEP`, `NetworkType.CONNECTED`)로 백그라운드 업로드 및 400/409/422 `BLOCKED` 격리(무한 재시도 배터리 소모 차단), 기기 변경 시 빈 로컬 DB 자동 복원(`refreshRemoteHistoryIfEmpty`), 계정 삭제 시 로컬 와이퍼(`DefaultLocalDataWiper` + `AuthRepositoryImpl` 선캡처 `userId`) 연동. 백엔드 FastAPI `/smile-training/sessions`(`POST`/`GET`/`DELETE`), `/smile-training/statistics`(`GET`), Alembic `a3869f575d6a`(`smile_training_sessions` 테이블), `AccountService._purge_app_data` 및 고아 정리 `UNION` 확장.
+- **Outcome**: Android 단위 테스트 165/165 PASS, Backend pytest 126/126 PASS, Spotless/Detekt/R8 릴리스 빌드 및 Azure Container Apps(`eundunhealth-api--0000063`) + Google Play 프로덕션(`v0.5.0/38`) 배포 완료.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/domain/smile/*`, `app/src/main/java/com/gunnys/eundunhealth/data/smile/*`, `app/src/main/java/com/gunnys/eundunhealth/data/local/Smile*`, `app/src/main/java/com/gunnys/eundunhealth/data/sync/SmileSyncWorker.kt`, `app/src/main/java/com/gunnys/eundunhealth/data/repository/SmileTrainingRepositoryImpl.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/smile/*`, `backend/app/models/smile_training.py`, `backend/app/routers/smile_training.py`, `backend/alembic/versions/a3869f575d6a_create_smile_training_sessions.py`
+- **설계 원문**: `2026-10-26-smile-training-design.md`, `2026-10-26-smile-training-plan.md` (본 entry 로 흡수, git rm)
+
+### 2026-10-16 — '오늘의 활동' 제거, Health Connect 최소 권한화(READ_EXERCISE 단독) 및 HomeScreen M3 리디자인 (commit `ddcddb5`)
+
+- **Commit**: `ddcddb5`
+- **Why**: Google Play Health Connect 최소 권한 정책 준수를 위해 실제 핵심 가치와 무관한 일일 활동(`READ_STEPS`, `READ_TOTAL_CALORIES_BURNED`, `READ_HEART_RATE`) 권한을 회수하고, 홈 화면의 주간 진행률 가시성 및 오늘 운동 하이라이트(`PRD PLAN-03`)를 개선해야 했다.
+- **What**:
+  - `TodayActivityCard.kt`, `DailyActivity.kt`, `GetTodayActivityUseCase.kt`, `HealthConnectMappers.kt` 및 관련 테스트 2종 삭제; `AndroidManifest.xml`을 `READ_EXERCISE` 1종 권한으로 축소하고 `ManifestHealthConnectRationaleTest` 회귀 가드 추가.
+  - `HomeScreen.kt`: `WeeklyProgressCard`에 주차 날짜 범위·완료율 캡슐 배지·애니메이션 진행률 바·7일 미니 스탬프 바(`WeeklyDayStampRow`)를 도입하고, `DayPlanCard`에 KST 기준 오늘 날짜(`isToday: Boolean` 원시 파라미터로 Compose Strong Skipping 보장) 2.dp Primary 테두리·`"오늘"` 배지 및 구조화된 `ExerciseRow` 적용.
+  - 법적 고지(`privacy-policy.md`, `account-deletion.md`, `health-connect-permissions.md`) 동기화(`scripts/sync-legal-docs.sh`).
+- **Outcome**: Health Connect 요청 권한 4→1 축소, `PLAN-03` 구현 완료, Android 단위 테스트 및 정적 분석 통과.
+- **설계 원문**: `docs/plans/implementation_plan.md` (본 entry 로 흡수, git rm)
+
 ### 2026-10-15 — ExerciseDB 운동 콘텐츠 한국어 로컬라이징 (v0.3.1, PR #178·#186)
 
 - **PR**: [#178](https://github.com/gunnysis/eundunHealth/pull/178) · [#186](https://github.com/gunnysis/eundunHealth/pull/186)
