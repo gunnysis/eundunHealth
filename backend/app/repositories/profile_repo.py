@@ -1,7 +1,13 @@
-from sqlalchemy import select
+from sqlalchemy import select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.badge import Badge
+from app.models.goal import Goal
+from app.models.meal_plan import MealPlan
+from app.models.smile_training import SmileTrainingSession
 from app.models.user_profile import UserProfile
+from app.models.user_profile_history import UserProfileHistory
+from app.models.weekly_plan import WeeklyPlan
 
 
 class ProfileRepository:
@@ -16,8 +22,17 @@ class ProfileRepository:
         return result.scalar_one_or_none()
 
     async def list_all_user_ids(self) -> list[str]:
-        """앱에 프로필을 가진 전체 user_id. orphan reaper 의 후보 집합(프로필=사용자 데이터 앵커)."""
-        result = await self.db.execute(select(UserProfile.user_id))
+        """앱의 모든 per-user 테이블에 존재하는 고유 user_id 합집합(orphan reaper 후보 집합)."""
+        stmt = union(
+            select(UserProfile.user_id),
+            select(UserProfileHistory.user_id),
+            select(WeeklyPlan.user_id),
+            select(Badge.user_id),
+            select(Goal.user_id),
+            select(MealPlan.user_id),
+            select(SmileTrainingSession.user_id),
+        )
+        result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
     async def upsert(self, user_id: str, data: dict[str, object]) -> UserProfile:

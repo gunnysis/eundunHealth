@@ -1,5 +1,9 @@
 package com.gunnys.eundunhealth.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -12,6 +16,7 @@ import com.gunnys.eundunhealth.ui.auth.AuthGateScreen
 import com.gunnys.eundunhealth.ui.auth.AuthViewModel
 import com.gunnys.eundunhealth.ui.auth.SessionState
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
+import com.gunnys.eundunhealth.ui.smile.SmileTrainingScreen
 import com.gunnys.eundunhealth.ui.splash.SplashScreen
 
 @Composable
@@ -64,6 +69,30 @@ fun AppNavigation(
                 healthPermissionsRevision = healthPermissionsRevision,
                 onRequestHealthPermissions = onRequestHealthPermissions,
                 onOpenHealthConnectManagement = onOpenHealthConnectManagement,
+                onNavigateToSmileTraining = {
+                    navController.navigate(Screen.SmileTraining.route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+        composable(
+            route = Screen.SmileTraining.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Up,
+                    animationSpec = tween(durationMillis = 300),
+                ) + fadeIn(animationSpec = tween(durationMillis = 250))
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Down,
+                    animationSpec = tween(durationMillis = 250),
+                ) + fadeOut(animationSpec = tween(durationMillis = 200))
+            },
+        ) {
+            SmileTrainingScreen(
+                onBack = { navController.popBackStack() },
             )
         }
     }

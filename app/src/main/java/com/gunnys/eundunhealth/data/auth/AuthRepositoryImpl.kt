@@ -2,6 +2,7 @@ package com.gunnys.eundunhealth.data.auth
 
 import android.app.Activity
 import com.gunnys.eundunhealth.api.generated.api.AccountApi
+import com.gunnys.eundunhealth.data.local.LocalDataWiper
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.AppErrorException
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
@@ -56,6 +57,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val msalProvider: MsalClientProvider,
     private val tokenHolder: AtomicReference<String?>,
     private val accountApi: AccountApi,
+    private val localDataWiper: LocalDataWiper,
 ) : AuthRepository {
 
     override suspend fun authenticate(activity: Activity): Result<String> = runCatching {
@@ -108,12 +110,14 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAccount(): Result<Unit> = runCatching {
+        val userId = getCurrentUserId()
         // 백엔드가 Entra 사용자 + 앱 DB 데이터를 모두 삭제한다 (FastAPI account_service)
         val resp = accountApi.deleteAccount()
         if (!resp.isSuccessful) {
             throw retrofit2.HttpException(resp)
         }
         // 로컬 세션 정리 — 토큰은 이미 서버측에서 무효화됨
+        localDataWiper.wipeAllForAccountDeletion(userId)
         signOut()
         tokenHolder.set(null)
     }

@@ -10,6 +10,7 @@ from app.repositories.badge_repo import BadgeRepository
 from app.repositories.goal_repo import GoalRepository
 from app.repositories.profile_history_repo import ProfileHistoryRepository
 from app.repositories.profile_repo import ProfileRepository
+from app.repositories.smile_training_repo import SmileTrainingRepository
 from app.repositories.weekly_plan_repo import WeeklyPlanRepository
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class AccountService:
         self.badge_repo = BadgeRepository(db)
         self.goal_repo = GoalRepository(db)
         self.history_repo = ProfileHistoryRepository(db)
+        self.smile_training_repo = SmileTrainingRepository(db)
         from app.services.meal_plan_service import MealPlanService
 
         self.meal_plan_service = MealPlanService(db)
@@ -81,6 +83,7 @@ class AccountService:
         await self.goal_repo.delete_all_by_user(user_id)
         await self.history_repo.delete_all_by_user(user_id)
         await self.meal_plan_service.delete_all_by_user(user_id)
+        await self.smile_training_repo.delete_all_by_user(user_id)
         await self.profile_repo.delete_by_user_id(user_id)
 
     async def reap_orphaned_data(self) -> list[str]:

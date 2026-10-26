@@ -1,5 +1,100 @@
 # Multi-AI Handoff Log
 
+## 2026-10-26 (Gemini -> Claude) 스마일 트레이닝(Smile Training) 풀스택 엔드투엔드 구현, 다중 역할 전수 감사·근본 원인 해결 및 UI/UX 고도화 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- `docs/plans/2026-10-26-smile-training-design.md` 및 페어 계획 `docs/plans/2026-10-26-smile-training-plan.md`를 기반으로 스마일 트레이닝 기능(Phase 1~5)을 엔드투엔드로 구현하고, 다중 역할(개발자·책임자·운영자·유지보수자·QA/QC·어플 디자이너) 관점의 전수 코드 감사, 근본 원인 해결 및 UI/UX 리팩토링까지 완료했습니다.
+- **Phase 1: Backend API & PostgreSQL Alembic Migration 완료**:
+  - `backend/app/models/smile_training.py`: `SmileTrainingSession`(`smile_training_sessions` 테이블, `sa.Uuid(as_uuid=True)` PK, 체크 제약 3종, `(user_id, occurred_at)` 복합 인덱스).
+  - `backend/alembic/versions/a3869f575d6a_create_smile_training_sessions.py`: `scripts/alembic-autogen.sh`로 PostgreSQL 16 컨테이너에서 자동 생성 및 upgrade/downgrade 검증(룰 3).
+  - `backend/app/schemas/smile_training.py`, `smile_training_repo.py`, `smile_training_service.py`, `routers/smile_training.py`:
+    - `POST /smile-training/sessions`: 클라이언트 UUID 멱등 생성(신규 201, 동일 payload 재전송 200, 상이 payload/타 사용자 UUID 충돌 409).
+    - `GET /smile-training/sessions`: `(occurred_at DESC, id DESC)` 커서 페이지네이션.
+    - `GET /smile-training/statistics`: KST(`UTC+9`) 기준 연속일(`currentStreakDays`, `longestStreakDays`) 및 당일 완료 여부(`completedToday`).
+    - `DELETE /smile-training/sessions`: 인증 사용자의 전체 세션 삭제(`SmileTrainingDeleteResponse`).
+  - 계정 삭제/고아 정리: `AccountService._purge_app_data()`에 `SmileTrainingRepository.delete_all_by_user()` 추가, `ProfileRepository.list_all_user_ids()`를 7개 사용자별 테이블 전체 `UNION`으로 확장.
+  - `backend/openapi.json` 동기화 완료(`scripts/sync-openapi.sh`, 17 paths / 24 routes).
+- **Phase 2: Android Persistence, WorkManager Sync, Remote Hydration & LocalDataWiper 완료**:
+  - `SmileTrainingDatabase`(`smile_training.db`, version 1) 및 KSP 스키마 export(`app/schemas/com.gunnys.eundunhealth.data.local.SmileTrainingDatabase/1.json`).
+  - `SmileSyncWorker`(`@HiltWorker`, `ExistingWorkPolicy.KEEP`, `NetworkType.CONNECTED`) 및 `EundunHealthApplication`의 `Configuration.Provider` 연동.
+  - `SmileTrainingRepositoryImpl`: 오프라인 우선 Room SSOT, 빈 로컬 DB 원격 세션 자동 복원(`refreshRemoteHistoryIfEmpty`), KST 연속일 계산, `PENDING`/`SYNCED`/`BLOCKED` 분류(400/409/422는 `BLOCKED`로 전환해 무한 재시도 배터리 소모 차단), 수동 재시도(`retryBlockedSessions`) 및 전체 삭제(`deleteAllSessions`).
+  - `LocalDataWiper`(`DefaultLocalDataWiper`)를 `AuthRepositoryImpl.deleteAccount()`에 연동하고 서버 삭제 호출 전 `userId`를 선캡처하여 로컬 DB 2종, DataStore, WorkManager 큐를 일괄 정리.
+- **Phase 3 & 4: Pure Domain Signal Evaluator, CameraX + ML Kit & Root Modal UI/UX 리팩토링 완료**:
+  - `SmileRoutineRule` & `SmileSignalEvaluator`: 단조 시간(`timestampElapsedMs`) 누적, 루틴/난이도별 히스테리시스, 1,000ms 슬라이딩 윈도우(>= 75% 충족률), `trackingId` 변경 시 홀드 초기화, 일시정지 시 완료된 반복 횟수(`completedReps`)를 보존하는 `clearActiveHold()` 분리.
+  - `MlKitFaceModuleInstaller`(`ModuleInstallClient` 가용성 확인 및 다운로드 진행률) + `MlKitSmileSignalAnalyzer`(`STRATEGY_KEEP_ONLY_LATEST`, `ResolutionSelector(640x480)` 해상도 최적화, 모든 경로 `imageProxy.close()` 보장).
+  - `SmileTrainingViewModel`(룰 11 UDF-Enhanced 준수, `FrameSignal.timestampElapsedMs` 단일 클록 도메인 기반 세션 소요 시간 계산, 일시정지·이어하기 및 `Lifecycle.Event.ON_STOP` 백그라운드 전환 자동 일시정지, 카메라 바인딩 오류 시 인라인 `AppError` 복구).
+  - `SmileCameraStage` & `SmileTrainingScreen`:
+    - `WindowInsets.safeDrawing` Edge-to-Edge 안전 영역 보장, 스프링 물리(`Spring.DampingRatioLowBouncy`) 보간 `SweepGradient` 프로그레스 링, 반복 단계 도트 인디케이터(`RepStepIndicatorRow`), 실시간 정렬 상태 배지(`AlignmentStatusBadge`), `ACTIVE` 단계 일시정지/중단 컨트롤.
+    - 기기 카메라 하드웨어 유무(`FEATURE_CAMERA_FRONT`/`FEATURE_CAMERA_ANY`) 사전 검사, 루틴 카드의 난이도별 유효 유지 시간·눈 뜨기 배지, 균등 5분할 목표 반복 선택기 및 총 예상 유지 시간 표시, 한국어 시간 포맷(`formatDurationKorean`), 완료·회고 화면 세션 요약 배너(`SessionOutcomeSummaryBanner`).
+  - `AppNavigation.kt` 루트 모달 `Screen.SmileTraining` 및 `ProgressHubScreen.kt` "마음 연습 > 스마일 트레이닝" 진입 카드 연결.
+- **Phase 5: 전수 품질 게이트 통과**:
+  - Backend: `ruff check`, `ruff format --check`, `mypy` (52 files, 0 issues), `bandit` (0 issues), `pytest` (**126 passed**), `test_doc_audit.py` (**36 passed**), Docker Compose 런타임 스모크(`alembic upgrade head` + `/health/ready` 200) **PASS**.
+  - Android: `check-agp10-compat.sh`, `spotlessCheck`, `detektDebug` (0 issues), `testDebugUnitTest` (**165 passed**), `assembleDebug`, `assembleRelease` (R8/Lint Vital 통과, 컴파일 경고 0건) **PASS**.
+  - Docs: `gen-plans-index.sh`, `check-plans-links.sh` **PASS**.
+
+**다음 할 일 (Next TODOs for Claude / User):**
+- 실기기(Android)에서 전면 카메라 권한 허용/거부, 최초 실행 시 Google Play services ML Kit 얼굴 모듈 준비, 미러 뷰파인더 및 조도별 미소 유지 피드백을 점검하세요(`docs/plans/2026-10-26-smile-training-design.md` §10 참조).
+- 백엔드 배포 시 `a3869f575d6a` 마이그레이션이 엔트리포인트에서 자동 적용됩니다.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- `CameraXViewfinder`(`androidx.camera:camera-compose:1.6.2`)와 `SurfaceRequest`를 사용하므로 `androidx.camera.view.PreviewView`를 직접 참조하지 마세요.
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
+## 2026-10-26 (Gemini -> Claude) 스마일 트레이닝 종합 설계 r9 ('3.4 진입점 및 내비게이션 아키텍처' 심층 고도화, 딥링크 세션 가드, 화면 켜짐 하드웨어 제어 및 A11y 내비게이션 명세 완료)
+
+**현재까지의 작업 상태 (Current Status):**
+- `docs/plans/2026-10-26-smile-training-design.md`의 **'3.4 진입점 및 내비게이션 아키텍처'**를 실제 안드로이드 코드베이스(`AppNavigation.kt`, `MainAppShell.kt`, `Screen.kt`, `ProgressHubScreen.kt`) 구조 및 안드로이드 최신 가이드라인에 맞추어 심층 조사·연구하여 r9로 전면 개선 완료했습니다.
+  - **진입점 다각화 및 심리적 완충 설계 (§3.4.1)**:
+    - `ProgressHubScreen` (진행 탭) 신규 "마음 연습" 카드: `ProgressRow` 패턴과 일관성을 유지하며 상시 노출. 당일 완료 체크 및 `🔥 3일 연속` 뱃지 표기.
+    - `HomeScreen` (오늘 탭) 맥락형 넛지: `dayPlan.isCompleted == true && !smileState.isCompletedToday` 조건에 따라 운동 완주 직후 부드럽게 제안. DataStore `dismissed_date` 기반 "오늘 하루 닫기(X)" 중복 피로도 방지.
+    - 딥링크: `eundunhealth://smile-training?routine={routine}` 및 웹 링크 `https://eundunhealth.app/smile-training?routine={routine}` 지원.
+  - **풀스크린 카메라 & 루트 모달 프리젠테이션 아키텍처 (§3.4.2)**:
+    - `NavigationSuiteScaffold`(80dp 하단 네비게이션 바)의 화면 가림 및 트레이닝 중 손가락 오터치 세션 유실 방지를 위해 최상위 `AppNavigation.kt` (Root NavHost) 레벨 독립 모달로 등록.
+    - 모달 전환 애니메이션: `slideInVertically` (스프링 물리) + `fadeIn()` / `slideOutVertically` + `fadeOut()`.
+    - `Screen.SmileTraining`, `AppNavigation`, `MainAppShell`, `MainContent` 간의 완벽한 콜백 전파 인터페이스 명세화.
+  - **딥링크 보안 및 인증 세션 가드 (§3.4.3)**:
+    - 외부 딥링크 진입 시 미인증(`SessionState.Unauthenticated`) 상태 방어. `Screen.AuthGate`로 우선 우회 후 인증 완료 시 펜딩된 딥링크 경로로 자동 착륙.
+    - 세션 종료 시 앱 강제 종료를 방지하기 위해 `Screen.Main`을 베이스로 하는 합성 백스택(Synthetic BackStack) 보장.
+  - **백스택 안전성 및 하드웨어 생명주기 제어 (§3.4.4)**:
+    - **Android 14+ Predictive Back & `BackHandler`**: `ActivePhase` 중단 확인 다이얼로그(`showExitConfirmDialog`) 바인딩으로 연습 유실 방지.
+    - **화면 켜짐 유지 (`FLAG_KEEP_SCREEN_ON`)**: 카메라 응시 중 터치가 없어도 화면 절전(30초 타임아웃)을 방지하는 `DisposableEffect` 윈도우 플래그 바인딩 및 세션 종료 시 즉시 해제.
+    - **세로 화면 고정 (`ActivityInfo.SCREEN_ORIENTATION_PORTRAIT`)** 및 `WindowInsets.safeDrawing` 인셋 분리.
+  - **접근성(A11y) 및 스크린 리더 지원 (§3.4.5)**:
+    - TalkBack 사용자를 위한 Semantics(`role = Role.Button`, 상태 안내), 모달 진입 시 `FocusRequester` 자동 포커싱, 단계 전환 시 `liveRegion = LiveRegionMode.Polite` 음성 피드백.
+- **검증 완료**:
+  - `bash scripts/check-plans-links.sh`: **PASS (끊긴 링크 0건)**.
+  - `python scripts/gen_plans_index.py --check`: **PASS (정합화 100%)**.
+- `docs/plans/2026-10-26-smile-training-design.md`를 모던 UI/UX 인터랙션 설계와 그래픽 기술 고도화를 반영하여 r8로 전면 개정 완료했습니다.
+  - **모던 UI/UX 레이아웃 & 비주얼 설계 (§3.5)**:
+    - `IntroPhase`: M3 Expressive Card, 루틴 세그먼트 버튼, 난이도 칩, 횟수 스테퍼.
+    - `ActivePhase`: Edge-to-Edge 풀스크린 카메라 + 다크 글래스모피즘(Dark Glassmorphism) 플로팅 HUD.
+    - `CompositingStrategy.Offscreen` + `BlendMode.Clear`: 윈도우 배경 누수 없는 안면 비네트 오버레이 및 타원형 투과 뷰포트.
+    - `SweepGradient` 프로그레스 링: 미소 유지 시 시계방향 회전 차오름.
+    - `RepSuccessPhase`: 뷰포트 바운스, 파티클 폭죽(Canvas Particle Explosion), 2단계 햅틱 피드백.
+    - `CompletedPhase`: 5단계 인터랙티브 감정 회고 이모지 시트, 연속일(Streak) 불꽃 배지.
+  - **마이크로 인터랙션 & 햅틱 피드백 시퀀스 (§3.6, §3.7)**:
+    - 스프링 물리 보간(`Spring.DampingRatioLowBouncy`, `Spring.StiffnessMediumLow`)을 통한 게이지 진척도 애니메이션.
+    - 얼굴 안착(`TextHandleMove`), 미소 시작(`SegmentTick`), 게이지 홀딩(Micro-tick), 세트 성공(`LongPress` 2연타 틱), 세션 완주(3단 리듬 팡파르).
+  - **카메라 뷰파인더 다크 글래스 테마 & 접근성 (§3.8, §3.9)**:
+    - 실내/역광 환경에서도 시인성(Contrast Ratio >= 7:1)을 보장하는 Dark Translucent Glass Theme 기본 채택.
+    - TalkBack 스크린리더를 위한 `liveRegion = LiveRegionMode.Polite` 음성 피드백 및 48dp 터치 타깃 준수.
+  - **백엔드 서버 동기화 & 유지보수성 아키텍처 완비**:
+    - FastAPI 세션 CRUD/통계 엔드포인트, Alembic 마이그레이션(룰 3, 룰 7), `_purge_app_data(user_id)` 회귀 가드, Room KSP 스키마 관리.
+- **검증 및 인덱스 정합화 완료**:
+  - `bash scripts/gen-plans-index.sh` 실행 및 `python scripts/gen_plans_index.py --check`: **PASS (정합화 100%)**.
+  - `bash scripts/check-plans-links.sh`: **PASS (끊긴 링크 0건)**.
+
+**다음 할 일 (Next TODOs for Claude):**
+- 사용자가 design을 승인한 뒤에만 `2026-10-26-smile-training-plan.md` 페어를 작성하세요.
+  - Phase 1: 백엔드 Alembic 마이그레이션, Model, Repository, Service, Router, OpenAPI 동기화.
+  - Phase 2: 안드로이드 `SmileTrainingDatabase`, 오프라인 우선 동기화 Repository, 계정 삭제 연동.
+  - Phase 3: CameraX + ML Kit 파이프라인, 전략 패턴 루틴 엔진, Compose UI 및 ViewModel.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- 백엔드 마이그레이션 작성 시 반드시 `docker compose -f docker-compose.test.yml run --rm backend-test alembic revision --autogenerate` 명령을 사용하고 downgrade 블록을 검증하세요(룰 3, 룰 7).
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
 ## 2026-10-16 (Gemini -> Claude) '오늘의 활동' 완전 제거 및 메인페이지(HomeScreen) UI/UX 리디자인
 
 **현재까지의 작업 상태 (Current Status):**

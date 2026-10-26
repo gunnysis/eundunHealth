@@ -148,11 +148,22 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.lifecycle.viewmodel.compose)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.ext.compiler)
 
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    // CameraX + ML Kit Face Detection (unbundled) + WorkManager
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.compose)
+    implementation(libs.mlkit.face.detection)
+    implementation(libs.play.services.base)
+    implementation(libs.work.runtime.ktx)
 
     // Health Connect
     implementation(libs.health.connect)
@@ -191,6 +202,8 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation(libs.androidx.ui.test.junit4.accessibility)
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(libs.work.testing)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
@@ -290,6 +303,15 @@ tasks.named("preBuild").configure {
 // detekt 1.23.8 플러그인은 AGP 레거시 variant API와 Gradle 10에서 제거될 ReportingExtension
 // API를 사용한다. 플러그인을 적용하지 않고 공식 custom-task 경로로 기존 CI 태스크 이름과
 // 타입 해석 품질을 보존한다. detekt 2.x는 2026-10-15 현재 alpha라 안정판 정책상 채택하지 않는다.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.generateKotlin", "true")
+}
+
+android.sourceSets.named("androidTest") {
+    assets.directories.add("$projectDir/schemas")
+}
+
 val detektSource = files("src/main/java", openApiGeneratedDir.get().asFile.resolve("src/main/kotlin"))
 androidComponents.onVariants(androidComponents.selector().withBuildType("debug")) { variant ->
     val analysisClasspath =

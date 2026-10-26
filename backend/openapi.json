@@ -245,6 +245,222 @@
         "title": "ProfileHistoryEntry",
         "type": "object"
       },
+      "SmileDifficulty": {
+        "enum": [
+          "COMFORTABLE",
+          "STANDARD",
+          "CHALLENGE"
+        ],
+        "title": "SmileDifficulty",
+        "type": "string"
+      },
+      "SmileRoutine": {
+        "enum": [
+          "GENTLE",
+          "SUSTAINED",
+          "SMILE_AND_FRONT"
+        ],
+        "title": "SmileRoutine",
+        "type": "string"
+      },
+      "SmileTrainingDeleteResponse": {
+        "description": "전체 스마일 트레이닝 세션 삭제 응답.",
+        "properties": {
+          "deletedCount": {
+            "title": "Deletedcount",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "deletedCount"
+        ],
+        "title": "SmileTrainingDeleteResponse",
+        "type": "object"
+      },
+      "SmileTrainingSessionRequest": {
+        "description": "POST /smile-training/sessions — 완료된 스마일 트레이닝 세션 요약 생성 요청.",
+        "properties": {
+          "completedReps": {
+            "description": "완료한 반복 횟수",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Completedreps",
+            "type": "integer"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/SmileDifficulty",
+            "description": "난이도"
+          },
+          "durationSec": {
+            "description": "총 수행 시간(초)",
+            "maximum": 1800.0,
+            "minimum": 0.0,
+            "title": "Durationsec",
+            "type": "integer"
+          },
+          "id": {
+            "description": "클라이언트가 생성한 멱등 UUID",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurredAt": {
+            "description": "클라이언트 세션 완료 시각 (ISO-8601, timezone 포함)",
+            "format": "date-time",
+            "title": "Occurredat",
+            "type": "string"
+          },
+          "reflectionEmoji": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "선택형 감정 회고 (1~5)",
+            "title": "Reflectionemoji"
+          },
+          "routine": {
+            "$ref": "#/components/schemas/SmileRoutine",
+            "description": "루틴 종류"
+          }
+        },
+        "required": [
+          "id",
+          "routine",
+          "difficulty",
+          "durationSec",
+          "completedReps",
+          "occurredAt"
+        ],
+        "title": "SmileTrainingSessionRequest",
+        "type": "object"
+      },
+      "SmileTrainingSessionResponse": {
+        "description": "스마일 트레이닝 세션 요약 응답.",
+        "properties": {
+          "completedReps": {
+            "title": "Completedreps",
+            "type": "integer"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/SmileDifficulty"
+          },
+          "durationSec": {
+            "title": "Durationsec",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "occurredAt": {
+            "title": "Occurredat",
+            "type": "string"
+          },
+          "reflectionEmoji": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reflectionemoji"
+          },
+          "routine": {
+            "$ref": "#/components/schemas/SmileRoutine"
+          }
+        },
+        "required": [
+          "id",
+          "routine",
+          "difficulty",
+          "durationSec",
+          "completedReps",
+          "reflectionEmoji",
+          "occurredAt",
+          "createdAt"
+        ],
+        "title": "SmileTrainingSessionResponse",
+        "type": "object"
+      },
+      "SmileTrainingSessionsPageResponse": {
+        "description": "커서 기반 스마일 트레이닝 세션 목록 응답.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SmileTrainingSessionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SmileTrainingSessionsPageResponse",
+        "type": "object"
+      },
+      "SmileTrainingStatisticsResponse": {
+        "description": "KST 기준 스마일 트레이닝 통계 응답.",
+        "properties": {
+          "completedToday": {
+            "title": "Completedtoday",
+            "type": "boolean"
+          },
+          "currentStreakDays": {
+            "title": "Currentstreakdays",
+            "type": "integer"
+          },
+          "longestStreakDays": {
+            "title": "Longeststreakdays",
+            "type": "integer"
+          },
+          "totalDurationSec": {
+            "title": "Totaldurationsec",
+            "type": "integer"
+          },
+          "totalSessions": {
+            "title": "Totalsessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "totalSessions",
+          "totalDurationSec",
+          "completedToday",
+          "currentStreakDays",
+          "longestStreakDays"
+        ],
+        "title": "SmileTrainingStatisticsResponse",
+        "type": "object"
+      },
       "StatisticsResponse": {
         "description": "최근 N주(기본 12주) 완료율 + 현재/최장 스트릭.\n\n- weekly_rates: 주 단위 완료율, week_start 오름차순(차트용)\n- current_streak: 가장 최근 주부터 연속으로 100% 완료한 주 수\n- longest_streak: 전체 기간에서 100% 완료한 최장 연속 주 수",
         "properties": {
@@ -1016,6 +1232,170 @@
         "summary": "Get Profile History",
         "tags": [
           "profile"
+        ]
+      }
+    },
+    "/smile-training/sessions": {
+      "delete": {
+        "description": "인증 사용자의 모든 스마일 트레이닝 세션을 삭제한다.",
+        "operationId": "deleteAllSmileTrainingSessions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmileTrainingDeleteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete All Sessions",
+        "tags": [
+          "smile-training"
+        ]
+      },
+      "get": {
+        "description": "인증 사용자의 스마일 트레이닝 세션 이력을 최신순(occurred_at DESC, id DESC) 커서 기반으로 조회한다.",
+        "operationId": "listSmileTrainingSessions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmileTrainingSessionsPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Sessions",
+        "tags": [
+          "smile-training"
+        ]
+      },
+      "post": {
+        "description": "스마일 트레이닝 세션을 멱등 기록한다. 신규는 201, 동일 payload 재전송은 200을 반환한다.",
+        "operationId": "recordSmileTrainingSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmileTrainingSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmileTrainingSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Session",
+        "tags": [
+          "smile-training"
+        ]
+      }
+    },
+    "/smile-training/statistics": {
+      "get": {
+        "description": "인증 사용자의 KST 기준 스마일 트레이닝 연속일·당일 완료 여부·누적 통계를 반환한다.",
+        "operationId": "getSmileTrainingStatistics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmileTrainingStatisticsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Statistics",
+        "tags": [
+          "smile-training"
         ]
       }
     },

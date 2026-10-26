@@ -2,7 +2,10 @@ package com.gunnys.eundunhealth.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.work.WorkManager
 import com.gunnys.eundunhealth.data.local.EundunDatabase
+import com.gunnys.eundunhealth.data.local.SmileTrainingDatabase
+import com.gunnys.eundunhealth.data.local.dao.SmileSessionDao
 import com.gunnys.eundunhealth.data.local.dao.WeeklyPlanDao
 import dagger.Module
 import dagger.Provides
@@ -34,4 +37,19 @@ object DatabaseModule {
 
     @Provides
     fun provideWeeklyPlanDao(db: EundunDatabase): WeeklyPlanDao = db.weeklyPlanDao()
+
+    @Provides
+    @Singleton
+    @Suppress("ktlint:standard:function-signature")
+    fun provideSmileTrainingDatabase(@ApplicationContext context: Context): SmileTrainingDatabase =
+        Room.databaseBuilder(context, SmileTrainingDatabase::class.java, "smile_training.db")
+            // 사용자 기록의 SSOT이므로 fallbackToDestructiveMigration을 사용하지 않는다.
+            .build()
+
+    @Provides
+    fun provideSmileSessionDao(db: SmileTrainingDatabase): SmileSessionDao = db.smileSessionDao()
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager = WorkManager.getInstance(context)
 }

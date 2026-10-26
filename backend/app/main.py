@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app import __version__
 from app.config import get_settings
 from app.exceptions import AppException
-from app.routers import account, badge, goal, health, legal, meal_plan, profile, weekly_plan
+from app.routers import account, badge, goal, health, legal, meal_plan, profile, smile_training, weekly_plan
 
 logger = logging.getLogger(__name__)
 
@@ -163,4 +163,5 @@ app.include_router(meal_plan.router)
 app.include_router(badge.router)
 app.include_router(account.router)
 app.include_router(goal.router)
+app.include_router(smile_training.router)
 app.include_router(legal.router)

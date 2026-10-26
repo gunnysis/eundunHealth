@@ -4,6 +4,24 @@
 
 ---
 
+## [v0.5.0] — 2026-10-26 — 스마일 트레이닝(온디바이스 표정·마음 연습) 풀스택 출시
+
+### 😊 온디바이스 스마일 트레이닝 & 실시간 미소 코칭 (`SmileTrainingScreen`, `SmileCameraStage`)
+- 전면 카메라(`CameraXViewfinder` 1.6.2)와 Google Play 서비스 ML Kit Face Detection(17.1.0, unbundled `ModuleInstallClient`)을 결합해 **사진·영상·원시 프레임·생체 템플릿을 어디에도 저장·전송하지 않고** 기기 내부 메모리에서만 실시간 미소 신호를 감지하는 마음 연습 기능을 도입했다.
+- **루틴 3종 × 난이도 3단계 × 반복 횟수(1~5회)**: 가벼운 미소(`GENTLE`), 미소 유지(`SUSTAINED`), 정면 바라보며 미소(`SMILE_AND_FRONT`, 눈 뜨기 포함)와 난이도(`COMFORTABLE`, `STANDARD`, `CHALLENGE`)를 조합하며, 단조 시간(`timestampElapsedMs`) 기반 유지 시간 누적·히스테리시스·1,000ms 슬라이딩 윈도우(>= 75% 충족률)·`trackingId` 교차 오염 방지·일시정지 및 `ON_STOP` 시 완료 세트 보존을 순수 도메인 평가기(`SmileSignalEvaluator`)로 구현했다.
+- **풀스크린 카메라 모달 UI**: `WindowInsets.safeDrawing` 안전 영역, `CompositingStrategy.Offscreen` + `BlendMode.Clear` 안면 타원 비네트, 스프링 물리 보간 `SweepGradient` 프로그레스 링, 반복 단계 도트 인디케이터, 실시간 정렬 상태 배지, `FLAG_KEEP_SCREEN_ON` 화면 유지 및 TalkBack `LiveRegionMode.Polite` 접근성을 적용했다.
+
+### 🔄 오프라인 우선 동기화 & 백엔드 API (`smile_training_sessions`, Alembic `a3869f575d6a`)
+- Android `SmileTrainingDatabase`(`smile_training.db`, KSP 스키마 export) + `SmileSyncWorker`(`@HiltWorker`, `ExistingWorkPolicy.KEEP`, `NetworkType.CONNECTED`)로 오프라인 우선 저장 및 멱등 백그라운드 동기화를 구현하고, 기기 변경·재설치 시 빈 로컬 DB를 서버 이력으로 자동 복원(`refreshRemoteHistoryIfEmpty`)한다. 400/409/422 영구 오류는 `BLOCKED` 상태로 분류해 무한 재시도 배터리 소모를 차단하고 화면 내 수동 재시도 액션을 제공한다.
+- FastAPI 백엔드에 `POST/GET/DELETE /smile-training/sessions` 및 `GET /smile-training/statistics`(KST 기준 당일 완료·연속일·최장 연속일) 엔드포인트와 PostgreSQL 마이그레이션(`a3869f575d6a_create_smile_training_sessions.py`)을 추가했다.
+- 계정 삭제 시 서버(`AccountService._purge_app_data`), 고아 정리 잡(`ProfileRepository.list_all_user_ids` 7개 테이블 `UNION`), 클라이언트(`LocalDataWiper`)가 스마일 트레이닝 데이터를 남김없이 파기한다.
+- 개인정보 처리방침(`/privacy`) 및 계정·데이터 삭제 안내(`/account-deletion`) SSoT에 온디바이스 카메라 처리(이미지·영상 미수집)와 스마일 트레이닝 요약 기록 삭제 정책을 반영했다.
+
+### 🔢 버전
+- versionName 0.4.0 → **0.5.0**, versionCode 37 → **38**.
+
+---
+
 ## [v0.4.0] — 2026-10-17 — 메뉴트리 적응형 탐색 · Health Connect 상태 투명성 · 홈 경험 정리
 
 > **2026-10-17 Play production 업로드 성공 (`versionCode=37`, 태그 `v0.4.0`).** `release.yml` run `39026967924`가 `completed`(100%) 상태로 업로드하고 원장을 커밋 `48f57c7`에서 갱신했다. 이는 CI·원장으로 교차 확인한 업로드 사실이며, Play Console의 후속 처리·가시성은 별도 관찰 대상이다.

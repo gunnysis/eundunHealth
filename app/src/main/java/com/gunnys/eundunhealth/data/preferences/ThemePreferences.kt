@@ -31,4 +31,10 @@ class ThemePreferences @Inject constructor(
             prefs[themeKey] = mode.name
         }
     }
+
+    suspend fun clearAll() {
+        context.dataStore.edit { prefs ->
+            prefs.clear()
+        }
+    }
 }

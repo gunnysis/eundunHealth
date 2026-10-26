@@ -2,6 +2,8 @@ package com.gunnys.eundunhealth
 
 import android.app.Application
 import android.os.Build
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -11,19 +13,26 @@ import coil3.request.CachePolicy
 import coil3.request.crossfade
 import dagger.hilt.android.HiltAndroidApp
 import io.sentry.android.core.SentryAndroid
+import javax.inject.Inject
 
 /**
- * Coil 의 싱글톤 ImageLoader 를 [SingletonImageLoader.Factory] 로 직접 구성한다.
- *
- * 이전엔 Hilt `CoilModule` 이 동일 설정의 ImageLoader 를 제공했지만 어디에도 주입되지 않아
- * (Compose `AsyncImage`/`SubcomposeAsyncImage` 는 싱글톤을 쓰므로) GIF 디코더가 붙지 않은
- * coil 기본 싱글톤이 사용됐고, 운동 시연 GIF 가 첫 프레임만 보이는(정지) 회귀가 있었다.
- * 공식 권장 방식대로 Application 이 팩토리를 구현해 싱글톤에 직접 연결한다.
+ * Coil 의 싱글톤 ImageLoader 를 [SingletonImageLoader.Factory] 로 직접 구성하고,
+ * WorkManager 의 [Configuration.Provider] 를 통해 [HiltWorkerFactory] 를 등록한다.
  */
 @HiltAndroidApp
 class EundunHealthApplication :
     Application(),
-    SingletonImageLoader.Factory {
+    SingletonImageLoader.Factory,
+    Configuration.Provider {
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
+
     override fun onCreate() {
         super.onCreate()
         val dsn = BuildConfig.SENTRY_DSN

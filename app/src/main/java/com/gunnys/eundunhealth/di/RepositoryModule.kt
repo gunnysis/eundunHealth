@@ -2,17 +2,23 @@ package com.gunnys.eundunhealth.di
 
 import com.google.gson.Gson
 import com.gunnys.eundunhealth.data.auth.AuthRepositoryImpl
+import com.gunnys.eundunhealth.data.local.DefaultLocalDataWiper
+import com.gunnys.eundunhealth.data.local.LocalDataWiper
 import com.gunnys.eundunhealth.data.repository.BadgeRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.GoalRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.HealthRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.MealPlanRepositoryImpl
+import com.gunnys.eundunhealth.data.repository.SmileTrainingRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.UserRepositoryImpl
 import com.gunnys.eundunhealth.data.repository.WorkoutRepositoryImpl
+import com.gunnys.eundunhealth.data.smile.MlKitFaceModuleInstaller
+import com.gunnys.eundunhealth.data.smile.MlKitFaceModuleManager
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.BadgeRepository
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import com.gunnys.eundunhealth.domain.repository.MealPlanRepository
+import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import dagger.Binds
@@ -41,6 +47,15 @@ abstract class RepositoryModule {
     @Binds abstract fun bindGoalRepo(impl: GoalRepositoryImpl): GoalRepository
 
     @Binds abstract fun bindMealPlanRepo(impl: MealPlanRepositoryImpl): MealPlanRepository
+
+    @Binds @Singleton
+    abstract fun bindSmileTrainingRepo(impl: SmileTrainingRepositoryImpl): SmileTrainingRepository
+
+    @Binds @Singleton
+    abstract fun bindLocalDataWiper(impl: DefaultLocalDataWiper): LocalDataWiper
+
+    @Binds @Singleton
+    abstract fun bindMlKitFaceModuleManager(impl: MlKitFaceModuleInstaller): MlKitFaceModuleManager
 
     companion object {
         @Provides

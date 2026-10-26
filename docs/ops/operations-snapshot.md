@@ -11,20 +11,20 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.4.0` / `37` (태그 `v0.4.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=37` |
+| versionName / versionCode | **`0.5.0` / `38` (태그 `v0.4.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=37` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.10 / 9.3.2 / 9.7.1** (KSP 2.3.11, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거) |
 | Compose BOM | **2026.08.00** |
 | 차트 | Vico 3.3.1 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
 | 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.1** + ktlint 1.5.0 |
-| API client | openapi-generator **7.25.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 6개 generated client |
+| API client | openapi-generator **7.25.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 7개 generated client |
 | Sentry SDK | Android **8.57.0** / Gradle plugin **6.21.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (로컬 최신 = **v0.4.0/37 로컬 빌드, 2026-10-17 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (11,006,835 bytes)
-- APK: `app/build/outputs/apk/release/app-release.apk` (7,809,898 bytes)
+산출물 경로 (로컬 최신 = **v0.5.0/38 로컬 빌드, 2026-10-26 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (13,101,779 bytes)
+- APK: `app/build/outputs/apk/release/app-release.apk` (8,794,149 bytes)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
@@ -201,7 +201,7 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | Region | Korea Central |
 | Database | `postgres` |
 | User | `gunny` |
-| Alembic head | **`0dda67f1638a`** (`add_gender_to_user_profile` — `user_profiles.gender` 추가; 직전 `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스 ← `c849579de6c4` `rest_day` server_default 일관화) |
+| Alembic head | **`a3869f575d6a`** (`create_smile_training_sessions` — `smile_training_sessions` 추가; 직전 `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스 ← `c849579de6c4` `rest_day` server_default 일관화) |
 | Firewall | **`allow-azure-services`(`0.0.0.0–0.0.0.0`) 1개뿐** — 이것이 유일하게 동작하는 규칙이다. ↓ 아래 주의 |
 | 관리자 암호 | **2026-09-02 회전됨** (10자 → 32자). 설계·절차: `docs/plans/2026-09-02-db-credential-rotation-{design,plan}.md` → `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수 |
 
@@ -238,7 +238,8 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | `goals` | 체중·체지방 목표 (v0.3) |
 | `meal_plans` | AI 주간 식단 메타 (`718783053fcd`, v0.3.0) |
 | `meal_plan_items` | AI 주간 식단 끼니별 항목 (`718783053fcd`, v0.3.0) |
-| `alembic_version` | 1 (`0dda67f1638a` head 마커) |
+| `smile_training_sessions` | 스마일 트레이닝 세션 요약 및 회고 (`a3869f575d6a`, v0.5.0) |
+| `alembic_version` | 1 (`a3869f575d6a` head 마커) |
 
 > 운영 중 외부 접근이 필요할 때는 임시 firewall rule 추가 후 즉시 제거:
 > ```bash

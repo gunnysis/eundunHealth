@@ -13,4 +13,10 @@ interface WeeklyPlanDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlan(plan: WeeklyPlanEntity)
+
+    @Query("DELETE FROM weekly_plans WHERE userId = :userId")
+    suspend fun deleteAllByUser(userId: String)
+
+    @Query("DELETE FROM weekly_plans")
+    suspend fun clearAll()
 }

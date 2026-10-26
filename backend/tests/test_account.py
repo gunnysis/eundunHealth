@@ -40,12 +40,25 @@ async def test_delete_account_purges_all_user_data(client, db_engine, sample_pro
     0건 검증해 재발을 차단한다.
     """
     user_id = "test-user-id"  # conftest override_get_current_user_id 와 일치
+    import datetime
 
     # 모든 per-user 테이블에 1행 이상 seed (실제 API 경로로)
     await client.put("/profile", json=sample_profile)  # user_profiles + user_profile_history
     await client.post("/weekly-plan", json=sample_plan)  # weekly_plans
     await client.post("/badges/first_workout")  # badges
     await client.put("/goals", json={"goalType": "weight", "targetValue": 65.0})  # goals
+    await client.post(
+        "/smile-training/sessions",
+        json={
+            "id": "a1111111-b111-4111-8111-c11111111111",
+            "routine": "GENTLE",
+            "difficulty": "STANDARD",
+            "durationSec": 15,
+            "completedReps": 3,
+            "reflectionEmoji": 4,
+            "occurredAt": datetime.datetime.now(datetime.UTC).isoformat(),
+        },
+    )  # smile_training_sessions
 
     # 식단 자동 생성 API는 외부 연동을 타므로, 직접 DB에 밀어넣는다
     import datetime
@@ -58,7 +71,7 @@ async def test_delete_account_purges_all_user_data(client, db_engine, sample_pro
         await session.commit()
 
     models = _user_id_models()
-    assert len(models) >= 6, f"per-user 모델 수 예상 미달: {[m.__tablename__ for m in models]}"
+    assert len(models) >= 7, f"per-user 모델 수 예상 미달: {[m.__tablename__ for m in models]}"
 
     session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 

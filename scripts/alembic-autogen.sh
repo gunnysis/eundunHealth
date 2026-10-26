@@ -43,8 +43,10 @@ fi
 
 cd "$BACKEND_DIR"
 
-# venv 활성화 헬퍼 (Windows/Unix 양쪽 지원)
-if [ -f ".venv/Scripts/alembic" ]; then
+# venv 활성화 헬퍼 (Windows/WSL/Unix 모두 지원)
+if [ -f ".venv/Scripts/alembic.exe" ]; then
+    ALEMBIC=".venv/Scripts/alembic.exe"
+elif [ -f ".venv/Scripts/alembic" ]; then
     ALEMBIC=".venv/Scripts/alembic"
 elif [ -f ".venv/bin/alembic" ]; then
     ALEMBIC=".venv/bin/alembic"
@@ -88,6 +90,10 @@ export ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-00000000-0000-0000-0000-000000000000}
 export ENTRA_SUBDOMAIN="${ENTRA_SUBDOMAIN:-placeholder}"
 export ENTRA_BACKEND_CLIENT_ID="${ENTRA_BACKEND_CLIENT_ID:-00000000-0000-0000-0000-000000000000}"
 export ENTRA_BACKEND_CLIENT_SECRET="${ENTRA_BACKEND_CLIENT_SECRET:-placeholder}"
+export DEEPSEEK_ENDPOINT="${DEEPSEEK_ENDPOINT:-https://placeholder.services.ai.azure.com/models}"
+export DEEPSEEK_KEY="${DEEPSEEK_KEY:-placeholder}"
+# WSL에서 Windows 바이너리(.exe)를 호출할 때 환경변수가 전달되도록 WSLENV 구성
+export WSLENV="DATABASE_URL:ENTRA_TENANT_ID:ENTRA_SUBDOMAIN:ENTRA_BACKEND_CLIENT_ID:ENTRA_BACKEND_CLIENT_SECRET:DEEPSEEK_ENDPOINT:DEEPSEEK_KEY"
 
 echo ""
 echo "Step 1/2: alembic upgrade head (기존 마이그레이션 적용)..."

@@ -6,6 +6,7 @@ import com.gunnys.eundunhealth.api.generated.api.BadgesApi
 import com.gunnys.eundunhealth.api.generated.api.GoalsApi
 import com.gunnys.eundunhealth.api.generated.api.MealsApi
 import com.gunnys.eundunhealth.api.generated.api.ProfileApi
+import com.gunnys.eundunhealth.api.generated.api.SmileTrainingApi
 import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanApi
 import com.gunnys.eundunhealth.data.auth.MsalClientProvider
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbApi
@@ -108,6 +109,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAccountApi(@Named("backend") retrofit: Retrofit): AccountApi = retrofit.create(AccountApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSmileTrainingApi(@Named("backend") retrofit: Retrofit): SmileTrainingApi = retrofit.create(SmileTrainingApi::class.java)
 
     @Provides
     @Singleton

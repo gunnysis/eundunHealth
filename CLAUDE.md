@@ -52,7 +52,7 @@ docker compose down -v                # 정리
 .venv/Scripts/bandit -r app -ll
 .venv/Scripts/pip-audit -r requirements.txt --strict   # ignore-vuln 사용 금지 (CI와 동일 — backend.yml 주석 참조)
 
-# Alembic 마이그레이션 (현재 head: 0dda67f1638a)
+# Alembic 마이그레이션 (현재 head: a3869f575d6a)
 .venv/Scripts/alembic upgrade head
 .venv/Scripts/alembic revision --autogenerate -m "..."
 
@@ -156,9 +156,9 @@ Package: `app`
 - `app/repositories/` — DB 접근 추상화. `profile_history_repo`, `goal_repo` (v0.3), `meal_plan_repo` (v0.3.0).
 - `app/services/` — 비즈니스 로직. `account_service`가 Microsoft Graph 로 Entra 사용자 삭제(204) + `deletedItems` 즉시 파기. `statistics_service` (v0.2), `goal_service` (v0.3), `meal_plan_service` + `meal_ai_client` (v0.3.0, Azure AI Foundry `DeepSeek-V3.2`).
 - `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py`, v0.3.0 `meal_plan.py` (`/meals` prefix) 신규.
-- `alembic/` — async 엔진 연동. **head: `0dda67f1638a` (`add_gender_to_user_profile`; 직전 `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)**.
+- **alembic/** — async 엔진 연동. **head: `a3869f575d6a` (`create_smile_training_sessions`; 직전 `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)**.
 
-**API Endpoints (총 20 = JWT 필요 16 + 공개 4. 공개 라우트 `/health`·`/health/ready`·`/privacy`·`/account-deletion`. 뒤 둘은 `docs/store/*.md` 를 `app/legal/` 로 동기화(sync-legal-docs.sh)해 md→HTML 렌더 — Play 등록 URL이며 `include_in_schema=False` 라 openapi.json[Android 생성기 입력]에서 제외된다[죽은 클라이언트 메서드 방지]. `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 Entra 전환으로 **삭제**됐다 — 검증을 브라우저 안에서 처리해 App Links 경로가 불필요):**
+**API Endpoints (총 24 = JWT 필요 20 + 공개 4. 공개 라우트 `/health`·`/health/ready`·`/privacy`·`/account-deletion`. 뒤 둘은 `docs/store/*.md` 를 `app/legal/` 로 동기화(sync-legal-docs.sh)해 md→HTML 렌더 — Play 등록 URL이며 `include_in_schema=False` 라 openapi.json[Android 생성기 입력]에서 제외된다[죽은 클라이언트 메서드 방지]. `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 Entra 전환으로 **삭제**됐다 — 검증을 브라우저 안에서 처리해 App Links 경로가 불필요):**
 ```
 GET    /health
 GET    /health/ready                          # 공개 — readiness (DB SELECT 1)
@@ -179,6 +179,10 @@ GET    /goals                                # v0.3
 PUT    /goals                                # v0.3
 POST   /meals/generate                       # v0.3.0/v0.3.1 — AI 주간 식단 생성 (X-AI-Data-Processing-Consent: true 필수)
 GET    /meals/current                        # v0.3.0 — 현재 주간 식단 조회
+POST   /smile-training/sessions              # v0.5.0 — 스마일 트레이닝 세션 멱등 기록 (UUID PK)
+GET    /smile-training/sessions              # v0.5.0 — 커서 기반 세션 이력 조회
+GET    /smile-training/statistics            # v0.5.0 — KST 기준 연속일 및 누적 통계 조회
+DELETE /smile-training/sessions              # v0.5.0 — 사용자의 전체 스마일 트레이닝 세션 삭제
 DELETE /account
 ```
 
@@ -191,12 +195,12 @@ DELETE /account
 - **Compose BOM 2026.08.00**, Activity Compose 1.13.0, Navigation Compose 2.10.1, Lifecycle 2.11.0, Core KTX 1.19.0
 - **Hilt 2.60.1**, Room 2.8.5, DataStore 1.2.1, Health Connect 1.1.0, Retrofit 3.0.0, MSAL 8.4.2, OpenAPI Generator 7.25.0
 - **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
-- **App version**: versionName **`0.3.1`**, versionCode **`36`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000, **Play 재사용 불가** — 룰 13 원장 가드). 정책 전문: `docs/conventions/versioning.md`
+- **App version**: versionName **`0.5.0`**, versionCode **`38`** — SSoT 는 루트 `version.properties`(직접 편집 대신 `bash scripts/bump-version.sh <ver>`), 이력은 `docs/CHANGELOG.md`. versionCode 는 단조증가 정수(최대 2,100,000,000, **Play 재사용 불가** — 룰 13 원장 가드). 정책 전문: `docs/conventions/versioning.md`
 - **Sentry Android 8.57.0** (Sentry Gradle plugin 6.21.0, eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.5.0** + **Coil 3.4.0** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
 - **Detekt 1.23.8 (`detekt-cli` + `androidComponents` 커스텀 태스크) + Spotless 8.10.1 + ktlint 1.5.0**
-- **Android 단위 테스트**: 146 `@Test` 케이스 (JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
+- **Android 단위 테스트**: 165 `@Test` 케이스 (JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
 - Entra JWT algorithm: **RS256** — backend 는 OIDC discovery 로 얻은 `jwks_uri`/`issuer` 로 검증. **issuer 를 문자열로 조합하지 말 것** — 서브도메인이 tenantId 라 조합하면 전 API 401 이 되고 서명·audience 는 통과해 추적이 어렵다
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)
@@ -208,8 +212,8 @@ DELETE /account
 - **API version `1.0.0`** — `backend/app/__init__.py:__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
 - **pydantic-settings 2.15.0**, **PyJWT[crypto] 2.15.1** (JWKS), **httpx 0.28.1** (Microsoft Graph), **markdown 3.10.3**, **openai 3.16.2** (Azure AI Foundry `DeepSeek-V3.2` MaaS)
 - **Sentry SDK 2.69.2** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy 2.3.1 strict 통과, ruff 0.16.8 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.1.1 — 119/119 PASS**, coverage 94% (coverage 측정 코어 = `sysmon`/PEP 669 — 기본 ctrace 는 async `await` 이후 라인 과소측정, `pyproject.toml [tool.coverage.run] core` 참조; mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
-- Alembic head `0dda67f1638a` (`add_gender_to_user_profile`; 직전 `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)
+- mypy 2.3.1 strict 통과, ruff 0.16.8 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.1.1 — 126/126 PASS**, coverage 94% (coverage 측정 코어 = `sysmon`/PEP 669 — 기본 ctrace 는 async `await` 이후 라인 과소측정, `pyproject.toml [tool.coverage.run] core` 참조; mypy 실행은 래퍼 깨짐 회피 위해 `python -m mypy`)
+- Alembic head `a3869f575d6a` (`create_smile_training_sessions`; 직전 `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure
@@ -516,7 +520,7 @@ backend/.venv/Scripts/python.exe -m pytest scripts/agents/test_doc_audit.py -q
 ### OpenAPI Generator (Android)
 - 입력: `backend/openapi.json` (git checked-in, `sync-openapi.sh`로 갱신)
 - 출력: `app/build/generated/openapi/src/main/kotlin/com/gunnys/eundunhealth/api/generated/` (gitignored, `:app:openApiGenerate`로 자동 생성, `preBuild` 의존성으로 컴파일 전 항상 최신)
-- Repository는 generated client 사용 (`EundunApi.kt`·`ApiDtos.kt` 제거됨). `di/NetworkModule.kt` 에 6개 generated Api provider(`ProfileApi`, `WeeklyPlanApi`, `BadgesApi`, `GoalsApi`, `AccountApi`, `MealsApi`), `data/repository/*RepositoryImpl.kt` 에서 `bodyOrThrow()` 사용.
+- Repository는 generated client 사용 (`EundunApi.kt`·`ApiDtos.kt` 제거됨). `di/NetworkModule.kt` 에 7개 generated Api provider(`ProfileApi`, `WeeklyPlanApi`, `BadgesApi`, `GoalsApi`, `AccountApi`, `MealsApi`, `SmileTrainingApi`), `data/repository/*RepositoryImpl.kt` 에서 `bodyOrThrow()` 사용.
 - 라우터에 추가/변경 시 체크리스트: ① 라우터에 `operation_id="..."` 명시(Android 함수명과 일치) ② Query param은 `alias="..."`로 camelCase 노출 ③ `bash scripts/sync-openapi.sh` ④ 같은 PR에 `backend/openapi.json` 포함
 
 ## Multi-AI 협업 (Claude ↔ Gemini)

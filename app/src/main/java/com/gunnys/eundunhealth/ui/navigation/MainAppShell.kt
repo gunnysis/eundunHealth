@@ -34,6 +34,7 @@ fun MainAppShell(
     healthPermissionsRevision: Int,
     onRequestHealthPermissions: () -> Unit,
     onOpenHealthConnectManagement: () -> Unit,
+    onNavigateToSmileTraining: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
@@ -56,6 +57,7 @@ fun MainAppShell(
             healthPermissionsRevision = healthPermissionsRevision,
             onRequestHealthPermissions = onRequestHealthPermissions,
             onOpenHealthConnectManagement = onOpenHealthConnectManagement,
+            onNavigateToSmileTraining = onNavigateToSmileTraining,
         )
     }
 }
@@ -90,6 +92,7 @@ private fun MainContent(
     healthPermissionsRevision: Int,
     onRequestHealthPermissions: () -> Unit,
     onOpenHealthConnectManagement: () -> Unit,
+    onNavigateToSmileTraining: () -> Unit,
 ) {
     NavHost(
         navController = navController,
@@ -110,6 +113,7 @@ private fun MainContent(
                 onStatisticsClick = { navController.navigate(Screen.Statistics.route) },
                 onGoalClick = { navController.navigate(Screen.Goal.route) },
                 onBadgesClick = { navController.navigate(Screen.Badges.route) },
+                onSmileTrainingClick = onNavigateToSmileTraining,
             )
         }
         composable(Screen.Profile.route) {

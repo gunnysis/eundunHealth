@@ -3,7 +3,16 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+
+    <!-- CAMERA 권한 단독 선언으로 인한 Play Store 기기 필터링을 막기 위해 optional feature 명시 -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.front"
+        android:required="false" />
 
     <!-- Android 11+(API 30) package visibility: HC 미설치 안내 카드의 Play Store(market://) 딥링크가
          resolve 되도록 스토어 패키지를 명시. 미선언 시 ActivityNotFoundException → web fallback 으로만 동작. -->
@@ -26,6 +35,22 @@
             android:name="io.sentry.android.core.SentryInitProvider"
             android:authorities="${applicationId}.SentryInitProvider"
             tools:node="remove" />
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+        <!-- Google Play services unbundled ML Kit Face Detection 모델 설치 후 prefetch 요청 -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="face" />
 
         <activity
             android:name=".MainActivity"
