@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.3 (2026-10-27 — 적응형 주간 운동 계획 v2 & 휴식 요일 자유 다중 지정(`restDays`) 및 v0.5.0 온디바이스 스마일 트레이닝 반영)
-**제품 버전:** 저장소 = Play 프로덕션 `0.6.0` (versionCode `39`, 태그 `v0.6.0`) — **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`), 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 및 온디바이스 스마일 트레이닝(Smile Training) 정식 출시**. `release.yml` run `40469947190`이 Play production `completed`(100%) 업로드와 원장 갱신(`f9eeefc`, `LAST_UPLOADED_VERSION_CODE=39`)을 성공했고, 백엔드는 `Backend CI/CD` run `40469877206`으로 활성 리비전 `eundunhealth-api--0000065`(이미지 `a0b6701`, Alembic head `d7f4a2c91b10`)에 배포됐다.
+**문서 버전:** v3.4 (2026-10-27 — v0.6.1 UI 접근성·공급망 강화 후보 반영)
+**제품 버전:** 저장소 후보는 `0.6.1` (versionCode `40`, 미태그·미업로드·미배포), Play 프로덕션은 `0.6.0/39`이다. 운영 증거는 `release.yml` run `40469947190`, 원장 `f9eeefc`(`LAST_UPLOADED_VERSION_CODE=39`), backend run `40469877206`, revision `eundunhealth-api--0000065`(image `a0b6701`, Alembic head `d7f4a2c91b10`)이다.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

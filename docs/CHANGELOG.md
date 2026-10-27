@@ -4,6 +4,27 @@
 
 ---
 
+## [v0.6.1] — 2026-10-27 — 릴리스 후보: UI 접근성 · 의존성 · 공급망 강화
+
+> **저장소 후보 `versionCode=40`; 미배포.** 태그, Play 업로드, Azure 배포 및 원장 갱신은 수행하지 않았다. 현재 운영 버전은 `v0.6.0/39`이다.
+
+### UI/UX 및 회귀 방지
+- 휴식 요일 선택기를 7개 고정 단일 행에서 `FlowRow` 기반 48dp 이상 `FilterChip`으로 바꿔 320dp 폭과 큰 글꼴에서 겹침을 방지하고, 체크 표시·선택 semantics·오류 polite live region을 유지했다.
+- `ProfileSummaryCard`를 줄바꿈 가능한 label/value 적층 구조와 불투명 의미 색상 토큰으로 바꿔 좁은 화면 및 라이트/다크 대비를 개선했다.
+- 휴식일 1~6일 경계·semantics UI 테스트와 DataStore 저장 후 재읽기 instrumentation 회귀 테스트를 추가했다. 연결 기기가 없어 APK 컴파일까지만 확인했으며 실기기 TalkBack·Switch Access 실행은 후속 승인 게이트다.
+
+### 패키지·빌드·공급망
+- Kotlin 2.4.21, KSP 2.3.12, Gradle 9.8.1, Compose BOM 2026.09.00, Core KTX 1.19.1, Navigation 2.10.2, DataStore 1.3.0, Sentry Gradle plugin 6.24.0으로 갱신했다. AGP 9.3.2와 JDK 17은 유지했다.
+- Python 직접 의존성을 `requirements.in` / `requirements-dev.in`으로 분리하고 Python 3.14에서 생성한 전이 의존성 hash lock을 CI와 Docker의 `--require-hashes` 설치에 공통 적용했다.
+- Gradle dependency lock과 SHA-256 verification metadata를 추가하고 Gradle 배포본 checksum, Python/PostgreSQL base image digest를 고정했다. Dockerfile의 `apt-get upgrade`와 런타임 임의 pip 업그레이드를 제거했다.
+
+### CI/CD 및 검증
+- 모든 GitHub Action을 full commit SHA로 고정하고 최소 권한, CODEOWNERS, Docker Dependabot, 항상 완료되는 `Repository Gate`를 추가했다.
+- Play 업로드 성공 후 `main` 직접 push 대신 `release-ledger/v<version>-<code>` 브랜치의 원장 PR을 생성하도록 변경했다. Azure 배포는 ACR digest와 expected SHA/revision/readiness/app-reaper 일치를 함께 검증한다.
+- 로컬 검증: Android Spotless·AGP guard·Detekt·unit·lint/debug·androidTest compile·R8 release, Backend Ruff·Mypy·pytest 140건·pip-audit·Bandit, Docker build, version monotonic 및 workflow SHA 검증 통과. 외부 CI, 실제 PostgreSQL 동시성 smoke, Play/Azure, 실기기 접근성·MSAL은 아직 실행하지 않았다.
+
+---
+
 ## [v0.6.0] — 2026-10-27 — 적응형 주간 운동 계획 v2 (헬스장 · 무장비 홈트레이닝) · 다중 휴식일 지정 & ML Kit R8 핫픽스
 
 > **2026-10-27 Play production 업로드 성공 (`versionCode=39`, 태그 `v0.6.0`) 및 백엔드 배포 완료 (`eundunhealth-api--0000065`).** C1 운영 DB 마이그레이션(`d7f4a2c91b10`) 및 v2 사용자 데이터 초기화(`resetId=v2-cutover-20261027`) 후, `backend.yml` run `40469877206`이 활성 리비전 `eundunhealth-api--0000065`(이미지 `a0b6701`, `eundunhealth-reaper` Job 동기화, 프로브 5종 검증) 배포를 완료했고, `release.yml` run `40469947190`이 `completed`(100%) 상태로 업로드하고 원장을 커밋 `f9eeefc`(`LAST_UPLOADED_VERSION_CODE=39`)에서 갱신했다.

@@ -5,6 +5,7 @@ Revises: 131baaa7b80b
 Create Date: 2026-05-24 21:38:04.306679
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -12,40 +13,42 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '24d0fe2eb397'
-down_revision: Union[str, None] = '131baaa7b80b'
+revision: str = "24d0fe2eb397"
+down_revision: Union[str, None] = "131baaa7b80b"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
     op.create_table(
-        'goals',
-        sa.Column('id', sa.UUID(), nullable=False),
-        sa.Column('user_id', sa.String(), nullable=False),
-        sa.Column('goal_type', sa.String(), nullable=False),
-        sa.Column('target_value', sa.Float(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True),
-                  server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('user_id', 'goal_type'),
+        "goals",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("user_id", sa.String(), nullable=False),
+        sa.Column("goal_type", sa.String(), nullable=False),
+        sa.Column("target_value", sa.Float(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("user_id", "goal_type"),
     )
     op.create_table(
-        'user_profile_history',
-        sa.Column('id', sa.UUID(), nullable=False),
-        sa.Column('user_id', sa.String(), nullable=False),
-        sa.Column('height_cm', sa.Float(), nullable=False),
-        sa.Column('weight_kg', sa.Float(), nullable=False),
-        sa.Column('body_fat_pct', sa.Float(), nullable=True),
-        sa.Column('muscle_mass_kg', sa.Float(), nullable=True),
-        sa.Column('recorded_at', sa.DateTime(timezone=True),
-                  server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-        sa.PrimaryKeyConstraint('id'),
+        "user_profile_history",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("user_id", sa.String(), nullable=False),
+        sa.Column("height_cm", sa.Float(), nullable=False),
+        sa.Column("weight_kg", sa.Float(), nullable=False),
+        sa.Column("body_fat_pct", sa.Float(), nullable=True),
+        sa.Column("muscle_mass_kg", sa.Float(), nullable=True),
+        sa.Column(
+            "recorded_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
+        ),
+        sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f('ix_user_profile_history_user_id'),
-        'user_profile_history',
-        ['user_id'],
+        op.f("ix_user_profile_history_user_id"),
+        "user_profile_history",
+        ["user_id"],
         unique=False,
     )
     # NOTE: autogenerate가 badges/user_profiles/weekly_plans의 id 컬럼에 대해
@@ -55,6 +58,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f('ix_user_profile_history_user_id'), table_name='user_profile_history')
-    op.drop_table('user_profile_history')
-    op.drop_table('goals')
+    op.drop_index(op.f("ix_user_profile_history_user_id"), table_name="user_profile_history")
+    op.drop_table("user_profile_history")
+    op.drop_table("goals")

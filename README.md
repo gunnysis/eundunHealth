@@ -6,10 +6,10 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.6.0-blue)
-![versionCode](https://img.shields.io/badge/versionCode-39-blue)
+![versionName](https://img.shields.io/badge/versionName-0.6.1-blue)
+![versionCode](https://img.shields.io/badge/versionCode-40-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB)
 ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
 
@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원 또는 홈트레이닝 실천자, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — Android **v0.6.0 (versionCode 39)**가 2026-10-27 태그 `v0.6.0`으로 Play production에 `completed`(100%) 업로드됐다(run `40469947190`, 원장 커밋 `f9eeefc`). 백엔드 활성 리비전은 `eundunhealth-api--0000065` / 이미지 `a0b6701`(run `40469877206`, Alembic head `d7f4a2c91b10`)로 **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝` 모드 선택·기본 운동 환경 설정·다중 휴식 요일 `restDays`·`/v2/weekly-plan` 및 `/app-compatibility`)**가 운영에 배포되어 있다.
+- **현재 단계** — 저장소는 **v0.6.1 (versionCode 40) 릴리스 후보**이며 아직 태그·Play 업로드·Azure 배포하지 않았다. 실제 Play production은 **v0.6.0/39** `completed`(100%, run `40469947190`, 원장 `f9eeefc`), 백엔드는 revision `eundunhealth-api--0000065` / image `a0b6701`(run `40469877206`, Alembic head `d7f4a2c91b10`)이다. 후보에는 휴식일·프로필 UI 접근성 개선, 패키지 업데이트, hash/Gradle lock, 컨테이너 digest 고정, Repository Gate 및 릴리스 원장 PR 흐름이 포함된다.
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -65,18 +65,18 @@
 
 | 영역 | 선택 | 비고 |
 |------|------|------|
-| 언어 / 런타임 | Kotlin 2.4.10, Java 17 | KSP 2.3.11 |
-| 빌드 | Gradle 9.7.1, AGP 9.3.2 | Min SDK 26 / Target SDK 37, 내장 Kotlin + 새 DSL 기본 활성 |
-| UI | Jetpack Compose (BOM 2026.08.00) | Material 3 |
+| 언어 / 런타임 | Kotlin 2.4.21, Java 17 | KSP 2.3.12 |
+| 빌드 | Gradle 9.8.1, AGP 9.3.2 | Min SDK 26 / Target SDK 37, dependency locking + SHA-256 verification |
+| UI | Jetpack Compose (BOM 2026.09.00) | Material 3 |
 | DI | Hilt 2.60.1 | 4개 모듈 (`NetworkModule`, `DatabaseModule`, `RepositoryModule`, `CoroutineModule`) |
 | 비동기 | kotlinx-coroutines + Flow | |
 | 네트워크 | Retrofit 3.0.0 + OkHttp 5.5.0 + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 + `Eundun-Client-Version-Code` 헤더 |
-| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.10.1 (`hilt-work` 1.3.0) | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v1, KSP 스키마 export) |
+| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v1, KSP 스키마 export) |
 | 카메라 & 온디바이스 비전 | CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0 | Google Play services unbundled (`ModuleInstallClient`) |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
 | Auth | MSAL Android 8.4.2 | RS256 JWT · `oid` claim |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | |
-| 모니터링 | Sentry Android 8.57.0 (Gradle plugin 6.21.0) | 16KB page-aligned native libs |
+| 모니터링 | Sentry Android 8.57.0 (Gradle plugin 6.24.0) | 16KB page-aligned native libs |
 | API 클라이언트 | OpenAPI Generator 7.25.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동, 8개 generated API |
 | 품질 도구 | Detekt 1.23.8 (`detekt-cli` + `androidComponents`) + Spotless 8.10.1 + ktlint 1.5.0 | pre-commit hook + `check-agp10-compat.sh` 가드 |
 
@@ -85,15 +85,15 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Python 3.14 | |
-| 프레임워크 | FastAPI 0.141.1 + uvicorn 0.53.0 | |
+| 프레임워크 | FastAPI 0.161.0 + uvicorn 0.54.0 | hash lock 공통 설치 |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
-| ORM | SQLAlchemy 2.0.54 async + asyncpg 0.31.0 | `Mapped[T]` 패턴 |
-| 마이그레이션 | Alembic 1.20.0 (head: `d7f4a2c91b10`) | async 엔진 연동 |
-| HTTP 코어 | starlette 1.6.0 | |
+| ORM | SQLAlchemy 2.1.6 async + asyncpg 0.32.0 | `Mapped[T]` 패턴 |
+| 마이그레이션 | Alembic 1.20.1 (head: `d7f4a2c91b10`) | async 엔진 연동 |
+| HTTP 코어 | starlette 1.9.0 | |
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
-| AI 클라이언트 | openai 3.16.2 (`AsyncOpenAI`) | Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 |
-| 모니터링 | Sentry SDK 2.69.2 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff 0.16.8 + mypy 2.3.1 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 140/140 PASS, coverage 94%+ (sysmon core) |
+| AI 클라이언트 | openai 3.37.0 (`AsyncOpenAI`) | Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 |
+| 모니터링 | Sentry SDK 2.73.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
+| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 140/140 PASS, coverage 94%+ (sysmon core) |
 
 ### 인프라
 
@@ -402,7 +402,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — 저장소 = Play 스토어 운영 버전 **`v0.6.0` (versionCode `39`)**. 2026-10-27 태그 `v0.6.0`이 `release.yml` run `40469947190`을 통해 Play production `completed`(100%)로 업로드됐고(원장 자동 갱신 커밋 `f9eeefc`), 백엔드는 `Backend CI/CD` run `40469877206`으로 활성 리비전 `eundunhealth-api--0000065`(이미지 `a0b6701`, alembic head `d7f4a2c91b10`)에 배포됐다.
+**현재 버전** — 저장소 후보는 **`v0.6.1` (versionCode `40`)**, Play 운영 버전은 **`v0.6.0` (versionCode `39`)**이다. 후보는 로컬 검증을 통과했지만 아직 태그·push·Play 업로드·Azure 배포하지 않았다. 운영 증거는 `release.yml` run `40469947190`, 원장 `f9eeefc`, backend run `40469877206`, revision `eundunhealth-api--0000065`(image `a0b6701`, alembic head `d7f4a2c91b10`)이다.
 
 ### 마일스톤 진행
 

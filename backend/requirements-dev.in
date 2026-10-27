@@ -1,0 +1,13 @@
+-r requirements.in
+
+# Development and CI-only direct dependencies.
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+aiosqlite==0.22.1
+ruff==0.17.2
+mypy==2.4.0
+bandit==1.9.4
+pip-audit==2.10.1
+pip-tools==7.5.2
+types-Markdown==3.10.2.20261007

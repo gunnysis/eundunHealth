@@ -1,0 +1,104 @@
+name: Repository Gate
+
+# This workflow intentionally has no path filter. It is the single required
+# status check; specialised workflows may still use path filters without
+# leaving a required check in a perpetual pending state.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.filter.outputs.android }}
+      backend: ${{ steps.filter.outputs.backend }}
+      automation: ${{ steps.filter.outputs.automation }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - id: filter
+        uses: dorny/paths-filter@15192bc058cc28a13dbf6cde61f19e18988b7af6
+        with:
+          filters: |
+            android:
+              - 'app/**'
+              - 'build.gradle.kts'
+              - 'settings.gradle.kts'
+              - 'gradle/**'
+              - 'gradle.properties'
+              - 'version.properties'
+              - 'gradlew'
+              - 'gradlew.bat'
+              - 'config/detekt/**'
+            backend:
+              - 'backend/**'
+              - 'scripts/verify_containerapp_deployment.py'
+            automation:
+              - '.github/**'
+              - 'scripts/**'
+
+  android:
+    name: Android required checks
+    needs: changes
+    if: needs.changes.outputs.android == 'true' || needs.changes.outputs.automation == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@67621b124fd2e251c5e8a0e6e3b91318f2287669
+      - name: Create stub local.properties
+        run: |
+          cat > local.properties <<'EOF'
+          BACKEND_BASE_URL=http://10.0.2.2:8080/
+          SENTRY_DSN=
+          EOF
+      - run: ./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
+
+  backend:
+    name: Backend required checks
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.automation == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: ruff check . && ruff format --check . && mypy app && pytest -q && pip-audit -r requirements.txt --strict && bandit -r app -ll
+
+  gate:
+    name: Repository Gate
+    if: always()
+    needs: [changes, android, backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require completed relevant checks
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          ANDROID: ${{ needs.android.result }}
+          BACKEND: ${{ needs.backend.result }}
+        run: |
+          test "$CHANGES" = success
+          for result in "$ANDROID" "$BACKEND"; do
+            test "$result" = success -o "$result" = skipped || exit 1
+          done

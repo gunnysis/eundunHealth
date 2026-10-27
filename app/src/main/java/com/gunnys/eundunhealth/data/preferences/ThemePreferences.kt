@@ -31,6 +31,8 @@ class ThemePreferences @Inject constructor(
         prefs[themeKey]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM
     }
 
+    // DataStore Preferences.edit is suspend; detekt 1.23 type resolution misses this contract.
+    @Suppress("RedundantSuspendModifier")
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { prefs ->
             prefs[themeKey] = mode.name
@@ -42,12 +44,16 @@ class ThemePreferences @Inject constructor(
         return prefs[autoCreateWeekKey] == weekStart.toString()
     }
 
+    // DataStore Preferences.edit is suspend; keep this API suspend for callers.
+    @Suppress("RedundantSuspendModifier")
     suspend fun markAutoCreateAttempted(weekStart: LocalDate) {
         context.dataStore.edit { prefs ->
             prefs[autoCreateWeekKey] = weekStart.toString()
         }
     }
 
+    // DataStore Preferences.edit is suspend; detekt cannot resolve the extension here.
+    @Suppress("RedundantSuspendModifier")
     suspend fun clearAutoCreateAttempt() {
         context.dataStore.edit { prefs ->
             prefs.remove(autoCreateWeekKey)
@@ -59,6 +65,8 @@ class ThemePreferences @Inject constructor(
         return prefs[v2ResetCompletedKey] == true
     }
 
+    // DataStore Preferences.edit is suspend; preserve structured-concurrency semantics.
+    @Suppress("RedundantSuspendModifier")
     suspend fun markV2LocalResetCompleted() {
         context.dataStore.edit { prefs ->
             prefs.clear()
@@ -66,6 +74,8 @@ class ThemePreferences @Inject constructor(
         }
     }
 
+    // DataStore Preferences.edit is suspend; a local suppression avoids a global baseline.
+    @Suppress("RedundantSuspendModifier")
     suspend fun clearAll() {
         context.dataStore.edit { prefs ->
             val wasReset = prefs[v2ResetCompletedKey] == true

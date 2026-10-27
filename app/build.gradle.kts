@@ -119,6 +119,12 @@ android {
     }
 }
 
+// Resolve every application configuration from the committed lock state. Plugin
+// resolution is governed separately by Gradle verification metadata.
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 val detektCli =
     configurations.create("detektCli") {
         isCanBeConsumed = false

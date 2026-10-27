@@ -2,21 +2,20 @@ package com.gunnys.eundunhealth.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MultiChoiceSegmentedButtonRow
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -41,7 +41,6 @@ import com.gunnys.eundunhealth.domain.model.normalizeRestDays
 internal val DAY_SHORT_LABELS = listOf("월", "화", "수", "목", "금", "토", "일")
 private val DAY_FULL_LABELS = listOf("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RestDaysSelector(
     restDays: List<Int>,
@@ -53,27 +52,22 @@ fun RestDaysSelector(
     val workoutDaysCount = TOTAL_DAYS_IN_WEEK - selectedSet.size
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        Text(
+            text = "휴식 요일 선택",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
         ) {
             Text(
-                text = "휴식 요일 선택",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() },
+                text = "운동 ${workoutDaysCount}일 · 휴식 ${selectedSet.size}일",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             )
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-            ) {
-                Text(
-                    text = "운동 ${workoutDaysCount}일 · 휴식 ${selectedSet.size}일",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -85,14 +79,19 @@ fun RestDaysSelector(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        MultiChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             DAY_SHORT_LABELS.forEachIndexed { idx, label ->
                 val dayNumber = idx + 1
                 val isChecked = dayNumber in selectedSet
                 val fullDayName = DAY_FULL_LABELS[idx]
-                SegmentedButton(
-                    checked = isChecked,
-                    onCheckedChange = { checked ->
+                FilterChip(
+                    selected = isChecked,
+                    onClick = {
+                        val checked = !isChecked
                         val updated = if (checked) selectedSet + dayNumber else selectedSet - dayNumber
                         when {
                             updated.isEmpty() -> {
@@ -107,17 +106,25 @@ fun RestDaysSelector(
                             }
                         }
                     },
-                    shape = SegmentedButtonDefaults.itemShape(index = idx, count = DAY_SHORT_LABELS.size),
-                    icon = {},
-                    modifier = Modifier.semantics {
-                        contentDescription = "$fullDayName 휴식"
+                    label = { Text(text = label) },
+                    leadingIcon = if (isChecked) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.sizeIn(maxWidth = 18.dp, maxHeight = 18.dp),
+                            )
+                        }
+                    } else {
+                        null
                     },
-                ) {
-                    Text(
-                        text = label,
-                        fontWeight = if (isChecked) FontWeight.Bold else FontWeight.Normal,
-                    )
-                }
+                    colors = FilterChipDefaults.filterChipColors(),
+                    modifier = Modifier
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                        .semantics {
+                            contentDescription = "$fullDayName 휴식일"
+                        },
+                )
             }
         }
 
@@ -129,15 +136,12 @@ fun RestDaysSelector(
 
         Surface(
             shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            color = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     text = "휴식일 ($restDayNames)",
@@ -158,9 +162,14 @@ fun RestDaysSelector(
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colorScheme.errorContainer,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        liveRegion = LiveRegionMode.Polite
+                        error(msg)
+                    },
             ) {
-                Row(
+                androidx.compose.foundation.layout.Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -169,13 +178,12 @@ fun RestDaysSelector(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.sizeIn(maxWidth = 16.dp, maxHeight = 16.dp),
                     )
                     Text(
                         text = msg,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
             }

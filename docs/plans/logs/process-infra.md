@@ -4,6 +4,16 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-27 — CI aggregate gate·Action pin·릴리스 원장 PR 전환
+
+- Android/backend path filter는 유지하면서 항상 완료되는 `Repository Gate`가 변경 영역의 결과를 집계해 필수 검사 pending 문제를 막도록 했다.
+- GitHub Actions를 full commit SHA로 고정하고 workflow별 최소 권한, CODEOWNERS, Docker Dependabot을 적용했다.
+- Play 업로드 뒤 원장을 `main`에 직접 push하던 흐름을 고유 `release-ledger/v<version>-<code>` 브랜치 PR 생성으로 바꿨다. 사용자가 업로드 증거를 확인한 뒤 squash merge한다.
+- Backend CD는 ACR가 반환한 image digest와 expected merge SHA, latest/latest-ready revision, `/health`, `/health/ready`, app/reaper image 일치를 검증한다.
+- GitHub branch protection의 필수 검사 등록, Actions의 PR 생성 권한 및 SSH 서명 tag/allowed-signers 설정은 저장소 관리 권한이 필요한 후속 사용자 gate다.
+
+---
+
 ### 2026-10-16 — 프로덕션 배포 하드닝 및 AI 식단 개인정보 고지 정합화 (v0.3.1, PR #188·#191)
 
 - **PR**: [#188](https://github.com/gunnysis/eundunHealth/pull/188) · [#191](https://github.com/gunnysis/eundunHealth/pull/191)

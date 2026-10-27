@@ -1,0 +1,6 @@
+# Security-sensitive automation must always be reviewed by the repository owner.
+/.github/workflows/ @gunnysis
+/scripts/ @gunnysis
+/backend/Dockerfile @gunnysis
+/backend/containerapp.yaml @gunnysis
+/backend/reaper-job.yaml @gunnysis

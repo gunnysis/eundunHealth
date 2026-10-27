@@ -4,14 +4,14 @@
 
 ## Recent (last 90 days)
 
-### 2026-10-27 — 휴식 요일 선택기(`RestDaysSelector`) 고정 프리셋 제거 및 미니멀 직관 UI·프로필 요약 카드 레이아웃 고도화
+### 2026-10-27 — v0.6.1 휴식일·프로필 UI 접근성 및 반응형 레이아웃
 
 - **Commit**: (HEAD)
-- **Why**: 기존 주 3일/5일/6일 등의 고정 프리셋 칩(`REST_DAY_PRESETS`)은 사용자마다 다른 선호 요일(평일/주말 조합)과 불일치하고, 온보딩/프로필 화면에서 세로 공간을 과도하게 차지해 시각적 피로도와 인지 부하를 높였다. 월~일 7개 세그먼트 버튼 조작 비용이 1초 미만으로 매우 낮으므로, 불필요한 프리셋 칩을 제거하고 핵심 주간 리듬을 한눈에 파악할 수 있는 미니멀하고 직관적인 레이아웃으로 개편했다.
+- **Why**: 7요일 단일 행은 320dp 폭과 큰 글꼴에서 겹칠 수 있고 선택 상태가 색상에 과도하게 의존했다. 프로필 label/value `SpaceBetween` 행도 긴 텍스트의 충돌 위험이 있었다.
 - **What**:
-  - **`RestDaysSelector.kt`**: `RestDayPreset`, `REST_DAY_PRESETS`, `FlowRow` 및 `FilterChip` 프리셋 블록을 완전 제거. 상단 헤더에 실시간 주간 운동·휴식 리듬 배지(`Surface(primaryContainer)` → `"운동 N일 · 휴식 M일"`)를 신설하고, 세그먼트 버튼 선택 요일에 `FontWeight.Bold` 강조를 부여. 하단에 "휴식일 (토·일)" 및 "운동일 (월·화·수·목·금)"을 직관적으로 보여주는 미니 인포 스트립(`Surface(surfaceVariant)`)과 아이콘 기반의 `errorContainer` 유효성 안내 배너를 추가. Compose `@Preview` 지원.
-  - **`ProfileSummaryCard.kt`**: 단순 텍스트 줄바꿈 대신 키/몸무게, 골격근량/체지방률, 주간 루틴을 좌우 정렬한 현대적인 대시보드 카드 레이아웃(`RoundedCornerShape(12.dp)`, `surfaceVariant` 65% alpha)으로 개선.
-- **Outcome**: 온보딩 및 프로필 수정 화면의 불필요한 스크롤 및 인지 부하 제거, 직관적이고 세련된 M3 UI/UX 및 완성도 확보. Android Spotless, Detekt, 전체 단위 테스트 통과.
+-  - **`RestDaysSelector.kt`**: `FlowRow` 기반 48dp 이상 `FilterChip`, 기본 체크 표시, selected semantics, 오류 `LiveRegionMode.Polite`를 적용했다. 휴식일 1~6일 API/DB 계약은 유지했다.
+  - **`ProfileSummaryCard.kt`**: label/value가 독립적으로 줄바꿈되는 적층 셀과 불투명 의미 색상 토큰으로 변경했다.
+- **Outcome**: Android Spotless/Detekt/unit/lint/debug/androidTest compile/R8 release 통과. 연결 기기가 없어 screenshot matrix와 TalkBack·Switch Access 실행은 후속 사용자 기기 gate다. 저장소는 `0.6.1/40` 후보이며 운영은 `0.6.0/39`다.
 - **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/ui/components/RestDaysSelector.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/components/ProfileSummaryCard.kt`
 
 ### 2026-10-27 — 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 풀스택 구현 및 운영 출시 (v0.6.0, commit `a0b6701`)

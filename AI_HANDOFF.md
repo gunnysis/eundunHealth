@@ -1,5 +1,33 @@
 # Multi-AI Handoff Log
 
+## 2026-10-27 (Gemini -> Claude/User) 사용자 작업(GitHub Ruleset, Actions 권한, SSH 서명) 전수 검증 및 점검 100% 완결
+
+**현재까지의 작업 상태 (Current Status):**
+- **사용자 수동 설정 항목(GitHub Ruleset, Actions PR 권한, SSH 서명 키) 전수 검증 및 완결 100% 통과**:
+  1. **Actions PR 생성 권한**: `default_workflow_permissions: write`, `can_approve_pull_request_reviews: true` 정상 활성화 (PASS ✅).
+  2. **GitHub 태그 보호 규칙 (Ruleset `default tag`, id 25954171)**: `Restrict creations` 해제 완료(`rules: [deletion, non_fast_forward, update]`). 신규 `v*` 릴리스 태그 생성 및 변조 방지 정상 동작 (PASS ✅).
+  3. **GitHub main 보호 및 Repository Gate 필수 검사 (Ruleset `default branch`, id 25954096)**: `required_status_checks: [{"context": "Repository Gate"}]` 정상 지정 완료. PR 필수 검사 통과 강제 (PASS ✅).
+  4. **SSH 서명 키 (GitHub 원격 & 로컬 Git)**:
+     - GitHub 계정(`gunnysis`)에 `id_ed25519.pub` 서명 키(id 1276982) 등록 완료.
+     - 로컬 Git: `gpg.format=ssh`, `user.signingkey=C:/Users/Administrator/.ssh/id_ed25519.pub`, `tag.gpgSign=true`, `allowed_signers` 등록 완료.
+     - 실측 태그 서명(`git tag -s`) 및 검증(`git tag -v`) 결과: `Good "git" signature for qkr133456@gmail.com with ED25519 key ...` 완벽 통과 (PASS ✅).
+
+**다음 할 일 (Next TODOs for User / Operator):**
+- Codex가 준비한 v0.6.1/40 로컬 변경사항(의존성 갱신, lockfile, hash lock, verification-metadata, repository-gate.yml 등) 검토 및 PR 생성/머지 진행.
+- 차기 릴리스 준비 시 SSH 서명 태그(`git tag -s v0.6.1 -m "..."`) 부착 및 푸시 진행.
+
+---
+
+## 2026-10-27 — v0.6.1/40 로컬 릴리스 후보·패키지/공급망 강화
+
+- 저장소 SSoT를 `versionName=0.6.1`, `versionCode=40`으로 올렸지만 **태그·push·Play 업로드·Azure 배포는 하지 않았다**. 운영 기준은 계속 Play `v0.6.0/39`, backend revision `0000065` / image `a0b6701`이다.
+- 휴식 요일 UI를 `FlowRow` 기반 48dp `FilterChip`으로, 프로필 요약을 줄바꿈 가능한 적층 레이아웃으로 개선하고 semantics/live-region 및 instrumentation 회귀 테스트를 추가했다.
+- Android/Gradle 및 Python 의존성을 갱신하고 Gradle lock/verification metadata, Python hash lock, container digest, Action SHA pin, CODEOWNERS, Docker Dependabot, Repository Gate를 적용했다.
+- release workflow는 Play 성공 후 `main`에 원장을 직접 push하지 않고 `release-ledger/v<version>-<code>` PR을 생성한다. GitHub 보호 규칙·Actions PR 권한·SSH tag signing·Play/Azure·실기기 검증은 사용자 승인/외부 gate로 남아 있다.
+- 로컬 검증은 Android Spotless/AGP guard/Detekt/unit/lint/debug/androidTest compile/R8 release, Backend Ruff/Mypy/pytest 140/pip-audit/Bandit, Docker build, version monotonic 및 workflow SHA 검증을 통과했다. 연결 기기가 없어 instrumentation 실행은 미완료다.
+
+---
+
 ## 2026-10-27 (Gemini -> Claude/User) 휴식일 선택기(`RestDaysSelector`) 고정 프리셋 제거 및 미니멀 직관 UI·프로필 요약 카드 레이아웃 고도화 완료
 
 **현재까지의 작업 상태 (Current Status):**

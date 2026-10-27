@@ -4,6 +4,16 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-27 — v0.6.1 재현 가능한 의존성·공급망 강화
+
+- Android는 Kotlin 2.4.21, KSP 2.3.12, Gradle 9.8.1, Compose BOM 2026.09.00, Core KTX 1.19.1, Navigation 2.10.2, DataStore 1.3.0, Sentry Gradle plugin 6.24.0으로 갱신하고 AGP 9.3.2/JDK 17을 유지했다.
+- Gradle wrapper checksum, dependency lockfile, SHA-256 verification metadata를 추가했다. DataStore 1.3의 Detekt 오탐은 suspend 계약을 보존하는 국소 억제와 실제 저장·재읽기 instrumentation 테스트로 방어했다.
+- Backend는 `requirements.in`/`requirements-dev.in`을 직접 의존성 원본으로 두고 Python 3.14에서 생성한 전이 의존성 hash lock을 CI와 Docker가 `--require-hashes`로 공통 사용한다. FastAPI 0.161.0, Starlette 1.9.0, Uvicorn 0.54.0, SQLAlchemy 2.1.6, asyncpg 0.32.0, OpenAI 3.37.0 등으로 갱신했다.
+- Python/PostgreSQL image를 digest로 고정하고 Dockerfile의 `apt-get upgrade` 및 임의 pip upgrade를 제거했다. Docker Dependabot은 base digest 변경을 별도 PR로 추적한다.
+- 검증: Android 전체 정적 분석·unit/lint/debug/androidTest compile/R8 release, Backend Ruff/Mypy/pytest 140/pip-audit/Bandit, hash 기반 Docker build 통과. 외부 CI와 실 PostgreSQL 동시성 smoke는 후속 gate다.
+
+---
+
 ### 2026-10-16 — OpenAI Python SDK 재현성 고정
 
 - `openai>=1.40.0` 범위 지정 때문에 동일 커밋의 새 Docker 빌드가 그날의 최신 SDK를

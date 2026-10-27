@@ -22,6 +22,20 @@ updates:
         applies-to: version-updates
         update-types: [minor, patch]
 
+  # Pinned base-image digests are part of the backend supply chain and need
+  # independent review from Python library upgrades.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Seoul
+    open-pull-requests-limit: 3
+    labels: [dependencies, docker, backend]
+    commit-message:
+      prefix: "chore(docker)"
+
   # GitHub Actions
   - package-ecosystem: github-actions
     directory: /
