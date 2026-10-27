@@ -1,5 +1,30 @@
 # Multi-AI Handoff Log
 
+## 2026-10-27 (Gemini -> Claude/User) 휴식일 선택기(`RestDaysSelector`) 고정 프리셋 제거 및 미니멀 직관 UI·프로필 요약 카드 레이아웃 고도화 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **사용자 요청 반영: 휴식요일 고정 프리셋 제거 및 레이아웃 개선 완수**:
+  1. **`RestDaysSelector.kt`**:
+     - `RestDayPreset`, `REST_DAY_PRESETS`, `FlowRow` 및 `FilterChip` 프리셋 블록 완전 제거.
+     - 상단 헤더에 실시간 주간 운동·휴식 리듬 배지(`Surface(primaryContainer)` → `"운동 N일 · 휴식 M일"`) 신설.
+     - 세그먼트 버튼 선택 요일에 `FontWeight.Bold` 강조 부여.
+     - 하단에 "휴식일 (토·일)" 및 "운동일 (월·화·수·목·금)"을 직관적으로 보여주는 미니 인포 스트립(`Surface(surfaceVariant)`)과 아이콘 기반의 `errorContainer` 유효성 안내 배너를 추가.
+     - Compose `@Preview` 지원.
+  2. **`ProfileSummaryCard.kt`**:
+     - 단순 텍스트 줄바꿈 대신 키/몸무게, 골격근량/체지방률, 주간 루틴을 좌우 정렬한 현대적인 대시보드 카드 레이아웃(`RoundedCornerShape(12.dp)`, `surfaceVariant` 65% alpha)으로 개선.
+  3. **문서 동기화**:
+     - `docs/plans/logs/android.md`, `docs/CHANGELOG.md`, `AI_HANDOFF.md` 동기화.
+  4. **품질 검증**:
+     - Android `spotlessCheck` PASS, `detektDebug` PASS (0 issues), `testDebugUnitTest` PASS (186 tests).
+
+**다음 할 일 (Next TODOs for User / Operator):**
+- 필요 시 차기 릴리스(v0.6.1 또는 v0.7.0) 버저닝 및 배포 진행.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
+---
+
 ## 2026-10-27 (Gemini -> Claude/User) v0.6.0 (`versionCode=39`) 운영 배포(C1 ➔ C2 ➔ C3) 전 구간 성공 및 문서 SSoT 정합화 완료
 
 **현재까지의 작업 상태 (Current Status):**

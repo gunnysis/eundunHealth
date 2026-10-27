@@ -2,50 +2,46 @@ package com.gunnys.eundunhealth.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MultiChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.MAX_REST_DAYS
 import com.gunnys.eundunhealth.domain.model.TOTAL_DAYS_IN_WEEK
 import com.gunnys.eundunhealth.domain.model.normalizeRestDays
 
-private data class RestDayPreset(
-    val label: String,
-    val restDays: List<Int>,
-)
-
-@Suppress("MagicNumber")
-private val REST_DAY_PRESETS = listOf(
-    RestDayPreset(label = "주 3일 운동 (화·목·토·일 휴식)", restDays = listOf(2, 4, 6, 7)),
-    RestDayPreset(label = "주 5일 운동 (토·일 휴식)", restDays = listOf(6, 7)),
-    RestDayPreset(label = "주 6일 운동 (일 휴식)", restDays = listOf(7)),
-)
-
 internal val DAY_SHORT_LABELS = listOf("월", "화", "수", "목", "금", "토", "일")
 private val DAY_FULL_LABELS = listOf("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RestDaysSelector(
     restDays: List<Int>,
@@ -54,39 +50,40 @@ fun RestDaysSelector(
 ) {
     val selectedSet = normalizeRestDays(restDays).toSet()
     var boundaryMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    val workoutDaysCount = TOTAL_DAYS_IN_WEEK - selectedSet.size
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = "휴식 요일 선택",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "쉬고 싶은 요일을 1~6개 선택하세요. 빠른 프리셋으로 시작할 수도 있어요.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        FlowRow(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            REST_DAY_PRESETS.forEach { preset ->
-                val isPresetSelected = selectedSet == preset.restDays.toSet()
-                FilterChip(
-                    selected = isPresetSelected,
-                    onClick = {
-                        boundaryMessage = null
-                        onRestDaysChange(preset.restDays)
-                    },
-                    label = { Text(preset.label) },
+            Text(
+                text = "휴식 요일 선택",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = "운동 ${workoutDaysCount}일 · 휴식 ${selectedSet.size}일",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "충분한 회복을 위해 쉬고 싶은 요일을 1~6개 선택하세요.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         MultiChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             DAY_SHORT_LABELS.forEachIndexed { idx, label ->
@@ -116,27 +113,84 @@ fun RestDaysSelector(
                         contentDescription = "$fullDayName 휴식"
                     },
                 ) {
-                    Text(label)
+                    Text(
+                        text = label,
+                        fontWeight = if (isChecked) FontWeight.Bold else FontWeight.Normal,
+                    )
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-        val workoutDaysCount = TOTAL_DAYS_IN_WEEK - selectedSet.size
-        val selectedDayNames = selectedSet.sorted().joinToString("·") { DAY_SHORT_LABELS[it - 1] }
-        Text(
-            text = "주 ${workoutDaysCount}일 운동 · 주 ${selectedSet.size}일 휴식 ($selectedDayNames)",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
+
+        val restDayNames = selectedSet.sorted().joinToString("·") { DAY_SHORT_LABELS[it - 1] }
+        val workoutDays = (1..TOTAL_DAYS_IN_WEEK).filter { it !in selectedSet }
+        val workoutDayNames = workoutDays.joinToString("·") { DAY_SHORT_LABELS[it - 1] }
+
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "휴식일 ($restDayNames)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = "운동일 ($workoutDayNames)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
 
         boundaryMessage?.let { msg ->
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = msg,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = msg,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RestDaysSelectorPreview() {
+    MaterialTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            RestDaysSelector(
+                restDays = listOf(6, 7),
+                onRestDaysChange = {},
             )
         }
     }
