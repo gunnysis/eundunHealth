@@ -80,7 +80,7 @@ bash C:/programming/docker/eundunhealth-api/redeploy.sh [tag]
 FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central) 업데이트 → /health 헬스체크 → timestamp 태그 자동 정리(최근 5개만 보존). 환경변수 변경은 별도 `az containerapp update --set-env-vars` 또는 `secret set`. 자세한 절차는 `docs/ops/migration-runbook.md` 및 `docs/ops/predeployment-readiness.md`.
 
 **Android 출시 (자동 — Play 프로덕션 트랙 `completed` 100% 업로드)** — 태그 `v*` push 로 `release.yml` 이 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB → Play **프로덕션 트랙** 업로드(`status: completed` = **100% 프로덕션 출시**) → 원장 자동 갱신 커밋까지 수행. environment `play-release`(required reviewer) 승인 게이트. 사전 검증: `gh workflow run release.yml`(dry_run 기본 true = 업로드 생략). 절차·실패 대응: `docs/ops/play-store-release.md` §7 및 `docs/ops/predeployment-readiness.md`. 수동 업로드 폴백 시 원장 수동 갱신 필수(룰 13).
-> 트랙은 2026-09-02 에 internal → production 으로 바뀌었고, 2026-10-16(v0.3.1/36)에서 10% 단계 출시를 거친 뒤 2026-10-17(v0.4.0/37) 및 2026-10-26(v0.5.0/38, run `40274395812`, 원장 자동 커밋 `cbd155f`)에는 `status: completed`(100%)로 업로드된다. **태그는 반드시 고친 `release.yml` 이 포함된 커밋에 단다** — `push: tags` 는 태그 시점 워크플로 파일로 실행된다. 프로덕션은 이전 버전으로 롤백되지 않는다(halt rollout 또는 상위 versionCode 재업로드만 가능).
+> 트랙은 2026-09-02 에 internal → production 으로 바뀌었고, 2026-10-16(v0.3.1/36)에서 10% 단계 출시를 거친 뒤 2026-10-17(v0.4.0/37), 2026-10-26(v0.5.0/38, run `40274395812`, 원장 커밋 `cbd155f`) 및 2026-10-27(v0.6.0/39, run `40469947190`, 원장 자동 커밋 `f9eeefc`)에는 `status: completed`(100%)로 업로드된다. **태그는 반드시 고친 `release.yml` 이 포함된 커밋에 단다** — `push: tags` 는 태그 시점 워크플로 파일로 실행된다. 프로덕션은 이전 버전으로 롤백되지 않는다(halt rollout 또는 상위 versionCode 재업로드만 가능).
 > **로컬 release APK 로는 로그인 검증 불가** — release 소스셋 `redirect_uri` 해시가 Play App Signing 키 기준이라 업로드 키 서명본은 MSAL 초기화가 실패한다(설계상 정상). 실기기 검증은 debug APK 또는 Play 설치본.
 
 **Azure 로그인 (CI)** — OIDC 연합(PR #141/#142, 2026-07-02)이 유일 경로: `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` secrets + federated credential `github-main`. 장수명 `AZURE_CREDENTIALS` 는 **2026-07-03 완전 제거됨**(GitHub secret + Entra 앱 비밀번호 — 만료 점검 불요). OIDC 장애 시 긴급 폴백만:
@@ -221,7 +221,7 @@ DELETE /account
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure
-- **Container App** `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포. Active revision: `eundunhealth-api--0000063`, image `869407a`)
+- **Container App** `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포. Active revision: `eundunhealth-api--0000065`, image `a0b6701`)
 - **Key Vault** `kv-eundunhealth` (RG `rg-eundunhealth-prod-krc`, Standard, **Azure RBAC**, 90d soft-delete + purge protection) — 백엔드 secret **8개**(KV 참조, 직접값 아님: `database-url`, `entra-tenant-id`, `entra-subdomain`, `entra-backend-client-id`, `entra-backend-client-secret`, `sentry-dsn-backend`, `deepseek-endpoint`, `deepseek-key`). Container App **system MI** = Secrets User(KV) + AcrPull(ACR), CI SP = Secrets User(KV). audit → Log Analytics `workspace-appsDOlM` (`kv-audit` 진단설정 — **2026-09-02 에 실제로 생성**했다)
 - **ACR** `eundunhealthacr` (Basic SKU — [retention 정책은 Premium 전용](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus). 정기 정리는 **`acr purge` 스케줄 ACR Task 2개**가 담당: `purge-eundunhealth-api`[일 01:00 UTC, 태그 `--ago 30d --keep 10`] + `purge-eundunhealth-api-untagged`[01:30, dangling 스윕]. 2026-09-01 도입 — 태그 56→14·매니페스트 68→13·용량 2.21→0.60 GiB. `redeploy.sh` 의 timestamp 5개 보존은 로컬 수동 경로 전용)
 - **Azure PostgreSQL** Flexible Server `healthapp` (B1ms, 32GB, Korea Central). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
@@ -455,7 +455,7 @@ versionCode 는 저장소 로컬 +1(`bump-version.sh`) 만으로는 안전하지
 - `@docs/plans/README.md` — design+plan 페어 인덱스 (frontmatter 기반 자동 생성, status/PR/인시던트 추적 컬럼 포함)
 - `@docs/ops/operations-snapshot.md` — **현재 운영 상태 단일 출처**
 - `@docs/ops/predeployment-readiness.md` — **v0.3.1 배포 전·후 체크리스트 & 롤백 런북** (`backend-production` 환경 게이트, `verify_containerapp_deployment.py` 불변 조건, `backend-rollback.yml`, Play 10% 단계 출시 검증)
-- `@docs/ops/play-upload-ledger.md` — Play 업로드 versionCode 단조성 원장 SSoT (`LAST_UPLOADED_VERSION_CODE=38`)
+- `@docs/ops/play-upload-ledger.md` — Play 업로드 versionCode 단조성 원장 SSoT (`LAST_UPLOADED_VERSION_CODE=39`)
 - `@docs/ops/incident-log.md` — 인시던트 이력 + root cause + 재발 방지 패턴
 - `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
 - `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
@@ -474,7 +474,7 @@ versionCode 는 저장소 로컬 +1(`bump-version.sh`) 만으로는 안전하지
 - `scripts/bump-version.sh` — 앱 버전 bump 단일 진입점. `version.properties` 의 versionName 갱신 + versionCode +1 + semver/단조 가드 + current-state 문서(README/PRD/operations-snapshot) 동기화. `--dry-run` 지원. 정책: `docs/conventions/versioning.md`
 - `scripts/check-version-monotonic.sh` — versionCode 단조성 가드 (룰 13, INC-2026-06-19-28). `play-upload-ledger.md` 원장의 `LAST_UPLOADED_VERSION_CODE` 대비 후보값 검증. preflight·bump 양쪽에 배선, 단독 실행 `bash scripts/check-version-monotonic.sh [후보값]`.
 - `scripts/update-upload-ledger.sh` — Play 업로드 성공 직후 원장 자동 갱신 (`release.yml` 이 호출, 룰 13 사람 의존 갭 해소). `LAST_UPLOADED_VERSION_CODE` 치환 + 업로드 이력 표 행 삽입. 수동 업로드 폴백 시 직접 실행: `bash scripts/update-upload-ledger.sh <ledger.md> <versionName> <versionCode> <track>`.
-- `scripts/verify_containerapp_deployment.py` — Container App 배포 사후 불변 조건 검증(`--expected-image`, `--check-job`, `--expected-job-image`: active revision running/traffic 100%, min/max replicas `1..3`, 3종 probe, 8개 KV secret + 3개 plain env, Reaper Job 이미지 태그 동기화). `backend.yml` 및 `backend-rollback.yml` 에 배선.
+- `scripts/verify_containerapp_deployment.py` — Container App 배포 사후 불변 조건 검증(`--expected-image`, `--check-job`, `--expected-job-image`: active revision running/traffic 100%, min/max replicas `1..3`, 3종 probe + 공개 라우트 5종(`/health`, `/health/ready`, `/app-compatibility`, `/privacy`, `/account-deletion`), 8개 KV secret + 4개 plain env(`MEAL_AI_ENABLED`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE`, `ENVIRONMENT`, `CORS_ORIGINS`), Reaper Job 이미지 태그 동기화). `backend.yml` 및 `backend-rollback.yml` 에 배선.
 - `scripts/verify-exercise-translations.ps1` — ExerciseDB 추천 운동 46종 한국어 번역 JSON(`app/src/main/assets/korean_exercises.json`) 스키마·지문 무결성 검증 스크립트.
 - `scripts/alembic-autogen.sh` — postgres:16-alpine 컨테이너 기반 autogenerate (INC-07 방지)
 - `scripts/sync-openapi.sh` — FastAPI 스펙을 `backend/openapi.json`으로 추출. 라우터/스키마 변경 시 필수 실행 + 같은 PR에 커밋. backend.yml의 drift detection step이 미커밋을 fast-fail로 차단.

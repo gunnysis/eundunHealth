@@ -1,6 +1,6 @@
 # 적응형 주간 운동 계획 v2 구현 설계서
 
-> **문서 상태**: v2 구현 설계 및 재검토 전건 승인 완료 (Approved & Ready for Implementation) · API/migration/cloud 배포·v2 데이터 리셋 범위 승인됨 · '15. 구현 전 재검토 요청' 전 항목 승인(2026-10-27) · 홈트레이닝 콘텐츠 자율 권한 연구/검증/확정 완료 · 실기기 검증은 운영 배포 후 확인으로 일정 확정
+> **문서 상태**: **v0.6.0 (`versionCode=39`) 풀스택 구현 및 운영 배포(C1~C3) 완료 (2026-10-27 Shipped to Production)** · C1 운영 DB 마이그레이션(`d7f4a2c91b10`) 및 데이터 초기화(`v2-cutover-20261027`) 완료 · C2 백엔드 ACA `eundunhealth-api--0000065` (`a0b6701`) 배포 완료 · C3 Google Play 프로덕션 `v0.6.0/39` `completed`(100%, 원장 `f9eeefc`) 출시 완료 · 다중 휴식 요일(`restDays` 1~6일, Zero-Legacy) 통합 반영 (`docs/plans/logs/android.md` 2026-10-27 entry 참조)
 >
 > **조사·코드 대조 기준일**: 2026-10-27
 >

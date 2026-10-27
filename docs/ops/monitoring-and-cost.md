@@ -172,8 +172,8 @@ curl -sf https://<FQDN>/health
 # 1) firewall 임시 허용
 MY_IP=$(curl -sf https://api.ipify.org)
 az postgres flexible-server firewall-rule create \
-  --resource-group rg-eundunhealth-prod-krc --name healthapp \
-  --rule-name temp-$(date +%s) --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
+  --resource-group rg-eundunhealth-prod-krc --server-name healthapp \
+  --name temp-$(date +%s) --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
 
 # 2) 작업 (alembic / SQL)
 cd backend
@@ -182,8 +182,8 @@ export DATABASE_URL="postgresql+asyncpg://<db-admin-user>:****@healthapp.postgre
 
 # 3) 반드시 회수 (성공/실패 무관)
 az postgres flexible-server firewall-rule delete \
-  --resource-group rg-eundunhealth-prod-krc --name healthapp \
-  --rule-name temp-XXX --yes
+  --resource-group rg-eundunhealth-prod-krc --server-name healthapp \
+  --name temp-XXX --yes
 ```
 
 > **요지**: `az containerapp exec --command "..."`로 비대화형 명령 결과를 받기는 불안정(INC-06). 로컬 firewall 임시 허용 패턴이 정석.

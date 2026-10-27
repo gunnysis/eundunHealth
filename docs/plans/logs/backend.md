@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-27 — 적응형 주간 운동 계획 v2(`/v2/weekly-plan`) · 다중 휴식 요일(`rest_days` `INTEGER[]`) · KST 시간대 SSoT 및 운영 컷오버 (v0.6.0, commit `a0b6701`)
+
+- **Commit**: `a0b6701` (백엔드 배포 run `40469877206` / 활성 리비전 `eundunhealth-api--0000065` / 이미지 `a0b6701`)
+- **Why**: 주간 운동 계획에 `plan_mode`(`gym` / `home`)와 주중 불변성(동일 주 중복 생성 `409 weekly_plan_exists`), 손상 계획 복구용 `DELETE /v2/weekly-plan` 계약을 도입하고, 고정 단일 휴식일(`rest_day`)을 제거해 주 1~6일 다중 휴식 요일(`rest_days`)을 지원하며, 구버전(`<=38`) 클라이언트의 프로필 덮어쓰기와 KST 시간대 드리프트를 원천 차단해야 했다.
+- **What**:
+  - **Alembic `d7f4a2c91b10` & DB 제약**: `weekly_plans.plan_mode`(`'gym'`/`'home'` CHECK 제약), `user_profiles.default_workout_plan_mode`(`'gym'`/`'home'` nullable CHECK 제약), `user_profiles.rest_days`(PostgreSQL `INTEGER[]` + `ck_user_profiles_rest_days_valid`: `cardinality BETWEEN 1 AND 6`, `1..7` 범위, 중복 금지; SQLite 테스트 호환 `ARRAY(Integer).with_variant(JSON, "sqlite")`), `data_reset_audits` 감사 테이블 추가 및 레거시 `rest_day` 컬럼 제거.
+  - **v2 API 계약 & 클라이언트 최소 버전 가드**: `/v2/weekly-plan` 7개 라우트(`GET`, `POST` `INSERT ... ON CONFLICT DO NOTHING RETURNING` 기반 원자적 201/409, `DELETE` 204, `PATCH /complete`, `GET /history`, `GET /previous`, `GET /statistics`), 신체 계측 이력을 오염시키지 않는 `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility` 공개 라우트 및 `require_supported_android_client`(`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`, `PUT /profile` 포함) 구현.
+  - **KST(`UTC+9`) SSoT 일원화 & 타입 안전성**: `backend/app/time_utils.py`(`KST`, `normalize_utc`, `today_kst`, `current_monday_kst`)를 신설해 `meal_plan.py`의 UTC 월요일 오판 버그를 수정하고, `meal_plan_service.py` 강타입 모델(`DailyMealPlan`/`MealInfo`) 및 `statistics_service.py` `day_plans` 단일 패스 파싱 적용.
+  - **운영 C1/C2 완수**: `backend/scripts/reset_v2_user_data.py`로 운영 DB 1회 초기화(`resetId=v2-cutover-20261027`) 및 `verify_containerapp_deployment.py` 공개 라우트 5종 프로브 검증 후 `eundunhealth-api--0000065` + `eundunhealth-reaper` 동기 배포 완료.
+- **Outcome**: Backend pytest 140/140 PASS (`ruff`/`mypy`/`bandit`/`pip-audit` clean), 운영 프로브 5종 200 및 버전 호환성 가드 실측 검증 완료.
+- **설계 원문**: `docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md`, `2026-10-27-flexible-rest-days-design.md` (`docs/plans/logs/android.md` 2026-10-27 entry 와 공동 흡수, git rm)
+
 ### 2026-09-20 — 식단 자동 생성 기능 설계 및 구현 명세 (DeepSeek-V3.2 MaaS)
 
 - **버전**: v0.3.0

@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
 **문서 버전:** v3.3 (2026-10-27 — 적응형 주간 운동 계획 v2 & 휴식 요일 자유 다중 지정(`restDays`) 및 v0.5.0 온디바이스 스마일 트레이닝 반영)
-**제품 버전:** 저장소 `0.6.0` (versionCode `39`) / Play 프로덕션 `0.5.0` (versionCode `38`, 태그 `v0.5.0`) — **온디바이스 스마일 트레이닝(Smile Training), 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) 및 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 구현**. `release.yml` run `40274395812`가 Play production `completed`(100%) 업로드와 원장 갱신(`cbd155f`)을 성공했고, 백엔드는 `Backend CI/CD` run `40274391632`로 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`, 코드 기준 Alembic head `d7f4a2c91b10`)에 배포됐다.
+**제품 버전:** 저장소 = Play 프로덕션 `0.6.0` (versionCode `39`, 태그 `v0.6.0`) — **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`), 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 및 온디바이스 스마일 트레이닝(Smile Training) 정식 출시**. `release.yml` run `40469947190`이 Play production `completed`(100%) 업로드와 원장 갱신(`f9eeefc`, `LAST_UPLOADED_VERSION_CODE=39`)을 성공했고, 백엔드는 `Backend CI/CD` run `40469877206`으로 활성 리비전 `eundunhealth-api--0000065`(이미지 `a0b6701`, Alembic head `d7f4a2c91b10`)에 배포됐다.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

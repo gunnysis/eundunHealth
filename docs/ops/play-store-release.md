@@ -54,7 +54,8 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 |------------|-------|-------|----------|------|
 | **이메일 주소** | ✅ | ❌ | Microsoft Entra External ID (저장됨) | 로그인 식별 |
 | **사용자 ID** | ✅ | ❌ | 백엔드 DB(Azure PostgreSQL) | 운동 기록 연결 |
-| **신체 활동(키/몸무게/체지방률/근육량)** | ✅ | ❌ | 백엔드 DB + 동의 후 AI 식단 생성 시 Azure AI Foundry | 앱 기능·개인 맞춤 목적. 식단 생성 직전 명시 동의, 전송 중 암호화, 삭제 요청 지원 |
+| **신체 활동(키/몸무게/체지방률/근육량/휴식일/기본 운동 환경)** | ✅ | ❌ | 백엔드 DB + 동의 후 AI 식단 생성 시 Azure AI Foundry | 앱 기능·개인 맞춤 목적. 식단 생성 직전 명시 동의, 전송 중 암호화, 삭제 요청 지원 |
+| **스마일 트레이닝 요약 기록(루틴/난이도/수행시간/반복횟수/기분점수)** | ✅ | ❌ | 백엔드 DB + 단말 내부 DB (`smile_training.db`) | **카메라 이미지·영상·생체 템플릿은 저장·전송하지 않음**(온디바이스 실시간 판정 후 즉시 폐기). 요약 수치만 저장, 단독 삭제 및 계정 삭제 지원 |
 | **건강·피트니스(Health Connect 읽기)** | ✅ | ❌ | **READ 권한 1개(`READ_EXERCISE` 운동 세션 단독)** **읽기 전용**(쓰기 없음). ⚠️ #106(v0.1.12)에서 체중·체지방 HC 읽기 제거(6→4), 2026-10-16 '오늘의 활동' 제거로 걸음·칼로리·심박수 회수(4→1) | 운동 세션→완료 날짜만 백엔드 전송(원본 세션 미저장). **신체 4지표(키·몸무게·체지방·골격근)는 HC 아닌 사용자 직접 입력**. Data safety 폼은 실제 권한(`READ_EXERCISE` 1종)과 정확히 일치해야 함(검수 가드). 상세 privacy-policy.md §1 |
 | **앱 충돌/성능 진단 (Sentry)** | ✅ | ❌ (3rd party 처리) | 익명 crash + transaction | 사용자 PII 자동 스크럽됨 |
 | **광고 ID / IDFA / 위치** | ❌ | ❌ | 미사용 | |
@@ -70,7 +71,7 @@ PostgreSQL (Korea Central) + Azure AI Foundry DeepSeek-V3.2 (`GlobalStandard`).
 > 앱은 생성 직전 데이터 항목·목적·국외 처리 가능성을 고지하고 “동의하고 생성”을 요구하며,
 > backend도 필수 동의 헤더가 없는 구버전·우회 요청을 거부한다. Console Data safety와 Health apps
 > declaration도 이 처리와 일치해야 한다.
-**“삭제 요청 방법”**: 앱 내 **계정 삭제** 버튼(ProfileScreen) — Microsoft Graph 로 Entra 사용자 삭제(+`deletedItems` 즉시 파기) + 앱 DB 의 user_id 전 테이블(프로필·계측 이력·운동 계획·AI 식단·목표·배지) 일괄 삭제. 앱 미사용자는 이메일 요청 경로 제공. **Play Console 데이터 안전/스토어 등록정보의 "계정 삭제 요청 URL" 에 `account-deletion` 페이지 URL 등록 필수** (§4 참조).
+**“삭제 요청 방법”**: 앱 내 **계정 삭제** 버튼(ProfileScreen) — Microsoft Graph 로 Entra 사용자 삭제(+`deletedItems` 즉시 파기) + 앱 DB 의 user_id 전 테이블(프로필·계측 이력·운동 계획·스마일 트레이닝 기록·AI 식단·목표·배지) 일괄 삭제. 스마일 트레이닝 기록은 스마일 트레이닝 화면 내 **전체 삭제** 버튼으로도 단독 삭제 가능. 앱 미사용자는 이메일 요청 경로 제공. **Play Console 데이터 안전/스토어 등록정보의 "계정 삭제 요청 URL" 에 `account-deletion` 페이지 URL 등록 필수** (§4 참조).
 
 ---
 
