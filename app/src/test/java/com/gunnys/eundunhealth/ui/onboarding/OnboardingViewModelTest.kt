@@ -1,5 +1,6 @@
 package com.gunnys.eundunhealth.ui.onboarding
 
+import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import io.mockk.coEvery
@@ -43,7 +44,7 @@ class OnboardingViewModelTest {
         coEvery { authRepo.getCurrentUserId() } returns null
         val vm = OnboardingViewModel(userRepo, authRepo)
 
-        vm.saveProfile(175f, 70f, com.gunnys.eundunhealth.domain.model.Gender.MALE, 18f, 33f)
+        vm.saveProfile(175f, 70f, Gender.MALE, 18f, 33f)
         advanceUntilIdle()
 
         assertNotNull("로그인 필요 에러 상태", vm.uiState.value.error)
@@ -52,17 +53,31 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `saveProfile 성공 시 NavigateToHome sideEffect 를 낸다`() = runTest {
+    fun `saveProfile 성공 시 다중 휴식 요일 정규화 후 NavigateToHome sideEffect 를 낸다`() = runTest {
         coEvery { authRepo.getCurrentUserId() } returns "user-1"
         coEvery { userRepo.saveProfile(any()) } returns Result.success(Unit)
         val vm = OnboardingViewModel(userRepo, authRepo)
         val effects = mutableListOf<OnboardingSideEffect>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.sideEffect.collect { effects.add(it) } }
 
-        vm.saveProfile(175f, 70f, com.gunnys.eundunhealth.domain.model.Gender.MALE, 18f, 33f)
+        vm.saveProfile(
+            heightCm = 175f,
+            weightKg = 70f,
+            gender = Gender.MALE,
+            bodyFatPct = 18f,
+            muscleMassKg = 33f,
+            restDays = listOf(6, 2, 4, 7, 2),
+        )
         advanceUntilIdle()
 
         assertTrue(effects.any { it is OnboardingSideEffect.NavigateToHome })
         assertFalse(vm.uiState.value.isLoading)
+        coVerify(exactly = 1) {
+            userRepo.saveProfile(
+                match {
+                    it.restDays == listOf(2, 4, 6, 7)
+                },
+            )
+        }
     }
 }

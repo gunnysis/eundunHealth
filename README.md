@@ -47,7 +47,7 @@
 
 ## 주요 기능
 
-- **적응형 주간 운동 계획 v2 (`헬스장` / `홈트레이닝`) & 한국어 현지화** — 매주 첫 진입 시 `헬스장`(OSS ExerciseDB + 추천 운동 46종 한국어 번들 `korean_exercises.json` v2) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위 지원)을 선택해 계획을 생성하거나, 프로필의 `기본 운동 환경` 설정으로 주간 자동 생성
+- **적응형 주간 운동 계획 v2 (`헬스장` / `홈트레이닝`) & 다중 휴식 요일(`restDays`)** — 매주 첫 진입 시 `헬스장`(OSS ExerciseDB + 추천 운동 46종 한국어 번들 `korean_exercises.json` v2) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위 지원)을 선택해 계획을 생성하거나, 프로필의 `기본 운동 환경` 설정으로 주간 자동 생성. 주 1~6일 원하는 휴식 요일(`restDays`)을 자유롭게 지정하고 대근육 우선순위 큐로 운동을 균형 배치
 - **AI 맞춤 주간 식단** (v0.3.0 / v0.3.1) — 신체 지표·목표·주간 운동량을 바탕으로 Azure AI Foundry `DeepSeek-V3.2` 모델이 7일×4끼 맞춤 식단과 영양소(칼로리·탄단지)를 생성 (국외 이전 사전 고지 및 `X-AI-Data-Processing-Consent: true` 명시적 동의 기반)
 - **온디바이스 스마일 트레이닝** (v0.5.0) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(루틴 3종 × 난이도 3단계 × 1~5회 반복)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db`) 및 `WorkManager`로 세션 요약·연속일을 서버와 동기화
 - **Health Connect 연동** — 운동 세션 자동 감지 및 완료 추적
@@ -93,7 +93,7 @@
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | AI 클라이언트 | openai 3.16.2 (`AsyncOpenAI`) | Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 |
 | 모니터링 | Sentry SDK 2.69.2 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff 0.16.8 + mypy 2.3.1 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 139/139 PASS, coverage 94%+ (sysmon core) |
+| 품질 도구 | ruff 0.16.8 + mypy 2.3.1 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 140/140 PASS, coverage 94%+ (sysmon core) |
 
 ### 인프라
 
@@ -117,7 +117,7 @@
 
 ```
 ui/          # Jetpack Compose 화면 14개 + ViewModel 12개 + Navigation (sealed Screen + 적응형 MainAppShell)
-  components/    # 공용 컴포넌트 8개 (AuthErrorBanner, BodyMetricsSliders, LineChart, ProfileSlider, ProfileSummaryCard, Skeleton, Error, Empty)
+  components/    # 공용 컴포넌트 9개 (AuthErrorBanner, BodyMetricsSliders, LineChart, ProfileSlider, ProfileSummaryCard, RestDaysSelector, Skeleton, Error, Empty)
   auth/ home/ onboarding/ profile/ progress/ statistics/ goal/ meal/ smile/ history/ badges/ workout/ splash/
 domain/      # 모델 + 리포지토리 인터페이스 + UseCase(LoadCurrentWeekPlan / CreateWeeklyPlan / HomeWeeklyPlanGenerator 등) + 스마일 신호 평가기(smile/) + AppError sealed class
 data/        # Repository 구현 + OpenAPI 생성 클라이언트 + Room(2종) + WorkManager(sync/) + ML Kit(smile/) + Health Connect + MSAL(auth/) + 한국어 번역(translation/) + DataStore
@@ -164,7 +164,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b
 
 | Method | Path | 비고 |
 |--------|------|------|
-| `GET` / `PUT` | `/profile` | `gender`, `restDay`, `defaultWorkoutPlanMode` 포함 |
+| `GET` / `PUT` | `/profile` | `gender`, `restDays`(1~6일), `defaultWorkoutPlanMode` 포함 |
 | `PUT` | `/v2/profile/default-workout-plan-mode` | 기본 운동 환경 변경 (신체 계측 이력 미생성) |
 | `GET` | `/profile/history?limit=50` | v0.3 |
 | `GET` / `POST` / `DELETE` | `/v2/weekly-plan` | 주간 운동 계획 조회 · 생성(중복 시 409) · 손상 계획 초기화(204) |
@@ -190,7 +190,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b
 ├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── alembic/              # DB 마이그레이션 (head: d7f4a2c91b10)
-│   ├── tests/                # pytest (139 PASS, coverage 94%+)
+│   ├── tests/                # pytest (140 PASS, coverage 94%+)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
@@ -402,7 +402,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — `v0.5.0` (versionCode `38`, 온디바이스 스마일 트레이닝 및 적응형 주간 운동 계획 v2). 2026-10-26 태그 `v0.5.0`이 `release.yml` run `40274395812`를 통해 Play production `completed`(100%)로 업로드됐고(원장 자동 갱신 커밋 `cbd155f`), 백엔드는 `Backend CI/CD` run `40274391632`로 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`)에 배포됐다. 저장소에는 적응형 주간 운동 계획 v2(alembic head `d7f4a2c91b10`)가 구현 완료되었다.
+**현재 버전** — 저장소 `v0.6.0` (versionCode `39`, 적응형 주간 운동 계획 v2 & 휴식 요일 자유 다중 지정 `restDays` + 온디바이스 스마일 트레이닝). Play 스토어 운영 버전은 `v0.5.0`/`38`(2026-10-26 태그 `v0.5.0`이 `release.yml` run `40274395812`를 통해 Play production `completed`(100%)로 업로드, 원장 자동 갱신 커밋 `cbd155f`)이며, 백엔드는 `Backend CI/CD` run `40274391632`로 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`)에 배포됐다. 저장소에는 적응형 주간 운동 계획 v2 및 다중 휴식 요일(alembic head `d7f4a2c91b10`)이 구현 완료되어 차기 `v0.6.0/39` 배포를 앞두고 있다.
 
 ### 마일스톤 진행
 

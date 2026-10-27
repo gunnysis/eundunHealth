@@ -19,22 +19,12 @@ from app.schemas.smile_training import (
     SmileTrainingSessionsPageResponse,
     SmileTrainingStatisticsResponse,
 )
-
-# 한국 표준시(KST)는 일광절약시간제(DST)가 없는 고정 UTC+9 오프셋이다.
-# Windows 호스트 등 시스템 tzdata 패키지가 없는 환경에서도 ZoneInfoNotFoundError 없이 결정론적으로 동작한다.
-KST = datetime.timezone(datetime.timedelta(hours=9), name="KST")
-
-
-def _normalize_utc(dt: datetime.datetime) -> datetime.datetime:
-    """SQLite(naive 반환 가능)와 PostgreSQL(aware 반환) 모두 UTC aware datetime으로 정규화."""
-    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
-        return dt.replace(tzinfo=datetime.UTC)
-    return dt.astimezone(datetime.UTC)
+from app.time_utils import KST, normalize_utc, today_kst
 
 
 def _encode_cursor(occurred_at: datetime.datetime, session_id: uuid.UUID) -> str:
     payload = {
-        "occurred_at": _normalize_utc(occurred_at).isoformat(),
+        "occurred_at": normalize_utc(occurred_at).isoformat(),
         "id": str(session_id),
     }
     raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
@@ -144,13 +134,12 @@ class SmileTrainingService:
             )
 
         timestamps = await self.repo.list_all_occurred_at_by_user(user_id)
-        kst_dates = sorted({_normalize_utc(ts).astimezone(KST).date() for ts in timestamps})
+        kst_dates = sorted({normalize_utc(ts).astimezone(KST).date() for ts in timestamps})
 
-        ref_now = _normalize_utc(now_utc) if now_utc is not None else datetime.datetime.now(datetime.UTC)
-        today_kst = ref_now.astimezone(KST).date()
+        ref_today_kst = today_kst(now_utc)
 
-        completed_today = today_kst in kst_dates
-        current_streak = self._compute_current_streak(kst_dates, today_kst)
+        completed_today = ref_today_kst in kst_dates
+        current_streak = self._compute_current_streak(kst_dates, ref_today_kst)
         longest_streak = self._compute_longest_streak(kst_dates)
 
         return SmileTrainingStatisticsResponse(
@@ -174,8 +163,8 @@ class SmileTrainingService:
         if existing.user_id != user_id:
             raise ConflictException("이미 사용 중인 세션 ID입니다")
 
-        existing_utc = _normalize_utc(existing.occurred_at)
-        req_utc = _normalize_utc(req.occurred_at)
+        existing_utc = normalize_utc(existing.occurred_at)
+        req_utc = normalize_utc(req.occurred_at)
         # 마이크로초 정밀도 차이를 감안해 1초 미만의 동일 타임스탬프와 필드 전체 일치를 확인
         same_payload = (
             existing.routine == req.routine.value
@@ -225,8 +214,8 @@ class SmileTrainingService:
 
     @staticmethod
     def _to_response(entity: SmileTrainingSession) -> SmileTrainingSessionResponse:
-        occurred_utc = _normalize_utc(entity.occurred_at)
-        created_utc = _normalize_utc(entity.created_at) if entity.created_at else occurred_utc
+        occurred_utc = normalize_utc(entity.occurred_at)
+        created_utc = normalize_utc(entity.created_at) if entity.created_at else occurred_utc
         return SmileTrainingSessionResponse(
             id=str(entity.id),
             routine=SmileRoutine(entity.routine),

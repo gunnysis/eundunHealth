@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.gunnys.eundunhealth.domain.model.TOTAL_DAYS_IN_WEEK
+import com.gunnys.eundunhealth.domain.model.normalizeRestDays
 
 @Composable
 fun ProfileSummaryCard(
@@ -21,6 +23,7 @@ fun ProfileSummaryCard(
     bodyFat: Float,
     muscleMass: Float,
     title: String = "입력 요약",
+    restDays: List<Int>? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -32,6 +35,12 @@ fun ProfileSummaryCard(
             Spacer(modifier = Modifier.height(4.dp))
             Text("키: ${"%.0f".format(height)}cm | 몸무게: ${"%.1f".format(weight)}kg")
             Text("체지방: ${"%.1f".format(bodyFat)}% | 골격근량: ${"%.1f".format(muscleMass)}kg")
+            restDays?.let { days ->
+                val normalized = normalizeRestDays(days)
+                val dayNames = normalized.joinToString("·") { DAY_SHORT_LABELS[it - 1] }
+                val workoutDays = TOTAL_DAYS_IN_WEEK - normalized.size
+                Text("휴식 요일: 주 ${normalized.size}일 ($dayNames) | 주 ${workoutDays}일 운동")
+            }
         }
     }
 }
@@ -40,6 +49,12 @@ fun ProfileSummaryCard(
 @Composable
 private fun ProfileSummaryCardPreview() {
     MaterialTheme {
-        ProfileSummaryCard(height = 175f, weight = 70.5f, bodyFat = 18.2f, muscleMass = 32.1f)
+        ProfileSummaryCard(
+            height = 175f,
+            weight = 70.5f,
+            bodyFat = 18.2f,
+            muscleMass = 32.1f,
+            restDays = listOf(6, 7),
+        )
     }
 }

@@ -43,7 +43,7 @@ class ProfileHubViewModelTest {
         gender = Gender.MALE,
         bodyFatPercent = 18f,
         muscleMassKg = 32f,
-        restDay = 7,
+        restDays = listOf(7),
         defaultWorkoutPlanMode = WorkoutPlanMode.GYM,
     )
 

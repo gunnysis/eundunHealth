@@ -101,7 +101,7 @@ class WorkoutRepositoryImplTest {
 
         val profile = mockk<UserProfile>(relaxed = true)
         every { profile.fitnessLevel } returns FitnessLevel.BEGINNER
-        every { profile.restDay } returns 7
+        every { profile.restDays } returns listOf(7)
 
         val result = repo.createWeeklyPlan(profile, WorkoutPlanMode.GYM)
 
@@ -126,7 +126,7 @@ class WorkoutRepositoryImplTest {
                 ),
             )
         }
-        val profile = UserProfile("u", 170f, 65f, Gender.UNSPECIFIED, null, null, restDay = 7)
+        val profile = UserProfile("u", 170f, 65f, Gender.UNSPECIFIED, null, null, restDays = listOf(7))
 
         val result = repo.createWeeklyPlan(profile, WorkoutPlanMode.HOME).getOrThrow()
 
@@ -145,7 +145,7 @@ class WorkoutRepositoryImplTest {
             """{"code":"weekly_plan_exists","message":"이미 존재합니다"}"""
                 .toResponseBody("application/json".toMediaTypeOrNull()),
         )
-        val profile = UserProfile("u", 170f, 65f, Gender.UNSPECIFIED, null, null, restDay = 7)
+        val profile = UserProfile("u", 170f, 65f, Gender.UNSPECIFIED, null, null, restDays = listOf(7))
 
         val result = repo.createWeeklyPlan(profile, WorkoutPlanMode.HOME)
 
@@ -282,7 +282,7 @@ class WorkoutRepositoryImplTest {
                 )
             }
         }
-        val profile = UserProfile("u", 170f, 65f, Gender.UNSPECIFIED, null, null, restDay = 7)
+        val profile = UserProfile("u", 170f, 65f, Gender.UNSPECIFIED, null, null, restDays = listOf(7))
 
         val result = repo.createWeeklyPlan(profile, WorkoutPlanMode.GYM).getOrThrow()
 

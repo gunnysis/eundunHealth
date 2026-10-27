@@ -1,5 +1,39 @@
 # Multi-AI Handoff Log
 
+## 2026-10-27 (Gemini -> Claude/User) Senior Programmer / Architecture Lead / CTO 프로젝트 전체 시점 리팩토링·결함 근본 해결·UI/UX 고도화 완료 (운영 배포 요청 대기)
+
+**현재까지의 작업 상태 (Current Status):**
+- **어제(2026-10-26: 스마일 트레이닝 v0.5.0 + R8 ML Kit 핫픽스) 및 오늘(2026-10-27: 적응형 주간 운동 계획 v2 + 다중 휴식 요일 Zero-Legacy) 전 작업에 대한 CTO/아키텍처 전수 감사 및 리팩토링 완수**:
+  1. **[P0 운영 차단 결함 근본 해결] 클라이언트 최소 지원 버전 드리프트(`38` → `39`) 및 구버전 프로필 덮어쓰기 차단**:
+     - `backend/containerapp.yaml` (`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE: '39'`) 및 `backend/app/config.py` (`minimum_supported_android_version_code: int = 39`)를 `39`로 정합화.
+     - `PUT /profile` (`backend/app/routers/profile.py`)에 `Depends(require_supported_android_client)` 버전 가드를 추가하여 구버전(`<=38`) 앱이 `restDays` 미포함 요청으로 다중 휴식 요일을 기본값 `[7]`로 덮어쓰는 데이터 유실 경로를 원천 차단 + 회귀 테스트(`test_update_profile_blocks_unsupported_client_from_resetting_rest_days`) 추가.
+  2. **[백엔드 아키텍처 & KST 시간대 SSoT 일원화]**:
+     - `backend/app/time_utils.py` 신설 (`KST`, `normalize_utc`, `today_kst`, `current_monday_kst`).
+     - `backend/app/routers/meal_plan.py`에서 컨테이너 UTC `datetime.date.today()` 사용으로 인해 매주 월요일 00:00~09:00 KST(9시간) 동안 지난주 월요일로 오판하던 버그를 `current_monday_kst()`로 근본 해결하고, `parse_day_plans_or_none` 및 `not dp.get("isRestDay")` 명시적 필터로 정합화.
+     - `backend/app/services/smile_training_service.py` 및 `backend/app/routers/weekly_plan.py`의 중복 KST 계산을 `app.time_utils`로 통합.
+     - `backend/app/services/meal_plan_service.py`의 비타입 `dict` 반환을 `DailyMealPlan`/`MealInfo` 강타입 모델로 전환하고, `backend/app/services/statistics_service.py`의 `day_plans` JSON 이중 파싱을 제거하여 단일 패스로 최적화.
+  3. **[Android 도메인 SSoT 일원화 & ViewModel 상태 불변식 수정]**:
+     - 5개 파일에 중복 산재해 있던 요일/휴식일 상수(`DEFAULT_REST_DAY`, `MIN_DAY_OF_WEEK`, `MAX_DAY_OF_WEEK`, `MAX_REST_DAYS`, `TOTAL_DAYS_IN_WEEK`) 및 정규화 함수(`normalizeRestDays`)를 `domain/model/UserProfile.kt` 단일 진실 공급원(SSoT)으로 통합.
+     - `ProfileViewModel.saveProfile()`에서 성공 시 조기 `return@launch`로 인해 `ProfileUiState.Loaded`의 `profile` 및 `isSaving = false` 상태가 갱신되지 않던 도달 불능 코드(dead code) 결함을 수정하고 `normalizeRestDays` 도메인 정규화를 적용.
+     - `HistoryViewModel`에 `fun refresh()`를 신설하고 `HistoryScreen`의 `PullToRefreshBox`에 연결하여, 전체 기록이 1페이지 이하(`hasMore == false`)일 때 당겨서 새로고침이 무시되던 버그를 해결 (`HistoryViewModelTest` 회귀 테스트 추가).
+  4. **[UI/UX 레이아웃 및 사용자 안내 고도화]**:
+     - `ProfileSummaryCard.kt`: `restDays` 전달 시 `"휴식 요일: 주 N일 (...) | 주 M일 운동"` 요약을 하단에 표시하도록 개선하고 `OnboardingScreen`·`ProfileScreen`에 연동.
+     - `ProfileScreen.kt`: `rememberSaveable`에 초기 프로필 키 및 `ArrayList` 직렬화 안전성을 부여하고, `"휴식 요일 및 신체 정보 변경은 다음 주 계획 생성부터 반영되며, 이미 생성된 이번 주 운동 계획은 유지됩니다."` 안내 문구를 추가.
+     - `WorkoutDetailScreen.kt`: `gifUrl.isBlank()`인 홈트레이닝 무장비 18종 운동 진입 시 `HomeExerciseGuideCard`(무장비 홈트레이닝 수행 가이드 배너)를 표시하도록 UX 개선.
+  5. **[전수 품질 게이트 및 문서 SSoT 정합화 검증]**:
+     - Backend: `ruff check` PASS, `ruff format --check` PASS, `mypy` (57 files) PASS, `pytest` **140 passed** (19 files).
+     - Android: `spotlessCheck` PASS, `detektDebug` PASS (0 issues), `testDebugUnitTest` **186 `@Test` passed** (36 files), `assembleDebug` & `assembleRelease` (R8 full mode + `lintVitalRelease`) PASS.
+     - Zero-Legacy 가드: `backend/app/`, `backend/tests/`, `backend/openapi.json`, `app/src/` 내 `rest_day` / `restDay` **0건**.
+
+**다음 할 일 (Next TODOs for User / Operator):**
+- 사용자의 운영 배포 요청 시 **C1(운영 DB `reset_v2_user_data.py` 실행) → C2(백엔드 ACA 배포 및 Alembic `d7f4a2c91b10` 적용) → C3(Android `v0.6.0`/`39` Play 프로덕션 릴리스)** 순서로 진행.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- 운영 배포는 사용자의 명시적 배포 요청 후 실행합니다.
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
+---
+
 ## 2026-10-27 (Gemini -> Claude/User) 휴식일 자유 다중 지정(Flexible Multi-Rest Days) 통합 구현 설계서(design) 작성 및 인덱스 정합화 완료 (사용자 검토 대기)
 
 **현재까지의 작업 상태 (Current Status):**
@@ -25,12 +59,13 @@
 
 ---
 
-## 2026-10-27 (Gemini -> Claude/User) 적응형 주간 운동 계획 v2 (Adaptive Weekly Workout Plan v2) R1~R6 엔드투엔드 구현, 다중 역할 검증 및 문서 동기화 완료 (운영 컷오버 C1~C3 사용자 승인 대기)
+## 2026-10-27 (Gemini -> Claude/User) 적응형 주간 운동 계획 v2 (Adaptive Weekly Workout Plan v2) & 휴식일 자유 다중 지정 (Flexible Multi-Rest Days, Zero-Legacy) 엔드투엔드 구현 및 검증 완료 (운영 컷오버 C1~C3 사용자 승인 대기)
 
 **현재까지의 작업 상태 (Current Status):**
-- **`docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md` 기반 R1~R6 풀스택 구현 완료**:
-  - **R1 & R2 (백엔드 API 계약·Alembic·데이터 초기화 스크립트)**:
-    - Alembic 마이그레이션 `backend/alembic/versions/d7f4a2c91b10_v2_weekly_plan_mode_and_reset_audit.py`: `weekly_plans.plan_mode`(`'gym'`/`'home'` CHECK 제약), `user_profiles.default_workout_plan_mode`(`'gym'`/`'home'` CHECK 제약, nullable), `data_reset_audits` 감사 테이블 추가 (Alembic head `d7f4a2c91b10`, 총 9개 리비전).
+- **`docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md` 및 `docs/plans/2026-10-27-flexible-rest-days-design.md` (r3 Zero-Legacy) 통합 풀스택 구현 완료 (`v0.6.0` / `versionCode=39`)**:
+  - **R1 & R2 (백엔드 API 계약·Alembic·다중 휴식일·데이터 초기화 스크립트)**:
+    - Alembic 마이그레이션 `backend/alembic/versions/d7f4a2c91b10_v2_weekly_plan_mode_and_reset_audit.py`: `weekly_plans.plan_mode`(`'gym'`/`'home'` CHECK 제약), `user_profiles.default_workout_plan_mode`(`'gym'`/`'home'` CHECK 제약, nullable), `user_profiles.rest_days`(`INTEGER[]` + `ck_user_profiles_rest_days_valid` 배열 제약, 레거시 `rest_day` 제거), `data_reset_audits` 감사 테이블 추가 (Alembic head `d7f4a2c91b10`, 총 9개 리비전).
+    - `UserProfile` ORM(`ARRAY(Integer).with_variant(JSON, "sqlite")`) 및 `UserProfileRequest`/`UserProfileResponse` 스키마에서 레거시 `rest_day` 완전 제거 후 `rest_days: list[int]` (`1..6`개, `1..7` 요일 오름차순 중복 제거) 단독 일원화 + `meal_plan.py` 프롬프트 휴식 요일 한글 반영.
     - `/v2/weekly-plan` 라우터 (`GET`, `POST` 201/409 `weekly_plan_exists`, `DELETE` 204, `PATCH /complete`, `GET /history`, `GET /previous`, `GET /statistics`) 신설 및 레거시 `/weekly-plan` 라우트 완전 제거.
     - `PUT /v2/profile/default-workout-plan-mode` (`updateDefaultWorkoutPlanModeV2`): 신체 측정 이력(`profile_measurement_histories`) 오염 없이 기본 운동 환경만 원자적으로 변경·해제.
     - `GET /app-compatibility` 공개 엔드포인트(`minimumSupportedVersionCode = 39`) 및 `require_supported_android_client` 의존성(`Eundun-Client-Version-Code` 헤더 검증, 구버전 `403 client_update_required`) 적용.

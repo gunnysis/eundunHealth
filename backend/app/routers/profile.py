@@ -17,6 +17,9 @@ PREFERENCE_ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     403: {"model": ClientUpdateRequiredErrorResponse, "description": "지원 종료된 Android 클라이언트"},
     404: {"model": ApiErrorResponse, "description": "프로필이 없음"},
 }
+PROFILE_WRITE_ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
+    403: PREFERENCE_ERROR_RESPONSES[403],
+}
 
 
 @router.get("/profile", response_model=UserProfileResponse, operation_id="getProfile")
@@ -28,10 +31,15 @@ async def get_profile(
     return await ProfileService(db).get_profile(user_id)
 
 
-@router.put("/profile", operation_id="updateProfile")
+@router.put(
+    "/profile",
+    responses=PROFILE_WRITE_ERROR_RESPONSES,
+    operation_id="updateProfile",
+)
 async def upsert_profile(
     req: UserProfileRequest,
     user_id: str = Depends(get_current_user_id),
+    _: None = Depends(require_supported_android_client),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     """프로필을 생성하거나 갱신한다. 변경 이력에 스냅샷을 자동 기록한다."""

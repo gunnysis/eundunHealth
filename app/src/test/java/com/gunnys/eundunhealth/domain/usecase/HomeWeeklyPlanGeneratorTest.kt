@@ -12,25 +12,28 @@ class HomeWeeklyPlanGeneratorTest {
     private val monday = LocalDate.of(2026, 6, 8)
 
     @Test
-    fun `결정론성 — 같은 weekStart 와 restDay 는 항상 동일한 7일 계획을 생성한다`() {
-        val first = HomeWeeklyPlanGenerator.generate(monday, restDay = 7)
-        val second = HomeWeeklyPlanGenerator.generate(monday, restDay = 7)
+    fun `결정론성 — 같은 weekStart 와 restDays 는 항상 동일한 7일 계획을 생성한다`() {
+        val first = HomeWeeklyPlanGenerator.generate(monday, restDays = listOf(2, 4, 6, 7))
+        val second = HomeWeeklyPlanGenerator.generate(monday, restDays = listOf(2, 4, 6, 7))
         assertEquals(first, second)
     }
 
     @Test
-    fun `7일 불변식 및 지정 휴식일 외 모든 날에 최소 1개 이상의 무장비 운동이 배치된다`() {
-        for (restDay in 1..7) {
-            val days = HomeWeeklyPlanGenerator.generate(monday, restDay)
+    fun `7일 불변식 및 단일·다중 휴식일 외 모든 날에 최소 1개 이상의 무장비 운동이 배치된다`() {
+        for (restCount in 1..6) {
+            val restDays = (1..restCount).toList()
+            val days = HomeWeeklyPlanGenerator.generate(monday, restDays)
             assertEquals(7, days.size)
             assertEquals((0L..6L).map(monday::plusDays), days.map { it.date })
-            assertEquals(1, days.count { it.isRestDay })
-            val restPlan = days.single { it.isRestDay }
-            assertEquals(DayOfWeek.of(restDay), restPlan.date.dayOfWeek)
-            assertTrue(restPlan.exercises.isEmpty())
+            assertEquals(restCount, days.count { it.isRestDay })
+            assertEquals(
+                restDays.map { DayOfWeek.of(it) }.toSet(),
+                days.filter { it.isRestDay }.map { it.date.dayOfWeek }.toSet(),
+            )
+            assertTrue(days.filter { it.isRestDay }.all { it.exercises.isEmpty() })
 
             val workoutDays = days.filterNot { it.isRestDay }
-            assertEquals(6, workoutDays.size)
+            assertEquals(7 - restCount, workoutDays.size)
             assertTrue(workoutDays.all { it.exercises.isNotEmpty() })
             workoutDays.flatMap { it.exercises }.forEach { ex ->
                 assertTrue(ex.id.startsWith("local:home:") && ex.id.endsWith(":v2.0"))

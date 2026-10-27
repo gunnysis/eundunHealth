@@ -9,6 +9,7 @@ import com.gunnys.eundunhealth.data.remote.util.bodyOrThrow
 import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
+import com.gunnys.eundunhealth.domain.model.normalizeRestDays
 import com.gunnys.eundunhealth.domain.model.toWorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import kotlinx.coroutines.CancellationException
@@ -27,6 +28,7 @@ class UserRepositoryImpl @Inject constructor(
     }
 
     override suspend fun saveProfile(profile: UserProfile): Result<Unit> = runSuspendCatching {
+        val normalizedRestDays = normalizeRestDays(profile.restDays)
         val response = api.updateProfile(
             UserProfileRequest(
                 heightCm = BigDecimal.valueOf(profile.heightCm.toDouble()),
@@ -34,7 +36,7 @@ class UserRepositoryImpl @Inject constructor(
                 gender = profile.gender.name.lowercase(),
                 bodyFatPct = profile.bodyFatPercent?.let { BigDecimal.valueOf(it.toDouble()) },
                 muscleMassKg = profile.muscleMassKg?.let { BigDecimal.valueOf(it.toDouble()) },
-                restDay = profile.restDay,
+                restDays = normalizedRestDays,
             ),
         )
         if (!response.isSuccessful) throw HttpException(response)
@@ -61,7 +63,7 @@ class UserRepositoryImpl @Inject constructor(
             .getOrDefault(Gender.UNSPECIFIED),
         bodyFatPercent = bodyFatPct?.toFloat(),
         muscleMassKg = muscleMassKg?.toFloat(),
-        restDay = restDay ?: 7,
+        restDays = normalizeRestDays(restDays),
         defaultWorkoutPlanMode = defaultWorkoutPlanMode?.value?.toWorkoutPlanMode(),
     )
 }

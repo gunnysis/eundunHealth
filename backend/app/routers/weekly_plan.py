@@ -1,4 +1,3 @@
-import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -19,6 +18,7 @@ from app.schemas.weekly_plan import (
 )
 from app.services.statistics_service import StatisticsService
 from app.services.weekly_plan_service import WeeklyPlanService
+from app.time_utils import today_kst
 
 router = APIRouter(prefix="/v2/weekly-plan", tags=["weekly-plan-v2"])
 
@@ -37,7 +37,7 @@ DELETE_ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
 
 @router.get("", response_model=WeeklyPlanResponse, operation_id="getWeeklyPlanV2")
 async def get_plan(
-    week_start: str = Query(default_factory=lambda: str(datetime.date.today()), alias="weekStart"),
+    week_start: str = Query(default_factory=lambda: str(today_kst()), alias="weekStart"),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> WeeklyPlanResponse:
@@ -104,7 +104,7 @@ async def history(
 
 @router.get("/previous", response_model=WeeklyPlanResponse | None, operation_id="getPreviousWeeklyPlanV2")
 async def previous(
-    week_start: str = Query(default_factory=lambda: str(datetime.date.today()), alias="weekStart"),
+    week_start: str = Query(default_factory=lambda: str(today_kst()), alias="weekStart"),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> WeeklyPlanResponse | None:

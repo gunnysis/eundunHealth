@@ -4,7 +4,6 @@ import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.domain.model.ExercisePrescriptionUnit
 import com.gunnys.eundunhealth.domain.model.ExerciseType
-import java.time.DayOfWeek
 import java.time.LocalDate
 import kotlin.random.Random
 
@@ -252,7 +251,7 @@ object HomeExerciseCatalog {
 }
 
 object HomeWeeklyPlanGenerator {
-    fun generate(weekStart: LocalDate, restDay: Int): List<DayPlan> {
+    fun generate(weekStart: LocalDate, restDays: List<Int>): List<DayPlan> {
         val random = Random(weekStart.toEpochDay())
         val push = HomeExerciseCatalog.push.shuffled(random)
         val pull = HomeExerciseCatalog.pull.shuffled(random)
@@ -261,17 +260,17 @@ object HomeWeeklyPlanGenerator {
         val cardio = HomeExerciseCatalog.cardio.shuffled(random)
         val slots = listOf(
             push.take(3) + core.take(1),
-            cardio.take(2),
-            pull,
-            cardio.drop(1).take(2),
             legs,
+            pull,
+            cardio.take(2),
             listOf(push.last(), legs[2], core.last()),
+            cardio.drop(1).take(2),
         )
-        val restDayOfWeek = DayOfWeek.of(restDay.coerceIn(1, 7))
+        val restDayOfWeeks = normalizeRestDays(restDays)
         var slotIndex = 0
         return (0L..6L).map { offset ->
             val date = weekStart.plusDays(offset)
-            if (date.dayOfWeek == restDayOfWeek) {
+            if (date.dayOfWeek in restDayOfWeeks) {
                 DayPlan(date, emptyList(), isRestDay = true, isCompleted = false)
             } else {
                 DayPlan(date, slots[slotIndex++], isRestDay = false, isCompleted = false)

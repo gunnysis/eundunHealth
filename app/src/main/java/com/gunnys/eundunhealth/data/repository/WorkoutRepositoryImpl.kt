@@ -111,7 +111,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         val weekStart = currentWeekStart()
         val days = when (mode) {
             WorkoutPlanMode.GYM -> generateGymPlan(profile, weekStart)
-            WorkoutPlanMode.HOME -> HomeWeeklyPlanGenerator.generate(weekStart, profile.restDay)
+            WorkoutPlanMode.HOME -> HomeWeeklyPlanGenerator.generate(weekStart, profile.restDays)
         }
         validateDays(days, weekStart)
 
@@ -211,7 +211,7 @@ class WorkoutRepositoryImpl @Inject constructor(
                 it.toDomain(1, 30, ExerciseType.CARDIO)
             }
         }.getOrDefault(emptyList())
-        return WeeklyPlanGenerator.generate(weekStart, profile.restDay, push, pull, legs, cardio)
+        return WeeklyPlanGenerator.generate(weekStart, profile.restDays, push, pull, legs, cardio)
     }
 
     private fun WeeklyPlanResponse.toDomainStrict(): WeeklyPlan = WeeklyPlan(

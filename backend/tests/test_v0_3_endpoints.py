@@ -2,7 +2,7 @@
 
 - GET /profile/history: 프로필 변경 이력 (PUT /profile마다 한 줄 추가)
 - GET/PUT /goals: 목표 upsert / 목록
-- PUT /profile + rest_day: 휴식일 변경
+- PUT /profile + restDays: 다중 휴식일 변경 및 검증
 """
 
 import pytest
@@ -97,29 +97,37 @@ async def test_goal_rejects_non_positive_value(client):
     assert resp.status_code == 422
 
 
-# === PUT /profile + rest_day (§L) ===
+# === PUT /profile + restDays (§L & PROP-01) ===
 
 
 @pytest.mark.asyncio
-async def test_profile_rest_day_default_is_7(client):
-    # rest_day 미지정 → 기본 7 (Sunday)
+async def test_profile_rest_days_default_is_sunday(client):
+    # restDays 미지정 → 기본 [7] (Sunday)
     await client.put("/profile", json={"heightCm": 175.0, "weightKg": 70.0})
     resp = await client.get("/profile")
-    assert resp.json()["restDay"] == 7
+    assert resp.json()["restDays"] == [7]
 
 
 @pytest.mark.asyncio
-async def test_profile_rest_day_custom(client):
-    # 휴식일을 수요일로 변경
-    await client.put("/profile", json={"heightCm": 175.0, "weightKg": 70.0, "restDay": 3})
+async def test_profile_rest_days_custom_multi_and_dedup_sorted(client):
+    # 다중 휴식일(화, 목, 토, 일) 및 중복/비정렬 입력 시 오름차순 중복 제거 검증
+    await client.put(
+        "/profile",
+        json={"heightCm": 175.0, "weightKg": 70.0, "restDays": [7, 2, 6, 4, 2]},
+    )
     resp = await client.get("/profile")
-    assert resp.json()["restDay"] == 3
+    assert resp.json()["restDays"] == [2, 4, 6, 7]
 
 
 @pytest.mark.asyncio
-async def test_profile_rest_day_out_of_range_rejected(client):
-    resp = await client.put("/profile", json={"heightCm": 175.0, "weightKg": 70.0, "restDay": 8})
-    assert resp.status_code == 422
+async def test_profile_rest_days_out_of_range_or_invalid_count_rejected(client):
+    # 범위 밖 요일(0, 8), 빈 배열([]), 7일 전체 휴식([1..7]) 거부
+    for invalid_days in ([8], [0], [], [1, 2, 3, 4, 5, 6, 7], [1, 1, 1, 1, 1, 1, 1]):
+        resp = await client.put(
+            "/profile",
+            json={"heightCm": 175.0, "weightKg": 70.0, "restDays": invalid_days},
+        )
+        assert resp.status_code == 422
 
 
 # === 배지 keys (§N) — VALID_BADGE_KEYS 확장 검증 ===

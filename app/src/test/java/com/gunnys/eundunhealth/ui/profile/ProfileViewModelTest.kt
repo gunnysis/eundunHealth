@@ -1,6 +1,8 @@
 package com.gunnys.eundunhealth.ui.profile
 
+import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.domain.model.UserProfile
+import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import io.mockk.coEvery
@@ -16,6 +18,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -28,7 +31,16 @@ class ProfileViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var userRepo: UserRepository
     private lateinit var authRepo: AuthRepository
-    private val profile = UserProfile("user-1", 175f, 70f, com.gunnys.eundunhealth.domain.model.Gender.MALE, 18f, 33f, restDay = 7)
+    private val profile = UserProfile(
+        "user-1",
+        175f,
+        70f,
+        Gender.MALE,
+        18f,
+        33f,
+        restDays = listOf(7),
+        defaultWorkoutPlanMode = WorkoutPlanMode.HOME,
+    )
 
     @Before
     fun setup() {
@@ -49,13 +61,47 @@ class ProfileViewModelTest {
         val vm = createViewModel()
         advanceUntilIdle()
 
-        vm.saveProfile(175f, 70f, com.gunnys.eundunhealth.domain.model.Gender.MALE, 18f, 33f)
+        vm.saveProfile(175f, 70f, Gender.MALE, 18f, 33f)
         advanceUntilIdle()
 
         val state = vm.uiState.value as ProfileUiState.Loaded
         assertNotNull("로그인 필요 saveError 상태", state.saveError)
         coVerify(exactly = 0) { userRepo.saveProfile(any()) }
         assertFalse(state.isSaving)
+    }
+
+    @Test
+    fun `saveProfile 는 다중 휴식 요일을 정규화하고 기존 defaultWorkoutPlanMode 를 보존하여 저장한다`() = runTest {
+        coEvery { authRepo.getCurrentUserId() } returns "user-1"
+        coEvery { userRepo.saveProfile(any()) } returns Result.success(Unit)
+        val vm = createViewModel()
+        val effects = mutableListOf<ProfileSideEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.sideEffect.collect { effects.add(it) } }
+        advanceUntilIdle()
+
+        vm.saveProfile(
+            heightCm = 176f,
+            weightKg = 68f,
+            gender = Gender.MALE,
+            bodyFatPct = 16f,
+            muscleMassKg = 34f,
+            restDays = listOf(7, 2, 4, 2),
+        )
+        advanceUntilIdle()
+
+        val state = vm.uiState.value as ProfileUiState.Loaded
+        assertEquals(listOf(2, 4, 7), state.profile.restDays)
+        assertEquals(WorkoutPlanMode.HOME, state.profile.defaultWorkoutPlanMode)
+        assertFalse(state.isSaving)
+        assertTrue(effects.any { it is ProfileSideEffect.SavedAndNavigateBack })
+        coVerify(exactly = 1) {
+            userRepo.saveProfile(
+                match {
+                    it.restDays == listOf(2, 4, 7) &&
+                        it.defaultWorkoutPlanMode == WorkoutPlanMode.HOME
+                },
+            )
+        }
     }
 
     @Test

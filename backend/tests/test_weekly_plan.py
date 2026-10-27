@@ -118,24 +118,33 @@ async def test_unsupported_client_is_blocked_only_on_v2_mutation(client, sample_
     blocked = await client.post(
         "/v2/weekly-plan",
         json=sample_plan,
-        headers={"Eundun-Client-Version-Code": "0"},
+        headers={"Eundun-Client-Version-Code": "38"},
     )
     assert blocked.status_code == 403
     assert blocked.json() == {
         "code": "client_update_required",
         "message": "앱 업데이트가 필요합니다",
-        "minimumSupportedVersionCode": 38,
+        "minimumSupportedVersionCode": 39,
     }
     assert (await client.get("/v2/weekly-plan", params={"weekStart": sample_plan["weekStart"]})).status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_public_app_compatibility(client):
-    resp = await client.get("/app-compatibility", params={"platform": "android", "versionCode": 38})
-    assert resp.status_code == 200
-    assert resp.json() == {
+    resp_old = await client.get("/app-compatibility", params={"platform": "android", "versionCode": 38})
+    assert resp_old.status_code == 200
+    assert resp_old.json() == {
         "platform": "android",
-        "minimumSupportedVersionCode": 38,
+        "minimumSupportedVersionCode": 39,
+        "updateRequired": True,
+        "playPackageUri": "market://details?id=com.gunnys.eundunhealth",
+    }
+
+    resp_supported = await client.get("/app-compatibility", params={"platform": "android", "versionCode": 39})
+    assert resp_supported.status_code == 200
+    assert resp_supported.json() == {
+        "platform": "android",
+        "minimumSupportedVersionCode": 39,
         "updateRequired": False,
         "playPackageUri": "market://details?id=com.gunnys.eundunhealth",
     }

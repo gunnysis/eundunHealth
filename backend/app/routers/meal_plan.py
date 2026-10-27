@@ -8,12 +8,24 @@ from app.database import get_db
 from app.dependencies import get_current_user_id
 from app.exceptions import AppException, NotFoundException
 from app.schemas.meal_plan import WeeklyMealPlanResponse
+from app.services.day_plans import parse_day_plans_or_none
 from app.services.meal_ai_client import AzureMaaSMealClient
 from app.services.meal_plan_service import MealPlanService
 from app.services.profile_service import ProfileService
 from app.services.weekly_plan_service import WeeklyPlanService
+from app.time_utils import current_monday_kst
 
 router = APIRouter(prefix="/meals", tags=["meals"])
+
+WEEKDAY_KO: dict[int, str] = {
+    1: "월요일",
+    2: "화요일",
+    3: "수요일",
+    4: "목요일",
+    5: "금요일",
+    6: "토요일",
+    7: "일요일",
+}
 
 
 @router.post("/generate", response_model=WeeklyMealPlanResponse)
@@ -50,34 +62,30 @@ async def generate_meal_plan(
     profile = await profile_service.get_profile(user_id)
 
     gender_str = "여성" if profile.gender == "female" else "남성" if profile.gender == "male" else "성별 무관"
+    rest_days_str = ", ".join(WEEKDAY_KO.get(d, f"{d}요일") for d in profile.rest_days)
     profile_summary = f"""
     - 성별: {gender_str}
     - 키: {profile.height_cm}cm
     - 몸무게: {profile.weight_kg}kg
     - 체지방률: {profile.body_fat_pct or "모름"}%
     - 골격근량: {profile.muscle_mass_kg or "모름"}kg
+    - 설정된 휴식 요일: {rest_days_str}
     """
 
-    # 2. 이번 주 운동 계획 조회
-    import datetime
-
-    # 이번 주 월요일 계산
-    today = datetime.date.today()
-    monday = today - datetime.timedelta(days=today.weekday())
+    # 2. 이번 주 운동 계획 조회 (KST 월요일 기준)
+    monday = current_monday_kst()
     week_start = monday.isoformat()
 
-    workout_dates = []
+    workout_dates: list[str] = []
     try:
         plan = await weekly_plan_service.get_plan(user_id, week_start)
-        # plan.day_plans는 JSON string이므로 파싱 필요
-        import json
-
-        day_plans = json.loads(plan.day_plans)
+        day_plans = parse_day_plans_or_none(plan.day_plans) or []
         for dp in day_plans:
-            # day format: "2026-09-21"
+            if not isinstance(dp, dict) or dp.get("isRestDay"):
+                continue
             date = dp.get("date")
             exercises = dp.get("exercises", [])
-            if date and exercises:
+            if isinstance(date, str) and date and exercises:
                 workout_dates.append(date)
     except NotFoundException:
         # 운동 계획이 없는 정상적인 첫 사용자 경로만 빈 목록으로 처리한다.
@@ -107,10 +115,7 @@ async def get_current_meal_plan(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> WeeklyMealPlanResponse:
     """이번 주의 식단(DB에 저장된 가장 최근 생성본)을 반환한다."""
-    import datetime
-
-    today = datetime.date.today()
-    monday = today - datetime.timedelta(days=today.weekday())
+    monday = current_monday_kst()
 
     meal_service = MealPlanService(db)
     plan = await meal_service.get_current_plan(user_id, monday)

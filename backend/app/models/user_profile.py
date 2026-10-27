@@ -1,11 +1,13 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Float, Integer, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import JSON, CheckConstraint, DateTime, Float, Integer, String, func
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+
+RestDaysType = ARRAY(Integer).with_variant(JSON, "sqlite")
 
 
 class UserProfile(Base):
@@ -18,7 +20,12 @@ class UserProfile(Base):
     gender: Mapped[str] = mapped_column(String(20), nullable=False, server_default="unspecified")
     body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     muscle_mass_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
-    rest_day: Mapped[int] = mapped_column(Integer, default=7, server_default="7")
+    rest_days: Mapped[list[int]] = mapped_column(
+        RestDaysType,
+        nullable=False,
+        default=lambda: [7],
+        server_default="{7}",
+    )
     default_workout_plan_mode: Mapped[str | None] = mapped_column(String(4), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -628,12 +628,14 @@
             ],
             "title": "Musclemasskg"
           },
-          "restDay": {
-            "default": 7,
-            "maximum": 7.0,
-            "minimum": 1.0,
-            "title": "Restday",
-            "type": "integer"
+          "restDays": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Restdays",
+            "type": "array"
           },
           "weightKg": {
             "maximum": 500.0,
@@ -691,10 +693,12 @@
             ],
             "title": "Musclemasskg"
           },
-          "restDay": {
-            "default": 7,
-            "title": "Restday",
-            "type": "integer"
+          "restDays": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Restdays",
+            "type": "array"
           },
           "userId": {
             "title": "Userid",
@@ -1336,6 +1340,24 @@
       "put": {
         "description": "프로필을 생성하거나 갱신한다. 변경 이력에 스냅샷을 자동 기록한다.",
         "operationId": "updateProfile",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Eundun-Client-Version-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Eundun-Client-Version-Code"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1360,6 +1382,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientUpdateRequiredErrorResponse"
+                }
+              }
+            },
+            "description": "지원 종료된 Android 클라이언트"
           },
           "422": {
             "content": {

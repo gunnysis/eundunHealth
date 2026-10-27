@@ -4,9 +4,10 @@
 
 ---
 
-## [v0.6.0] — 2026-10-27 — 적응형 주간 운동 계획 v2 (헬스장 · 무장비 홈트레이닝) & ML Kit R8 핫픽스
+## [v0.6.0] — 2026-10-27 — 적응형 주간 운동 계획 v2 (헬스장 · 무장비 홈트레이닝) · 다중 휴식일 지정 & ML Kit R8 핫픽스
 
-### 🏋️‍♂️🏠 적응형 주간 운동 계획 v2 (`WorkoutPlanMode.GYM` / `HOME`, `/v2/weekly-plan`, Alembic `d7f4a2c91b10`)
+### 🏋️‍♂️🏠 적응형 주간 운동 계획 v2 & 휴식일 자유 다중 지정 (`WorkoutPlanMode.GYM` / `HOME`, `restDays`, `/v2/weekly-plan`, Alembic `d7f4a2c91b10`)
+- **휴식일 자유 다중 지정 (`restDays: List<Int>`, Zero-Legacy 전환)**: 단일 휴식일(`restDay: Int`) 레거시를 백엔드·OpenAPI·Android 전 계층에서 완전 제거하고, 주 1~6일 범위의 다중 휴식일(`user_profiles.rest_days` PostgreSQL `INTEGER[]` + `ck_user_profiles_rest_days_valid` 배열 제약)과 대근육 우선순위 슬롯 큐(`[Push ➔ Legs ➔ Pull ➔ Cardio A ➔ Mixed ➔ Cardio B]`), Material 3 `MultiChoiceSegmentedButtonRow` + 빠른 프리셋(`RestDaysSelector`, 온보딩 및 프로필 수정 공용)을 도입했다.
 - **명시적 주간 계획 생명주기**: 홈 진입 시 무조건 헬스장 계획을 자동 생성하던 v1 방식을 폐기하고, 기본 운동 환경(`defaultWorkoutPlanMode`: `gym` / `home` / `null`)이 설정된 경우 KST 주차당 1회만 자동 생성을 시도하며, 미설정(`null`)이거나 이번 주 계획을 삭제한 경우에는 `NoWeeklyPlanCard`와 `WorkoutPlanModeSelectionSheet`를 통해 사용자가 직접 환경을 선택해 생성한다.
 - **무장비·저충격 홈트레이닝 18종 카탈로그 (`HomeWeeklyPlanGenerator`)**: 장비 제로(`equipment = "없음"`), 층간소음 방지 저충격, 오프라인 완결(`gifUrl = ""`), 안정적 ID(`local:home:<slug>:v2.0`), 초 단위 처방(`ExercisePrescriptionUnit.SECONDS`, 예: `3세트 × 30초`)을 지원하는 18종 홈트 카탈로그와 7일 결정론적 분할 템플릿을 도입했다.
 - **백엔드 v2 계약 & 클라이언트 호환성 가드**:

@@ -1,11 +1,11 @@
 # [PROP-01] 휴식일 자유 다중 지정 (Flexible Multi-Rest Days)
 
-> **상태 (Status)**: `Promoted to Plan` ([통합 구현 설계서](file:///c:/programming/apps/eundunHealth/docs/plans/2026-10-27-flexible-rest-days-design.md)로 승격 완료)  
+> **상태 (Status)**: `Promoted to Plan` ([통합 구현 설계서](file:///C:/Users/Administrator/apps_ln/eundunHealth/docs/plans/2026-10-27-flexible-rest-days-design.md)로 승격 완료)  
 > **제안일자 (Date)**: 2026-10-27  
 > **제안자 (Author)**: Antigravity IDE (Gemini) & User  
-> **목표 마일스톤 (Target Milestone)**: `v0.7.0` (차기)  
-> **영향 도메인 (Affected Domains)**: `Profile`, `WeeklyPlan`, `Progress/Statistics`, `Backend API`, `Room`  
-> **승격된 설계 문서**: [docs/plans/2026-10-27-flexible-rest-days-design.md](file:///c:/programming/apps/eundunHealth/docs/plans/2026-10-27-flexible-rest-days-design.md)  
+> **목표 마일스톤 (Target Milestone)**: `v0.6.0` (versionCode `39` 운영 배포 전 통합)  
+> **영향 도메인 (Affected Domains)**: `Profile`, `Onboarding`, `WeeklyPlan`, `MealPlan`, `Progress/Statistics`, `Backend API`  
+> **승격된 설계 문서**: [docs/plans/2026-10-27-flexible-rest-days-design.md](file:///C:/Users/Administrator/apps_ln/eundunHealth/docs/plans/2026-10-27-flexible-rest-days-design.md)  
 > **후속 연계 기획**: [PROP-04: 운동 일수($N$) 기반 적응형 동적 분할 루틴 엔진](2026-10-27-adaptive-split-engine.md)
 
 ---

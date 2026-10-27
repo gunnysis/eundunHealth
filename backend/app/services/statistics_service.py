@@ -40,7 +40,7 @@ class StatisticsService:
         ]
 
         # 스트릭: 100% 완료한 주만 카운트. current_streak는 최근주부터, longest는 전체에서 최댓값
-        flags = [self._completion_rate(p) >= 1.0 for p in plans_asc]
+        flags = [r.completion_rate >= 1.0 for r in weekly_rates]
         current = self._trailing_run(flags)
         longest = self._longest_run(flags)
 

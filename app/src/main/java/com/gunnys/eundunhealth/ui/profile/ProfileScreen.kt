@@ -23,9 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -34,7 +31,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -42,8 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,6 +47,7 @@ import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.GenderSelector
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
+import com.gunnys.eundunhealth.ui.components.RestDaysSelector
 import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,7 +110,7 @@ fun ProfileEditScreen(
                     initialWeight = state.profile.weightKg,
                     initialBodyFat = state.profile.bodyFatPercent ?: 20f,
                     initialMuscleMass = state.profile.muscleMassKg ?: 30f,
-                    initialRestDay = state.profile.restDay,
+                    initialRestDays = state.profile.restDays,
                     isSaving = state.isSaving,
                     isDeleting = state.isDeleting,
                     saveError = state.saveError,
@@ -164,21 +159,21 @@ private fun ProfileEditContent(
     initialWeight: Float,
     initialBodyFat: Float,
     initialMuscleMass: Float,
-    initialRestDay: Int,
+    initialRestDays: List<Int>,
     isSaving: Boolean,
     isDeleting: Boolean,
     saveError: AppError?,
     deleteError: AppError?,
-    onSave: (Float, Float, com.gunnys.eundunhealth.domain.model.Gender, Float, Float, Int) -> Unit,
+    onSave: (Float, Float, com.gunnys.eundunhealth.domain.model.Gender, Float, Float, List<Int>) -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var gender by rememberSaveable { mutableStateOf(initialGender) }
-    var height by rememberSaveable { mutableFloatStateOf(initialHeight) }
-    var weight by rememberSaveable { mutableFloatStateOf(initialWeight) }
-    var bodyFat by rememberSaveable { mutableFloatStateOf(initialBodyFat) }
-    var muscleMass by rememberSaveable { mutableFloatStateOf(initialMuscleMass) }
-    var restDay by rememberSaveable { mutableIntStateOf(initialRestDay.coerceIn(1, 7)) }
+    var gender by rememberSaveable(initialGender) { mutableStateOf(initialGender) }
+    var height by rememberSaveable(initialHeight) { mutableFloatStateOf(initialHeight) }
+    var weight by rememberSaveable(initialWeight) { mutableFloatStateOf(initialWeight) }
+    var bodyFat by rememberSaveable(initialBodyFat) { mutableFloatStateOf(initialBodyFat) }
+    var muscleMass by rememberSaveable(initialMuscleMass) { mutableFloatStateOf(initialMuscleMass) }
+    var restDays by rememberSaveable(initialRestDays) { mutableStateOf<List<Int>>(ArrayList(initialRestDays)) }
 
     Column(
         modifier = modifier
@@ -212,7 +207,7 @@ private fun ProfileEditContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        RestDaySelector(restDay = restDay, onRestDayChange = { restDay = it })
+        RestDaysSelector(restDays = restDays, onRestDaysChange = { restDays = ArrayList(it) })
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -222,6 +217,14 @@ private fun ProfileEditContent(
             bodyFat = bodyFat,
             muscleMass = muscleMass,
             title = "변경 요약",
+            restDays = restDays,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "변경된 신체 정보와 휴식 요일은 다음 주간 운동 계획 생성 시부터 반영됩니다 (이미 생성된 이번 주 계획은 유지됩니다)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp),
         )
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -235,7 +238,7 @@ private fun ProfileEditContent(
             isSaving = isSaving,
             isDeleting = isDeleting,
             deleteError = deleteError,
-            onSave = { onSave(height, weight, gender, bodyFat, muscleMass, restDay) },
+            onSave = { onSave(height, weight, gender, bodyFat, muscleMass, restDays) },
             onDeleteClick = onDeleteClick,
         )
 
@@ -265,27 +268,6 @@ private fun AppVersionLabel(modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,
     )
-}
-
-@Composable
-private fun RestDaySelector(restDay: Int, onRestDayChange: (Int) -> Unit) {
-    Text(
-        "휴식일",
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.semantics { heading() },
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    val dayLabels = listOf("월", "화", "수", "목", "금", "토", "일")
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        dayLabels.forEachIndexed { idx, label ->
-            val dayNumber = idx + 1
-            SegmentedButton(
-                selected = restDay == dayNumber,
-                onClick = { onRestDayChange(dayNumber) },
-                shape = SegmentedButtonDefaults.itemShape(index = idx, count = dayLabels.size),
-            ) { Text(label) }
-        }
-    }
 }
 
 @Composable

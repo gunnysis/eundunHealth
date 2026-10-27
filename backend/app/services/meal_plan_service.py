@@ -1,12 +1,12 @@
 import typing
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.meal_plan import MealPlan, MealPlanItem
-from app.schemas.meal_plan import WeeklyMealPlanResponse
+from app.schemas.meal_plan import DailyMealPlan, MealInfo, WeeklyMealPlanResponse
 
 
 class MealPlanService:
@@ -31,22 +31,25 @@ class MealPlanService:
 
         # 맵핑 (MealPlan -> WeeklyMealPlanResponse)
         # items 배열을 요일별(day)로 그룹화하여 DailyMealPlan 리스트를 만듭니다.
-        daily_plans: dict[str, dict[str, typing.Any]] = {}
+        daily_meals: dict[str, tuple[bool, list[MealInfo]]] = {}
         for item in plan.items:
-            if item.day not in daily_plans:
-                daily_plans[item.day] = {"day": item.day, "is_rest_day": item.is_rest_day, "meals": []}
-            daily_plans[item.day]["meals"].append(
-                {
-                    "meal_type": item.meal_type,
-                    "menu_name": item.menu_name,
-                    "calories": item.calories,
-                    "protein_g": item.protein_g,
-                    "carbs_g": item.carbs_g,
-                    "fat_g": item.fat_g,
-                }
+            if item.day not in daily_meals:
+                daily_meals[item.day] = (item.is_rest_day, [])
+            daily_meals[item.day][1].append(
+                MealInfo(
+                    meal_type=item.meal_type,
+                    menu_name=item.menu_name,
+                    calories=item.calories,
+                    protein_g=item.protein_g,
+                    carbs_g=item.carbs_g,
+                    fat_g=item.fat_g,
+                )
             )
 
-        weekly_plan_list = list(daily_plans.values())
+        weekly_plan_list = [
+            DailyMealPlan(day=day, is_rest_day=is_rest_day, meals=meals)
+            for day, (is_rest_day, meals) in daily_meals.items()
+        ]
         return WeeklyMealPlanResponse(weekly_plan=weekly_plan_list, summary=plan.summary)
 
     async def save_plan(
@@ -94,7 +97,5 @@ class MealPlanService:
 
     async def delete_all_by_user(self, user_id: str) -> None:
         """사용자의 모든 식단 계획을 삭제합니다."""
-        from sqlalchemy import delete
-
         stmt = delete(MealPlan).where(MealPlan.user_id == user_id)
         await self.db.execute(stmt)

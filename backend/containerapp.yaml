@@ -86,7 +86,7 @@ properties:
       - name: CORS_ORIGINS
         value: '[]'
       - name: MINIMUM_SUPPORTED_ANDROID_VERSION_CODE
-        value: '38'
+        value: '39'
       probes:
       - type: Startup
         httpGet:

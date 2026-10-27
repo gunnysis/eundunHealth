@@ -27,11 +27,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gunnys.eundunhealth.domain.model.DEFAULT_REST_DAY
 import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.GenderSelector
 import com.gunnys.eundunhealth.ui.components.ProfileSummaryCard
+import com.gunnys.eundunhealth.ui.components.RestDaysSelector
 import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 
 @Composable
@@ -44,6 +46,7 @@ fun OnboardingScreen(
     var weight by rememberSaveable { mutableFloatStateOf(65f) }
     var bodyFat by rememberSaveable { mutableFloatStateOf(20f) }
     var muscleMass by rememberSaveable { mutableFloatStateOf(30f) }
+    var restDays by rememberSaveable { mutableStateOf<List<Int>>(ArrayList(listOf(DEFAULT_REST_DAY))) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     ObserveAsEvents(viewModel.sideEffect) { effect ->
@@ -97,11 +100,16 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            RestDaysSelector(restDays = restDays, onRestDaysChange = { restDays = ArrayList(it) })
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             ProfileSummaryCard(
                 height = height,
                 weight = weight,
                 bodyFat = bodyFat,
                 muscleMass = muscleMass,
+                restDays = restDays,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -113,7 +121,7 @@ fun OnboardingScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = { viewModel.saveProfile(height, weight, gender, bodyFat, muscleMass) },
+                onClick = { viewModel.saveProfile(height, weight, gender, bodyFat, muscleMass, restDays) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isLoading,
             ) {

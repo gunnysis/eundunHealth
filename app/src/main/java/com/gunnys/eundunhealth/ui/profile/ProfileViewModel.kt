@@ -4,7 +4,9 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.DEFAULT_REST_DAY
 import com.gunnys.eundunhealth.domain.model.UserProfile
+import com.gunnys.eundunhealth.domain.model.normalizeRestDays
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
@@ -79,7 +81,7 @@ class ProfileViewModel @Inject constructor(
         gender: com.gunnys.eundunhealth.domain.model.Gender,
         bodyFatPct: Float,
         muscleMassKg: Float,
-        restDay: Int = 7,
+        restDays: List<Int> = listOf(DEFAULT_REST_DAY),
     ) = viewModelScope.launch {
         val current = _uiState.value
         val existingMode = (current as? ProfileUiState.Loaded)?.profile?.defaultWorkoutPlanMode
@@ -93,35 +95,32 @@ class ProfileViewModel @Inject constructor(
             }
             return@launch
         }
+        val updatedProfile = UserProfile(
+            userId = userId,
+            heightCm = heightCm,
+            weightKg = weightKg,
+            gender = gender,
+            bodyFatPercent = bodyFatPct,
+            muscleMassKg = muscleMassKg,
+            restDays = normalizeRestDays(restDays),
+            defaultWorkoutPlanMode = existingMode,
+        )
         runCatching {
-            userRepo.saveProfile(
-                UserProfile(
-                    userId = userId,
-                    heightCm = heightCm,
-                    weightKg = weightKg,
-                    gender = gender,
-                    bodyFatPercent = bodyFatPct,
-                    muscleMassKg = muscleMassKg,
-                    restDay = restDay,
-                    defaultWorkoutPlanMode = existingMode,
-                ),
-            ).getOrThrow()
+            userRepo.saveProfile(updatedProfile).getOrThrow()
         }
             .onSuccess {
+                if (current is ProfileUiState.Loaded) {
+                    _uiState.value = current.copy(profile = updatedProfile, isSaving = false, saveError = null)
+                }
                 _sideEffect.send(ProfileSideEffect.ShowSnackbar("신체 정보가 저장되었습니다"))
                 _sideEffect.send(ProfileSideEffect.SavedAndNavigateBack)
-                return@launch
             }
             .onFailure {
                 val appErr = it.toReportedAppError()
                 if (current is ProfileUiState.Loaded) {
                     _uiState.value = current.copy(isSaving = false, saveError = appErr)
                 }
-                return@launch
             }
-        if (current is ProfileUiState.Loaded) {
-            _uiState.value = current.copy(isSaving = false)
-        }
     }
 
     fun deleteAccount() = viewModelScope.launch {

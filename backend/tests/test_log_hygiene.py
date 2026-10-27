@@ -22,7 +22,7 @@ async def test_validation_log_omits_submitted_values(client, caplog):
     with caplog.at_level(logging.WARNING, logger="app.main"):
         resp = await client.put(
             "/profile",
-            json={"heightCm": SECRET_HEIGHT, "weightKg": SECRET_WEIGHT, "restDay": "월요일"},
+            json={"heightCm": SECRET_HEIGHT, "weightKg": SECRET_WEIGHT, "restDays": ["월요일"]},
         )
     assert resp.status_code == 422
 

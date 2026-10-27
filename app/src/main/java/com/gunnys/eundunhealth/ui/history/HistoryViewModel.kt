@@ -37,6 +37,28 @@ class HistoryViewModel @Inject constructor(
         loadNextPage()
     }
 
+    fun refresh() {
+        val current = _uiState.value
+        if (current.isLoading) return
+
+        viewModelScope.launch {
+            _uiState.value = current.copy(isLoading = true, error = null)
+            workoutRepo.getHistory(0, pageSize)
+                .onSuccess { (plans, totalCount) ->
+                    _uiState.value = HistoryUiState(
+                        plans = plans,
+                        isLoading = false,
+                        page = 1,
+                        hasMore = plans.size < totalCount,
+                        error = null,
+                    )
+                }
+                .onFailure {
+                    _uiState.value = current.copy(isLoading = false, error = it.toReportedAppError())
+                }
+        }
+    }
+
     fun loadNextPage() {
         val current = _uiState.value
         if (current.isLoading || !current.hasMore) return

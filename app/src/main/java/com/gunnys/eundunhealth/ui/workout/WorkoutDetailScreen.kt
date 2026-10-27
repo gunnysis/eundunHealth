@@ -3,6 +3,7 @@ package com.gunnys.eundunhealth.ui.workout
 import android.content.ClipData
 import android.os.Build
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -18,6 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -38,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -140,6 +146,9 @@ fun WorkoutDetailScreen(
                             },
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+                    } else {
+                        HomeExerciseGuideCard()
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                     // 운동 이름·방법을 길게 눌러 선택·복사할 수 있게 SelectionContainer 로 감싼다.
                     SelectionContainer {
@@ -204,6 +213,40 @@ fun WorkoutDetailScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeExerciseGuideCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.FitnessCenter,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "무장비 홈트레이닝 가이드",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    text = "장비 없이 실내에서 안전하게 수행하는 동작입니다. 아래 순서에 맞춰 호흡과 자세에 집중해보세요.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
             }
         }
     }

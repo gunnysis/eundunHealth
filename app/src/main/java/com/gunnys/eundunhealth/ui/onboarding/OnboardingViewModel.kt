@@ -4,7 +4,9 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.DEFAULT_REST_DAY
 import com.gunnys.eundunhealth.domain.model.UserProfile
+import com.gunnys.eundunhealth.domain.model.normalizeRestDays
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
@@ -46,6 +48,7 @@ class OnboardingViewModel @Inject constructor(
         gender: com.gunnys.eundunhealth.domain.model.Gender,
         bodyFatPct: Float,
         muscleMassKg: Float,
+        restDays: List<Int> = listOf(DEFAULT_REST_DAY),
     ) = viewModelScope.launch {
         _uiState.value = OnboardingUiState(isLoading = true, error = null)
         val userId = authRepo.getCurrentUserId()
@@ -55,7 +58,15 @@ class OnboardingViewModel @Inject constructor(
         }
         runCatching {
             userRepo.saveProfile(
-                UserProfile(userId, heightCm, weightKg, gender, bodyFatPct, muscleMassKg),
+                UserProfile(
+                    userId = userId,
+                    heightCm = heightCm,
+                    weightKg = weightKg,
+                    gender = gender,
+                    bodyFatPercent = bodyFatPct,
+                    muscleMassKg = muscleMassKg,
+                    restDays = normalizeRestDays(restDays),
+                ),
             ).getOrThrow()
         }
             .onSuccess { _sideEffect.send(OnboardingSideEffect.NavigateToHome) }

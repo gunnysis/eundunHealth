@@ -56,6 +56,26 @@ class HistoryViewModelTest {
     }
 
     @Test
+    fun `refresh 는 hasMore 가 false 여도 0페이지부터 다시 로드한다`() = runTest {
+        coEvery { workoutRepo.getHistory(0, 10) } returnsMany listOf(
+            Result.success(Pair(listOf(plan("a"), plan("b")), 2)),
+            Result.success(Pair(listOf(plan("a"), plan("b"), plan("c")), 3)),
+        )
+        val vm = HistoryViewModel(workoutRepo)
+        advanceUntilIdle()
+
+        assertEquals(2, vm.uiState.value.plans.size)
+        assertFalse(vm.uiState.value.hasMore)
+
+        vm.refresh()
+        advanceUntilIdle()
+
+        assertEquals(3, vm.uiState.value.plans.size)
+        assertFalse(vm.uiState.value.hasMore)
+        coVerify(exactly = 2) { workoutRepo.getHistory(0, 10) }
+    }
+
+    @Test
     fun `로드한 수가 총합보다 적으면 hasMore=true 이고 다음 페이지를 이어붙인다`() = runTest {
         coEvery { workoutRepo.getHistory(0, 10) } returns Result.success(Pair((1..10).map { plan("a$it") }, 12))
         coEvery { workoutRepo.getHistory(1, 10) } returns Result.success(Pair(listOf(plan("b1"), plan("b2")), 12))

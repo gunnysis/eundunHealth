@@ -24,7 +24,7 @@
 | Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.141.1 (Python 3.14)** + uvicorn 0.53.0 |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0.54 async + asyncpg 0.31.0** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (139 PASS, cov 94%+ / coverage core `sysmon`) |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (140 PASS, cov 94%+ / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API & 현지화 | RapidAPI ExerciseDB (영문) | **OSS** `oss.exercisedb.dev` (인증 불필요) + 추천 운동 46종 한국어 번들(`korean_exercises.json` v2) + **홈트레이닝 내장 18종 무장비 카탈로그**(`HomeWeeklyPlanGenerator`, `local:home:<slug>:v2.0`) |
 | 주간 운동 계획 API 계약 | `/weekly-plan` (v1, 덮어쓰기 upsert) | **`/v2/weekly-plan`** (7개 라우트: `planMode = gym \| home` 필수, 동일 주 중복 생성 시 `409 weekly_plan_exists`, 손상 계획 `DELETE /v2/weekly-plan` 204, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`) |
@@ -41,7 +41,7 @@
 | 차트 라이브러리 | 미사용 | **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.6.0** |
-| versionCode / versionName | (미정) | **38 / 0.5.0** (저장소 = Play 프로덕션 `completed` 100% 업로드) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| versionCode / versionName | (미정) | **저장소 39 / 0.6.0** (Play 프로덕션 38 / 0.5.0 `completed` 100% 업로드) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
 | Alembic head | (미정) | `d7f4a2c91b10` (`v2_weekly_plan_mode_and_reset_audit`; 직전 `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
@@ -75,7 +75,7 @@ v0.1.1~v0.5.0 누적 (Android UI + Auth + Backend 안정화 및 기능 확장):
 - v0.3.1 (#178/#181/#186/#188/#191) **프로덕션 배포 하드닝 & 운동 한국어 현지화** — 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) + AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents`, `check-agp10-compat.sh`) + AI 식단 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) & `MEAL_AI_ENABLED` kill switch + `backend-production` 환경 게이트 & `backend-rollback.yml` + `verify_containerapp_deployment.py` 불변 조건 검증 + Play 프로덕션 **10% 단계 출시 LIVE** (2026-10-16).
 - v0.4.0 **적응형 메뉴트리 & Health Connect 투명성** — `오늘·식단·진행·프로필` 4개 최상위 탭(`MainAppShell`), `ProgressHubScreen`/`ProfileHubScreen`, multiple back stack, Health Connect 권한 재조회 및 관리 intent 연동, Play 프로덕션 `completed`(100%) 출시(2026-10-17).
 - v0.5.0 **온디바이스 스마일 트레이닝(Smile Training) & 오프라인 우선 동기화** — 전면 카메라(`CameraX` 1.6.2) + 온디바이스 `ML Kit Face Detection`(17.1.0) 미소 코칭 + 오프라인 우선 Room(`SmileTrainingDatabase`) & `WorkManager`(`SmileSyncWorker`) + 원격 이력 복원(`refreshRemoteHistoryIfEmpty`) + 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) 및 `/smile-training/*` 4개 API + 계정 삭제 로컬 와이퍼(`LocalDataWiper`) + 백엔드(`0000063`) 및 Play 프로덕션 `completed`(100%) 출시(2026-10-26).
-- **적응형 주간 운동 계획 v2 (2026-10-27)** — `weekly_plans.plan_mode`(`gym`/`home`), `user_profiles.default_workout_plan_mode`, `data_reset_audits` 테이블(alembic `d7f4a2c91b10`) · `/v2/weekly-plan` 7개 API(동일 주 중복 생성 시 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · `PUT /v2/profile/default-workout-plan-mode`(신체 계측 이력 미생성) · `GET /app-compatibility` 및 `Eundun-Client-Version-Code` 가드 · Android Room `EundunDatabase` v3 · 내장 18종 무장비 홈트레이닝 카탈로그(`HomeWeeklyPlanGenerator`, `REPS`/`SECONDS` 단위).
+- **적응형 주간 운동 계획 v2 & 휴식 요일 자유 다중 지정 (`restDays`, 2026-10-27)** — `weekly_plans.plan_mode`(`gym`/`home`), `user_profiles.default_workout_plan_mode`, `user_profiles.rest_days`(`INTEGER[]`, `1..6`일), `data_reset_audits` 테이블(alembic `d7f4a2c91b10`) · `/v2/weekly-plan` 7개 API(동일 주 중복 생성 시 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · `PUT /v2/profile/default-workout-plan-mode`(신체 계측 이력 미생성) · `GET /app-compatibility` 및 `Eundun-Client-Version-Code` 가드(`PUT /profile` 포함, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`) · `app/time_utils.py` KST(`UTC+9`) SSoT · Android Room `EundunDatabase` v3 · 내장 18종 무장비 홈트레이닝 카탈로그(`HomeWeeklyPlanGenerator`, `REPS`/`SECONDS` 단위) & 대근육 우선순위 큐 라운드로빈 배치 · `RestDaysSelector` M3 다중 휴식 요일 선택기.
 
 ---
 

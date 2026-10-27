@@ -82,11 +82,7 @@ fun HistoryScreen(
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = uiState.isLoading && uiState.plans.isEmpty(),
-            onRefresh = {
-                // 페이지를 0으로 되돌리려면 새로운 fixture가 필요하지만 우선 다음 페이지 로드로 폴백
-                // loadNextPage()가 내부에서 error = null 초기화 수행
-                viewModel.loadNextPage()
-            },
+            onRefresh = viewModel::refresh,
             state = pullState,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
@@ -95,7 +91,7 @@ fun HistoryScreen(
                     uiState.error?.let { error ->
                         ErrorContent(
                             error = error,
-                            onRetry = { viewModel.loadNextPage() },
+                            onRetry = viewModel::refresh,
                         )
                     }
                 }
