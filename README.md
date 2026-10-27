@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원 또는 홈트레이닝 실천자, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — Android **v0.5.0 (versionCode 38)**가 2026-10-26 태그 `v0.5.0`으로 Play production에 `completed`(100%) 업로드됐다(run `40274395812`, 원장 커밋 `cbd155f`). 백엔드 활성 리비전은 `eundunhealth-api--0000063` / 이미지 `869407a`이며, 저장소에는 **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝` 모드 선택·기본 운동 환경 설정·`/v2/weekly-plan` 및 `/app-compatibility`, Alembic head `d7f4a2c91b10`)** 구현이 반영되어 있다.
+- **현재 단계** — Android **v0.6.0 (versionCode 39)**가 2026-10-27 태그 `v0.6.0`으로 Play production에 `completed`(100%) 업로드됐다(run `40469947190`, 원장 커밋 `f9eeefc`). 백엔드 활성 리비전은 `eundunhealth-api--0000065` / 이미지 `a0b6701`(run `40469877206`, Alembic head `d7f4a2c91b10`)로 **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝` 모드 선택·기본 운동 환경 설정·다중 휴식 요일 `restDays`·`/v2/weekly-plan` 및 `/app-compatibility`)**가 운영에 배포되어 있다.
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -99,7 +99,7 @@
 
 | 구성 요소 | 값 |
 |-----------|---|
-| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000063`) |
+| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000065`) |
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret **8개** |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU, 주간 `acr purge` 스케줄 Task 2개) |
 | Database | Azure PostgreSQL Flexible Server `healthapp` (B1ms, 32GB) |
@@ -389,7 +389,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | [Plans 인덱스](docs/plans/README.md) | design+plan 페어 + 토픽 ledger (자동 생성) |
 | [운영 스냅샷](docs/ops/operations-snapshot.md) | 현재 운영 상태 단일 출처 |
 | [배포 전 체크리스트](docs/ops/predeployment-readiness.md) | v0.3.1 배포 게이트 · 불변 조건 검증 · 롤백 런북 |
-| [Play 업로드 원장](docs/ops/play-upload-ledger.md) | versionCode 단조성 SSoT (`LAST_UPLOADED_VERSION_CODE=38`) |
+| [Play 업로드 원장](docs/ops/play-upload-ledger.md) | versionCode 단조성 SSoT (`LAST_UPLOADED_VERSION_CODE=39`) |
 | [인시던트 로그](docs/ops/incident-log.md) | 인시던트 이력 + root cause + 재발 방지 패턴 |
 | [마이그레이션 런북](docs/ops/migration-runbook.md) | Ktor → FastAPI 절차 + 사후 정리 |
 | [Container Apps Job 런북](docs/ops/azure-container-apps-jobs.md) | orphan reaper Job 프로비저닝 패턴 + 함정 회피(E1~E4, 공식문서 fact-check) |
@@ -402,7 +402,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — 저장소 `v0.6.0` (versionCode `39`, 적응형 주간 운동 계획 v2 & 휴식 요일 자유 다중 지정 `restDays` + 온디바이스 스마일 트레이닝). Play 스토어 운영 버전은 `v0.5.0`/`38`(2026-10-26 태그 `v0.5.0`이 `release.yml` run `40274395812`를 통해 Play production `completed`(100%)로 업로드, 원장 자동 갱신 커밋 `cbd155f`)이며, 백엔드는 `Backend CI/CD` run `40274391632`로 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`)에 배포됐다. 저장소에는 적응형 주간 운동 계획 v2 및 다중 휴식 요일(alembic head `d7f4a2c91b10`)이 구현 완료되어 차기 `v0.6.0/39` 배포를 앞두고 있다.
+**현재 버전** — 저장소 = Play 스토어 운영 버전 **`v0.6.0` (versionCode `39`)**. 2026-10-27 태그 `v0.6.0`이 `release.yml` run `40469947190`을 통해 Play production `completed`(100%)로 업로드됐고(원장 자동 갱신 커밋 `f9eeefc`), 백엔드는 `Backend CI/CD` run `40469877206`으로 활성 리비전 `eundunhealth-api--0000065`(이미지 `a0b6701`, alembic head `d7f4a2c91b10`)에 배포됐다.
 
 ### 마일스톤 진행
 
@@ -438,7 +438,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.3.1** — **프로덕션 배포 하드닝 & 운동 한국어 현지화** — 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) + AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents`, `check-agp10-compat.sh`) + AI 식단 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) & `MEAL_AI_ENABLED` kill switch + `backend-production` 환경 승인 게이트 & `backend-rollback.yml` 롤백 워크플로 + `verify_containerapp_deployment.py` 배포 사후 불변 조건 검증 + Play 프로덕션 **10% 단계 출시** (PR #178/#181/#186/#188/#191). **2026-10-16 Play 프로덕션 10% 단계 출시 완료**
 - [x] **v0.4.0** — **적응형 메뉴트리·Health Connect 상태 투명성** — `오늘·식단·진행·프로필` 앱 셸, multiple back stack, 진행/프로필 허브, Health Connect 관리 intent·권한 재조회, Compose 접근성 회귀 테스트. **2026-10-17 Play production `completed`(100%) 업로드 성공** (run `39026967924`, 원장 `48f57c7`).
 - [x] **v0.5.0** — **온디바이스 스마일 트레이닝(Smile Training) 출시** — 전면 카메라(`CameraX` 1.6.2) + 온디바이스 `ML Kit Face Detection`(17.1.0) 미소 근육 코칭(루틴 3종 × 난이도 3단계 × 1~5회 반복) + 오프라인 우선 Room(`smile_training.db`) & `WorkManager` 동기화 + 원격 이력 자동 복원(`refreshRemoteHistoryIfEmpty`) + 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) 및 4개 API + 계정 삭제 로컬 와이퍼(`LocalDataWiper`). **2026-10-26 백엔드 배포(`0000063`) 및 Play production `completed`(100%) 업로드 성공** (run `40274395812`, 원장 `cbd155f`).
-- [x] **적응형 주간 운동 계획 v2 (2026-10-27)** — `헬스장` / `홈트레이닝` 모드 선택 및 프로필 `기본 운동 환경` 자동 생성 · 내장 18종 무장비 홈트레이닝 카탈로그(`local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위) · `/v2/weekly-plan` 7개 엔드포인트(409 불변성 보장 및 `DELETE` 복구) · `/app-compatibility` 버전 가드 · alembic `d7f4a2c91b10`.
+- [x] **v0.6.0 — 적응형 주간 운동 계획 v2 & 다중 휴식 요일(`restDays`) 출시 (2026-10-27)** — `헬스장` / `홈트레이닝` 모드 선택 및 프로필 `기본 운동 환경` 자동 생성 · 주 1~6일 다중 휴식 요일(`restDays`) 및 대근육 우선순위 큐 라운드로빈 배치 · 내장 18종 무장비 홈트레이닝 카탈로그(`local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위) · `/v2/weekly-plan` 7개 엔드포인트(409 불변성 보장 및 `DELETE` 복구) · `/app-compatibility` 버전 가드(`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`) · alembic `d7f4a2c91b10`. **2026-10-27 백엔드 배포(`0000065`) 및 Play production `completed`(100%) 업로드 성공** (run `40469947190`, 원장 `f9eeefc`).
 
 세부 history 는 [docs/CHANGELOG.md](docs/CHANGELOG.md) 와 [docs/plans/logs/](docs/plans/logs/) 토픽 ledger 참조.
 

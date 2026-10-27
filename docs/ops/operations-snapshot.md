@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-10-27 — 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) 구현 완료 및 v0.5.0/38 스냅샷 갱신**
-> 작성 기준: 태그 `v0.5.0`의 **v0.5.0/38**이 release workflow run `40274395812`로 Play production `completed`(100%) 업로드됐고, 원장 커밋 `cbd155f`가 versionCode 38을 기록한다. 백엔드는 run `40274391632`로 revision `eundunhealth-api--0000063`(이미지 `869407a`)에 배포됐으며, 저장소에는 적응형 주간 운동 계획 v2(Alembic head `d7f4a2c91b10`)가 반영되어 있다.
+> 작성일: 2026-05-25 / 최근 갱신: **2026-10-27 — v0.6.0/39 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 다중 지정(`restDays`) 백엔드·Play 프로덕션 운영 배포 완료**
+> 작성 기준: 태그 `v0.6.0`의 **v0.6.0/39**이 release workflow run `40469947190`로 Play production `completed`(100%) 업로드됐고, 원장 커밋 `f9eeefc`가 versionCode 39를 기록한다. 백엔드는 C1 운영 DB 마이그레이션(`d7f4a2c91b10`) 및 v2 사용자 데이터 초기화(`v2-cutover-20261027`) 후 run `40469877206`로 revision `eundunhealth-api--0000065`(이미지 `a0b6701`)에 배포됐다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.6.0` / `39` (태그 `v0.5.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=38` |
+| versionName / versionCode | **`0.6.0` / `39` (태그 `v0.6.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=39` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.10 / 9.3.2 / 9.7.1** (KSP 2.3.11, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거) |
 | Compose BOM | **2026.08.00** |
@@ -22,14 +22,14 @@
 | Sentry SDK | Android **8.57.0** / Gradle plugin **6.21.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (로컬 최신 = **v0.5.0/38 로컬 빌드, 2026-10-26 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
+산출물 경로 (로컬 최신 = **v0.6.0/39 로컬 빌드, 2026-10-27 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
 - AAB: `app/build/outputs/bundle/release/app-release.aab` (13,101,779 bytes)
-- APK: `app/build/outputs/apk/release/app-release.apk` (8,794,149 bytes)
+- APK: `app/build/outputs/apk/release/app-release.apk` (8,840,000+ bytes)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.5.0/38**(2026-10-26 `release.yml` run `40274395812`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 커밋 `cbd155f`). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
-> 이력: v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=38` — 다음 릴리스 versionCode ≥ 39(룰 13 가드).
+> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.6.0/39**(2026-10-27 `release.yml` run `40469947190`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 커밋 `f9eeefc`). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
+> 이력: v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=39` — 다음 릴리스 versionCode ≥ 40(룰 13 가드).
 > **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 변경은 alembic 마이그레이션만. 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
 
@@ -43,8 +43,8 @@
 | Resource Group | `rg-eundunhealth-prod-krc` (2026-07-29 `apps` 에서 이관 — 이동 7 + 알림/AG/UAI 재생성, RBAC 8건 재부여, LA shared key 갱신, 구 RG 삭제. 상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry — 원문 페어 `2026-07-29-rg-migration-{design,plan}.md` 는 흡수 후 git rm) |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
-| 활성 revision | `eundunhealth-api--0000063` (100% traffic, **warm — min=1**, 2026-10-26 실측) |
-| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:869407a` (**MI pull**, app/reaper 일치 — v0.5.0 배포 run `40274391632`) |
+| 활성 revision | `eundunhealth-api--0000065` (100% traffic, **warm — min=1**, 2026-10-27 실측) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:a0b6701` (**MI pull**, app/reaper 일치 — v0.6.0 배포 run `40469877206`) |
 | Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
@@ -608,4 +608,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-10-16 | **v0.3.1/36 — 프로덕션 배포 하드닝 & Play 10% 단계 출시 LIVE (PR #188·#191)**. ① AI 식단 생성 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`, 누락 시 400) + `MEAL_AI_ENABLED` kill switch + 법적 고지(`privacy-policy.md`, `account-deletion.md`) 정합화 ② `backend.yml` 수동 배포 `deploy=true` 게이트 + `backend-production` 환경 승인 게이트 + `scripts/verify_containerapp_deployment.py` 사후 불변 조건 검증 + `backend-rollback.yml` 롤백 워크플로 신설 ③ 백엔드 배포(run `38837975170`) → 활성 revision **`eundunhealth-api--0000062`**(이미지 `2610d18`, reaper Job 동기화) ④ 태그 `v0.3.1` `release.yml`(run `38838518612`) → Play 프로덕션 **10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)** 업로드 성공 + 원장 자동 커밋 `1a19eb7`(`LAST_UPLOADED_VERSION_CODE=36`). backend pytest **119/119** · android @Test **151/151** |
 | 2026-10-17 | **v0.4.0/37 — 메뉴트리 아키텍처 개편 & Play 프로덕션 출시 완료**. 태그 `v0.4.0` `release.yml`(run `39026967924`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `48f57c7`(`LAST_UPLOADED_VERSION_CODE=37`) |
 | 2026-10-26 | **v0.5.0/38 — 온디바이스 스마일 트레이닝(Smile Training) 출시 & 백엔드/스토어 동시 배포 완료**. ① 온디바이스 CameraX 1.6.2 + ML Kit 얼굴 검출(`play-services-mlkit-face-detection:17.1.0`) 미소 근육 운동 + 오프라인 우선 Room(`smile_training.db`) & WorkManager 동기화 + 원격 이력 자동 복원(`refreshRemoteHistoryIfEmpty`) + 계정 삭제 로컬 와이퍼(`LocalDataWiper`) ② 백엔드 `smile_training_sessions` 테이블(alembic **`a3869f575d6a`**) + `/smile-training/sessions`·`/smile-training/statistics` 4개 엔드포인트 + 법적 고지(`privacy-policy.md`, `account-deletion.md`) 온디바이스 카메라 무저장·무전송 명시 ③ 백엔드 배포(run `40274391632`) → 활성 revision **`eundunhealth-api--0000063`**(이미지 `869407a`, reaper Job 동기화, 프로브 4종 200 검증) ④ 태그 `v0.5.0` `release.yml`(run `40274395812`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `cbd155f`(`LAST_UPLOADED_VERSION_CODE=38`). backend pytest **126/126** · android @Test **165/165** |
-| 2026-10-27 | **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 자유 다중 지정(`restDays`, Zero-Legacy) 구현 및 전사 아키텍처 리팩토링 완료 (`v0.6.0` / `versionCode=39`)**. ① 백엔드: alembic **`d7f4a2c91b10`**(`weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode`, `user_profiles.rest_days` `INTEGER[]` + 체크 제약, `data_reset_audits` 테이블) · `/v2/weekly-plan` 7개 API(동일 주 중복 생성 시 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · `PUT /v2/profile/default-workout-plan-mode` · `GET /app-compatibility` 및 `Eundun-Client-Version-Code` 가드(`PUT /profile` 포함, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`) · `app/time_utils.py` KST(`UTC+9`) SSoT 일원화 · `backend/scripts/reset_v2_user_data.py` ② Android: `EundunDatabase` v3 · 내장 18종 무장비 홈트레이닝 생성기(`HomeWeeklyPlanGenerator`, `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위) & 대근육 우선순위 큐 라운드로빈 배치 · `UserProfile.kt` 도메인 상수/정규화(`normalizeRestDays`) SSoT · `RestDaysSelector` M3 다중 휴식 요일 선택기 및 `ProfileSummaryCard`/`ProfileScreen` UX 고도화 · `WorkoutDetailScreen` 무장비 텍스트 가이드(`HomeExerciseGuideCard`) · `HistoryViewModel.refresh()` 풀투리프레시 수정 ③ 법적 고지(`privacy-policy.md`, `account-deletion.md`) 및 문서 동기화 완료. backend pytest **140/140** · android @Test **186/186** |
+| 2026-10-27 | **v0.6.0/39 — 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 자유 다중 지정(`restDays`, Zero-Legacy) 풀스택 구현 및 운영 컷오버(C1~C3) 완료**. ① 백엔드: alembic **`d7f4a2c91b10`**(`weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode`, `user_profiles.rest_days` `INTEGER[]` + 체크 제약, `data_reset_audits` 테이블) · `/v2/weekly-plan` 7개 API(동일 주 중복 생성 시 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · `PUT /v2/profile/default-workout-plan-mode` · `GET /app-compatibility` 및 `Eundun-Client-Version-Code` 가드(`PUT /profile` 포함, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`) · `app/time_utils.py` KST(`UTC+9`) SSoT 일원화 · `backend/scripts/reset_v2_user_data.py` ② Android: `EundunDatabase` v3 · 내장 18종 무장비 홈트레이닝 생성기(`HomeWeeklyPlanGenerator`, `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위) & 대근육 우선순위 큐 라운드로빈 배치 · `UserProfile.kt` 도메인 상수/정규화(`normalizeRestDays`) SSoT · `RestDaysSelector` M3 다중 휴식 요일 선택기 및 `ProfileSummaryCard`/`ProfileScreen` UX 고도화 · `WorkoutDetailScreen` 무장비 텍스트 가이드(`HomeExerciseGuideCard`) · `HistoryViewModel.refresh()` 풀투리프레시 수정 ③ **운영 배포(C1→C2→C3)**: C1 운영 DB 마이그레이션(`d7f4a2c91b10`) 및 v2 사용자 데이터 초기화(`resetId=v2-cutover-20261027`) 완료 → C2 백엔드 배포(run `40469877206`) 활성 revision **`eundunhealth-api--0000065`**(이미지 `a0b6701`, reaper Job 동기화, 프로브 5종 200 검증) → C3 태그 `v0.6.0` `release.yml`(run `40469947190`) Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `f9eeefc`(`LAST_UPLOADED_VERSION_CODE=39`). backend pytest **140/140** · android @Test **186/186** |

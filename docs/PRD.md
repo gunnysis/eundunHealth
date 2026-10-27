@@ -389,7 +389,7 @@ Splash
 | 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
 | 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
 
-### v0.2.0 ~ v0.5.0에서 추가 완료 (2026-09 ~ 2026-10)
+### v0.2.0 ~ v0.6.0에서 추가 완료 (2026-09 ~ 2026-10)
 
 | 영역 | 도입 버전 | 비고 |
 |------|----------|------|
@@ -407,7 +407,7 @@ Splash
 
 | 제안 ID | 기능명 | 목표 버전 | 설명 | 상세 기획 |
 |:---:|---|:---:|---|:---:|
-| **PROP-01** | **휴식일 자유 다중 지정 (Flexible Multi-Rest Days)** | `v0.7.0` | 주 1~6일 자유로운 휴식일 멀티 선택 및 $N$일 기준 동적 주간 완료율 | [plans/2026-10-27-flexible-rest-days-design.md](plans/2026-10-27-flexible-rest-days-design.md) |
+| **PROP-01** | **휴식일 자유 다중 지정 (Flexible Multi-Rest Days)** | `v0.6.0` (구현 완료) | 주 1~6일 자유로운 휴식일 멀티 선택 및 $N$일 기준 동적 주간 완료율 | [plans/logs/android.md](plans/logs/android.md) |
 | **PROP-02** | 식단 섭취 체크 및 영양 리포트 | `v0.7.0+` | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 | [proposals/README.md](proposals/README.md) |
 | **PROP-03** | 맞춤 추천 고도화 (점진적 과부하) | `v0.7.0+` | 운동 이력 기반 AI 운동 루틴 및 중량/볼륨 추천 | [proposals/README.md](proposals/README.md) |
 | **PROP-04** | **적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)** | `v0.7.0+` | 실제 운동 일수($N$)에 적응하는 전신/2분할/3분할 과학적 매트릭스 처방 | [2026-10-27-adaptive-split-engine.md](proposals/2026-10-27-adaptive-split-engine.md) |

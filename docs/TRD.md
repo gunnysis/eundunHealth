@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-10-27, 저장소 = Play 프로덕션 = v0.5.0/38 [`completed` 100% 업로드, 적응형 주간 운동 계획 v2 반영; 직전 v0.4.0/37 ← v0.3.1/36 ← v0.3.0/35 ← v0.2.0/34 ← v0.1.19/33 ← 첫 출시 v0.1.18/32]):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-10-27, 저장소 = Play 프로덕션 = v0.6.0/39 [`completed` 100% 업로드, 적응형 주간 운동 계획 v2 & 다중 휴식 요일 `restDays` 출시; 직전 v0.5.0/38 ← v0.4.0/37 ← v0.3.1/36 ← v0.3.0/35 ← v0.2.0/34 ← v0.1.19/33 ← 첫 출시 v0.1.18/32]):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -41,7 +41,7 @@
 | 차트 라이브러리 | 미사용 | **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.6.0** |
-| versionCode / versionName | (미정) | **저장소 39 / 0.6.0** (Play 프로덕션 38 / 0.5.0 `completed` 100% 업로드) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| versionCode / versionName | (미정) | **저장소 = Play 프로덕션 39 / 0.6.0** (`completed` 100% 업로드, 원장 `LAST_UPLOADED_VERSION_CODE=39`) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
 | Alembic head | (미정) | `d7f4a2c91b10` (`v2_weekly_plan_mode_and_reset_audit`; 직전 `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |

@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-27 — 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 풀스택 구현 및 운영 출시 (v0.6.0, commit `a0b6701`)
+
+- **Commit**: `a0b6701` (`4562506` + `6ef6fb1` + `a0b6701`; Play 프로덕션 업로드 run `40469947190` / 원장 `f9eeefc`, 백엔드 배포 run `40469877206` / 리비전 `0000065`)
+- **Why**: ① 홈 화면 진입 시 무조건 헬스장 계획을 자동 생성하고 동일 주 프로필 수정 시 계획을 덮어쓰던 v1 방식을 개선해, 사용자가 `헬스장`과 무장비 `홈트레이닝` 중 운동 환경을 선택하거나 기본 환경을 설정할 수 있어야 했다. ② 고정 단일 휴식일(`restDay: Int = 7`, 주 6일 강제 운동)이 초보·홈트 사용자에게 과도한 부담과 이탈을 유발하므로, 주 1~6일 범위에서 자유롭게 다중 휴식 요일(`restDays: List<Int>`)을 선택하고 실제 운동 일수($N$)를 기준으로 주간 완료율을 계산해야 했다.
+- **What**:
+  - **Zero-Legacy 다중 휴식 요일(`restDays`) & 대근육 우선순위 큐**: 레거시 단일 `rest_day`/`restDay`를 백엔드·OpenAPI·Android 전 계층에서 완전 제거하고, PostgreSQL `user_profiles.rest_days` `INTEGER[]`(`ck_user_profiles_rest_days_valid`: 1~6개, 1~7 범위, 중복 금지) 및 Room `EundunDatabase` v3(`IntListConverters`)를 도입. 비휴식일(1~6일)에는 `WeeklyPlanGenerator`(헬스장)와 `HomeWeeklyPlanGenerator`(내장 18종 무장비·저충격 카탈로그 `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위)가 대근육 우선순위 큐(`[PUSH → LEGS → PULL → CARDIO → MIXED → CARDIO]`)를 순환 배치.
+  - **명시적 주간 계획 v2 계약 & 클라이언트 버전 가드**: 백엔드 `/v2/weekly-plan` 7개 API(`planMode = gym | home` 필수, 동일 주 중복 생성 시 `409 weekly_plan_exists`, 손상 계획 복구용 `DELETE /v2/weekly-plan` 204), 신체 계측 이력을 오염시키지 않는 `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility` 및 `Eundun-Client-Version-Code` 헤더 가드(`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`, `PUT /profile` 포함)를 구현하고, KST 시간대 유틸(`backend/app/time_utils.py`) 및 식단/통계 서비스를 정합화.
+  - **Material 3 UI/UX & 도메인 SSoT 일원화**: `RestDaysSelector`(`MultiChoiceSegmentedButtonRow` + 주 3일/주말/일요일 프리셋 칩), `ProfileSummaryCard` 다중 휴식 요일 요약, `NoWeeklyPlanCard` & `WorkoutPlanModeSelectionSheet`(기본 운동 환경 저장 체크박스 포함), `WorkoutDetailScreen` 초 단위(`초`) 표기 및 `HomeExerciseGuideCard` 배너, `MainAppShell` 구버전 강제 업데이트 다이얼로그(`ClientUpdateRequired`), `UserProfile.kt` 요일 상수/정규화 SSoT 및 `HistoryViewModel.refresh()` 당겨서 새로고침 버그 수정을 반영.
+- **Outcome**: C1 운영 DB 마이그레이션(`d7f4a2c91b10`) 및 v2 사용자 데이터 초기화(`reset_v2_user_data.py` 감사 ID `v2-cutover-20261027`), C2 백엔드 ACA 배포(`eundunhealth-api--0000065` & `eundunhealth-reaper`), C3 Google Play 프로덕션 트랙 `v0.6.0/39` `completed`(100%) 출시 완료. Android 단위 테스트 186/186 PASS, Backend pytest 140/140 PASS.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/domain/model/*`, `app/src/main/java/com/gunnys/eundunhealth/domain/usecase/*`, `app/src/main/java/com/gunnys/eundunhealth/data/local/*`, `app/src/main/java/com/gunnys/eundunhealth/data/repository/*`, `app/src/main/java/com/gunnys/eundunhealth/ui/components/RestDaysSelector.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/home/*`, `app/src/main/java/com/gunnys/eundunhealth/ui/profile/*`, `app/src/main/java/com/gunnys/eundunhealth/ui/onboarding/*`, `backend/app/routers/weekly_plan.py`, `backend/app/routers/profile.py`, `backend/app/routers/app_compatibility.py`, `backend/app/time_utils.py`, `backend/alembic/versions/d7f4a2c91b10_v2_weekly_plan_mode_and_reset_audit.py`, `backend/scripts/reset_v2_user_data.py`
+- **설계 원문**: `docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md`, `2026-10-27-flexible-rest-days-design.md` (본 entry 로 흡수, git rm)
+
 ### 2026-10-26 — 온디바이스 스마일 트레이닝(Smile Training) 풀스택 구현 및 UI/UX 고도화 (v0.5.0, commit `869407a`)
 
 - **Commit**: `869407a` (Play 프로덕션 업로드 run `40274395812` / 원장 `cbd155f`, 백엔드 배포 run `40274391632` / 리비전 `0000063`)

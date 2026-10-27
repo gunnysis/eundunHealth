@@ -1,5 +1,34 @@
 # Multi-AI Handoff Log
 
+## 2026-10-27 (Gemini -> Claude/User) v0.6.0 (`versionCode=39`) 운영 배포(C1 ➔ C2 ➔ C3) 전 구간 성공 및 문서 SSoT 정합화 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **v0.6.0 (`versionCode=39`) 운영 컷오버 (C1 ➔ C2 ➔ C3) 100% 완수**:
+  1. **C1 — 운영 DB 마이그레이션(`d7f4a2c91b10`) 및 v2 사용자 데이터 초기화(`reset_v2_user_data.py`)**:
+     - Azure PostgreSQL Flexible Server(`healthapp`, `rg-eundunhealth-prod-krc`)에 임시 방화벽 규칙(`temp-v2-reset`)을 생성하여 `alembic upgrade head`(`d7f4a2c91b10`: `weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode`, `user_profiles.rest_days` `INTEGER[]` + 체크 제약, `data_reset_audits` 테이블) 적용 완료.
+     - `--dry-run` 점검 후 `--confirmation RESET_ALL_V2_USER_DATA --reset-id v2-cutover-20261027 --image-sha 4562506 --execution-id prod-cutover-20261027` 실행: `{"deletedRows": {"badges": 0, "goals": 0, "meal_plan_items": 95, "meal_plans": 6, "smile_training_sessions": 0, "user_profile_history": 6, "user_profiles": 3, "weekly_plans": 11}, "resetId": "v2-cutover-20261027"}` (`data_reset_audits` 감사 기록 완료).
+     - 작업 직후 `temp-v2-reset` 방화벽 규칙 즉시 삭제(잔존 규칙 `allow-azure-services` 1개만 유지).
+  2. **C2 — 백엔드 CI/CD 운영 배포 (`backend.yml` run `40469877206`, commit `a0b6701`)**:
+     - CI/CD 배포 환경 개선: Gitleaks 8.24.3 오탐(`WorkoutRepositoryImplTest.kt`의 `WeeklyPlanV2Api` 타입명)을 `.gitleaksignore`/`.gitleaks.toml`로 해결하고, `scripts/verify_containerapp_deployment.py`에 `/app-compatibility?platform=android&versionCode=39` 프로브를 추가하여 공개 라우트 5종(`/health`, `/health/ready`, `/app-compatibility`, `/privacy`, `/account-deletion`)을 매 배포마다 자동 검증하도록 강화.
+     - `backend-production` 환경 승인 후 `eundunhealth-api` 활성 리비전 **`eundunhealth-api--0000065`** 및 `eundunhealth-reaper` Job을 이미지 `eundunhealthacr.azurecr.io/eundunhealth-api:a0b6701`로 동기 배포 완료.
+     - 라이브 엔드포인트 실측 검증: `/health` (`200`), `/health/ready` (`200`), `/app-compatibility?platform=android&versionCode=38` (`updateRequired: true`, `minimumSupportedVersionCode: 39`), `/app-compatibility?platform=android&versionCode=39` (`updateRequired: false`), 무토큰 `/v2/weekly-plan` (`401`).
+  3. **C3 — Android Google Play 프로덕션 릴리스 (`release.yml` run `40469947190`, 태그 `v0.6.0`)**:
+     - 커밋 `a0b6701`에 태그 `v0.6.0` 부착 및 push ➔ `play-release` 환경 승인 ➔ `Preflight (룰 2)` 통과 ➔ Google Play **production 트랙 `completed`(100%) 업로드 성공**.
+     - `release.yml`이 `docs/ops/play-upload-ledger.md`를 `LAST_UPLOADED_VERSION_CODE=39`로 자동 갱신(커밋 `f9eeefc`).
+  4. **문서 거버넌스 및 SSoT 정합화**:
+     - 출시 완료된 설계서 `docs/plans/2026-10-27-flexible-rest-days-design.md`를 `docs/plans/logs/android.md` (`2026-10-27` entry)로 흡수 후 `git rm`, `docs/plans/README.md` 인덱스 재생성 및 링크 가드 통과.
+     - `docs/ops/operations-snapshot.md`, `CLAUDE.md`, `README.md`, `docs/PRD.md`, `docs/TRD.md`, `docs/SPEC.md`, `docs/CHANGELOG.md`, `docs/proposals/README.md` 최신 운영 상태(`v0.6.0/39`, 리비전 `0000065`, 이미지 `a0b6701`, 원장 `f9eeefc`) 동기화 완료.
+
+**다음 할 일 (Next TODOs for User / Operator):**
+- **실기기 사후 점검 (Post-release Operational Verification)**:
+  - Play 스토어 프로덕션 트랙에서 `v0.6.0` (`versionCode=39`) 업데이트 배포본 설치 후 로그인, 온보딩/프로필 다중 휴식 요일(`restDays`) 선택, `헬스장` / `홈트레이닝` 주간 계획 생성, TalkBack 및 Health Connect 동작 확인.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- 다음 릴리스 버전 코드(`versionCode`)는 최소 `40` 이상이어야 합니다 (`LAST_UPLOADED_VERSION_CODE=39`, 룰 13).
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
+---
+
 ## 2026-10-27 (Gemini -> Claude/User) Senior Programmer / Architecture Lead / CTO 프로젝트 전체 시점 리팩토링·결함 근본 해결·UI/UX 고도화 완료 (운영 배포 요청 대기)
 
 **현재까지의 작업 상태 (Current Status):**
@@ -38,7 +67,7 @@
 
 **현재까지의 작업 상태 (Current Status):**
 - **단일 완성형 설계서 수립 (`docs/plans/`)**:
-  - 사용자 피드백에 따라 별도 plan 파일 분리 대신 `docs/plans/2026-10-27-flexible-rest-days-design.md` 단일 문서에 아키텍처, 알고리즘, UI/UX, 4단계 구현 로드맵 및 사용자 필수 작업을 완벽히 통합·병합 완료.
+  - `docs/plans/logs/android.md` (`2026-10-27` entry로 흡수된 `2026-10-27-flexible-rest-days-design.md`) 단일 문서에 아키텍처, 알고리즘, UI/UX, 4단계 구현 로드맵 및 사용자 필수 작업을 완벽히 통합·병합 완료.
   - **기술 팩트체크 및 최적안 확정**:
     - **백엔드**: SQLAlchemy `RestDaysType = ARRAY(Integer).with_variant(JSON, "sqlite")` 채택 ➔ 프로덕션 Azure PostgreSQL 16의 네이티브 `INTEGER[]` 및 체크 제약(`cardinality(rest_days) BETWEEN 1 AND 6`) 보장 + 기존 139개 단위 테스트(SQLite) 100% 무수정 통과. Pydantic v2 `@model_validator`로 구버전 단일 `restDay` 자동 흡수.
     - **도메인**: `WeeklyPlanGenerator` & `HomeWeeklyPlanGenerator` 대근육 우선순위 큐(`[Push ➔ Legs ➔ Pull ➔ Cardio ➔ Mixed ➔ Cardio]`)로 주 1~6일 상·하체 밸런스 완전 보장.
@@ -51,7 +80,7 @@
 
 **다음 할 일 (Next TODOs for User / Operator):**
 - **1순위**: 현재 진행 중인 적응형 주간 운동 계획 v2 (v0.6.0/39) C1 데이터 리셋 승인 및 C2/C3 배포 완결.
-- **2순위**: v2 배포 완료 후, 본 통합 구현 설계서([`docs/plans/2026-10-27-flexible-rest-days-design.md`](file:///c:/programming/apps/eundunHealth/docs/plans/2026-10-27-flexible-rest-days-design.md)) 검토 후 구현 착수 승인.
+- **2순위**: v2 배포 완료 후, 본 통합 구현 설계서([`docs/plans/logs/android.md`](docs/plans/logs/android.md)) 검토 후 구현 착수 승인.
 
 **의존성 및 주의사항 (Context & Constraints):**
 - 현재 활성 코드베이스(`app/`, `backend/`)는 일절 건드리지 않고 순수 문서 공간에서 작업되었습니다.
@@ -62,7 +91,7 @@
 ## 2026-10-27 (Gemini -> Claude/User) 적응형 주간 운동 계획 v2 (Adaptive Weekly Workout Plan v2) & 휴식일 자유 다중 지정 (Flexible Multi-Rest Days, Zero-Legacy) 엔드투엔드 구현 및 검증 완료 (운영 컷오버 C1~C3 사용자 승인 대기)
 
 **현재까지의 작업 상태 (Current Status):**
-- **`docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md` 및 `docs/plans/2026-10-27-flexible-rest-days-design.md` (r3 Zero-Legacy) 통합 풀스택 구현 완료 (`v0.6.0` / `versionCode=39`)**:
+- **`docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md` 및 `docs/plans/logs/android.md` (r3 Zero-Legacy) 통합 풀스택 구현 완료 (`v0.6.0` / `versionCode=39`)**:
   - **R1 & R2 (백엔드 API 계약·Alembic·다중 휴식일·데이터 초기화 스크립트)**:
     - Alembic 마이그레이션 `backend/alembic/versions/d7f4a2c91b10_v2_weekly_plan_mode_and_reset_audit.py`: `weekly_plans.plan_mode`(`'gym'`/`'home'` CHECK 제약), `user_profiles.default_workout_plan_mode`(`'gym'`/`'home'` CHECK 제약, nullable), `user_profiles.rest_days`(`INTEGER[]` + `ck_user_profiles_rest_days_valid` 배열 제약, 레거시 `rest_day` 제거), `data_reset_audits` 감사 테이블 추가 (Alembic head `d7f4a2c91b10`, 총 9개 리비전).
     - `UserProfile` ORM(`ARRAY(Integer).with_variant(JSON, "sqlite")`) 및 `UserProfileRequest`/`UserProfileResponse` 스키마에서 레거시 `rest_day` 완전 제거 후 `rest_days: list[int]` (`1..6`개, `1..7` 요일 오름차순 중복 제거) 단독 일원화 + `meal_plan.py` 프롬프트 휴식 요일 한글 반영.
