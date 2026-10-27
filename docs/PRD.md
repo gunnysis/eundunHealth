@@ -387,12 +387,15 @@ Splash
 | 적응형 메뉴트리(`오늘·식단·진행·프로필`) & Health Connect 투명성 | v0.4.0 | `MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`, multiple back stack |
 | 온디바이스 스마일 트레이닝(Smile Training) & 오프라인 우선 동기화 | v0.5.0 | CameraX 1.6.2 + ML Kit 얼굴 검출, `SmileTrainingDatabase` + `SmileSyncWorker`, `/smile-training/*` 4개 API |
 
-### 향후 확장 후보
+### 향후 확장 후보 (Product Proposals)
 
-| 기능 | 설명 |
-|------|------|
-| 소셜 기능 | 친구 추가, 운동 현황 공유 |
-| 맞춤 추천 고도화 | 운동 이력 기반 AI 운동 루틴 추천 |
-| 식단 섭취 체크 및 영양 리포트 | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 |
-| 사용자 정의 루틴 | 자동 생성된 plan을 사용자가 직접 편집 |
-| 추가 배지 / 시즌 챌린지 | 시즌별 한정 배지, 친구 간 챌린지 |
+> 상세 기획 및 브레인스토밍 아카이브: [docs/proposals/README.md](proposals/README.md)
+
+| 제안 ID | 기능명 | 목표 버전 | 설명 | 상세 기획 |
+|:---:|---|:---:|---|:---:|
+| **PROP-01** | **휴식일 자유 지정 및 적응형 분할 루틴 (Adaptive Split)** | `v0.6.0` | 요일별 휴식일 멀티 선택 및 실제 운동 일수($N$)에 적응하는 분할 엔진 | [2026-10-27-flexible-rest-days.md](proposals/2026-10-27-flexible-rest-days.md) |
+| **PROP-02** | 식단 섭취 체크 및 영양 리포트 | `v0.7.0+` | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 | [proposals/README.md](proposals/README.md) |
+| **PROP-03** | 맞춤 추천 고도화 (점진적 과부하) | `v0.7.0+` | 운동 이력 기반 AI 운동 루틴 및 중량/볼륨 추천 | [proposals/README.md](proposals/README.md) |
+| - | 사용자 정의 루틴 | 백로그 | 자동 생성된 plan을 사용자가 직접 편집 | - |
+| - | 추가 배지 / 시즌 챌린지 | 백로그 | 시즌별 한정 배지, 친구 간 챌린지 | - |
+| - | 소셜 기능 | 백로그 | 친구 추가, 운동 현황 공유 | - |

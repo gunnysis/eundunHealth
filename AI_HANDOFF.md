@@ -1,5 +1,38 @@
 # Multi-AI Handoff Log
 
+## 2026-10-27 (Gemini -> Claude/User) 적응형 주간 운동 계획 v2 제안서 '15. 구현 전 재검토 요청' 전건 승인 반영, 홈트레이닝 18종 확정 카탈로그/요일 템플릿 수립 및 실기기 검증 일정 정합화 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **'15. 구현 전 재검토 요청' 전건 승인 및 설계 문서 최신화**:
+  - `docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md`에 대해 사용자가 5대 재검토 요청 항목을 전건 승인함에 따라, 문서 상태를 '조건부 대기'에서 **'최종 승인 완료 (Approved & Ready for Implementation)'**로 전면 갱신했습니다.
+  - **홈트레이닝 콘텐츠 자율 권한 연구/검토/검증/확정 (§6.4)**:
+    - 장비 제로(`equipment = "없음"`), 층간소음 방지 저충격 설계, 오프라인 완결(`gifUrl = ""`), 안정적 ID(`local:home:<slug>:v2.0`), WHO 성인 신체활동 가이드라인 부합.
+    - **18종 확정 카탈로그**: Push 4종(정석 푸시업, 니 푸시업, 파이크 푸시업, 체어 딥스), Pull 4종(슈퍼맨 홀드, Y-T-W 레이즈, 버드독, 리버스 스노우 엔젤), Legs 4종(에어 스쿼트, 제자리 런지, 글루트 브릿지, 스탠딩 카프 레이즈), Core 3종(엘보우 플랭크, 데드버그, 레그 레이즈), Cardio 3종(마운틴 클라이머, 점핑잭, 스케이터 홉스).
+    - **결정론적 7일 요일 배치 스펙 (`HomeWeeklyPlanGenerator`)**: 월(Push & Core 4종), 화(Cardio 2종), 수(Pull & Posterior 4종), 목(Cardio 2종), 금(Legs & Glutes 4종), 토(Mixed Strength & Core 3종), 지정 요일(Rest Day). `days.size == 7` 및 `hasExercises == true` 불변식 100% 보장.
+  - **실기기 검증 일정 정합화 (§8, §9, §10, §11, §15, §16, §18, §19)**:
+    - 사용자의 "실기기는 운영 배포 후에 확인할 예정" 결정에 따라, 빌드/CI 게이트는 Compose semantics 및 touch-target(48dp+) 자동 검사로 충족하고, 실기기(TalkBack, Health Connect) 점검은 **운영 배포 완료 후 사후 점검(Post-release Operational Verification)**으로 분리·확정.
+  - **차기 기획(Proposals / RFC) 거버넌스 체계 신설 및 1호 기획서 등록 완료**:
+    - 스코프 팽창을 방지하면서 가치 있는 브레인스토밍 아이디어를 인큐베이팅할 수 있는 `docs/proposals/` 거버넌스를 구축했습니다.
+    - `docs/proposals/README.md` (기획 백로그 인덱스 및 Idea ➔ Exploring ➔ Accepted ➔ Promoted to Plan 라이프사이클), `_template.md` (경량 표준 템플릿) 생성.
+    - **1호 기획서 채택 ([PROP-01](file:///c:/programming/apps/eundunHealth/docs/proposals/2026-10-27-flexible-rest-days.md))**: "휴식일 자유 지정 및 주간 적응형 분할 루틴 엔진 (Adaptive Split Engine)" — UX 인터랙션, `rest_days: List[Int]`, 운동 일수($N$)에 적응하는 분할 매트릭스(전신/2분할/3분할)를 명세하여 `v0.6.0` 목표로 등록.
+    - `docs/PRD.md`의 `### 향후 확장 후보` 테이블과 양방향 연동 완료.
+  - **문서 무결성 검증 통과**:
+    - `bash scripts/check-plans-links.sh`: **PASS** (끊긴 참조 0건)
+    - `python scripts/gen_plans_index.py --check`: **PASS** (정합화 100%)
+    - `pytest scripts/agents/test_doc_audit.py -q`: **PASS** (36 passed)
+
+**다음 할 일 (Next TODOs for Claude / User):**
+- 사용자의 후속 구현 요청에 따라 **적응형 주간 운동 계획 v2 구현 패키지(R1~R6)** 착수:
+  - **R1 (계약·reset 기반)**: `weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode` Alembic 마이그레이션, `v2-reset` Job/Command, OpenAPI sync 및 oasdiff/PostgreSQL 병렬 contract runner 구성.
+  - **R2 (백엔드 v2 정책)**: `POST /v2/weekly-plan`(201/409 create-or-conflict), `DELETE /v2/weekly-plan`(204), `PUT /v2/profile/default-workout-plan-mode`, v1 route/schema 제거.
+  - **R3 (Android 데이터 기반)**: generated client 재생성, Room 2→3 destructive reset boundary, `AutoCreateAttemptStore`, `CurrentWeekPlanRead`.
+  - **R4 (Android 제품 흐름)**: `GymWeeklyPlanGenerator`, `HomeWeeklyPlanGenerator`, Home UI 상태(NoPlan, AutoCreating, PlanReady, PlanDataError), 환경 선택/생성 흐름.
+  - **R5 & R6 (레거시 제거 및 배포)**: v1 참조 0건 검증, C1 reset 실행(구버전 앱 종료 확인) → C2 배포 → C3 Play 릴리스 → 운영 배포 후 실기기 확인.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- C1 destructive reset 실행 직전에는 사용자의 구버전 앱 종료 확인이 선행되어야 합니다.
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
 ## 2026-10-26 (Gemini -> Claude) v0.5.0/38 스마일 트레이닝 시작 시 릴리스 전용 NPE 크래시(Sentry EUNDUNHEALTH-E/F) 근본 원인 해결 및 다중 방어선·회귀 가드 구축 완료 (INC-2026-10-26-32)
 
 **현재까지의 작업 상태 (Current Status):**
