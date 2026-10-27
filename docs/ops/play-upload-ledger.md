@@ -13,7 +13,7 @@
 다음 한 줄이 **단일 출처**다. Play 업로드가 **성공**할 때마다 이 숫자를 그 versionCode 로 갱신한다.
 
 ```
-LAST_UPLOADED_VERSION_CODE=38
+LAST_UPLOADED_VERSION_CODE=39
 ```
 
 > 규칙: 새 빌드의 versionCode 는 **항상 이 값보다 커야** 한다(= 최소 `이 값 + 1`).
@@ -24,6 +24,7 @@ LAST_UPLOADED_VERSION_CODE=38
 
 | versionName | versionCode | 트랙 | 상태 | 비고 |
 |---|---|---|---|---|
+| 0.6.0 | 39 | production | **사용됨** | 2026-10-27 release.yml 자동 갱신 (룰 13) |
 | 0.5.0 | 38 | production | **사용됨** | 2026-10-26 release.yml 자동 갱신 (룰 13) |
 | 0.4.0 | 37 | production | **사용됨** | 2026-10-17 release.yml 자동 갱신 (룰 13) |
 | 0.3.1 | 36 | production | **사용됨** | 2026-10-16 release.yml 자동 갱신 (룰 13) |
