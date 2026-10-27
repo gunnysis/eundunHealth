@@ -246,9 +246,9 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 > 운영 중 외부 접근이 필요할 때는 임시 firewall rule 추가 후 즉시 제거:
 > ```bash
 > MY_IP=$(curl -sf https://api.ipify.org)
-> az postgres flexible-server firewall-rule create --resource-group rg-eundunhealth-prod-krc --name healthapp --rule-name temp-debug --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
+> az postgres flexible-server firewall-rule create --resource-group rg-eundunhealth-prod-krc --server-name healthapp --name temp-debug --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
 > # ... 작업 ...
-> az postgres flexible-server firewall-rule delete --resource-group rg-eundunhealth-prod-krc --name healthapp --rule-name temp-debug --yes
+> az postgres flexible-server firewall-rule delete --resource-group rg-eundunhealth-prod-krc --server-name healthapp --name temp-debug --yes
 > ```
 
 ---

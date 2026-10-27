@@ -1,0 +1,2 @@
+# False positive: Kotlin type declaration `private lateinit var api: WeeklyPlanV2Api`
+fb67a47a252a2ec1b63fc2a4c85b0ac61d067f8f:app/src/test/java/com/gunnys/eundunhealth/data/repository/WorkoutRepositoryImplTest.kt:generic-api-key:51
