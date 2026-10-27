@@ -46,6 +46,15 @@ class ProfileRepository:
             self.db.add(profile)
         return profile
 
+    async def update_default_workout_plan_mode(self, user_id: str, mode: str | None) -> UserProfile | None:
+        """신체 계측 이력을 만들지 않고 기본 운동 환경만 갱신한다."""
+        profile = await self.get_by_user_id(user_id)
+        if profile is None:
+            return None
+        profile.default_workout_plan_mode = mode
+        await self.db.flush()
+        return profile
+
     async def delete_by_user_id(self, user_id: str) -> None:
         """회원 탈퇴 시 사용자의 프로필 행 삭제."""
         profile = await self.get_by_user_id(user_id)

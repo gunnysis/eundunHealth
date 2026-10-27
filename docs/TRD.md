@@ -1,13 +1,13 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-10-26, 저장소 = Play 프로덕션 = v0.5.0/38 [`completed` 100% 업로드, 직전 v0.4.0/37 ← v0.3.1/36 ← v0.3.0/35 ← v0.2.0/34 ← v0.1.19/33 ← 첫 출시 v0.1.18/32]):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-10-27, 저장소 = Play 프로덕션 = v0.5.0/38 [`completed` 100% 업로드, 적응형 주간 운동 계획 v2 반영; 직전 v0.4.0/37 ← v0.3.1/36 ← v0.3.0/35 ← v0.2.0/34 ← v0.1.19/33 ← 첫 출시 v0.1.18/32]):** 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
 ---
 
-## 구현 후 변경 사항 (v0.1.0 → v0.5.0)
+## 구현 후 변경 사항 (v0.1.0 → v0.5.0 + 적응형 주간 운동 계획 v2)
 
 
 > ⚠️ **인증 관련 본문 주의:** 아래 v1.0 본문의 인증 서술(**§2.3 인증 시스템 표**·§3 인증 플로우
@@ -19,14 +19,15 @@
 
 본 TRD v1.0이 작성된 이후 다음과 같이 변경됐습니다. **세부 운영 상태는 `ops/operations-snapshot.md` 참조.** v0.1.1~v0.5.0 단위 변경 사항은 `docs/CHANGELOG.md` + `docs/plans/logs/{android,backend,dependencies,process-infra}.md` ledger.
 
-| 영역 | TRD v1.0 | 현재 (v0.5.0) |
+| 영역 | TRD v1.0 | 현재 (v0.5.0 + v2) |
 |------|----------|------------|
 | Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.141.1 (Python 3.14)** + uvicorn 0.53.0 |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.0.54 async + asyncpg 0.31.0** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (126 PASS, cov 94% / coverage core `sysmon`) |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (139 PASS, cov 94%+ / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
-| 운동 API & 현지화 | RapidAPI ExerciseDB (영문) | **OSS** `oss.exercisedb.dev` (인증 불필요) + 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) |
+| 운동 API & 현지화 | RapidAPI ExerciseDB (영문) | **OSS** `oss.exercisedb.dev` (인증 불필요) + 추천 운동 46종 한국어 번들(`korean_exercises.json` v2) + **홈트레이닝 내장 18종 무장비 카탈로그**(`HomeWeeklyPlanGenerator`, `local:home:<slug>:v2.0`) |
+| 주간 운동 계획 API 계약 | `/weekly-plan` (v1, 덮어쓰기 upsert) | **`/v2/weekly-plan`** (7개 라우트: `planMode = gym \| home` 필수, 동일 주 중복 생성 시 `409 weekly_plan_exists`, 손상 계획 `DELETE /v2/weekly-plan` 204, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`) |
 | AI 맞춤 식단 | 미포함 | **Azure AI Foundry `DeepSeek-V3.2` MaaS** (`openai 3.16.2` AsyncOpenAI, `POST /meals/generate` & `GET /meals/current`, `X-AI-Data-Processing-Consent: true` 동의 헤더 필수, `MEAL_AI_ENABLED` kill switch) |
 | 온디바이스 스마일 트레이닝 | 미포함 | **CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0** (온디바이스 무저장·무전송 미소 코칭) + **Room `SmileTrainingDatabase` & WorkManager `SmileSyncWorker`** + 백엔드 `/smile-training/sessions`·`/smile-training/statistics` (4개 API) |
 | **인증 제공자** | Supabase Auth (SDK 3.6.0, ES256) | **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` — MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE), **RS256** (2026-09 전환) |
@@ -41,11 +42,11 @@
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.6.0** |
 | versionCode / versionName | (미정) | **38 / 0.5.0** (저장소 = Play 프로덕션 `completed` 100% 업로드) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
-| Alembic head | (미정) | `a3869f575d6a` (`create_smile_training_sessions`; 직전 `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
+| Alembic head | (미정) | `d7f4a2c91b10` (`v2_weekly_plan_mode_and_reset_audit`; 직전 `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
 
-신규 도메인 / 화면 (v0.2~v0.5.0): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, AI 맞춤 주간 식단(`MealPlanScreen`), 추천 운동 46종 한국어 현지화, 적응형 4탭 메뉴트리(`MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`), 온디바이스 스마일 트레이닝(`SmileTrainingScreen`).
+신규 도메인 / 화면 (v0.2~v0.5.0 + v2): 통계 대시보드, 목표 설정 + 진행 차트, 휴식일 커스터마이징, 배지 9종, 회원 탈퇴, AI 맞춤 주간 식단(`MealPlanScreen`), 추천 운동 46종 한국어 현지화, 적응형 4탭 메뉴트리(`MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`), 온디바이스 스마일 트레이닝(`SmileTrainingScreen`), 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝` 모드 선택 및 `기본 운동 환경` 자동 생성).
 
 v0.1.1~v0.5.0 누적 (Android UI + Auth + Backend 안정화 및 기능 확장):
 - v0.1.1 (#40) signup 가입 이메일 확인 흐름 + 인증 상태 모델 리팩터 (`SessionState` / `AuthOpState` / `SignupState` 분리)
@@ -74,6 +75,7 @@ v0.1.1~v0.5.0 누적 (Android UI + Auth + Backend 안정화 및 기능 확장):
 - v0.3.1 (#178/#181/#186/#188/#191) **프로덕션 배포 하드닝 & 운동 한국어 현지화** — 추천 운동 46종 한국어 번들(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백) + AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents`, `check-agp10-compat.sh`) + AI 식단 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) & `MEAL_AI_ENABLED` kill switch + `backend-production` 환경 게이트 & `backend-rollback.yml` + `verify_containerapp_deployment.py` 불변 조건 검증 + Play 프로덕션 **10% 단계 출시 LIVE** (2026-10-16).
 - v0.4.0 **적응형 메뉴트리 & Health Connect 투명성** — `오늘·식단·진행·프로필` 4개 최상위 탭(`MainAppShell`), `ProgressHubScreen`/`ProfileHubScreen`, multiple back stack, Health Connect 권한 재조회 및 관리 intent 연동, Play 프로덕션 `completed`(100%) 출시(2026-10-17).
 - v0.5.0 **온디바이스 스마일 트레이닝(Smile Training) & 오프라인 우선 동기화** — 전면 카메라(`CameraX` 1.6.2) + 온디바이스 `ML Kit Face Detection`(17.1.0) 미소 코칭 + 오프라인 우선 Room(`SmileTrainingDatabase`) & `WorkManager`(`SmileSyncWorker`) + 원격 이력 복원(`refreshRemoteHistoryIfEmpty`) + 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) 및 `/smile-training/*` 4개 API + 계정 삭제 로컬 와이퍼(`LocalDataWiper`) + 백엔드(`0000063`) 및 Play 프로덕션 `completed`(100%) 출시(2026-10-26).
+- **적응형 주간 운동 계획 v2 (2026-10-27)** — `weekly_plans.plan_mode`(`gym`/`home`), `user_profiles.default_workout_plan_mode`, `data_reset_audits` 테이블(alembic `d7f4a2c91b10`) · `/v2/weekly-plan` 7개 API(동일 주 중복 생성 시 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · `PUT /v2/profile/default-workout-plan-mode`(신체 계측 이력 미생성) · `GET /app-compatibility` 및 `Eundun-Client-Version-Code` 가드 · Android Room `EundunDatabase` v3 · 내장 18종 무장비 홈트레이닝 카탈로그(`HomeWeeklyPlanGenerator`, `REPS`/`SECONDS` 단위).
 
 ---
 
@@ -278,7 +280,7 @@ HealthConnectDataSource
        운동 날짜 목록 반환 → SyncHealthDataUseCase
          │
          ▼
-       PATCH /weekly-plan/complete (서버 동기화)
+       PATCH /v2/weekly-plan/complete (서버 동기화)
 ```
 
 #### Samsung Health Data SDK (도입하지 않음 — Health Connect 경로 유지)
@@ -420,17 +422,18 @@ Application.kt (EngineMain)
 
 ### 4.3. API 엔드포인트
 
-> PRD 섹션 5 "Backend API"와 일치
+> 아래 표는 TRD v1.0 초기 설계 기록이다. 현행 엔드포인트(총 27개 = JWT 필요 22 + 공개 5, `/v2/weekly-plan` 및 `/app-compatibility` 포함)는 PRD 섹션 5 "Backend API" 참조.
 
 | Method | Path | 설명 | 인증 | 검증 |
 |--------|------|------|------|------|
 | `GET` | `/health` | DB 연결 검증 (`SELECT 1`) | X | - |
 | `GET` | `/profile` | 사용자 프로필 조회 | O | userId (JWT) |
 | `PUT` | `/profile` | 프로필 생성/수정 | O | height: 50-300, weight: 10-500, bodyFat: 1-70, muscle: 1-200 |
-| `GET` | `/weekly-plan?weekStart=` | 주간 계획 조회 | O | weekStart: YYYY-MM-DD (기본: 이번 주 월요일) |
-| `POST` | `/weekly-plan` | 주간 계획 생성/갱신 | O | dayPlans JSON |
-| `PATCH` | `/weekly-plan/complete` | 운동 완료 토글 | O | dayIndex, completed |
-| `GET` | `/weekly-plan/history?page=&size=` | 히스토리 페이지네이션 | O | page: 0+, size: 1-50 (기본 10) |
+| `GET` | `/v2/weekly-plan?weekStart=` | 주간 계획 조회 | O | weekStart: YYYY-MM-DD (기본: 이번 주 월요일) |
+| `POST` | `/v2/weekly-plan` | 주간 계획 생성 | O | planMode(gym/home), dayPlans JSON (동일 주 중복 시 409) |
+| `DELETE` | `/v2/weekly-plan?weekStart=` | 손상 계획 명시적 삭제 | O | weekStart: YYYY-MM-DD |
+| `PATCH` | `/v2/weekly-plan/complete` | 운동 완료 토글 | O | date, completed, manual |
+| `GET` | `/v2/weekly-plan/history?page=&size=` | 히스토리 페이지네이션 | O | page: 0+, size: 1-50 (기본 10) |
 | `GET` | `/badges` | 획득 배지 목록 | O | - |
 | `POST` | `/badges/{key}` | 배지 수여 | O | key: whitelist 검증, 중복 방지 |
 
@@ -448,7 +451,7 @@ Application.kt (EngineMain)
 ### 4.5. 에러 처리 (FastAPI)
 
 - 전역 핸들러: `@app.exception_handler(Exception)` → 500 + `sentry_sdk.capture_exception`
-- 도메인 예외: `AppException`/`NotFoundException`(404)/`ConflictException`(409)/`BadRequestException`(400) → 매핑된 4xx
+- 도메인 예외: `AppException`/`NotFoundException`(404)/`ConflictException`(409)/`BadRequestException`(400)/`ForbiddenException`(403) → 매핑된 4xx
 - 검증 실패: `RequestValidationError` 핸들러 → 422 + path/method/body WARNING 로깅
 - `/health/ready` 의 DB 실패는 전역 핸들러를 거치지 않고 503 반환 (probe 가 Sentry 를 도배하지 않도록 의도적 분리)
 - (구 Ktor StatusPages / `Sentry.captureException` 은 cutover 로 폐기.)
@@ -467,6 +470,7 @@ Application.kt (EngineMain)
 | weight_kg | FLOAT | NOT NULL |
 | body_fat_pct | FLOAT | NULLABLE |
 | muscle_mass_kg | FLOAT | NULLABLE |
+| default_workout_plan_mode | VARCHAR(16) | NULLABLE (`gym` \| `home` CHECK, v2 추가) |
 | updated_at | DATETIME | DEFAULT CURRENT_TIMESTAMP |
 
 ### 5.2. weekly_plans
@@ -476,6 +480,7 @@ Application.kt (EngineMain)
 | id | UUID | PK, auto-generate |
 | user_id | TEXT | NOT NULL |
 | week_start | DATE | NOT NULL |
+| plan_mode | VARCHAR(16) | NOT NULL (`gym` \| `home` CHECK, v2 추가) |
 | day_plans | TEXT | NOT NULL (JSON string) |
 | created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP |
 
@@ -642,7 +647,7 @@ eundunHealth/                          # 루트 Gradle 프로젝트
 │       ├── domain/
 │       │   ├── model/                 # WeeklyPlan, DayPlan, Exercise, Badge, UserProfile
 │       │   ├── repository/            # Interfaces
-│       │   └── usecase/               # GetOrCreateWeeklyPlan, SyncHealth, CheckBadges
+│       │   └── usecase/               # LoadCurrentWeekPlan, CreateWeeklyPlan, HomeWeeklyPlanGenerator, SyncHealth, CheckBadges
 │       └── ui/
 │           ├── auth/                  # Login, Signup, AuthViewModel
 │           ├── badge/                 # BadgeScreen, BadgeViewModel
@@ -731,13 +736,15 @@ eundunHealth/                          # 루트 Gradle 프로젝트
 | PROF-01 | 신체 정보 입력 | OnboardingScreen → `PUT /profile` |
 | PROF-02 | 신체 정보 수정 | ProfileScreen → `PUT /profile` |
 | PROF-03 | 입력값 범위 검증 | ProfileSlider 클라이언트 검증 + 서버 검증 |
-| PLAN-01 | 주간 운동 계획 자동 생성 | `GetOrCreateWeeklyPlanUseCase` → ExerciseDB → `POST /weekly-plan` |
+| PROF-05 | 기본 운동 환경 설정 | ProfileHubScreen → `PUT /v2/profile/default-workout-plan-mode` |
+| PLAN-01 | 주간 운동 계획 생성 | `LoadCurrentWeekPlanUseCase` / `CreateWeeklyPlanUseCase` → `POST /v2/weekly-plan` |
 | PLAN-02 | 요일별 운동 카드 표시 | HomeScreen `DayPlanCard` Composable |
 | PLAN-03 | 오늘 운동 하이라이트 | DayPlanCard 배경색 조건부 렌더링 |
-| PLAN-04 | 운동 상세 정보 | WorkoutDetailScreen (SubcomposeAsyncImage GIF) |
-| PLAN-05 | ExerciseDB API 운동 데이터 | ExerciseDB Retrofit API (RapidAPI) |
-| PLAN-06 | Room 로컬 캐시 | Room Database + WeeklyPlanDao |
-| TRACK-01 | 수동 운동 완료 토글 | DayPlanCard 탭 → `PATCH /weekly-plan/complete` |
+| PLAN-04 | 운동 상세 정보 | WorkoutDetailScreen (SubcomposeAsyncImage GIF 및 무장비 텍스트 가이드) |
+| PLAN-05 | 운동 데이터 제공 | ExerciseDB Retrofit API (`GYM`) + `HomeWeeklyPlanGenerator` 내장 18종 (`HOME`) |
+| PLAN-06 | Room 로컬 캐시 | Room Database (v3) + WeeklyPlanDao |
+| PLAN-07 | 주중 계획 불변성 및 복구 | `409 weekly_plan_exists` + `DELETE /v2/weekly-plan` (`204 No Content`) |
+| TRACK-01 | 수동 운동 완료 토글 | DayPlanCard 탭 → `PATCH /v2/weekly-plan/complete` |
 | TRACK-02 | Optimistic update | HomeViewModel 즉시 UI 반영 + 서버 실패 롤백 |
 | TRACK-03 | Health Connect 자동 감지 | `SyncHealthDataUseCase` + HealthConnectDataSource |
 | TRACK-04 | 주간 진행률 | HomeScreen LinearProgressIndicator |

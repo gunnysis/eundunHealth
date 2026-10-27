@@ -2,12 +2,13 @@ package com.gunnys.eundunhealth.di
 
 import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.api.generated.api.AccountApi
+import com.gunnys.eundunhealth.api.generated.api.AppCompatibilityApi
 import com.gunnys.eundunhealth.api.generated.api.BadgesApi
 import com.gunnys.eundunhealth.api.generated.api.GoalsApi
 import com.gunnys.eundunhealth.api.generated.api.MealsApi
 import com.gunnys.eundunhealth.api.generated.api.ProfileApi
 import com.gunnys.eundunhealth.api.generated.api.SmileTrainingApi
-import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanApi
+import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanV2Api
 import com.gunnys.eundunhealth.data.auth.MsalClientProvider
 import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDbApi
 import com.gunnys.eundunhealth.data.remote.interceptor.EntraSessionRefresher
@@ -58,14 +59,12 @@ object NetworkModule {
         .addInterceptor(RetryInterceptor())
         .addInterceptor { chain ->
             val token = tokenHolder.get()
-            val request = if (token != null) {
-                chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $token")
-                    .build()
-            } else {
-                chain.request()
+            val builder = chain.request().newBuilder()
+                .header("Eundun-Client-Version-Code", BuildConfig.VERSION_CODE.toString())
+            if (token != null) {
+                builder.addHeader("Authorization", "Bearer $token")
             }
-            chain.proceed(request)
+            chain.proceed(builder.build())
         }
         .authenticator(TokenAuthenticator(EntraSessionRefresher(msalProvider), tokenHolder))
         .addInterceptor(SentryOkHttpInterceptor())
@@ -80,7 +79,7 @@ object NetworkModule {
         )
         .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
-    // Backend Retrofit은 generated API 5개가 공유한다. baseUrl/converter는 한 곳에서 관리.
+    // Backend Retrofit은 generated API 7개가 공유한다. baseUrl/converter는 한 곳에서 관리.
     @Provides
     @Singleton
     @Named("backend")
@@ -96,7 +95,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideWeeklyPlanApi(@Named("backend") retrofit: Retrofit): WeeklyPlanApi = retrofit.create(WeeklyPlanApi::class.java)
+    fun provideWeeklyPlanV2Api(@Named("backend") retrofit: Retrofit): WeeklyPlanV2Api = retrofit.create(WeeklyPlanV2Api::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAppCompatibilityApi(@Named("backend") r: Retrofit): AppCompatibilityApi = r.create(AppCompatibilityApi::class.java)
 
     @Provides
     @Singleton

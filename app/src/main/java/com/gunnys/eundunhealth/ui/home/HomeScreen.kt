@@ -11,31 +11,42 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,17 +60,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.Exercise
+import com.gunnys.eundunhealth.domain.model.ExercisePrescriptionUnit
 import com.gunnys.eundunhealth.domain.model.ExerciseType
+import com.gunnys.eundunhealth.domain.model.PlanSource
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
@@ -72,6 +91,11 @@ import java.util.Locale
 
 private val DAY_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d")
 
+fun WorkoutPlanMode.displayLabel(): String = when (this) {
+    WorkoutPlanMode.GYM -> "헬스장"
+    WorkoutPlanMode.HOME -> "홈트레이닝"
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -81,13 +105,17 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pullState = rememberPullToRefreshState()
+    val isBusyCreating = uiState is HomeUiState.Creating || uiState is HomeUiState.AutoCreating
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("이번 주 운동 계획") },
                 actions = {
-                    IconButton(onClick = viewModel::loadPlan) {
+                    IconButton(
+                        onClick = viewModel::loadPlan,
+                        enabled = !isBusyCreating,
+                    ) {
                         Icon(Icons.Default.Refresh, contentDescription = "운동 계획 새로고침")
                     }
                 },
@@ -103,6 +131,43 @@ fun HomeScreen(
             when (val state = uiState) {
                 is HomeUiState.Loading -> {
                     SkeletonHomeContent()
+                }
+                is HomeUiState.NoPlan -> {
+                    WorkoutPlanModeSelectionContent(
+                        selectedMode = state.selectedMode,
+                        isCreating = false,
+                        createError = state.createError,
+                        onSelectMode = viewModel::selectMode,
+                        onCreatePlan = viewModel::createSelectedPlan,
+                    )
+                }
+                is HomeUiState.Creating -> {
+                    WorkoutPlanModeSelectionContent(
+                        selectedMode = state.selectedMode,
+                        isCreating = true,
+                        createError = null,
+                        onSelectMode = {},
+                        onCreatePlan = {},
+                    )
+                }
+                is HomeUiState.AutoCreating -> {
+                    AutoCreatingContent(mode = state.mode)
+                }
+                is HomeUiState.AutoCreateError -> {
+                    AutoCreateErrorContent(
+                        mode = state.mode,
+                        error = state.error,
+                        onRetry = viewModel::retryAutoCreate,
+                    )
+                }
+                is HomeUiState.PlanDataError -> {
+                    PlanDataErrorContent(
+                        source = state.source,
+                        resetError = state.resetError,
+                        isResetting = state.isResetting,
+                        onRefresh = viewModel::loadPlan,
+                        onResetPlan = viewModel::resetCorruptedPlan,
+                    )
                 }
                 is HomeUiState.Error -> {
                     ErrorContent(
@@ -152,6 +217,291 @@ fun HomeScreen(
 }
 
 @Composable
+fun WorkoutPlanModeSelectionContent(
+    selectedMode: WorkoutPlanMode?,
+    isCreating: Boolean,
+    createError: AppError?,
+    onSelectMode: (WorkoutPlanMode) -> Unit,
+    onCreatePlan: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "이번 주 운동 환경을 선택하세요",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(
+            text = "선택한 환경에 맞춰 이번 주 7일 운동 계획을 생성합니다. 매주 자동으로 생성하려면 프로필에서 기본 운동 환경을 설정하세요.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        createError?.let { err ->
+            AuthErrorBanner(error = err, screen = "home_create_plan")
+        }
+
+        Column(
+            modifier = Modifier.selectableGroup(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            WorkoutPlanModeOptionCard(
+                title = "헬스장",
+                description = "헬스장 — 장비를 사용하는 운동 계획",
+                selected = selectedMode == WorkoutPlanMode.GYM,
+                enabled = !isCreating,
+                onClick = { onSelectMode(WorkoutPlanMode.GYM) },
+            )
+            WorkoutPlanModeOptionCard(
+                title = "홈트레이닝",
+                description = "홈트레이닝 — 장비 없이 하는 기본 동작 계획",
+                selected = selectedMode == WorkoutPlanMode.HOME,
+                enabled = !isCreating,
+                onClick = { onSelectMode(WorkoutPlanMode.HOME) },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = onCreatePlan,
+            enabled = selectedMode != null && !isCreating,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+        ) {
+            if (isCreating) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(end = 8.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+                Text("이번 주 계획을 만드는 중...")
+            } else {
+                Text("이번 주 계획 만들기")
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkoutPlanModeOptionCard(
+    title: String,
+    description: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val borderColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
+    val borderWidth = if (selected) 2.dp else 1.dp
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .selectable(
+                selected = selected,
+                enabled = enabled,
+                role = Role.RadioButton,
+                onClick = onClick,
+            ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(borderWidth, borderColor),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = null,
+                enabled = enabled,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AutoCreatingContent(mode: WorkoutPlanMode) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CircularProgressIndicator()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "기본 운동 환경으로 이번 주 계획을 만드는 중",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "선택된 환경: ${mode.displayLabel()}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun AutoCreateErrorContent(
+    mode: WorkoutPlanMode,
+    error: AppError,
+    onRetry: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = Icons.Default.ErrorOutline,
+            contentDescription = null,
+            modifier = Modifier.size(56.dp),
+            tint = MaterialTheme.colorScheme.error,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "기본 운동 환경(${mode.displayLabel()})으로 계획을 만들지 못했습니다",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { heading() },
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        AuthErrorBanner(
+            error = error,
+            screen = "home_auto_create_error",
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onRetry,
+            modifier = Modifier.heightIn(min = 48.dp),
+        ) {
+            Text("다시 만들기")
+        }
+    }
+}
+
+@Composable
+private fun PlanDataErrorContent(
+    source: PlanSource,
+    resetError: AppError?,
+    isResetting: Boolean,
+    onRefresh: () -> Unit,
+    onResetPlan: () -> Unit,
+) {
+    val sourceCode = when (source) {
+        PlanSource.REMOTE -> "PLAN-REMOTE-UNREADABLE"
+        PlanSource.CACHE -> "PLAN-CACHE-UNREADABLE"
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = Icons.Default.ErrorOutline,
+            contentDescription = null,
+            modifier = Modifier.size(56.dp),
+            tint = MaterialTheme.colorScheme.error,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "현재 주 계획 데이터를 읽을 수 없습니다",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics {
+                heading()
+                liveRegion = LiveRegionMode.Polite
+            },
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "데이터 손상이 감지되어 기존 계획을 자동으로 덮어쓰지 않고 보호했습니다. 새로고침하거나 이번 주 계획을 초기화한 뒤 다시 만들 수 있습니다. (진단 코드: $sourceCode)",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        resetError?.let { err ->
+            Spacer(modifier = Modifier.height(12.dp))
+            AuthErrorBanner(error = err, screen = "home_plan_reset")
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(
+                onClick = onRefresh,
+                enabled = !isResetting,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text("새로고침")
+            }
+            Button(
+                onClick = onResetPlan,
+                enabled = !isResetting,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                if (isResetting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(end = 8.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+                Text("계획 초기화")
+            }
+        }
+    }
+}
+
+@Composable
 fun WeeklyProgressCard(
     plan: WeeklyPlan,
     completedCount: Int,
@@ -180,13 +530,17 @@ fun WeeklyProgressCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "이번 주 진행률",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.semantics { heading() },
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "이번 주 진행률",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        PlanModeBadge(mode = plan.mode)
+                    }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         "$weekRangeLabel · $completedCount/${totalDays}일 운동 완료",
@@ -224,6 +578,26 @@ fun WeeklyProgressCard(
                 WeeklyDayStampRow(days = plan.days, today = today)
             }
         }
+    }
+}
+
+@Composable
+fun PlanModeBadge(
+    mode: WorkoutPlanMode,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Text(
+            text = mode.displayLabel(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }
 
@@ -469,6 +843,10 @@ private fun ExerciseRow(
             .filter { it.isNotBlank() }
             .joinToString(" · ")
     }
+    val prescriptionLabel = when (exercise.prescriptionUnit) {
+        ExercisePrescriptionUnit.SECONDS -> "${exercise.sets}×${exercise.reps}초"
+        ExercisePrescriptionUnit.REPS -> "${exercise.sets}×${exercise.reps}"
+    }
 
     Surface(
         onClick = onClick,
@@ -520,7 +898,7 @@ private fun ExerciseRow(
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             ) {
                 Text(
-                    text = "${exercise.sets}×${exercise.reps}",
+                    text = prescriptionLabel,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

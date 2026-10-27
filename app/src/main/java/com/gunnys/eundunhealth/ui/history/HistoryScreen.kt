@@ -1,5 +1,6 @@
 package com.gunnys.eundunhealth.ui.history
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.ui.components.EmptyContent
 import com.gunnys.eundunhealth.ui.components.ErrorContent
+import com.gunnys.eundunhealth.ui.home.PlanModeBadge
 import java.time.format.DateTimeFormatter
 
 // 카드마다 ofPattern을 호출하던 비용 제거 — Pattern은 immutable이므로 안전한 싱글톤
@@ -133,10 +135,17 @@ fun HistoryWeekCard(plan: WeeklyPlan) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "${plan.weekStart.format(WEEK_DATE_FORMATTER)} - ${weekEnd.format(WEEK_DATE_FORMATTER)}",
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "${plan.weekStart.format(WEEK_DATE_FORMATTER)} - ${weekEnd.format(WEEK_DATE_FORMATTER)}",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                PlanModeBadge(mode = plan.mode)
+            }
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
                 progress = { rate },

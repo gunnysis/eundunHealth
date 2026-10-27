@@ -42,6 +42,21 @@ class AppErrorTest {
     }
 
     @Test
+    fun `Http 403 with client_update_required maps to ClientUpdateRequired`() {
+        val body = """{"code":"client_update_required","message":"앱 업데이트 필요","minimumSupportedVersionCode":99}"""
+        val response = Response.Builder()
+            .code(403)
+            .message("Forbidden")
+            .protocol(Protocol.HTTP_1_1)
+            .request(Request.Builder().url("http://test").build())
+            .body(body.toResponseBody("application/json".toMediaTypeOrNull()))
+            .build()
+        val err = HttpException(RetrofitResponse.error<Any>(403, response.body)).toAppError()
+        assertTrue(err is AppError.ClientUpdateRequired)
+        assertEquals(99, (err as AppError.ClientUpdateRequired).minimumSupportedVersionCode)
+    }
+
+    @Test
     fun `Http 404 maps to NotFound`() {
         val err = httpException(404).toAppError()
         assertTrue(err is AppError.NotFound)

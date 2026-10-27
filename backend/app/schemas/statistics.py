@@ -1,10 +1,12 @@
 from app.schemas.base import CamelSchema
+from app.schemas.weekly_plan import WorkoutPlanMode
 
 
 class WeeklyRateDto(CamelSchema):
     """한 주의 운동 완료율 (0.0 ~ 1.0)."""
 
     week_start: str
+    plan_mode: WorkoutPlanMode
     completion_rate: float
 
 

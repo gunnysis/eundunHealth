@@ -1,6 +1,63 @@
 {
   "components": {
     "schemas": {
+      "ApiErrorResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "minimumSupportedVersionCode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimumsupportedversioncode"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ApiErrorResponse",
+        "type": "object"
+      },
+      "AppCompatibilityResponse": {
+        "properties": {
+          "minimumSupportedVersionCode": {
+            "title": "Minimumsupportedversioncode",
+            "type": "integer"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "playPackageUri": {
+            "title": "Playpackageuri",
+            "type": "string"
+          },
+          "updateRequired": {
+            "title": "Updaterequired",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "platform",
+          "minimumSupportedVersionCode",
+          "updateRequired",
+          "playPackageUri"
+        ],
+        "title": "AppCompatibilityResponse",
+        "type": "object"
+      },
       "BadgeResponse": {
         "properties": {
           "badgeKey": {
@@ -17,6 +74,30 @@
           "earnedAt"
         ],
         "title": "BadgeResponse",
+        "type": "object"
+      },
+      "ClientUpdateRequiredErrorResponse": {
+        "properties": {
+          "code": {
+            "const": "client_update_required",
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "minimumSupportedVersionCode": {
+            "title": "Minimumsupportedversioncode",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "minimumSupportedVersionCode"
+        ],
+        "title": "ClientUpdateRequiredErrorResponse",
         "type": "object"
       },
       "CompletionRequest": {
@@ -79,6 +160,25 @@
           "meals"
         ],
         "title": "DailyMealPlan",
+        "type": "object"
+      },
+      "DefaultWorkoutPlanModeRequest": {
+        "properties": {
+          "defaultWorkoutPlanMode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkoutPlanMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "defaultWorkoutPlanMode"
+        ],
+        "title": "DefaultWorkoutPlanModeRequest",
         "type": "object"
       },
       "GoalRequest": {
@@ -562,6 +662,16 @@
             ],
             "title": "Bodyfatpct"
           },
+          "defaultWorkoutPlanMode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkoutPlanMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "gender": {
             "title": "Gender",
             "type": "string"
@@ -673,6 +783,25 @@
         "title": "WeeklyMealPlanResponse",
         "type": "object"
       },
+      "WeeklyPlanExistsErrorResponse": {
+        "properties": {
+          "code": {
+            "const": "weekly_plan_exists",
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "WeeklyPlanExistsErrorResponse",
+        "type": "object"
+      },
       "WeeklyPlanHistoryResponse": {
         "description": "페이지네이션 메타를 포함한 history envelope.\n\nAndroid의 HistoryViewModel이 total_count를 받아 페이지 인디케이터에 사용한다.\n이전엔 `list[WeeklyPlanResponse]`만 반환해서 Android Gson deserialization이 실패했다.",
         "properties": {
@@ -705,24 +834,6 @@
         "title": "WeeklyPlanHistoryResponse",
         "type": "object"
       },
-      "WeeklyPlanRequest": {
-        "properties": {
-          "dayPlans": {
-            "title": "Dayplans",
-            "type": "string"
-          },
-          "weekStart": {
-            "title": "Weekstart",
-            "type": "string"
-          }
-        },
-        "required": [
-          "weekStart",
-          "dayPlans"
-        ],
-        "title": "WeeklyPlanRequest",
-        "type": "object"
-      },
       "WeeklyPlanResponse": {
         "properties": {
           "createdAt": {
@@ -744,6 +855,9 @@
             "title": "Id",
             "type": "string"
           },
+          "planMode": {
+            "$ref": "#/components/schemas/WorkoutPlanMode"
+          },
           "userId": {
             "title": "Userid",
             "type": "string"
@@ -757,9 +871,32 @@
           "id",
           "userId",
           "weekStart",
+          "planMode",
           "dayPlans"
         ],
         "title": "WeeklyPlanResponse",
+        "type": "object"
+      },
+      "WeeklyPlanV2Request": {
+        "properties": {
+          "dayPlans": {
+            "title": "Dayplans",
+            "type": "string"
+          },
+          "planMode": {
+            "$ref": "#/components/schemas/WorkoutPlanMode"
+          },
+          "weekStart": {
+            "title": "Weekstart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weekStart",
+          "planMode",
+          "dayPlans"
+        ],
+        "title": "WeeklyPlanV2Request",
         "type": "object"
       },
       "WeeklyRateDto": {
@@ -769,6 +906,9 @@
             "title": "Completionrate",
             "type": "number"
           },
+          "planMode": {
+            "$ref": "#/components/schemas/WorkoutPlanMode"
+          },
           "weekStart": {
             "title": "Weekstart",
             "type": "string"
@@ -776,10 +916,19 @@
         },
         "required": [
           "weekStart",
+          "planMode",
           "completionRate"
         ],
         "title": "WeeklyRateDto",
         "type": "object"
+      },
+      "WorkoutPlanMode": {
+        "enum": [
+          "gym",
+          "home"
+        ],
+        "title": "WorkoutPlanMode",
+        "type": "string"
       }
     },
     "securitySchemes": {
@@ -823,6 +972,60 @@
         "summary": "Delete Account",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/app-compatibility": {
+      "get": {
+        "description": "인증 전 Android 앱의 최소 지원 버전과 업데이트 위치를 반환한다.",
+        "operationId": "getAppCompatibility",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "platform",
+            "required": true,
+            "schema": {
+              "const": "android",
+              "title": "Platform",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "versionCode",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Versioncode",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppCompatibilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get App Compatibility",
+        "tags": [
+          "app-compatibility"
         ]
       }
     },
@@ -1399,10 +1602,170 @@
         ]
       }
     },
-    "/weekly-plan": {
+    "/v2/profile/default-workout-plan-mode": {
+      "put": {
+        "description": "신체 측정 이력을 추가하지 않고 다음 계획의 기본 환경만 변경한다.",
+        "operationId": "updateDefaultWorkoutPlanModeV2",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Eundun-Client-Version-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Eundun-Client-Version-Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefaultWorkoutPlanModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientUpdateRequiredErrorResponse"
+                }
+              }
+            },
+            "description": "지원 종료된 Android 클라이언트"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "프로필이 없음"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Default Workout Plan Mode",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/v2/weekly-plan": {
+      "delete": {
+        "description": "손상 계획 복구를 사용자가 명시한 경우 해당 주 계획을 삭제한다.",
+        "operationId": "deleteWeeklyPlanV2",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weekStart",
+            "required": true,
+            "schema": {
+              "title": "Weekstart",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Eundun-Client-Version-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Eundun-Client-Version-Code"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientUpdateRequiredErrorResponse"
+                }
+              }
+            },
+            "description": "지원 종료된 Android 클라이언트"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "해당 주 계획이 없음"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Plan",
+        "tags": [
+          "weekly-plan-v2"
+        ]
+      },
       "get": {
         "description": "지정한 주(week_start)의 운동 계획을 반환한다. 없으면 404.",
-        "operationId": "getWeeklyPlan",
+        "operationId": "getWeeklyPlanV2",
         "parameters": [
           {
             "in": "query",
@@ -1443,24 +1806,42 @@
         ],
         "summary": "Get Plan",
         "tags": [
-          "weekly-plan"
+          "weekly-plan-v2"
         ]
       },
       "post": {
-        "description": "주간 운동 계획을 생성하거나 교체한다. ExerciseDB 기반 자동 생성 결과를 저장한다.",
-        "operationId": "createWeeklyPlan",
+        "description": "새 주간 운동 계획을 생성한다. 동일 주 계획은 변경하지 않고 409를 반환한다.",
+        "operationId": "createWeeklyPlanV2",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Eundun-Client-Version-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Eundun-Client-Version-Code"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WeeklyPlanRequest"
+                "$ref": "#/components/schemas/WeeklyPlanV2Request"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -1469,6 +1850,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientUpdateRequiredErrorResponse"
+                }
+              }
+            },
+            "description": "지원 종료된 Android 클라이언트"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyPlanExistsErrorResponse"
+                }
+              }
+            },
+            "description": "동일 주 계획이 이미 존재함"
           },
           "422": {
             "content": {
@@ -1488,14 +1889,32 @@
         ],
         "summary": "Create Plan",
         "tags": [
-          "weekly-plan"
+          "weekly-plan-v2"
         ]
       }
     },
-    "/weekly-plan/complete": {
+    "/v2/weekly-plan/complete": {
       "patch": {
         "description": "특정 요일의 운동 완료 여부를 갱신한다. 배지는 클라이언트가 POST /badges/{key}로 직접 부여한다.",
-        "operationId": "updateDayCompletion",
+        "operationId": "updateDayCompletionV2",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Eundun-Client-Version-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Eundun-Client-Version-Code"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1514,12 +1933,22 @@
                   "additionalProperties": {
                     "type": "string"
                   },
-                  "title": "Response Updatedaycompletion",
+                  "title": "Response Updatedaycompletionv2",
                   "type": "object"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientUpdateRequiredErrorResponse"
+                }
+              }
+            },
+            "description": "지원 종료된 Android 클라이언트"
           },
           "422": {
             "content": {
@@ -1539,14 +1968,14 @@
         ],
         "summary": "Complete",
         "tags": [
-          "weekly-plan"
+          "weekly-plan-v2"
         ]
       }
     },
-    "/weekly-plan/history": {
+    "/v2/weekly-plan/history": {
       "get": {
         "description": "과거 주간 계획 목록을 페이지 단위로 반환한다. 최신 순 정렬.",
-        "operationId": "getWeeklyPlanHistory",
+        "operationId": "getWeeklyPlanHistoryV2",
         "parameters": [
           {
             "in": "query",
@@ -1601,14 +2030,14 @@
         ],
         "summary": "History",
         "tags": [
-          "weekly-plan"
+          "weekly-plan-v2"
         ]
       }
     },
-    "/weekly-plan/previous": {
+    "/v2/weekly-plan/previous": {
       "get": {
         "description": "기준 주 직전의 plan. 없으면 null — Android가 첫 사용자/공백 주를 구분하도록.",
-        "operationId": "getPreviousWeeklyPlan",
+        "operationId": "getPreviousWeeklyPlanV2",
         "parameters": [
           {
             "in": "query",
@@ -1633,7 +2062,7 @@
                       "type": "null"
                     }
                   ],
-                  "title": "Response Getpreviousweeklyplan"
+                  "title": "Response Getpreviousweeklyplanv2"
                 }
               }
             },
@@ -1657,14 +2086,14 @@
         ],
         "summary": "Previous",
         "tags": [
-          "weekly-plan"
+          "weekly-plan-v2"
         ]
       }
     },
-    "/weekly-plan/statistics": {
+    "/v2/weekly-plan/statistics": {
       "get": {
         "description": "최근 N주간 완료율과 연속 streak 통계를 반환한다.",
-        "operationId": "getStatistics",
+        "operationId": "getStatisticsV2",
         "parameters": [
           {
             "in": "query",
@@ -1708,7 +2137,7 @@
         ],
         "summary": "Statistics",
         "tags": [
-          "weekly-plan"
+          "weekly-plan-v2"
         ]
       }
     }

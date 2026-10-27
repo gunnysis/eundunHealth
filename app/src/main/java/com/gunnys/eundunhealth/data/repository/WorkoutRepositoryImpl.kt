@@ -2,10 +2,10 @@ package com.gunnys.eundunhealth.data.repository
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanApi
+import com.gunnys.eundunhealth.api.generated.api.WeeklyPlanV2Api
 import com.gunnys.eundunhealth.api.generated.model.CompletionRequest
-import com.gunnys.eundunhealth.api.generated.model.WeeklyPlanRequest
 import com.gunnys.eundunhealth.api.generated.model.WeeklyPlanResponse
+import com.gunnys.eundunhealth.api.generated.model.WeeklyPlanV2Request
 import com.gunnys.eundunhealth.data.local.dao.WeeklyPlanDao
 import com.gunnys.eundunhealth.data.local.entity.WeeklyPlanEntity
 import com.gunnys.eundunhealth.data.remote.api.dto.DayPlanJson
@@ -14,16 +14,21 @@ import com.gunnys.eundunhealth.data.remote.exercisedb.ExerciseDto
 import com.gunnys.eundunhealth.data.remote.exercisedb.toDomain
 import com.gunnys.eundunhealth.data.remote.util.bodyOrThrow
 import com.gunnys.eundunhealth.data.translation.ExerciseTranslationProvider
+import com.gunnys.eundunhealth.domain.model.CurrentWeekPlanRead
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.domain.model.ExerciseType
+import com.gunnys.eundunhealth.domain.model.PlanSource
 import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.model.WeeklyPlanAlreadyExistsException
 import com.gunnys.eundunhealth.domain.model.WeeklyRate
-import com.gunnys.eundunhealth.domain.model.toReportedAppError
+import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
+import com.gunnys.eundunhealth.domain.model.toWorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
+import com.gunnys.eundunhealth.domain.usecase.HomeWeeklyPlanGenerator
 import com.gunnys.eundunhealth.domain.usecase.WeeklyPlanGenerator
 import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
@@ -32,9 +37,10 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
+import com.gunnys.eundunhealth.api.generated.model.WorkoutPlanMode as ApiWorkoutPlanMode
 
 class WorkoutRepositoryImpl @Inject constructor(
-    private val api: WeeklyPlanApi,
+    private val api: WeeklyPlanV2Api,
     private val exerciseDb: ExerciseDbDataSource,
     private val weeklyPlanDao: WeeklyPlanDao,
     private val gson: Gson,
@@ -45,38 +51,43 @@ class WorkoutRepositoryImpl @Inject constructor(
     // 주 시작(월요일)은 KST 고정 — 디바이스 타임존과 무관하게 plan/통계 key(weekStart)가 흔들리지 않도록.
     private fun currentWeekStart(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul")).with(DayOfWeek.MONDAY)
 
-    // 광역 catch 는 의도다 — 원격 조회가 *어떤* 이유로 실패하든(IO·HTTP·JSON 파싱) 캐시로
-    // 폴백해야 하고, 예외 종류를 좁히면 새 실패 유형이 생길 때 조용히 폴백을 잃는다.
-    // 삼키지 않는다: 캐시가 없으면 원래 예외를 그대로 rethrow 한다(아래).
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun getCurrentWeekPlan(): Result<WeeklyPlan?> = runSuspendCatching {
+    override suspend fun loadCurrentWeekPlan(): CurrentWeekPlanRead {
         val weekStart = currentWeekStart()
         try {
-            val response = api.getWeeklyPlan(weekStart.toString())
-            if (response.code() == 404) return@runSuspendCatching null
+            val response = api.getWeeklyPlanV2(weekStart.toString())
+            if (response.code() == 404) {
+                authRepo.getCurrentUserId()?.let { weeklyPlanDao.deleteByUserAndWeek(it, weekStart.toString()) }
+                return CurrentWeekPlanRead.Missing
+            }
             val dto = response.bodyOrThrow()
-            // read 경로에서도 캐시를 갱신 → 오프라인 시 stale(미완료) plan 대신 최신 완료상태를 보인다(F3).
-            weeklyPlanDao.insertPlan(WeeklyPlanEntity(dto.id, dto.userId, weekStart.toString(), dto.dayPlans))
-            return@runSuspendCatching translationProvider.localize(dto.toDomain())
+            val plan = runCatching { dto.toDomainStrict() }.getOrElse {
+                return CurrentWeekPlanRead.Unreadable(PlanSource.REMOTE, it)
+            }
+            weeklyPlanDao.insertPlan(plan.toEntity(dto.dayPlans))
+            return CurrentWeekPlanRead.Found(localizePlan(plan))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // 네트워크 실패 → 캐시 폴백. Sentry 보고는 ViewModel 의 toReportedAppError() 가 처리
             val userId = authRepo.getCurrentUserId()
             if (userId != null) {
                 val cached = weeklyPlanDao.getPlan(userId, weekStart.toString())
                 if (cached != null) {
-                    return@runSuspendCatching translationProvider.localize(
+                    return runCatching {
                         WeeklyPlan(
                             id = cached.id,
                             userId = cached.userId,
                             weekStart = LocalDate.parse(cached.weekStart),
-                            days = parseDayPlans(cached.dayPlansJson),
-                        ),
+                            days = parseDayPlansStrict(cached.dayPlansJson),
+                            mode = cached.planMode.toWorkoutPlanMode(),
+                        ).also(::validatePlan)
+                    }.fold(
+                        onSuccess = { CurrentWeekPlanRead.Found(localizePlan(it)) },
+                        onFailure = { CurrentWeekPlanRead.Unreadable(PlanSource.CACHE, it) },
                     )
                 }
             }
-            throw e
+            return CurrentWeekPlanRead.Failed(e)
         }
     }
 
@@ -86,82 +97,43 @@ class WorkoutRepositoryImpl @Inject constructor(
         val weekStart = currentWeekStart()
         val userId = authRepo.getCurrentUserId()
         val cached = userId?.let { weeklyPlanDao.getPlan(it, weekStart.toString()) }
-            ?.let { parseDayPlans(it.dayPlansJson) }
+            ?.let { runCatching { parseDayPlansStrict(it.dayPlansJson) }.getOrNull() }
             ?.flatMap { it.exercises }
             ?.find { it.id == exerciseId }
         if (cached != null) return@runSuspendCatching translationProvider.localize(cached)
 
         // 2) 캐시 미스 → 네트워크 폴백 (현재 주 계획)
-        getCurrentWeekPlan().getOrNull()
-            ?.days?.flatMap { it.exercises }?.find { it.id == exerciseId }
+        (loadCurrentWeekPlan() as? CurrentWeekPlanRead.Found)
+            ?.plan?.days?.flatMap { it.exercises }?.find { it.id == exerciseId }
     }
 
-    override suspend fun createWeeklyPlan(profile: UserProfile): Result<WeeklyPlan> = runSuspendCatching {
+    override suspend fun createWeeklyPlan(profile: UserProfile, mode: WorkoutPlanMode): Result<WeeklyPlan> = runSuspendCatching {
         val weekStart = currentWeekStart()
-        val (sets, reps) = exerciseDb.getSetsAndReps(profile.fitnessLevel)
-
-        // 1) 이전 주 plan에서 운동 ID를 추출 (실패해도 빈 집합으로 폴백)
-        val excludeIds: Set<String> = runSuspendCatching {
-            val prevResp = api.getPreviousWeeklyPlan(weekStart.toString())
-            // 404나 null body → 빈 집합
-            val prev = prevResp.body()
-            prev?.dayPlans?.let { parseDayPlans(it) }
-                ?.flatMap { it.exercises }
-                ?.map { it.id }
-                ?.toSet()
-                .orEmpty()
-        }.getOrDefault(emptySet())
-
-        // 2) 부위·카디오 운동 풀을 한 번씩만 fetch (이전 주 ID는 reorderExcludingPrevious 로 후순위 정렬)
-        suspend fun pool(bodyPart: String, type: ExerciseType): List<Exercise> = runSuspendCatching {
-            reorderExcludingPrevious(exerciseDb.getStrengthExercises(bodyPart, limit = 6), excludeIds, bodyPart) {
-                it.toDomain(sets, reps, type)
-            }
-        }.getOrDefault(emptyList())
-
-        val push = pool("chest", ExerciseType.STRENGTH) + pool("shoulders", ExerciseType.STRENGTH)
-        val pull = pool("back", ExerciseType.STRENGTH) + pool("upper arms", ExerciseType.STRENGTH)
-        val legs = pool("upper legs", ExerciseType.STRENGTH) + pool("lower legs", ExerciseType.STRENGTH)
-
-        val cardioPool: List<Exercise> = runSuspendCatching {
-            reorderExcludingPrevious(exerciseDb.getCardioExercises(limit = 10), excludeIds, "cardio") {
-                it.toDomain(1, 30, ExerciseType.CARDIO)
-            }
-        }.getOrDefault(emptyList())
-
-        // 3) 요일별 배치 — 순수 generator 위임(결정론적, 단위테스트는 WeeklyPlanGeneratorTest)
-        val days = WeeklyPlanGenerator.generate(
-            weekStart = weekStart,
-            restDay = profile.restDay,
-            push = push,
-            pull = pull,
-            legs = legs,
-            cardio = cardioPool,
-        )
-
-        // 모든 풀이 비어 운동 0개짜리 "껍데기" 계획이 나오면 저장하지 않고 실패시킨다 (ExerciseDB
-        // 일시 장애 등). 빈 계획을 백엔드에 저장하면 그 주 내내 고착되므로, 차라리 에러로 표면화해
-        // 사용자가 재시도(ExerciseDB 복구 후 정상 생성)하도록 한다. AppError.Unknown → Sentry 보고로
-        // 빈 풀 빈도도 관측한다.
-        if (days.none { it.exercises.isNotEmpty() }) {
-            error("운동 목록을 불러오지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.")
+        val days = when (mode) {
+            WorkoutPlanMode.GYM -> generateGymPlan(profile, weekStart)
+            WorkoutPlanMode.HOME -> HomeWeeklyPlanGenerator.generate(weekStart, profile.restDay)
         }
+        validateDays(days, weekStart)
 
         val dayPlansJson = gson.toJson(days.map { DayPlanJson(it) })
-        val response = api.createWeeklyPlan(
-            WeeklyPlanRequest(weekStart = weekStart.toString(), dayPlans = dayPlansJson),
-        ).bodyOrThrow()
-        val savedPlan = WeeklyPlan(
-            id = response.id,
-            userId = response.userId,
-            weekStart = LocalDate.parse(response.weekStart),
-            days = days,
+        val response = api.createWeeklyPlanV2(
+            WeeklyPlanV2Request(
+                weekStart = weekStart.toString(),
+                planMode = mode.toApi(),
+                dayPlans = dayPlansJson,
+            ),
         )
+        if (response.code() == 409) throw WeeklyPlanAlreadyExistsException()
+        val dto = response.bodyOrThrow()
+        val savedPlan = dto.toDomainStrict()
+        weeklyPlanDao.insertPlan(savedPlan.toEntity(dto.dayPlans))
+        localizePlan(savedPlan)
+    }
 
-        weeklyPlanDao.insertPlan(
-            WeeklyPlanEntity(savedPlan.id, savedPlan.userId, weekStart.toString(), dayPlansJson),
-        )
-        translationProvider.localize(savedPlan)
+    override suspend fun deleteCurrentWeekPlan(): Result<Unit> = runSuspendCatching {
+        val weekStart = currentWeekStart()
+        api.deleteWeeklyPlanV2(weekStart.toString()).bodyOrThrow()
+        authRepo.getCurrentUserId()?.let { weeklyPlanDao.deleteByUserAndWeek(it, weekStart.toString()) }
     }
 
     override suspend fun updateDayCompletion(
@@ -171,7 +143,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         manual: Boolean,
     ): Result<Unit> = runSuspendCatching {
         val weekStart = date.with(DayOfWeek.MONDAY)
-        val response = api.updateDayCompletion(
+        val response = api.updateDayCompletionV2(
             CompletionRequest(
                 weekStart = weekStart.toString(),
                 date = date.toString(),
@@ -183,16 +155,20 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getHistory(page: Int, size: Int): Result<Pair<List<WeeklyPlan>, Int>> = runSuspendCatching {
-        val response = api.getWeeklyPlanHistory(page, size).bodyOrThrow()
-        val plans = response.plans.map { translationProvider.localize(it.toDomain()) }
+        val response = api.getWeeklyPlanHistoryV2(page, size).bodyOrThrow()
+        val plans = response.plans.map { localizePlan(it.toDomainStrict()) }
         plans to response.totalCount
     }
 
     override suspend fun getStatistics(weeks: Int): Result<Statistics> = runSuspendCatching {
-        val dto = api.getStatistics(weeks).bodyOrThrow()
+        val dto = api.getStatisticsV2(weeks).bodyOrThrow()
         Statistics(
             weeklyRates = dto.weeklyRates.map {
-                WeeklyRate(weekStart = LocalDate.parse(it.weekStart), completionRate = it.completionRate.toFloat())
+                WeeklyRate(
+                    weekStart = LocalDate.parse(it.weekStart),
+                    completionRate = it.completionRate.toFloat(),
+                    mode = it.planMode.value.toWorkoutPlanMode(),
+                )
             },
             currentStreak = dto.currentStreak,
             longestStreak = dto.longestStreak,
@@ -216,23 +192,66 @@ class WorkoutRepositoryImpl @Inject constructor(
         return (fresh + seen).map(map)
     }
 
-    private fun WeeklyPlanResponse.toDomain(): WeeklyPlan = WeeklyPlan(
+    private suspend fun generateGymPlan(profile: UserProfile, weekStart: LocalDate): List<DayPlan> {
+        val (sets, reps) = exerciseDb.getSetsAndReps(profile.fitnessLevel)
+        val excludeIds = runSuspendCatching {
+            api.getPreviousWeeklyPlanV2(weekStart.toString()).body()?.dayPlans
+                ?.let(::parseDayPlansStrict)?.flatMap { it.exercises }?.map { it.id }?.toSet().orEmpty()
+        }.getOrDefault(emptySet())
+        suspend fun pool(bodyPart: String, type: ExerciseType) = runSuspendCatching {
+            reorderExcludingPrevious(exerciseDb.getStrengthExercises(bodyPart, 6), excludeIds, bodyPart) {
+                it.toDomain(sets, reps, type)
+            }
+        }.getOrDefault(emptyList())
+        val push = pool("chest", ExerciseType.STRENGTH) + pool("shoulders", ExerciseType.STRENGTH)
+        val pull = pool("back", ExerciseType.STRENGTH) + pool("upper arms", ExerciseType.STRENGTH)
+        val legs = pool("upper legs", ExerciseType.STRENGTH) + pool("lower legs", ExerciseType.STRENGTH)
+        val cardio = runSuspendCatching {
+            reorderExcludingPrevious(exerciseDb.getCardioExercises(10), excludeIds, "cardio") {
+                it.toDomain(1, 30, ExerciseType.CARDIO)
+            }
+        }.getOrDefault(emptyList())
+        return WeeklyPlanGenerator.generate(weekStart, profile.restDay, push, pull, legs, cardio)
+    }
+
+    private fun WeeklyPlanResponse.toDomainStrict(): WeeklyPlan = WeeklyPlan(
         id = id,
         userId = userId,
         weekStart = LocalDate.parse(weekStart),
-        days = parseDayPlans(dayPlans),
-    )
+        days = parseDayPlansStrict(dayPlans),
+        mode = planMode.value.toWorkoutPlanMode(),
+    ).also(::validatePlan)
 
-    private fun parseDayPlans(json: String): List<DayPlan> = runCatching {
+    private fun parseDayPlansStrict(json: String): List<DayPlan> {
         val type = object : TypeToken<List<DayPlanJson>>() {}.type
         val dayJsons: List<DayPlanJson> = gson.fromJson(json, type)
-        dayJsons.map { it.toDayPlan() }
-    }.getOrElse { e ->
-        // 손상된 day_plans JSON 을 silent 하게 빈 계획으로 폴백하면 R8 keep 갭(INC-2026-06-15-25)과
-        // 같은 무관측 데이터 손실이 된다 → 폴백 전에 Sentry 로 보고해 관측 가능하게 둔다.
-        // (정상적으로 빈 "[]" 는 예외가 없어 여기 오지 않으므로 노이즈가 되지 않는다.)
-        e.toReportedAppError()
-        emptyList()
+        return dayJsons.map { it.toDayPlan() }
+    }
+
+    private fun validatePlan(plan: WeeklyPlan) = validateDays(plan.days, plan.weekStart)
+
+    private fun validateDays(days: List<DayPlan>, weekStart: LocalDate) {
+        require(days.size == 7) { "주간 계획은 정확히 7일이어야 합니다" }
+        require(days.map { it.date } == (0L..6L).map(weekStart::plusDays)) { "계획 날짜 범위가 올바르지 않습니다" }
+        require(days.filterNot { it.isRestDay }.all { it.exercises.isNotEmpty() }) { "운동일에 운동이 없습니다" }
+    }
+
+    private fun WeeklyPlan.toEntity(dayPlansJson: String) = WeeklyPlanEntity(
+        id = id,
+        userId = userId,
+        weekStart = weekStart.toString(),
+        planMode = mode.name.lowercase(),
+        dayPlansJson = dayPlansJson,
+    )
+
+    private fun WorkoutPlanMode.toApi() = when (this) {
+        WorkoutPlanMode.GYM -> ApiWorkoutPlanMode.gym
+        WorkoutPlanMode.HOME -> ApiWorkoutPlanMode.home
+    }
+
+    private suspend fun localizePlan(plan: WeeklyPlan): WeeklyPlan = when (plan.mode) {
+        WorkoutPlanMode.HOME -> plan
+        WorkoutPlanMode.GYM -> translationProvider.localize(plan)
     }
 }
 

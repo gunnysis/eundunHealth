@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import Field
 
 from app.schemas.base import CamelSchema
+from app.schemas.weekly_plan import WorkoutPlanMode
 
 
 class UserProfileRequest(CamelSchema):
@@ -22,3 +23,8 @@ class UserProfileResponse(CamelSchema):
     body_fat_pct: float | None
     muscle_mass_kg: float | None
     rest_day: int = 7
+    default_workout_plan_mode: WorkoutPlanMode | None = None
+
+
+class DefaultWorkoutPlanModeRequest(CamelSchema):
+    default_workout_plan_mode: WorkoutPlanMode | None

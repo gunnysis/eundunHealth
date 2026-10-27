@@ -32,6 +32,7 @@ services:
       DEEPSEEK_KEY: ${DEEPSEEK_KEY:-placeholder}
       SENTRY_DSN: ""
       ENVIRONMENT: development
+      MINIMUM_SUPPORTED_ANDROID_VERSION_CODE: 39
     depends_on:
       db:
         condition: service_healthy

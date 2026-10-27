@@ -4,6 +4,9 @@ import android.app.Activity
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.BuildConfig
+import com.gunnys.eundunhealth.api.generated.api.AppCompatibilityApi
+import com.gunnys.eundunhealth.data.local.LocalDataWiper
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
@@ -24,6 +27,11 @@ sealed class SessionState {
     data object Unknown : SessionState()
     data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : SessionState()
     data object Unauthenticated : SessionState()
+    data class UpdateRequired(
+        val minimumSupportedVersionCode: Int,
+        val playPackageUri: String,
+    ) : SessionState()
+    data class ResetFailed(val error: AppError) : SessionState()
 }
 
 /**
@@ -53,6 +61,8 @@ sealed interface AuthGateUiState {
 class AuthViewModel @Inject constructor(
     private val authRepo: AuthRepository,
     private val userRepo: UserRepository,
+    private val localDataWiper: LocalDataWiper? = null,
+    private val appCompatibilityApi: AppCompatibilityApi? = null,
 ) : ViewModel() {
 
     private val _sessionState = MutableStateFlow<SessionState>(SessionState.Unknown)
@@ -98,7 +108,36 @@ class AuthViewModel @Inject constructor(
         },
     )
 
+    fun retryStartup() {
+        _sessionState.value = SessionState.Unknown
+        checkSession()
+    }
+
     private fun checkSession() = viewModelScope.launch {
+        val resetResult = runCatching {
+            localDataWiper?.ensureV2LocalResetCompleted()
+        }
+        if (resetResult.isFailure) {
+            val err = resetResult.exceptionOrNull()!!.toReportedAppError()
+            _sessionState.value = SessionState.ResetFailed(err)
+            return@launch
+        }
+
+        val compat = runCatching {
+            appCompatibilityApi?.getAppCompatibility(
+                platform = AppCompatibilityApi.PlatformGetAppCompatibility.android,
+                versionCode = BuildConfig.VERSION_CODE,
+            )?.body()
+        }.getOrNull()
+
+        if (compat != null && compat.updateRequired) {
+            _sessionState.value = SessionState.UpdateRequired(
+                minimumSupportedVersionCode = compat.minimumSupportedVersionCode,
+                playPackageUri = compat.playPackageUri,
+            )
+            return@launch
+        }
+
         runCatching {
             val userId = authRepo.restoreSession()
             if (userId != null) {

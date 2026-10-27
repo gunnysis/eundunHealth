@@ -9,6 +9,7 @@ data class WeeklyPlan(
     val userId: String,
     val weekStart: LocalDate,
     val days: List<DayPlan>,
+    val mode: WorkoutPlanMode = WorkoutPlanMode.GYM,
 ) {
     /**
      * 어느 날에든 운동이 하나라도 배치돼 있으면 true.

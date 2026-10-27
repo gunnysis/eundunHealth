@@ -28,6 +28,11 @@ sealed class AppError(open val userMessage: String) {
         override val userMessage: String = "데이터를 찾을 수 없습니다",
     ) : AppError(userMessage)
 
+    data class ClientUpdateRequired(
+        val minimumSupportedVersionCode: Int? = null,
+        override val userMessage: String = "앱 업데이트가 필요합니다. 스토어에서 최신 버전으로 업데이트해주세요",
+    ) : AppError(userMessage)
+
     data class Unknown(
         val throwable: Throwable,
         override val userMessage: String = "알 수 없는 오류가 발생했습니다",
@@ -58,13 +63,25 @@ internal fun Throwable.toAppError(): AppError = when (this) {
     is SocketTimeoutException,
     -> AppError.Network()
     is HttpException -> when (code()) {
-        401, 403 -> AppError.Auth()
+        401 -> AppError.Auth()
+        403 -> parse403AppError()
         404 -> AppError.NotFound()
         else -> AppError.Server(code())
     }
     // Health Connect 읽기/권한 실패는 대부분 SecurityException(권한 미허용/철회) — actionable 메시지로.
     is SecurityException -> AppError.HealthConnect("Health Connect 권한이 필요합니다. 권한을 다시 허용해주세요")
     else -> AppError.Unknown(this)
+}
+
+private val MINIMUM_VERSION_REGEX = Regex(""""minimumSupportedVersionCode"\s*:\s*(\d+)""")
+
+private fun HttpException.parse403AppError(): AppError {
+    val bodyText = runCatching { response()?.errorBody()?.string().orEmpty() }.getOrDefault("")
+    if (bodyText.contains("client_update_required")) {
+        val minVersion = MINIMUM_VERSION_REGEX.find(bodyText)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        return AppError.ClientUpdateRequired(minimumSupportedVersionCode = minVersion)
+    }
+    return AppError.Auth()
 }
 
 /**

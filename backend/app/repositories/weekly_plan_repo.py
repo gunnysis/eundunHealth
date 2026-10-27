@@ -1,6 +1,9 @@
 import datetime
+import uuid
 
 from sqlalchemy import and_, delete, func, select
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.weekly_plan import WeeklyPlan
@@ -43,17 +46,36 @@ class WeeklyPlanRepository:
         )
         return list(result.scalars().all())
 
-    async def upsert(self, user_id: str, week_start: datetime.date, day_plans: str) -> WeeklyPlan:
-        """주간 plan upsert 후 flush. id/created_at 노출을 위해 flush 필수 — service 의 _to_response 전제."""
-        plan = await self.get_by_user_and_week(user_id, week_start)
-        if plan:
-            plan.day_plans = day_plans
-        else:
-            plan = WeeklyPlan(user_id=user_id, week_start=week_start, day_plans=day_plans)
-            self.db.add(plan)
-        # id/created_at을 응답에 노출하려면 flush 필요 — service에서 _to_response로 변환
-        await self.db.flush()
-        return plan
+    async def create(
+        self, user_id: str, week_start: datetime.date, plan_mode: str, day_plans: str
+    ) -> WeeklyPlan | None:
+        """원자적으로 새 계획을 삽입한다. 동일 user/week가 있으면 기존 행을 건드리지 않고 None."""
+        values = {
+            "id": uuid.uuid4(),
+            "user_id": user_id,
+            "week_start": week_start,
+            "plan_mode": plan_mode,
+            "day_plans": day_plans,
+        }
+        dialect = self.db.get_bind().dialect.name
+        insert = sqlite_insert if dialect == "sqlite" else postgresql_insert
+        stmt = (
+            insert(WeeklyPlan)
+            .values(**values)
+            .on_conflict_do_nothing(index_elements=["user_id", "week_start"])
+            .returning(WeeklyPlan)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def delete_by_user_and_week(self, user_id: str, week_start: datetime.date) -> bool:
+        """사용자가 손상 계획 초기화를 명시한 경우에만 해당 주 계획을 삭제한다."""
+        result = await self.db.execute(
+            delete(WeeklyPlan)
+            .where(and_(WeeklyPlan.user_id == user_id, WeeklyPlan.week_start == week_start))
+            .returning(WeeklyPlan.id)
+        )
+        return result.scalar_one_or_none() is not None
 
     async def get_history(self, user_id: str, page: int, size: int) -> tuple[list[WeeklyPlan], int]:
         """페이지 데이터 + 전체 카운트를 1쿼리로 반환. GET /weekly-plan/history 전용.

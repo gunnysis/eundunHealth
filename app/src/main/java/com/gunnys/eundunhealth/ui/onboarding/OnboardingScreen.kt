@@ -105,7 +105,7 @@ fun OnboardingScreen(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "입력한 정보를 기반으로 맞춤 주간 운동 계획이 생성됩니다",
+                "저장 후 오늘 화면에서 헬스장 또는 홈트레이닝 환경을 선택해 주간 운동 계획을 만들 수 있습니다",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 4.dp),
@@ -124,7 +124,7 @@ fun OnboardingScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
-                Text("운동 계획 받기")
+                Text("시작하기")
             }
         }
     }

@@ -127,9 +127,13 @@ private fun MainContent(
                 onEditProfile = { navController.navigate(Screen.ProfileEdit.route) },
                 onRequestHealthPermissions = onRequestHealthPermissions,
                 onOpenHealthConnectManagement = onOpenHealthConnectManagement,
-                onRefreshHealthConnectStatus = viewModel::refreshHealthConnectStatus,
+                onRefreshHealthConnectStatus = {
+                    viewModel.refreshHealthConnectStatus()
+                    viewModel.refreshDefaultWorkoutPlanMode()
+                },
                 onCycleTheme = viewModel::cycleTheme,
                 onLogout = onLogout,
+                onUpdateDefaultWorkoutPlanMode = viewModel::updateDefaultWorkoutPlanMode,
             )
         }
         composable(Screen.ProfileEdit.route) {

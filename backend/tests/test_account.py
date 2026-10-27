@@ -44,7 +44,7 @@ async def test_delete_account_purges_all_user_data(client, db_engine, sample_pro
 
     # 모든 per-user 테이블에 1행 이상 seed (실제 API 경로로)
     await client.put("/profile", json=sample_profile)  # user_profiles + user_profile_history
-    await client.post("/weekly-plan", json=sample_plan)  # weekly_plans
+    await client.post("/v2/weekly-plan", json=sample_plan)  # weekly_plans
     await client.post("/badges/first_workout")  # badges
     await client.put("/goals", json={"goalType": "weight", "targetValue": 65.0})  # goals
     await client.post(

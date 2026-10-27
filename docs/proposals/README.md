@@ -10,9 +10,10 @@
 
 | ID | 제안명 | 상태 (Status) | 목표 마일스톤 | 핵심 영향 도메인 | 상세 문서 링크 |
 | :---: | :--- | :---: | :---: | :--- | :---: |
-| **PROP-01** | **휴식일 자유 지정 및 주간 적응형 분할 루틴 (Adaptive Split Engine)** | `Accepted` | `v0.6.0` (차기) | Profile, WeeklyPlan, MealPlan, Room | [2026-10-27-flexible-rest-days.md](2026-10-27-flexible-rest-days.md) |
+| **PROP-01** | **휴식일 자유 다중 지정 (Flexible Multi-Rest Days)** | `Promoted to Plan` | `v0.7.0` (차기) | Profile, WeeklyPlan, Progress, Room | [docs/plans/2026-10-27-flexible-rest-days-design.md](../plans/2026-10-27-flexible-rest-days-design.md) |
 | **PROP-02** | 식단 섭취 영양소 매크로(칼로리/탄단지) 트래킹 & 피드백 | `Idea` | `v0.7.0+` | MealPlan, Profile | [docs/PRD.md](../PRD.md#향후-확장-후보) |
 | **PROP-03** | 운동 이력 기반 점진적 과부하 AI 중량/볼륨 추천 | `Idea` | `v0.7.0+` | Workout, History | [docs/PRD.md](../PRD.md#향후-확장-후보) |
+| **PROP-04** | **운동 일수($N$) 기반 적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)** | `Exploring` | `v0.7.0+` | WeeklyPlan, Exercise Catalog, MealPlan | [2026-10-27-adaptive-split-engine.md](2026-10-27-adaptive-split-engine.md) |
 
 ---
 

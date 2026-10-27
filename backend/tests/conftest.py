@@ -66,7 +66,11 @@ async def client(db_engine):
     app.dependency_overrides[get_current_user_id] = override_get_current_user_id
     app.dependency_overrides[get_settings] = override_get_settings
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Eundun-Client-Version-Code": "38"},
+    ) as ac:
         yield ac
     app.dependency_overrides.clear()
 
@@ -83,7 +87,7 @@ def sample_profile() -> dict:
 @pytest.fixture
 def sample_plan() -> dict:
     """주간 운동 계획 페이로드 — week_start와 day_plans만 가진 최소형."""
-    return {"weekStart": "2026-05-25", "dayPlans": '[{"day":1,"exercises":[]}]'}
+    return {"weekStart": "2026-05-25", "planMode": "gym", "dayPlans": '[{"day":1,"exercises":[]}]'}
 
 
 # === Auth helpers ===

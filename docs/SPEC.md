@@ -8,16 +8,18 @@
 > **AI 식단 생성 및 운동 한국어 현지화 (2026-09~10, v0.3.0~v0.3.1):** 주간 식단 자동 생성 기능은 Azure AI Foundry MaaS(`DeepSeek-V3.2`)를 통해 구현 완료되었다(v0.3.0). 프론트엔드는 `MealPlanScreen` Compose UI와 Hilt+Retrofit(전용 130s read timeout) 통신을 사용하고, 백엔드는 FastAPI에서 `AsyncOpenAI` + Tenacity 재시도·Pydantic JSON 검증·`X-AI-Data-Processing-Consent: true` 국외 이전 사전 동의 헤더 강제 및 `MEAL_AI_ENABLED` 킬스위치를 채택했다(v0.3.1). 운동 카탈로그 46종(이름·수행 방법·팁) 및 근육/부위/장비 라벨도 한국어로 전면 현지화되었다(`ExerciseLocalization`). 상세 내용은 `docs/plans/logs/backend.md`(2026-09-20) 및 `docs/plans/logs/process-infra.md`(2026-10-16) 참조.
 >
 > **적응형 메뉴트리 및 온디바이스 스마일 트레이닝 (2026-10, v0.4.0~v0.5.0):** 로그인 후 탐색은 `오늘·식단·진행·프로필` 4개 최상위 목적지(`MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`)로 개편되었다(v0.4.0). `진행` 허브에서 진입하는 **스마일 트레이닝**(`SmileTrainingScreen`, v0.5.0)은 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 영상·사진을 저장하거나 전송하지 않고 기기 메모리에서만 실시간 미소 근육 운동을 코칭하며, 오프라인 우선 Room(`SmileTrainingDatabase`) + `WorkManager`(`SmileSyncWorker`)와 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`, `/smile-training/*` 4개 API)로 세션 요약 및 연속일 통계를 동기화한다. 상세 내용은 `docs/plans/logs/android.md`(2026-10-26) 참조.
+>
+> **적응형 주간 운동 계획 v2 (2026-10-27):** 주간 운동 계획이 `/v2/weekly-plan` 계약과 `planMode`(`gym` / `home`) 필수 스키마(alembic `d7f4a2c91b10`)로 전환되었다. 사용자는 매주 월요일(KST) 첫 진입 시 `헬스장`(ExerciseDB 기반) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `prescriptionUnit = REPS | SECONDS`) 환경을 직접 선택해 계획을 생성하거나, 프로필 허브의 `기본 운동 환경`(`PUT /v2/profile/default-workout-plan-mode`)을 설정해 주간 자동 생성을 사용할 수 있다. 주중 계획은 불변(동일 주 재생성 시 409 `weekly_plan_exists`)이며, 손상된 계획 복구만 명시적 `DELETE /v2/weekly-plan`으로 허용한다. 상세 설계는 `docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md` 참조.
 
 ## 프로젝트 개요
 
-**은둔헬스(eundunHealth)** 는 사용자의 신체 정보를 기반으로 맞춤 주간 운동 계획과 AI 주간 식단 가이드를 자동 생성하고, 운동 달성을 추적하는 Android 앱입니다.
+**은둔헬스(eundunHealth)** 는 사용자의 신체 정보와 운동 환경(`헬스장` / `홈트레이닝`)을 기반으로 맞춤 주간 운동 계획과 AI 주간 식단 가이드를 생성하고, 운동 달성을 추적하는 Android 앱입니다.
 
 - **패키지**: `com.gunnys.eundunhealth`
 - **최소 SDK**: 26 (Android 8.0)
 - **대상 SDK**: 37 (Android 17)
 - **백엔드**: FastAPI(Python 3.14) — 본 문서 v1.0 작성 당시 Ktor였으나 v0.1.0에서 전환됨.
-- **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 인증 불필요) + 앱 내 46종 한국어 현지화 사전(`ExerciseLocalization`).
+- **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 인증 불필요) + 앱 내 46종 한국어 현지화 사전(`ExerciseLocalization`) + 홈트레이닝 내장 18종 무장비 카탈로그(`HomeWeeklyPlanGenerator`).
 - **AI 식단**: Azure AI Foundry Serverless MaaS(`DeepSeek-V3.2`, GlobalStandard).
 - **인증**: Microsoft Entra External ID(외부 테넌트 `eundunhealthciam`, Asia Pacific, JWKS RS256).
 
@@ -119,16 +121,17 @@ AGP · Gradle · KSP · Sentry Gradle Plugin · Detekt · Spotless — 버전은
 - Slider + 키보드 하이브리드 입력
 - 범위 초과 시 빨간색 에러 표시 + 안내 메시지
 - 입력 요약 카드 (등록 전 확인)
-- "운동 계획 받기" 버튼 → 프로필 저장 → Home 이동
+- "신체정보 저장하고 시작하기" 버튼 → 프로필 저장 → Home 이동 (현재 주 운동 환경 선택 후 계획 생성)
 
 ### 5. 홈 화면 (`HomeScreen`)
 
-- **주간 진행률 카드**: 완료율 프로그레스 바 + 퍼센트 표시
+- **현재 주 계획 없음(`NoPlan`)**: 운동 환경 선택 카드(`헬스장` / `홈트레이닝`, `Role.RadioButton` + `selectableGroup`) 및 `"이번 주 계획 만들기"` CTA 표시. 프로필에 기본 운동 환경이 설정되어 있으면 주당 1회 자동 생성(`AutoCreating`) 수행
+- **주간 진행률 카드**: 완료율 프로그레스 바 + 퍼센트 표시 + 운동 환경 배지(`헬스장` / `홈트레이닝`)
 - **Health Connect 연동 배너**: 미연동 시 표시, "연동" 버튼
 - **요일별 운동 카드 (DayPlanCard)**:
   - 탭하여 운동 완료/미완료 토글 (Optimistic update)
   - 완료 시 primaryContainer 배경색 + CheckCircle 아이콘
-  - 운동명 탭 시 운동 상세 화면 이동
+  - 운동명 탭 시 운동 상세 화면 이동 (`REPS`는 `세트×횟수`, `SECONDS`는 `세트×초` 표기)
   - 휴식일 표시
 - **스켈레톤 UI**: 로딩 중 shimmer 애니메이션 카드
 - **TopAppBar 액션**:
@@ -140,15 +143,15 @@ AGP · Gradle · KSP · Sentry Gradle Plugin · Detekt · Spotless — 버전은
 
 ### 6. 운동 상세 화면 (`WorkoutDetailScreen`)
 
-- 운동 GIF 애니메이션 (SubcomposeAsyncImage, 로딩/에러 상태)
+- 운동 GIF 애니메이션 (SubcomposeAsyncImage, 로딩/에러 상태; `gifUrl`이 비어 있는 홈트레이닝 내장 운동은 깨진 이미지 아이콘 대신 텍스트/단계 안내 카드를 표시)
 - 운동명, 부위, 장비
-- 세트 x 횟수
+- 세트 x 횟수 (또는 세트 x 유지 시간(초))
 - 운동 방법 (순서 목록)
 
 ### 7. 운동 기록 히스토리 (`HistoryScreen`)
 
 - 과거 주간 계획 목록 (무한 스크롤 페이지네이션)
-- 주별 카드: 날짜 범위, 완료율 프로그레스 바, 요일별 체크 아이콘
+- 주별 카드: 날짜 범위, 운동 환경 배지(`헬스장` / `홈트레이닝`), 완료율 프로그레스 바, 요일별 체크 아이콘
 
 ### 8. 배지 화면 (`BadgeScreen`)
 
@@ -188,12 +191,12 @@ AGP · Gradle · KSP · Sentry Gradle Plugin · Detekt · Spotless — 버전은
 
 ### 주간 운동 계획 생성
 
-- ExerciseDB API에서 부위별 운동 조회 (chest, back, upper legs, shoulders, upper arms)
+- **헬스장(`GYM`) 모드**: ExerciseDB API에서 부위별 운동 조회 (chest, back, upper legs, shoulders, upper arms, lower legs, cardio) + 주 시작일(월요일) 기준 결정론적 셔플 및 직전 주 중복 후순위 배치
+- **홈트레이닝(`HOME`) 모드**: 외부 네트워크 호출 없이 앱 내장 18종 무장비 카탈로그(`HomeWeeklyPlanGenerator`, `local:home:<slug>:v2.0`)에서 PUSH/PULL/LEGS/CARDIO/MIXED 7일 계획을 결정론적으로 생성 (`forearm-plank`는 `SECONDS` 단위 45초 유지)
 - 근력 운동: 월/수/금 (4종목)
 - 유산소 운동: 화/목 (2종목)
 - 혼합 운동: 토 (근력 2 + 유산소 1)
-- 휴식: 일요일
-- 주 시작일(월요일) 기준 seed로 결정론적 셔플
+- 휴식: 사용자 지정 휴식일 (기본 일요일)
 
 ### 운동 완료 추적
 
@@ -218,15 +221,18 @@ AGP · Gradle · KSP · Sentry Gradle Plugin · Detekt · Spotless — 버전은
 
 ## Backend API
 
+> 아래 표는 v1.0 초기 설계 기록이다. 현행 엔드포인트(총 27개 = JWT 필요 22 + 공개 5, `/v2/weekly-plan` 및 `/app-compatibility` 포함)의 정본은 `CLAUDE.md` 및 `docs/PRD.md` §5 참조.
+
 | Method | Path | 설명 | 인증 |
 | -------- | ------ | ------ | ------ |
 | `GET` | `/health` | 헬스 체크 (DB 연결 검증) | X |
 | `GET` | `/profile` | 사용자 프로필 조회 | O |
 | `PUT` | `/profile` | 프로필 생성/수정 | O |
-| `GET` | `/weekly-plan?weekStart=` | 주간 계획 조회 | O |
-| `POST` | `/weekly-plan` | 주간 계획 생성/수정 | O |
-| `PATCH` | `/weekly-plan/complete` | 운동 완료 토글 | O |
-| `GET` | `/weekly-plan/history?page=&size=` | 히스토리 페이지네이션 | O |
+| `GET` | `/v2/weekly-plan?weekStart=` | 주간 계획 조회 | O |
+| `POST` | `/v2/weekly-plan` | 주간 계획 생성(중복 시 409) | O |
+| `DELETE` | `/v2/weekly-plan?weekStart=` | 손상 계획 초기화 | O |
+| `PATCH` | `/v2/weekly-plan/complete` | 운동 완료 토글 | O |
+| `GET` | `/v2/weekly-plan/history?page=&size=` | 히스토리 페이지네이션 | O |
 | `GET` | `/badges` | 획득 배지 목록 | O |
 | `POST` | `/badges/{key}` | 배지 수여 | O |
 
@@ -252,7 +258,7 @@ app/src/main/java/com/gunnys/eundunhealth/
 ├── domain/
 │   ├── model/                     # WeeklyPlan, DayPlan, Exercise, Badge, UserProfile
 │   ├── repository/                # Interfaces
-│   └── usecase/                   # GetOrCreateWeeklyPlan, SyncHealth, CheckBadges
+│   └── usecase/                   # LoadCurrentWeekPlan, CreateWeeklyPlan, HomeWeeklyPlanGenerator, SyncHealth, CheckBadges
 └── ui/
     ├── auth/                      # Login, Signup, AuthViewModel
     ├── badge/                     # BadgeScreen, BadgeViewModel

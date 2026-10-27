@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.1 (2026-10-26 — v0.5.0 온디바이스 스마일 트레이닝 출시 및 production upload 기록)
-**제품 버전:** v0.5.0 (versionCode 38, 태그 `v0.5.0`) — **온디바이스 스마일 트레이닝(Smile Training) 및 풀스택 동기화**. `release.yml` run `40274395812`가 Play production `completed`(100%) 업로드와 원장 갱신(`cbd155f`)을 성공했고, 백엔드는 `Backend CI/CD` run `40274391632`로 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`, Alembic head `a3869f575d6a`)에 배포됐다.
+**문서 버전:** v3.2 (2026-10-27 — 적응형 주간 운동 계획 v2 및 v0.5.0 온디바이스 스마일 트레이닝 반영)
+**제품 버전:** v0.5.0 (versionCode 38, 태그 `v0.5.0`) — **온디바이스 스마일 트레이닝(Smile Training) 및 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) 구현**. `release.yml` run `40274395812`가 Play production `completed`(100%) 업로드와 원장 갱신(`cbd155f`)을 성공했고, 백엔드는 `Backend CI/CD` run `40274391632`로 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`, 코드 기준 Alembic head `d7f4a2c91b10`)에 배포됐다.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -9,21 +9,21 @@
 
 ## 1. 제품 개요
 
-**은둔헬스(eundunHealth)** 는 PT 트레이너 없이 헬스장에서 혼자 운동하는 사용자를 위한 Android 헬스 앱이다.
+**은둔헬스(eundunHealth)** 는 PT 트레이너 없이 헬스장이나 집에서 혼자 운동하는 사용자를 위한 Android 헬스 앱이다.
 
-사용자의 신체 정보(키, 몸무게, 골격근량, 체지방률, 성별)를 기반으로 맞춤형 주간 운동 계획과 AI 주간 식단을 자동 생성하고, 운동 완료를 추적하며, 지속적인 운동 동기부여를 위한 배지 시스템을 제공한다.
+사용자의 신체 정보(키, 몸무게, 골격근량, 체지방률, 성별)와 선택한 운동 환경(`헬스장` / `홈트레이닝`)을 기반으로 맞춤형 주간 운동 계획과 AI 주간 식단을 생성하고, 운동 완료를 추적하며, 지속적인 운동 동기부여를 위한 배지 시스템을 제공한다.
 
 ### 핵심 가치
 
-- **접근성**: 트레이너 없이도 체계적인 운동 계획 제공 (추천 운동 46종 한국어 현지화 번들)
-- **자동화**: 신체 정보 기반 주간 운동 계획 자동 생성
+- **접근성**: 트레이너 없이도 헬스장(추천 운동 46종 한국어 현지화 번들)과 집(내장 18종 무장비 홈트레이닝 카탈로그) 모두에서 체계적인 운동 계획 제공
+- **적응형 계획 생성**: 매주 운동 환경을 직접 선택하거나 프로필의 기본 운동 환경으로 자동 생성
 - **개인화 영양 보조**: 명시적 데이터 처리 동의 후 신체 정보·운동일 기반 참고용 AI 주간 식단 생성
 - **동기부여**: 운동 완료 추적 및 배지 보상 시스템
 - **편의성**: Health Connect 연동으로 운동 세션 자동 감지
 
 ### 대상 사용자
 
-- 헬스장을 이용하지만 PT를 받지 않는 운동 초~중급자
+- 헬스장을 이용하거나 집에서 맨몸 운동을 하지만 PT를 받지 않는 운동 초~중급자
 - 어떤 운동을 해야 할지 모르거나 계획 없이 운동하는 사용자
 - 혼자 운동하면서 체계적인 루틴을 원하는 사용자
 
@@ -40,7 +40,7 @@
 ```
 앱 설치 → Splash 화면 → 인증 게이트(AuthGateScreen)
   ├─ [로그인 / 회원가입] → Entra 호스팅 페이지(브라우저)에서 가입/인증 완료
-  │   └─ 온보딩 화면 → 신체 정보 입력 → 홈 화면
+  │   └─ 온보딩 화면 → 신체 정보 입력 → 홈 화면(이번 주 운동 환경 선택)
   └─ 기존 계정 인증 완료
       ├─ 프로필 있음 → 홈 화면
       └─ 프로필 없음 → 온보딩 화면 → 신체 정보 입력 → 홈 화면
@@ -57,7 +57,7 @@
 
 - 범위 초과 시 빨간색 에러 표시 + 안내 메시지
 - 입력 요약 카드로 등록 전 확인 가능
-- "운동 계획 받기" 버튼으로 프로필 저장 후 홈 화면 진입
+- "신체정보 저장하고 시작하기" 버튼으로 프로필 저장 후 홈 화면 진입
 
 #### 시나리오 B: 기존 사용자 (재방문)
 
@@ -74,25 +74,33 @@
 
 로그인 후 사용자에게 표시되는 메인 화면으로, 주간 운동 계획과 진행 상황을 한눈에 확인할 수 있다.
 
+#### 적응형 주간 운동 계획 생성 (`v2`)
+
+- **현재 주 계획이 없을 때 (`NoPlan`)**:
+  - 프로필의 `기본 운동 환경`(`defaultWorkoutPlanMode`)이 `매주 선택`(`null`)이면 홈 화면에서 **`헬스장`**(장비 사용) 또는 **`홈트레이닝`**(무장비 맨몸 운동)을 선택하고 `"이번 주 계획 만들기"`를 눌러 생성한다.
+  - 프로필에 `기본 운동 환경`이 설정되어 있으면 해당 주 최초 진입 시 자동으로 계획을 생성(`AutoCreating`)하며, 실패 시 `"다시 만들기"` 버튼(`AutoCreateError`)을 제공한다.
+- **주중 계획 불변성**: 한 번 생성된 이번 주 계획은 주중 모드가 변경되지 않으며(동일 주 중복 생성 시 409 `weekly_plan_exists`), 프로필에서 기본 운동 환경을 바꾸더라도 다음 주 계획부터 반영된다.
+- **손상 계획 복구 (`PlanDataError`)**: 원격 또는 로컬 캐시 데이터가 손상된 경우 조용히 덮어쓰지 않고 진단 코드(`PLAN-REMOTE-UNREADABLE` / `PLAN-CACHE-UNREADABLE`)와 함께 `"새로고침"` 및 `"계획 초기화"`(`DELETE /v2/weekly-plan`) 버튼을 제공한다.
+
 #### 주간 운동 계획 표시
 
-사용자의 신체 정보를 분석하여 **금주 요일별 운동 계획**을 자동 생성하고 표시한다.
+사용자의 신체 정보와 선택한 운동 환경(`헬스장` / `홈트레이닝`)을 바탕으로 **금주 요일별 운동 계획**을 생성하고 표시한다.
 
 | 요일 | 운동 유형 | 종목 수 |
 |------|----------|--------|
-| 월 | 근력 운동 (chest, back, shoulders 등) | 4종목 |
+| 월 | 근력 운동 (상체 밀기 등) | 4종목 |
 | 화 | 유산소 운동 | 2종목 |
-| 수 | 근력 운동 | 4종목 |
+| 수 | 근력 운동 (상체 당기기 등) | 4종목 |
 | 목 | 유산소 운동 | 2종목 |
-| 금 | 근력 운동 | 4종목 |
+| 금 | 근력 운동 (하체·코어 등) | 4종목 |
 | 토 | 혼합 (근력 2 + 유산소 1) | 3종목 |
-| 일 | 휴식일 | - |
+| 일 | 휴식일 (사용자 변경 가능) | - |
 
 #### 오늘 운동 하이라이트 (`PLAN-03`)
 
 - **오늘 날짜의 요일 카드**(KST 기준)에 Primary 2.dp 테두리와 `"오늘"` 캡슐 배지를 표시하여 사용자가 오늘의 추천 운동을 즉시 인지할 수 있도록 한다
-- 각 요일 카드에 운동 카테고리 아이콘(근력/유산소), 운동명, 부위·장비 서브타이틀, 세트×횟수 배지 및 상세 이동 어포던스를 표시한다
-- 운동 항목 탭 시 운동 상세 화면으로 이동 (GIF 애니메이션, 운동 방법 안내)
+- 각 요일 카드에 운동 카테고리 아이콘(근력/유산소), 운동명, 부위·장비 서브타이틀, 세트×횟수(`REPS`) 또는 세트×초(`SECONDS`) 배지 및 상세 이동 어포던스를 표시한다
+- 운동 항목 탭 시 운동 상세 화면으로 이동 (GIF 애니메이션 또는 단계별 방법 안내)
 
 #### 운동 완료 처리
 
@@ -103,16 +111,16 @@
 
 #### 주간 진행률 및 7일 스탬프
 
-- 홈 화면 상단에 주차 날짜 범위(`M/d - M/d`), 완료/전체 운동일 수, 완료율 퍼센트 배지, 애니메이션 프로그레스 바 표시
+- 홈 화면 상단에 주차 날짜 범위(`M/d - M/d`), 운동 환경 배지(`헬스장` / `홈트레이닝`), 완료/전체 운동일 수, 완료율 퍼센트 배지, 애니메이션 프로그레스 바 표시
 - **7일 미니 스탬프 바**: 월~일 7일의 완료(`Check`)·휴식(`-`)·예정(일자)·오늘 강조 상태를 스크롤 없이 한눈에 표시
 
 ### 2.3. 운동 상세 정보
 
 각 운동의 상세 정보를 확인할 수 있다.
 
-- 운동 GIF 애니메이션 (동작 시각화)
-- 운동명, 타겟 부위, 사용 장비, 보조 근육 (추천 운동 46종은 번들된 `korean_exercises.json` v2 기반 한국어 제공, SHA-256 지문 불일치 또는 미수록 운동은 영문 원문 폴백)
-- 세트 x 횟수
+- 운동 GIF 애니메이션 (ExerciseDB 운동은 동작 GIF 시각화, `gifUrl`이 없는 내장 홈트레이닝 운동은 깨진 이미지 플레이스홀더 없이 단계별 수행 가이드를 표시)
+- 운동명, 타겟 부위, 사용 장비, 보조 근육 (추천 운동 46종은 번들된 `korean_exercises.json` v2 기반 한국어 제공, 홈트레이닝 18종은 내장 한국어 카탈로그 제공)
+- 세트 x 횟수 (`REPS`) 또는 세트 x 초 (`SECONDS`, 예: 플랭크 `3세트 × 45초`)
 - 운동 방법 (한국어 단계별 안내)
 
 ### 2.4. 운동 기록 히스토리
@@ -120,7 +128,7 @@
 과거 주간 운동 기록을 확인할 수 있다.
 
 - 무한 스크롤 페이지네이션
-- 주별 카드: 날짜 범위, 완료율, 요일별 완료 체크 아이콘
+- 주별 카드: 날짜 범위, 운동 환경 배지(`헬스장` / `홈트레이닝`), 완료율, 요일별 완료 체크 아이콘
 
 ### 2.5. 배지 시스템
 
@@ -136,11 +144,11 @@
 - 획득 배지: 트로피 아이콘 + 획득 날짜 표시
 - 미획득 배지: 잠금 아이콘 + 회색 배경
 
-### 2.6. 프로필 관리
+### 2.6. 프로필 관리 및 기본 운동 환경 설정
 
-- 홈 화면 상단바에서 프로필 편집 화면 진입
-- 기존 신체 정보 로드 → 수정 → 저장
-- 신체 정보 변경 시 다음 주간 계획에 반영
+- 프로필 탭(`ProfileHubScreen`)에서 신체 정보 요약, **기본 운동 환경(`매주 선택` / `헬스장` / `홈트레이닝`)**, Health Connect 연동 상태, 테마 설정, 계정 관리를 제공한다.
+- 기본 운동 환경 변경은 신체 계측 이력(`user_profile_history`)을 오염시키지 않도록 전용 엔드포인트(`PUT /v2/profile/default-workout-plan-mode`)로 저장되며, 다음 주 계획 생성부터 반영된다.
+- 신체 정보 편집 화면(`ProfileScreen`)에서 기존 신체 정보·성별·휴식일을 수정·저장할 수 있다.
 
 ### 2.7. 테마 설정
 
@@ -200,17 +208,19 @@
 | PROF-02 | 신체 정보 수정 | P1 |
 | PROF-03 | 입력값 범위 검증 | P1 |
 | PROF-04 | 입력 요약 카드 확인 | P2 |
+| PROF-05 | 기본 운동 환경(`매주 선택`/`헬스장`/`홈트레이닝`) 설정 | P1 |
 
 ### 3.3. 주간 운동 계획
 
 | ID | 요구사항 | 우선순위 |
 |----|---------|---------|
-| PLAN-01 | 신체 정보 기반 주간 운동 계획 자동 생성 | P0 |
-| PLAN-02 | 요일별 운동 카드 표시 | P0 |
+| PLAN-01 | 신체 정보 및 운동 환경(`헬스장`/`홈트레이닝`) 기반 주간 운동 계획 생성 | P0 |
+| PLAN-02 | 요일별 운동 카드 및 운동 환경 배지 표시 | P0 |
 | PLAN-03 | 오늘 날짜 운동 하이라이트 | P0 |
-| PLAN-04 | 운동 상세 정보 표시 (GIF, 세트/횟수, 방법) | P0 |
-| PLAN-05 | ExerciseDB API 기반 운동 데이터 조회 | P0 |
-| PLAN-06 | Room 로컬 캐시 (오프라인 조회) | P1 |
+| PLAN-04 | 운동 상세 정보 표시 (GIF/무장비 가이드, 세트×횟수/초, 방법) | P0 |
+| PLAN-05 | ExerciseDB API(`GYM`) 및 내장 18종 무장비 카탈로그(`HOME`) 운동 데이터 제공 | P0 |
+| PLAN-06 | Room 로컬 캐시 (오프라인 조회 및 원격 404 시 캐시 무효화) | P1 |
+| PLAN-07 | 주중 계획 불변성 보장(409 Conflict) 및 손상 계획 명시적 초기화(`DELETE /v2/weekly-plan`) | P1 |
 
 ### 3.4. 운동 완료 추적
 
@@ -294,23 +304,26 @@
          └──▶ Sentry (에러 모니터링)
 ```
 
-### Backend API (FastAPI Python 3.14 — 총 24개 = JWT 필요 20 + 공개 4)
+### Backend API (FastAPI Python 3.14 — 총 27개 = JWT 필요 22 + 공개 5)
 
 | Method | Path | 설명 | 도입 |
 |--------|------|------|-----|
 | `GET` | `/health` | 공개 — liveness 헬스 체크 (Container App probe) | v0.1 |
 | `GET` | `/health/ready` | 공개 — readiness probe (DB `SELECT 1` → 200/503) | v0.1 |
+| `GET` | `/app-compatibility` | 공개 — 클라이언트 최소 지원 versionCode 확인 | v2 |
 | `GET` | `/privacy` | 공개 — 개인정보 처리방침 HTML (Play 등록 URL) | v0.1.17 |
 | `GET` | `/account-deletion` | 공개 — 계정·데이터 삭제 안내 HTML (Play 등록 URL) | v0.1.17 |
-| `GET` | `/profile` | 프로필 조회 | v0.1 |
+| `GET` | `/profile` | 프로필 조회 (`defaultWorkoutPlanMode` 포함) | v0.1 / v2 |
 | `PUT` | `/profile` | 프로필 생성/수정 (gender·restDay 포함, 매 호출마다 history 자동 기록) | v0.1 / v0.3 / v0.3.0 |
+| `PUT` | `/v2/profile/default-workout-plan-mode` | 기본 운동 환경 설정 변경 (신체 이력 미기록) | v2 |
 | `GET` | `/profile/history?limit=50` | 프로필 변경 이력 (체형 진행 차트용) | v0.3 |
-| `GET` | `/weekly-plan?weekStart=` | 주간 계획 조회 | v0.1 |
-| `POST` | `/weekly-plan` | 주간 계획 생성 | v0.1 |
-| `PATCH` | `/weekly-plan/complete` | 운동 완료 토글 | v0.1 |
-| `GET` | `/weekly-plan/history?page=&size=` | 히스토리 조회 (페이지네이션) | v0.1 |
-| `GET` | `/weekly-plan/previous?weekStart=` | 직전 주 plan (excludeIds 알고리즘 입력) | v0.2 |
-| `GET` | `/weekly-plan/statistics?weeks=12` | 주간 완료율 + 현재/최장 스트릭 | v0.2 |
+| `GET` | `/v2/weekly-plan?weekStart=` | 주간 계획 조회 (`planMode` 포함) | v2 |
+| `POST` | `/v2/weekly-plan` | 주간 계획 생성 (`201 Created`, 동일 주 존재 시 `409 weekly_plan_exists`) | v2 |
+| `DELETE` | `/v2/weekly-plan?weekStart=` | 손상된 현재 주 계획 명시적 초기화 (`204 No Content`) | v2 |
+| `PATCH` | `/v2/weekly-plan/complete` | 운동 완료 토글 | v2 |
+| `GET` | `/v2/weekly-plan/history?page=&size=` | 히스토리 조회 (페이지네이션, `planMode` 포함) | v2 |
+| `GET` | `/v2/weekly-plan/previous?weekStart=` | 직전 주 plan (excludeIds 알고리즘 입력) | v2 |
+| `GET` | `/v2/weekly-plan/statistics?weeks=12` | 주간 완료율(`planMode` 포함) + 현재/최장 스트릭 | v2 |
 | `GET` | `/badges` | 배지 목록 조회 (9종) | v0.1 / v0.3 |
 | `POST` | `/badges/{key}` | 배지 수여 | v0.1 |
 | `GET` | `/goals` | 목표 목록 (체중·체지방) | v0.3 |
@@ -323,7 +336,7 @@
 | `DELETE` | `/smile-training/sessions` | 사용자의 전체 스마일 트레이닝 세션 삭제 | v0.5.0 |
 | `DELETE` | `/account` | 회원 탈퇴 (Entra 사용자 + 앱 DB 일괄 삭제) | v0.1 |
 
-공개 라우트 4개(`/health`·`/health/ready`·`/privacy`·`/account-deletion`)를 제외한 나머지 20개는 Entra JWT(**RS256** / JWKS) 검증 필요. 응답은 camelCase JSON.
+공개 라우트 5개(`/health`·`/health/ready`·`/app-compatibility`·`/privacy`·`/account-deletion`)를 제외한 나머지 22개는 Entra JWT(**RS256** / JWKS) 검증 필요. 응답은 camelCase JSON.
 > `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 인증 전환으로 **삭제**됐다 — Entra 는 이메일 검증을 브라우저 안에서 처리하므로 App Links 경로가 필요 없다.
 
 ---
@@ -347,19 +360,19 @@ Splash
 
 | 화면 | 주요 기능 |
 |------|----------|
-| Splash | 세션 확인 후 자동 라우팅 |
+| Splash | 세션 확인, 로컬 v2 데이터 1회 초기화, 최소 지원 버전 확인(`UpdateRequiredScreen`) 후 자동 라우팅 |
 | AuthGate | Microsoft Entra External ID 브라우저 위임 로그인/회원가입 진입 |
 | Onboarding | 신체 정보 입력 (성별, 키, 몸무게, 골격근량, 체지방) |
-| Home | 주간 운동 계획, 주간 진행률·7일 미니 스탬프, 오늘 하이라이트(`PLAN-03`), 운동 완료 추적(HC `READ_EXERCISE`/수동) |
-| WorkoutDetail | 한국어 현지화 운동명/방법(46종 번들 + 영문 폴백), GIF, 세트/횟수 |
+| Home | 적응형 주간 운동 환경 선택(`헬스장`/`홈트레이닝`), 주간 진행률·7일 미니 스탬프, 오늘 하이라이트(`PLAN-03`), 운동 완료 추적(HC `READ_EXERCISE`/수동) |
+| WorkoutDetail | 한국어 현지화 운동명/방법(46종 번들 + 영문 폴백 + 홈트레이닝 18종), GIF/무장비 가이드, 세트×횟수/초 |
 | MealPlan | AI 맞춤 주간 식단 조회 및 국외 처리 명시 동의 후 자동 생성 (v0.3.0/v0.3.1) |
 | Statistics | 12주 완료율 막대 차트 + 현재/최장 스트릭 (v0.2) |
 | Goal | 체중·체지방 목표 설정 및 신체 변화 추이 차트 (v0.3) |
-| History | 과거 주간 운동 기록 |
+| History | 과거 주간 운동 기록 (운동 환경 배지 포함) |
 | Badge | 배지 목록 9종 (획득/미획득) |
 | Profile | 신체 정보·성별·휴식일 편집, 로그아웃, 회원 탈퇴 |
 | ProgressHub | 진행 탭 허브 — 통계·기록·목표·배지 및 마음 연습(스마일 트레이닝) 진입 (v0.4.0/v0.5.0) |
-| ProfileHub | 프로필 탭 허브 — 신체 정보 요약·Health Connect 상태·테마·계정 관리 (v0.4.0) |
+| ProfileHub | 프로필 탭 허브 — 신체 정보 요약·기본 운동 환경 설정·Health Connect 상태·테마·계정 관리 (v0.4.0/v2) |
 | SmileTraining | 온디바이스 카메라 스마일 트레이닝 루트 모달 — 루틴/난이도 선택·미소 코칭·회고·동기화 관리 (v0.5.0) |
 
 ---
@@ -386,6 +399,7 @@ Splash
 | AI 식단 국외 처리 사전 동의 헤더 강제 & 프로덕션 배포 하드닝 | v0.3.1 | `X-AI-Data-Processing-Consent: true`, `MEAL_AI_ENABLED` kill switch, Play 10% 단계 출시 |
 | 적응형 메뉴트리(`오늘·식단·진행·프로필`) & Health Connect 투명성 | v0.4.0 | `MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`, multiple back stack |
 | 온디바이스 스마일 트레이닝(Smile Training) & 오프라인 우선 동기화 | v0.5.0 | CameraX 1.6.2 + ML Kit 얼굴 검출, `SmileTrainingDatabase` + `SmileSyncWorker`, `/smile-training/*` 4개 API |
+| 적응형 주간 운동 계획 v2 (`헬스장`/`홈트레이닝` 모드 & 기본 운동 환경) | v2 (2026-10-27) | `/v2/weekly-plan` 7개 API, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`, 내장 18종 홈트레이닝 생성기, alembic `d7f4a2c91b10` |
 
 ### 향후 확장 후보 (Product Proposals)
 
@@ -393,9 +407,10 @@ Splash
 
 | 제안 ID | 기능명 | 목표 버전 | 설명 | 상세 기획 |
 |:---:|---|:---:|---|:---:|
-| **PROP-01** | **휴식일 자유 지정 및 적응형 분할 루틴 (Adaptive Split)** | `v0.6.0` | 요일별 휴식일 멀티 선택 및 실제 운동 일수($N$)에 적응하는 분할 엔진 | [2026-10-27-flexible-rest-days.md](proposals/2026-10-27-flexible-rest-days.md) |
+| **PROP-01** | **휴식일 자유 다중 지정 (Flexible Multi-Rest Days)** | `v0.7.0` | 주 1~6일 자유로운 휴식일 멀티 선택 및 $N$일 기준 동적 주간 완료율 | [plans/2026-10-27-flexible-rest-days-design.md](plans/2026-10-27-flexible-rest-days-design.md) |
 | **PROP-02** | 식단 섭취 체크 및 영양 리포트 | `v0.7.0+` | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 | [proposals/README.md](proposals/README.md) |
 | **PROP-03** | 맞춤 추천 고도화 (점진적 과부하) | `v0.7.0+` | 운동 이력 기반 AI 운동 루틴 및 중량/볼륨 추천 | [proposals/README.md](proposals/README.md) |
+| **PROP-04** | **적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)** | `v0.7.0+` | 실제 운동 일수($N$)에 적응하는 전신/2분할/3분할 과학적 매트릭스 처방 | [2026-10-27-adaptive-split-engine.md](proposals/2026-10-27-adaptive-split-engine.md) |
 | - | 사용자 정의 루틴 | 백로그 | 자동 생성된 plan을 사용자가 직접 편집 | - |
 | - | 추가 배지 / 시즌 챌린지 | 백로그 | 시즌별 한정 배지, 친구 간 챌린지 | - |
 | - | 소셜 기능 | 백로그 | 친구 추가, 운동 현황 공유 | - |

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, func
+from sqlalchemy import CheckConstraint, DateTime, Float, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,6 +19,14 @@ class UserProfile(Base):
     body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     muscle_mass_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     rest_day: Mapped[int] = mapped_column(Integer, default=7, server_default="7")
+    default_workout_plan_mode: Mapped[str | None] = mapped_column(String(4), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "default_workout_plan_mode IS NULL OR default_workout_plan_mode IN ('gym', 'home')",
+            name="ck_user_profiles_default_workout_plan_mode",
+        ),
     )

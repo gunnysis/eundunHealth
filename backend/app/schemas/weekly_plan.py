@@ -1,8 +1,17 @@
+from enum import StrEnum
+from typing import Literal
+
 from app.schemas.base import CamelSchema
 
 
-class WeeklyPlanRequest(CamelSchema):
+class WorkoutPlanMode(StrEnum):
+    GYM = "gym"
+    HOME = "home"
+
+
+class WeeklyPlanV2Request(CamelSchema):
     week_start: str
+    plan_mode: WorkoutPlanMode
     day_plans: str  # JSON string
 
 
@@ -10,6 +19,7 @@ class WeeklyPlanResponse(CamelSchema):
     id: str
     user_id: str
     week_start: str
+    plan_mode: WorkoutPlanMode
     day_plans: str
     created_at: str | None = None
 
@@ -40,3 +50,20 @@ class CompletionRequest(CamelSchema):
     # 사용자 명시 토글이면 True(기본). Health Connect 자동완료 푸시는 False 로 보내 manuallySet 을
     # 남기지 않는다 → 수동 우선(사용자가 해제한 날을 HC 가 다시 완료로 덮지 않음).
     manual: bool = True
+
+
+class ApiErrorResponse(CamelSchema):
+    code: str
+    message: str
+    minimum_supported_version_code: int | None = None
+
+
+class ClientUpdateRequiredErrorResponse(CamelSchema):
+    code: Literal["client_update_required"]
+    message: str
+    minimum_supported_version_code: int
+
+
+class WeeklyPlanExistsErrorResponse(CamelSchema):
+    code: Literal["weekly_plan_exists"]
+    message: str

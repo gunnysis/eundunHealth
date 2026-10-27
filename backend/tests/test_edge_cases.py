@@ -15,30 +15,30 @@ _ONE_DAY = '[{"isRestDay": false, "isCompleted": false, "exercises": []}]'
 @pytest.mark.asyncio
 async def test_manual_toggle_sets_manually_set_flag(client):
     """사용자 수동 토글(manual 기본 True)은 manuallySet=True 를 남겨 HC 자동완료가 못 덮게 한다."""
-    await client.post("/weekly-plan", json={"weekStart": "2026-05-25", "dayPlans": _ONE_DAY})
+    await client.post("/v2/weekly-plan", json={"weekStart": "2026-05-25", "planMode": "gym", "dayPlans": _ONE_DAY})
 
     resp = await client.patch(
-        "/weekly-plan/complete",
+        "/v2/weekly-plan/complete",
         json={"weekStart": "2026-05-25", "date": "2026-05-25", "completed": True},
     )
     assert resp.status_code == 200
 
-    days = json.loads((await client.get("/weekly-plan", params={"weekStart": "2026-05-25"})).json()["dayPlans"])
+    days = json.loads((await client.get("/v2/weekly-plan", params={"weekStart": "2026-05-25"})).json()["dayPlans"])
     assert days[0]["manuallySet"] is True
 
 
 @pytest.mark.asyncio
 async def test_auto_complete_does_not_set_manually_set_flag(client):
     """HC 자동완료(manual=False)는 manuallySet 을 남기지 않는다 — 이후 수동 해제가 가능해야 함."""
-    await client.post("/weekly-plan", json={"weekStart": "2026-05-25", "dayPlans": _ONE_DAY})
+    await client.post("/v2/weekly-plan", json={"weekStart": "2026-05-25", "planMode": "gym", "dayPlans": _ONE_DAY})
 
     resp = await client.patch(
-        "/weekly-plan/complete",
+        "/v2/weekly-plan/complete",
         json={"weekStart": "2026-05-25", "date": "2026-05-25", "completed": True, "manual": False},
     )
     assert resp.status_code == 200
 
-    days = json.loads((await client.get("/weekly-plan", params={"weekStart": "2026-05-25"})).json()["dayPlans"])
+    days = json.loads((await client.get("/v2/weekly-plan", params={"weekStart": "2026-05-25"})).json()["dayPlans"])
     assert days[0].get("manuallySet") is not True
 
 
@@ -49,14 +49,15 @@ async def test_auto_complete_does_not_set_manually_set_flag(client):
 async def test_complete_day_offset_beyond_stored_days_returns_400(client):
     """저장된 day_plans 길이를 넘는 day 를 PATCH → IndexError(500) 아닌 400."""
     await client.post(
-        "/weekly-plan",
+        "/v2/weekly-plan",
         json={
             "weekStart": "2026-05-25",
+            "planMode": "gym",
             "dayPlans": '[{"isRestDay": false, "isCompleted": false, "exercises": []}]',
         },
     )
     resp = await client.patch(
-        "/weekly-plan/complete",
+        "/v2/weekly-plan/complete",
         json={"weekStart": "2026-05-25", "date": "2026-05-29", "completed": True},
     )
     assert resp.status_code == 400
@@ -69,18 +70,18 @@ async def test_complete_date_outside_7day_window_returns_400(client):
     test_complete_day_offset_beyond_stored_days(범위 내·저장일 초과)와 다른 분기 —
     여기선 day_offset 자체가 [0,7) 밖이라 weekly_plan_service 의 범위 가드(0<=offset<7)에 걸린다.
     """
-    await client.post("/weekly-plan", json={"weekStart": "2026-05-25", "dayPlans": _ONE_DAY})
+    await client.post("/v2/weekly-plan", json={"weekStart": "2026-05-25", "planMode": "gym", "dayPlans": _ONE_DAY})
 
     # 이후로 7일 초과 (offset 16)
     after = await client.patch(
-        "/weekly-plan/complete",
+        "/v2/weekly-plan/complete",
         json={"weekStart": "2026-05-25", "date": "2026-06-10", "completed": True},
     )
     assert after.status_code == 400
 
     # weekStart 이전 (offset 음수)
     before = await client.patch(
-        "/weekly-plan/complete",
+        "/v2/weekly-plan/complete",
         json={"weekStart": "2026-05-25", "date": "2026-05-24", "completed": True},
     )
     assert before.status_code == 400
@@ -89,7 +90,7 @@ async def test_complete_date_outside_7day_window_returns_400(client):
 @pytest.mark.asyncio
 async def test_complete_bad_date_returns_400(client):
     resp = await client.patch(
-        "/weekly-plan/complete",
+        "/v2/weekly-plan/complete",
         json={"weekStart": "2026-05-25", "date": "not-a-date", "completed": True},
     )
     assert resp.status_code == 400
@@ -97,13 +98,16 @@ async def test_complete_bad_date_returns_400(client):
 
 @pytest.mark.asyncio
 async def test_get_plan_bad_weekstart_returns_400(client):
-    resp = await client.get("/weekly-plan", params={"weekStart": "2026-13-99"})
+    resp = await client.get("/v2/weekly-plan", params={"weekStart": "2026-13-99"})
     assert resp.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_create_plan_invalid_dayplans_returns_400(client):
-    resp = await client.post("/weekly-plan", json={"weekStart": "2026-05-25", "dayPlans": "not json"})
+    resp = await client.post(
+        "/v2/weekly-plan",
+        json={"weekStart": "2026-05-25", "planMode": "gym", "dayPlans": "not json"},
+    )
     assert resp.status_code == 400
 
 
@@ -117,22 +121,23 @@ async def test_complete_exercise_toggles_flag(client, sample_plan):
         "weekStart": "2026-05-25",
         "dayPlans": '[{"day":1,"exercises":[{"id":"x","completed":false}]}]',
     }
-    await client.post("/weekly-plan", json=plan)
+    plan["planMode"] = "gym"
+    await client.post("/v2/weekly-plan", json=plan)
 
     resp = await client.patch(
-        "/weekly-plan/complete",
+        "/v2/weekly-plan/complete",
         json={"weekStart": "2026-05-25", "date": "2026-05-25", "completed": True},
     )
     assert resp.status_code == 200
 
-    resp = await client.get("/weekly-plan", params={"weekStart": "2026-05-25"})
+    resp = await client.get("/v2/weekly-plan", params={"weekStart": "2026-05-25"})
     assert '"completed": true' in resp.json()["dayPlans"]
 
 
 @pytest.mark.asyncio
 async def test_complete_when_plan_missing_returns_404(client):
     resp = await client.patch(
-        "/weekly-plan/complete",
+        "/v2/weekly-plan/complete",
         json={"weekStart": "2099-01-01", "date": "2099-01-01", "completed": True},
     )
     assert resp.status_code == 404
@@ -200,7 +205,7 @@ async def test_profile_height_above_maximum_returns_422(client):
 @pytest.mark.asyncio
 async def test_history_size_above_50_rejected(client):
     """Query(le=50) → size=51은 API 레벨에서 422."""
-    resp = await client.get("/weekly-plan/history", params={"size": 51})
+    resp = await client.get("/v2/weekly-plan/history", params={"size": 51})
     assert resp.status_code == 422
 
 

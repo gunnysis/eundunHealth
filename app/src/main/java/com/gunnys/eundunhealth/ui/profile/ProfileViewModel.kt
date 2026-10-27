@@ -82,6 +82,7 @@ class ProfileViewModel @Inject constructor(
         restDay: Int = 7,
     ) = viewModelScope.launch {
         val current = _uiState.value
+        val existingMode = (current as? ProfileUiState.Loaded)?.profile?.defaultWorkoutPlanMode
         if (current is ProfileUiState.Loaded) {
             _uiState.value = current.copy(isSaving = true, saveError = null)
         }
@@ -94,7 +95,16 @@ class ProfileViewModel @Inject constructor(
         }
         runCatching {
             userRepo.saveProfile(
-                UserProfile(userId, heightCm, weightKg, gender, bodyFatPct, muscleMassKg, restDay),
+                UserProfile(
+                    userId = userId,
+                    heightCm = heightCm,
+                    weightKg = weightKg,
+                    gender = gender,
+                    bodyFatPercent = bodyFatPct,
+                    muscleMassKg = muscleMassKg,
+                    restDay = restDay,
+                    defaultWorkoutPlanMode = existingMode,
+                ),
             ).getOrThrow()
         }
             .onSuccess {

@@ -1,33 +1,32 @@
 package com.gunnys.eundunhealth.data.repository
 
 import com.gunnys.eundunhealth.api.generated.api.ProfileApi
+import com.gunnys.eundunhealth.api.generated.model.DefaultWorkoutPlanModeRequest
 import com.gunnys.eundunhealth.api.generated.model.UserProfileRequest
+import com.gunnys.eundunhealth.api.generated.model.UserProfileResponse
 import com.gunnys.eundunhealth.data.remote.util.bodyOrNull404
+import com.gunnys.eundunhealth.data.remote.util.bodyOrThrow
+import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.domain.model.UserProfile
+import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
+import com.gunnys.eundunhealth.domain.model.toWorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.UserRepository
+import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.math.BigDecimal
 import javax.inject.Inject
+import com.gunnys.eundunhealth.api.generated.model.WorkoutPlanMode as ApiWorkoutPlanMode
 
 class UserRepositoryImpl @Inject constructor(
     private val api: ProfileApi,
 ) : UserRepository {
 
-    override suspend fun getProfile(): Result<UserProfile?> = runCatching {
-        val dto = api.getProfile().bodyOrNull404() ?: return@runCatching null
-        UserProfile(
-            userId = dto.userId,
-            heightCm = dto.heightCm.toFloat(),
-            weightKg = dto.weightKg.toFloat(),
-            gender = runCatching { com.gunnys.eundunhealth.domain.model.Gender.valueOf(dto.gender.uppercase()) }
-                .getOrDefault(com.gunnys.eundunhealth.domain.model.Gender.UNSPECIFIED),
-            bodyFatPercent = dto.bodyFatPct?.toFloat(),
-            muscleMassKg = dto.muscleMassKg?.toFloat(),
-            restDay = dto.restDay ?: 7,
-        )
+    override suspend fun getProfile(): Result<UserProfile?> = runSuspendCatching {
+        val dto = api.getProfile().bodyOrNull404() ?: return@runSuspendCatching null
+        dto.toDomain()
     }
 
-    override suspend fun saveProfile(profile: UserProfile): Result<Unit> = runCatching {
+    override suspend fun saveProfile(profile: UserProfile): Result<Unit> = runSuspendCatching {
         val response = api.updateProfile(
             UserProfileRequest(
                 heightCm = BigDecimal.valueOf(profile.heightCm.toDouble()),
@@ -40,4 +39,38 @@ class UserRepositoryImpl @Inject constructor(
         )
         if (!response.isSuccessful) throw HttpException(response)
     }
+
+    override suspend fun updateDefaultWorkoutPlanMode(mode: WorkoutPlanMode?): Result<UserProfile> = runSuspendCatching {
+        val dto = api.updateDefaultWorkoutPlanModeV2(
+            DefaultWorkoutPlanModeRequest(
+                defaultWorkoutPlanMode = when (mode) {
+                    WorkoutPlanMode.GYM -> ApiWorkoutPlanMode.gym
+                    WorkoutPlanMode.HOME -> ApiWorkoutPlanMode.home
+                    null -> null
+                },
+            ),
+        ).bodyOrThrow()
+        dto.toDomain()
+    }
+
+    private fun UserProfileResponse.toDomain(): UserProfile = UserProfile(
+        userId = userId,
+        heightCm = heightCm.toFloat(),
+        weightKg = weightKg.toFloat(),
+        gender = runCatching { Gender.valueOf(gender.uppercase()) }
+            .getOrDefault(Gender.UNSPECIFIED),
+        bodyFatPercent = bodyFatPct?.toFloat(),
+        muscleMassKg = muscleMassKg?.toFloat(),
+        restDay = restDay ?: 7,
+        defaultWorkoutPlanMode = defaultWorkoutPlanMode?.value?.toWorkoutPlanMode(),
+    )
+}
+
+@Suppress("TooGenericExceptionCaught")
+private suspend fun <T> runSuspendCatching(block: suspend () -> T): Result<T> = try {
+    Result.success(block())
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    Result.failure(e)
 }

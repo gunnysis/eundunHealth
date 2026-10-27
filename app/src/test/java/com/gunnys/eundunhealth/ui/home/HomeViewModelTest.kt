@@ -1,11 +1,17 @@
 package com.gunnys.eundunhealth.ui.home
 
+import com.gunnys.eundunhealth.data.preferences.ThemePreferences
+import com.gunnys.eundunhealth.domain.model.CurrentWeekPlanRead
 import com.gunnys.eundunhealth.domain.model.DayPlan
+import com.gunnys.eundunhealth.domain.model.PlanSource
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
-import com.gunnys.eundunhealth.domain.usecase.GetOrCreateWeeklyPlanUseCase
+import com.gunnys.eundunhealth.domain.usecase.CreateWeeklyPlanUseCase
 import com.gunnys.eundunhealth.domain.usecase.HealthSyncResult
+import com.gunnys.eundunhealth.domain.usecase.LoadCurrentWeekPlanUseCase
+import com.gunnys.eundunhealth.domain.usecase.LoadDefaultWorkoutPlanModeUseCase
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -24,6 +30,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -42,9 +49,13 @@ class HomeViewModelTest {
             DayPlan(monday.plusDays(1), emptyList(), isRestDay = false, isCompleted = false),
             DayPlan(monday.plusDays(2), emptyList(), isRestDay = true, isCompleted = false),
         ),
+        mode = WorkoutPlanMode.HOME,
     )
 
-    private lateinit var getOrCreate: GetOrCreateWeeklyPlanUseCase
+    private lateinit var loadCurrentWeekPlan: LoadCurrentWeekPlanUseCase
+    private lateinit var loadDefaultWorkoutPlanMode: LoadDefaultWorkoutPlanModeUseCase
+    private lateinit var createWeeklyPlan: CreateWeeklyPlanUseCase
+    private lateinit var themePreferences: ThemePreferences
     private lateinit var syncHealth: SyncHealthDataUseCase
     private lateinit var checkBadges: CheckAndAwardBadgesUseCase
     private lateinit var workoutRepo: WorkoutRepository
@@ -52,14 +63,23 @@ class HomeViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        getOrCreate = mockk()
+        loadCurrentWeekPlan = mockk()
+        loadDefaultWorkoutPlanMode = mockk()
+        createWeeklyPlan = mockk()
+        themePreferences = mockk(relaxed = true)
         syncHealth = mockk()
         checkBadges = mockk()
         workoutRepo = mockk()
-        coEvery { getOrCreate() } returns Result.success(plan)
-        coEvery { syncHealth(any()) } returns Result.success(
-            HealthSyncResult(plan, isAvailable = true, hasPermission = true, newlyCompletedDates = emptyList()),
-        )
+
+        coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Found(plan)
+        coEvery { loadDefaultWorkoutPlanMode() } returns null
+        coEvery { themePreferences.hasAutoCreateAttempted(any()) } returns false
+        coEvery { syncHealth(any()) } answers {
+            val inputPlan = firstArg<WeeklyPlan>()
+            Result.success(
+                HealthSyncResult(inputPlan, isAvailable = true, hasPermission = true, newlyCompletedDates = emptyList()),
+            )
+        }
         coEvery { checkBadges(any()) } returns Result.success(emptyList())
         coEvery { workoutRepo.updateDayCompletion(any(), any(), any(), any()) } returns Result.success(Unit)
     }
@@ -68,10 +88,13 @@ class HomeViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun createViewModel() = HomeViewModel(
-        getOrCreate,
-        syncHealth,
-        checkBadges,
-        workoutRepo,
+        loadCurrentWeekPlan = loadCurrentWeekPlan,
+        loadDefaultWorkoutPlanMode = loadDefaultWorkoutPlanMode,
+        createWeeklyPlan = createWeeklyPlan,
+        themePreferences = themePreferences,
+        syncHealth = syncHealth,
+        checkBadges = checkBadges,
+        workoutRepo = workoutRepo,
     )
 
     @Test
@@ -83,11 +106,128 @@ class HomeViewModelTest {
         assertTrue(state is HomeUiState.Success)
         state as HomeUiState.Success
         assertEquals(plan, state.plan)
+        assertEquals(WorkoutPlanMode.HOME, state.plan.mode)
         assertEquals(0, state.completedCount)
         assertEquals(2, state.totalWorkoutDays)
         assertEquals(LocalDate.now(ZoneId.of("Asia/Seoul")), state.today)
         assertTrue(state.isHealthConnectAvailable)
         assertTrue(state.hasHealthPermission)
+        coVerify(exactly = 1) { themePreferences.clearAutoCreateAttempt() }
+    }
+
+    @Test
+    fun `정상 404(Missing) + 기본 환경 미설정 시 자동 생성 없이 NoPlan 상태로 전환된다`() = runTest {
+        coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Missing
+        coEvery { loadDefaultWorkoutPlanMode() } returns null
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state is HomeUiState.NoPlan)
+        assertNull((state as HomeUiState.NoPlan).selectedMode)
+        coVerify(exactly = 0) { createWeeklyPlan(any()) }
+    }
+
+    @Test
+    fun `NoPlan 에서 환경 선택 후 수동 생성 성공 시 Success 로 전환된다`() = runTest {
+        coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Missing
+        coEvery { loadDefaultWorkoutPlanMode() } returns null
+        coEvery { createWeeklyPlan(WorkoutPlanMode.HOME) } returns Result.success(plan)
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.selectMode(WorkoutPlanMode.HOME)
+        assertEquals(WorkoutPlanMode.HOME, (vm.uiState.value as HomeUiState.NoPlan).selectedMode)
+
+        vm.createSelectedPlan()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state is HomeUiState.Success)
+        coVerify(exactly = 1) { createWeeklyPlan(WorkoutPlanMode.HOME) }
+    }
+
+    @Test
+    fun `정상 404(Missing) + 기본 환경 설정 시 1회 자동 생성 후 Success 로 전환된다`() = runTest {
+        coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Missing
+        coEvery { loadDefaultWorkoutPlanMode() } returns WorkoutPlanMode.GYM
+        val gymPlan = plan.copy(mode = WorkoutPlanMode.GYM)
+        coEvery { createWeeklyPlan(WorkoutPlanMode.GYM) } returns Result.success(gymPlan)
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state is HomeUiState.Success)
+        assertEquals(WorkoutPlanMode.GYM, (state as HomeUiState.Success).plan.mode)
+        coVerify(exactly = 1) { themePreferences.markAutoCreateAttempted(any()) }
+        coVerify(exactly = 1) { createWeeklyPlan(WorkoutPlanMode.GYM) }
+    }
+
+    @Test
+    fun `같은 KST 주에 이미 자동 생성 시도가 기록된 경우 재시작 시 자동 POST 를 생략하고 AutoCreateError 를 표시한다`() = runTest {
+        coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Missing
+        coEvery { loadDefaultWorkoutPlanMode() } returns WorkoutPlanMode.HOME
+        coEvery { themePreferences.hasAutoCreateAttempted(any()) } returns true
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state is HomeUiState.AutoCreateError)
+        assertEquals(WorkoutPlanMode.HOME, (state as HomeUiState.AutoCreateError).mode)
+        coVerify(exactly = 0) { createWeeklyPlan(any()) }
+    }
+
+    @Test
+    fun `AutoCreateError 에서 다시 만들기(retryAutoCreate) 호출 시에만 명시적으로 재생성을 시도한다`() = runTest {
+        coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Missing
+        coEvery { loadDefaultWorkoutPlanMode() } returns WorkoutPlanMode.HOME
+        coEvery { themePreferences.hasAutoCreateAttempted(any()) } returns true
+        coEvery { createWeeklyPlan(WorkoutPlanMode.HOME) } returns Result.success(plan)
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value is HomeUiState.AutoCreateError)
+
+        vm.retryAutoCreate()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value is HomeUiState.Success)
+        coVerify(exactly = 1) { createWeeklyPlan(WorkoutPlanMode.HOME) }
+    }
+
+    @Test
+    fun `Unreadable 계획은 자동 덮어쓰기 없이 PlanDataError 로 노출되고 계획 초기화 시 DELETE 후 새 경로로 전환된다`() = runTest {
+        coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Unreadable(PlanSource.REMOTE)
+        coEvery { workoutRepo.deleteCurrentWeekPlan() } returns Result.success(Unit)
+        coEvery { loadDefaultWorkoutPlanMode() } returns null
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state is HomeUiState.PlanDataError)
+        coVerify(exactly = 0) { createWeeklyPlan(any()) }
+
+        vm.resetCorruptedPlan()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { workoutRepo.deleteCurrentWeekPlan() }
+        assertTrue(vm.uiState.value is HomeUiState.NoPlan)
+    }
+
+    @Test
+    fun `조회 실패(Failed)는 계획 없음으로 오판하지 않고 Error 상태를 유지하며 생성을 호출하지 않는다`() = runTest {
+        coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Failed(IOException("network down"))
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value is HomeUiState.Error)
+        coVerify(exactly = 0) { createWeeklyPlan(any()) }
     }
 
     @Test
@@ -158,14 +298,12 @@ class HomeViewModelTest {
         vm.toggleDayCompletion(monday) // 해제 → 직전 전송 취소 + PATCH(false)
         advanceUntilIdle()
 
-        // 직렬화가 없으면 true·false 두 PATCH 가 모두 나가 서버 상태가 어긋난다(회귀가드).
         coVerify(exactly = 1) { workoutRepo.updateDayCompletion(any(), monday, false, any()) }
         coVerify(exactly = 0) { workoutRepo.updateDayCompletion(any(), monday, true, any()) }
     }
 
     @Test
     fun `toggleDayCompletion 은 낙관적 업데이트에서 해당 날을 manuallySet=true 로 표시한다`() = runTest {
-        // PR #122 핵심수정 회귀가드 — 수동 토글이 manuallySet 을 박제해야 이후 HC 자동완료가 덮지 못한다.
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -179,7 +317,6 @@ class HomeViewModelTest {
 
     @Test
     fun `toggleDayCompletion 은 updateDayCompletion 을 manual=true 로 전송한다`() = runTest {
-        // 사용자 수동 토글은 manual=true (HC 자동완료 manual=false 와 구분) → 백엔드가 manuallySet 박제.
         val vm = createViewModel()
         advanceUntilIdle()
 

@@ -7,6 +7,7 @@ import java.time.LocalDate
 data class WeeklyRate(
     val weekStart: LocalDate,
     val completionRate: Float,
+    val mode: WorkoutPlanMode = WorkoutPlanMode.GYM,
 )
 
 @Immutable

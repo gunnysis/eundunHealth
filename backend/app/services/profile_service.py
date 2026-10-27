@@ -4,7 +4,7 @@ from app.exceptions import NotFoundException
 from app.repositories.profile_history_repo import ProfileHistoryRepository
 from app.repositories.profile_repo import ProfileRepository
 from app.schemas.goal import ProfileHistoryEntry
-from app.schemas.profile import UserProfileRequest, UserProfileResponse
+from app.schemas.profile import DefaultWorkoutPlanModeRequest, UserProfileRequest, UserProfileResponse
 
 
 class ProfileService:
@@ -35,6 +35,16 @@ class ProfileService:
             body_fat_pct=req.body_fat_pct,
             muscle_mass_kg=req.muscle_mass_kg,
         )
+
+    async def update_default_workout_plan_mode(
+        self, user_id: str, req: DefaultWorkoutPlanModeRequest
+    ) -> UserProfileResponse:
+        """기본 운동 환경만 저장한다. 신체 측정 history에는 영향을 주지 않는다."""
+        mode = req.default_workout_plan_mode.value if req.default_workout_plan_mode else None
+        profile = await self.repo.update_default_workout_plan_mode(user_id, mode)
+        if profile is None:
+            raise NotFoundException("프로필이 존재하지 않습니다")
+        return UserProfileResponse.model_validate(profile)
 
     async def get_history(self, user_id: str, limit: int = 50) -> list[ProfileHistoryEntry]:
         """최근 계측 이력을 시간 오름차순(차트용)으로 반환한다."""

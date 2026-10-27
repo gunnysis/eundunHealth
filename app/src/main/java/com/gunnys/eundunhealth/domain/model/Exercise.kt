@@ -13,6 +13,9 @@ data class Exercise(
     val sets: Int,
     val reps: Int,
     val type: ExerciseType,
+    val prescriptionUnit: ExercisePrescriptionUnit = ExercisePrescriptionUnit.REPS,
 )
 
 enum class ExerciseType { STRENGTH, CARDIO }
+
+enum class ExercisePrescriptionUnit { REPS, SECONDS }

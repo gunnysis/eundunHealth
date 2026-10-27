@@ -4,6 +4,7 @@ import android.app.Activity
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.AppErrorException
 import com.gunnys.eundunhealth.domain.model.UserProfile
+import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
@@ -272,5 +273,6 @@ class AuthViewModelTest {
     ) : UserRepository {
         override suspend fun getProfile(): Result<UserProfile?> = profileResult
         override suspend fun saveProfile(profile: UserProfile): Result<Unit> = Result.success(Unit)
+        override suspend fun updateDefaultWorkoutPlanMode(mode: WorkoutPlanMode?): Result<UserProfile> = error("unused in AuthViewModelTest")
     }
 }

@@ -16,7 +16,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app import __version__
 from app.config import get_settings
 from app.exceptions import AppException
-from app.routers import account, badge, goal, health, legal, meal_plan, profile, smile_training, weekly_plan
+from app.routers import (
+    account,
+    app_compatibility,
+    badge,
+    goal,
+    health,
+    legal,
+    meal_plan,
+    profile,
+    smile_training,
+    weekly_plan,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +126,7 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
     return JSONResponse(
         status_code=exc.status_code,
-        content={"code": exc.code, "message": exc.message},
+        content={"code": exc.code, "message": exc.message, **exc.details},
     )
 
 
@@ -157,6 +168,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 app.include_router(health.router)
+app.include_router(app_compatibility.router)
 app.include_router(profile.router)
 app.include_router(weekly_plan.router)
 app.include_router(meal_plan.router)

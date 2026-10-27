@@ -1,5 +1,64 @@
 # Multi-AI Handoff Log
 
+## 2026-10-27 (Gemini -> Claude/User) 휴식일 자유 다중 지정(Flexible Multi-Rest Days) 통합 구현 설계서(design) 작성 및 인덱스 정합화 완료 (사용자 검토 대기)
+
+**현재까지의 작업 상태 (Current Status):**
+- **단일 완성형 설계서 수립 (`docs/plans/`)**:
+  - 사용자 피드백에 따라 별도 plan 파일 분리 대신 `docs/plans/2026-10-27-flexible-rest-days-design.md` 단일 문서에 아키텍처, 알고리즘, UI/UX, 4단계 구현 로드맵 및 사용자 필수 작업을 완벽히 통합·병합 완료.
+  - **기술 팩트체크 및 최적안 확정**:
+    - **백엔드**: SQLAlchemy `RestDaysType = ARRAY(Integer).with_variant(JSON, "sqlite")` 채택 ➔ 프로덕션 Azure PostgreSQL 16의 네이티브 `INTEGER[]` 및 체크 제약(`cardinality(rest_days) BETWEEN 1 AND 6`) 보장 + 기존 139개 단위 테스트(SQLite) 100% 무수정 통과. Pydantic v2 `@model_validator`로 구버전 단일 `restDay` 자동 흡수.
+    - **도메인**: `WeeklyPlanGenerator` & `HomeWeeklyPlanGenerator` 대근육 우선순위 큐(`[Push ➔ Legs ➔ Pull ➔ Cardio ➔ Mixed ➔ Cardio]`)로 주 1~6일 상·하체 밸런스 완전 보장.
+    - **프론트엔드**: M3 `MultiChoiceSegmentedButtonRow` 채택으로 기존 7분할 요일 버튼 룩앤필 100% 계승, Room `IntListConverters` TypeConverter.
+    - **완료율/통계**: `HomeViewModel`과 `StatisticsService`가 이미 `count { !it.isRestDay }` 동적 분모를 쓰고 있음을 실측 검증 완료 (무수정 연동).
+  - **거버넌스 및 링크 정합화 통과**:
+    - `python scripts/gen_plans_index.py`: **PASS** (`docs/plans/README.md` active: 1 등록).
+    - `bash scripts/check-plans-links.sh`: **PASS** (끊긴 참조 0건).
+    - `pytest scripts/agents/test_doc_audit.py -q`: **PASS** (36 passed).
+
+**다음 할 일 (Next TODOs for User / Operator):**
+- **1순위**: 현재 진행 중인 적응형 주간 운동 계획 v2 (v0.6.0/39) C1 데이터 리셋 승인 및 C2/C3 배포 완결.
+- **2순위**: v2 배포 완료 후, 본 통합 구현 설계서([`docs/plans/2026-10-27-flexible-rest-days-design.md`](file:///c:/programming/apps/eundunHealth/docs/plans/2026-10-27-flexible-rest-days-design.md)) 검토 후 구현 착수 승인.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- 현재 활성 코드베이스(`app/`, `backend/`)는 일절 건드리지 않고 순수 문서 공간에서 작업되었습니다.
+- 마이그레이션 생성 시에는 반드시 `bash scripts/alembic-autogen.sh` (룰 3)를 사용해야 합니다.
+
+---
+
+## 2026-10-27 (Gemini -> Claude/User) 적응형 주간 운동 계획 v2 (Adaptive Weekly Workout Plan v2) R1~R6 엔드투엔드 구현, 다중 역할 검증 및 문서 동기화 완료 (운영 컷오버 C1~C3 사용자 승인 대기)
+
+**현재까지의 작업 상태 (Current Status):**
+- **`docs/reports/2026-10-26-adaptive-weekly-workout-proposal.md` 기반 R1~R6 풀스택 구현 완료**:
+  - **R1 & R2 (백엔드 API 계약·Alembic·데이터 초기화 스크립트)**:
+    - Alembic 마이그레이션 `backend/alembic/versions/d7f4a2c91b10_v2_weekly_plan_mode_and_reset_audit.py`: `weekly_plans.plan_mode`(`'gym'`/`'home'` CHECK 제약), `user_profiles.default_workout_plan_mode`(`'gym'`/`'home'` CHECK 제약, nullable), `data_reset_audits` 감사 테이블 추가 (Alembic head `d7f4a2c91b10`, 총 9개 리비전).
+    - `/v2/weekly-plan` 라우터 (`GET`, `POST` 201/409 `weekly_plan_exists`, `DELETE` 204, `PATCH /complete`, `GET /history`, `GET /previous`, `GET /statistics`) 신설 및 레거시 `/weekly-plan` 라우트 완전 제거.
+    - `PUT /v2/profile/default-workout-plan-mode` (`updateDefaultWorkoutPlanModeV2`): 신체 측정 이력(`profile_measurement_histories`) 오염 없이 기본 운동 환경만 원자적으로 변경·해제.
+    - `GET /app-compatibility` 공개 엔드포인트(`minimumSupportedVersionCode = 39`) 및 `require_supported_android_client` 의존성(`Eundun-Client-Version-Code` 헤더 검증, 구버전 `403 client_update_required`) 적용.
+    - `backend/scripts/reset_v2_user_data.py`: `--dry-run` 및 `--confirmation RESET_ALL_V2_USER_DATA --reset-id <id> --image-sha <sha> --execution-id <id>` 지원, 8개 앱 데이터 테이블(`RESET_TABLES`) 초기화 + `data_reset_audits` 감사 기록(PostgreSQL 16 컨테이너에서 `alembic upgrade head` ↔ `downgrade -1` ↔ `upgrade head` 및 `--dry-run` / 실행 리허설 완료).
+    - `backend/openapi.json` 동기화 완료 (19 paths / 27 routes = 22 JWT + 5 Public).
+  - **R3 & R4 (Android 데이터·도메인·UI/UX·테스트)**:
+    - `version.properties`: `versionName=0.6.0`, `versionCode=39` (`bash scripts/bump-version.sh 0.6.0`, 단조성 검증 `39 > 38` 통과).
+    - `WorkoutDatabase` v2 → v3 (`fallbackToDestructiveMigrationFrom(1, 2)`), `CachedPlanEntity.planMode`, `PlanJsonModels` v2 직렬화(`planMode`, `prescriptionUnit = REPS | SECONDS`, `validateDays` 7일 불변식).
+    - `HomeWeeklyPlanGenerator` (무장비·저충격 홈트레이닝 18종 카탈로그 + 결정론적 7일 템플릿 + `local:home:<slug>:v2.0` ID) 및 `WeeklyPlanGenerator` (헬스장 카탈로그 + 소규모 유산소 풀 fallback 방어 보강).
+    - `LoadCurrentWeekPlanUseCase`, `LoadDefaultWorkoutPlanModeUseCase`, `CreateWeeklyPlanUseCase`, KST 주차 기준 `ThemePreferences` 자동 생성 1회 가드(`hasAutoCreateAttempted` / `markAutoCreateAttempted`), `LocalDataWiper.ensureV2LocalResetCompleted()`.
+    - `HomeViewModel` & `HomeScreen`: `HomePlanSectionState` (`Loading`, `AutoCreating`, `NoPlan`, `PlanReady`, `PlanDataError`), `NoWeeklyPlanCard`, `WorkoutPlanModeSelectionSheet` (`saveAsDefault` 체크박스 포함), `PlanModeBadge` (`헬스장` / `홈트`), 이번 주 계획 삭제 확인 다이얼로그, `WorkoutDetailScreen` 초(`초`) 단위 표기 및 홈트 안내 카드, `ProfileHubScreen` 기본 운동 환경 설정 시트, `MainAppShell` 구버전 클라이언트 업데이트 차단 다이얼로그(`ClientUpdateRequired`).
+  - **R5 & R6 (검증 게이트 및 법적·기술 문서 동기화)**:
+    - Backend pytest: **139 passed** (19 files), `ruff check` / `ruff format --check` / `mypy` PASS.
+    - Android unit tests: **184 passed** (38 files), `spotlessCheck` / `detektDebug` (0 issues) / `assembleDebug` / `assembleRelease` (R8 full mode) / `check-agp10-compat.sh` PASS.
+    - `docs/store/*.md` & `backend/app/legal/*.md`, `CLAUDE.md`, `README.md`, `docs/SPEC.md`, `docs/PRD.md`, `docs/TRD.md`, `docs/ops/operations-snapshot.md` 동기화 완료.
+
+**다음 할 일 (Next TODOs for User / Operator):**
+- **C1 (사전 조건 확인 및 데이터 초기화 승인)**:
+  1. 구버전(`v0.5.0`, `versionCode=38`) 앱이 실행 중인 기기에서 앱을 완전히 종료했는지 확인.
+  2. 운영 DB 대상 `reset_v2_user_data.py --dry-run` 점검 및 `--execute --confirm-token V2_RESET_2026_10_27` 실행 승인.
+- **C2 & C3 (백엔드 배포 및 Google Play 릴리스)**:
+  1. 백엔드 Alembic `d7f4a2c91b10` 마이그레이션 및 ACA 리비전 배포(`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`).
+  2. `bash scripts/bump-version.sh 0.6.0` (`versionCode=39`) 버전 상향 및 Google Play 릴리스 승인 후 실기기 사후 점검(Post-release Operational Verification).
+
+**의존성 및 주의사항 (Context & Constraints):**
+- C1 destructive reset 및 운영 배포(C2/C3)는 반드시 사용자의 명시적 확인 후 실행해야 합니다.
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
 ## 2026-10-27 (Gemini -> Claude/User) 적응형 주간 운동 계획 v2 제안서 '15. 구현 전 재검토 요청' 전건 승인 반영, 홈트레이닝 18종 확정 카탈로그/요일 템플릿 수립 및 실기기 검증 일정 정합화 완료
 
 **현재까지의 작업 상태 (Current Status):**
@@ -14,7 +73,8 @@
   - **차기 기획(Proposals / RFC) 거버넌스 체계 신설 및 1호 기획서 등록 완료**:
     - 스코프 팽창을 방지하면서 가치 있는 브레인스토밍 아이디어를 인큐베이팅할 수 있는 `docs/proposals/` 거버넌스를 구축했습니다.
     - `docs/proposals/README.md` (기획 백로그 인덱스 및 Idea ➔ Exploring ➔ Accepted ➔ Promoted to Plan 라이프사이클), `_template.md` (경량 표준 템플릿) 생성.
-    - **1호 기획서 채택 ([PROP-01](file:///c:/programming/apps/eundunHealth/docs/proposals/2026-10-27-flexible-rest-days.md))**: "휴식일 자유 지정 및 주간 적응형 분할 루틴 엔진 (Adaptive Split Engine)" — UX 인터랙션, `rest_days: List[Int]`, 운동 일수($N$)에 적응하는 분할 매트릭스(전신/2분할/3분할)를 명세하여 `v0.6.0` 목표로 등록.
+    - **1호 기획서 채택 ([PROP-01](file:///c:/programming/apps/eundunHealth/docs/proposals/2026-10-27-flexible-rest-days.md))**: "휴식일 자유 다중 지정 (Flexible Multi-Rest Days)" — 사용자 자율성 보장, 요일별 FilterChips 멀티 선택, $N$일 기준 동적 주간 완료율 분모 계산 및 경량 순환(Round-Robin) 배치를 명세하여 `v0.6.0` 목표로 등록.
+    - **후속 기획서 분리 신설 ([PROP-04](file:///c:/programming/apps/eundunHealth/docs/proposals/2026-10-27-adaptive-split-engine.md))**: "운동 일수($N$) 기반 적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)" — 사용자 결정에 따라 복잡한 전신/2분할/3분할/4분할 동적 엔진 및 AI 식단 열량 미세조정은 `v0.7.0+` 후순위 과제로 독립 분리하여 인큐베이팅.
     - `docs/PRD.md`의 `### 향후 확장 후보` 테이블과 양방향 연동 완료.
   - **문서 무결성 검증 통과**:
     - `bash scripts/check-plans-links.sh`: **PASS** (끊긴 참조 0건)

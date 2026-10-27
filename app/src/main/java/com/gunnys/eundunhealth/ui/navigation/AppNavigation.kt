@@ -1,12 +1,39 @@
 package com.gunnys.eundunhealth.ui.navigation
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
@@ -15,6 +42,7 @@ import androidx.navigation.compose.rememberNavController
 import com.gunnys.eundunhealth.ui.auth.AuthGateScreen
 import com.gunnys.eundunhealth.ui.auth.AuthViewModel
 import com.gunnys.eundunhealth.ui.auth.SessionState
+import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
 import com.gunnys.eundunhealth.ui.smile.SmileTrainingScreen
 import com.gunnys.eundunhealth.ui.splash.SplashScreen
@@ -29,6 +57,27 @@ fun AppNavigation(
     val navController = rememberNavController()
     val sessionState by authViewModel.sessionState.collectAsStateWithLifecycle()
 
+    when (val s = sessionState) {
+        is SessionState.UpdateRequired -> {
+            UpdateRequiredScreen(
+                minimumVersionCode = s.minimumSupportedVersionCode,
+                playPackageUri = s.playPackageUri,
+            )
+            return
+        }
+        is SessionState.ResetFailed -> {
+            Scaffold { padding ->
+                ErrorContent(
+                    error = s.error,
+                    modifier = Modifier.padding(padding),
+                    onRetry = authViewModel::retryStartup,
+                )
+            }
+            return
+        }
+        else -> Unit
+    }
+
     LaunchedEffect(sessionState) {
         when (val s = sessionState) {
             is SessionState.Authenticated -> {
@@ -42,7 +91,10 @@ fun AppNavigation(
                     popUpTo(0) { inclusive = true }
                 }
             }
-            SessionState.Unknown -> { /* Splash 유지 */ }
+            SessionState.Unknown,
+            is SessionState.UpdateRequired,
+            is SessionState.ResetFailed,
+            -> { /* Splash 또는 상위 분기 유지 */ }
         }
     }
 
@@ -94,6 +146,73 @@ fun AppNavigation(
             SmileTrainingScreen(
                 onBack = { navController.popBackStack() },
             )
+        }
+    }
+}
+
+@Composable
+fun UpdateRequiredScreen(
+    minimumVersionCode: Int,
+    playPackageUri: String,
+) {
+    val context = LocalContext.current
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                imageVector = Icons.Default.SystemUpdate,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "앱 업데이트가 필요합니다",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics {
+                    heading()
+                    liveRegion = LiveRegionMode.Polite
+                },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "안전한 서비스 이용과 최신 운동 계획 기능을 위해 최신 버전(v$minimumVersionCode 이상)으로 업데이트해주세요.",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(playPackageUri)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            },
+                        )
+                    }.onFailure {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://play.google.com/store/apps/details?id=com.gunnys.eundunhealth"),
+                            ).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            },
+                        )
+                    }
+                },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text("Google Play에서 업데이트")
+            }
         }
     }
 }

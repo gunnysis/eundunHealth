@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # Operational kill switch. User consent is enforced separately at the API boundary.
     meal_ai_enabled: bool = True
 
+    minimum_supported_android_version_code: int = 38
+    android_play_package_uri: str = "market://details?id=com.gunnys.eundunhealth"
+
     model_config = {"env_file": ".env"}
 
 

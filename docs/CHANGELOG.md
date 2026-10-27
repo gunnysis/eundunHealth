@@ -4,6 +4,24 @@
 
 ---
 
+## [v0.6.0] — 2026-10-27 — 적응형 주간 운동 계획 v2 (헬스장 · 무장비 홈트레이닝) & ML Kit R8 핫픽스
+
+### 🏋️‍♂️🏠 적응형 주간 운동 계획 v2 (`WorkoutPlanMode.GYM` / `HOME`, `/v2/weekly-plan`, Alembic `d7f4a2c91b10`)
+- **명시적 주간 계획 생명주기**: 홈 진입 시 무조건 헬스장 계획을 자동 생성하던 v1 방식을 폐기하고, 기본 운동 환경(`defaultWorkoutPlanMode`: `gym` / `home` / `null`)이 설정된 경우 KST 주차당 1회만 자동 생성을 시도하며, 미설정(`null`)이거나 이번 주 계획을 삭제한 경우에는 `NoWeeklyPlanCard`와 `WorkoutPlanModeSelectionSheet`를 통해 사용자가 직접 환경을 선택해 생성한다.
+- **무장비·저충격 홈트레이닝 18종 카탈로그 (`HomeWeeklyPlanGenerator`)**: 장비 제로(`equipment = "없음"`), 층간소음 방지 저충격, 오프라인 완결(`gifUrl = ""`), 안정적 ID(`local:home:<slug>:v2.0`), 초 단위 처방(`ExercisePrescriptionUnit.SECONDS`, 예: `3세트 × 30초`)을 지원하는 18종 홈트 카탈로그와 7일 결정론적 분할 템플릿을 도입했다.
+- **백엔드 v2 계약 & 클라이언트 호환성 가드**:
+  - `/v2/weekly-plan` (`GET`, `POST` 201 Created / 409 `weekly_plan_exists`, `DELETE` 204, `PATCH /complete`, `GET /history`, `GET /previous`, `GET /statistics`) 및 `PUT /v2/profile/default-workout-plan-mode`(신체 측정 이력 오염 없는 기본 운동 환경 변경) 엔드포인트를 신설하고 레거시 `/weekly-plan` v1 라우트를 제거했다.
+  - `GET /app-compatibility` 공개 엔드포인트(`minimumSupportedVersionCode = 39`) 및 `Eundun-Client-Version-Code` 헤더 검증(`403 client_update_required` → `AppError.ClientUpdateRequired` 모달 안내)을 추가했다.
+  - `weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode`, `data_reset_audits` 감사 테이블 마이그레이션(`d7f4a2c91b10`) 및 `backend/scripts/reset_v2_user_data.py`(`--dry-run` / `--execute --confirm-token`) 초기화 스크립트를 구현했다.
+
+### 🛡️ 스마일 트레이닝 R8 full mode NPE 크래시 근본 해결 (`INC-2026-10-26-32`)
+- AGP R8 full mode가 `com.google.firebase.components.ComponentRegistrar` 구현체(`FaceRegistrar`, `VisionCommonRegistrar`, `CommonComponentRegistrar`)의 무인자 생성자 `<init>()`을 제거해 발생한 `FaceDetection.getClient()` NPE(`EUNDUNHEALTH-E/F`)를 `app/proguard-rules.pro`의 `{ <init>(); *; }` keep 규칙과 `MlKitFaceModuleInstaller`·`SmileTrainingViewModel`·`SmileCameraStage` 다중 방어선 및 `ProguardKeepRulesTest` 회귀 가드로 근본 해결했다.
+
+### 🔢 버전
+- versionName 0.5.0 → **0.6.0**, versionCode 38 → **39** (`minimumSupportedVersionCode=39`).
+
+---
+
 ## [v0.5.0] — 2026-10-26 — 스마일 트레이닝(온디바이스 표정·마음 연습) 풀스택 출시
 
 > **2026-10-26 Play production 업로드 성공 (`versionCode=38`, 태그 `v0.5.0`) 및 백엔드 배포 완료 (`eundunhealth-api--0000063`).** `release.yml` run `40274395812`가 `completed`(100%) 상태로 업로드하고 원장을 커밋 `cbd155f`(`LAST_UPLOADED_VERSION_CODE=38`)에서 갱신했으며, `backend.yml` run `40274391632`가 활성 리비전 `eundunhealth-api--0000063`(이미지 `869407a`, Alembic head `a3869f575d6a`, `eundunhealth-reaper` Job 동기화) 배포 및 프로브 4종 검증을 완료했다.

@@ -3,23 +3,23 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_create_and_get_plan(client, sample_plan):
-    resp = await client.post("/weekly-plan", json=sample_plan)
-    assert resp.status_code == 200
+    resp = await client.post("/v2/weekly-plan", json=sample_plan)
+    assert resp.status_code == 201
 
-    resp = await client.get("/weekly-plan", params={"weekStart": sample_plan["weekStart"]})
+    resp = await client.get("/v2/weekly-plan", params={"weekStart": sample_plan["weekStart"]})
     assert resp.status_code == 200
     assert resp.json()["weekStart"] == sample_plan["weekStart"]
 
 
 @pytest.mark.asyncio
 async def test_get_plan_not_found(client):
-    resp = await client.get("/weekly-plan", params={"weekStart": "2099-01-01"})
+    resp = await client.get("/v2/weekly-plan", params={"weekStart": "2099-01-01"})
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_history_empty(client):
-    resp = await client.get("/weekly-plan/history")
+    resp = await client.get("/v2/weekly-plan/history")
     assert resp.status_code == 200
     # envelope 응답 — Android HistoryViewModel이 totalCount를 페이지 인디케이터로 사용한다
     assert resp.json() == {"plans": [], "totalCount": 0, "page": 0, "size": 10}
@@ -27,13 +27,13 @@ async def test_history_empty(client):
 
 @pytest.mark.asyncio
 async def test_history_with_data(client, sample_plan):
-    await client.post("/weekly-plan", json=sample_plan)
+    await client.post("/v2/weekly-plan", json=sample_plan)
     await client.post(
-        "/weekly-plan",
-        json={"weekStart": "2026-06-01", "dayPlans": sample_plan["dayPlans"]},
+        "/v2/weekly-plan",
+        json={"weekStart": "2026-06-01", "planMode": "home", "dayPlans": sample_plan["dayPlans"]},
     )
 
-    resp = await client.get("/weekly-plan/history")
+    resp = await client.get("/v2/weekly-plan/history")
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["plans"]) == 2
@@ -55,12 +55,12 @@ async def test_history_second_page_boundary(client, sample_plan):
     for i in range(12):
         week_start = (base + datetime.timedelta(weeks=i)).isoformat()
         await client.post(
-            "/weekly-plan",
-            json={"weekStart": week_start, "dayPlans": sample_plan["dayPlans"]},
+            "/v2/weekly-plan",
+            json={"weekStart": week_start, "planMode": "gym", "dayPlans": sample_plan["dayPlans"]},
         )
 
-    page0 = await client.get("/weekly-plan/history", params={"page": 0, "size": 10})
-    page1 = await client.get("/weekly-plan/history", params={"page": 1, "size": 10})
+    page0 = await client.get("/v2/weekly-plan/history", params={"page": 0, "size": 10})
+    page1 = await client.get("/v2/weekly-plan/history", params={"page": 1, "size": 10})
 
     assert len(page0.json()["plans"]) == 10
     assert page0.json()["totalCount"] == 12
@@ -72,19 +72,70 @@ async def test_history_second_page_boundary(client, sample_plan):
 
 
 @pytest.mark.asyncio
-async def test_creating_plan_for_same_week_overwrites(client):
-    """같은 주에 다시 생성하면 덮어쓴다(upsert).
+async def test_creating_plan_for_same_week_conflicts_without_overwrite(client):
+    first = await client.post(
+        "/v2/weekly-plan",
+        json={"weekStart": "2026-05-04", "planMode": "gym", "dayPlans": '[{"marker": "old"}]'},
+    )
+    assert first.status_code == 201
 
-    앱의 자가치유가 이 동작에 의존한다 — 운동 0개짜리 '껍데기' 계획이 저장됐을 때
-    GetOrCreateWeeklyPlanUseCase 가 재생성으로 덮어써 그 주 내내 고착되는 것을 막는다
-    (룰 12 / 2026-06-15 빈 운동계획 회귀). 새 행이 쌓이면 자가치유가 무력화된다.
-    """
-    first = await client.post("/weekly-plan", json={"weekStart": "2026-05-04", "dayPlans": '[{"marker": "old"}]'})
-    assert first.status_code in (200, 201)
+    second = await client.post(
+        "/v2/weekly-plan",
+        json={"weekStart": "2026-05-04", "planMode": "home", "dayPlans": '[{"marker": "new"}]'},
+    )
+    assert second.status_code == 409
+    assert second.json()["code"] == "weekly_plan_exists"
 
-    second = await client.post("/weekly-plan", json={"weekStart": "2026-05-04", "dayPlans": '[{"marker": "new"}]'})
-    assert second.status_code in (200, 201)
-    assert second.json()["id"] == first.json()["id"]  # 새 행이 아니라 같은 행
+    got = await client.get("/v2/weekly-plan", params={"weekStart": "2026-05-04"})
+    assert got.json()["planMode"] == "gym"
+    assert "old" in got.json()["dayPlans"]
 
-    got = await client.get("/weekly-plan", params={"weekStart": "2026-05-04"})
-    assert "new" in got.json()["dayPlans"]
+
+@pytest.mark.asyncio
+async def test_v1_weekly_plan_routes_are_removed(client):
+    assert (await client.get("/weekly-plan")).status_code == 404
+    assert (await client.post("/weekly-plan", json={})).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_plan_is_explicit_and_scoped(client, sample_plan):
+    await client.post("/v2/weekly-plan", json=sample_plan)
+    deleted = await client.delete("/v2/weekly-plan", params={"weekStart": sample_plan["weekStart"]})
+    assert deleted.status_code == 204
+    assert (await client.get("/v2/weekly-plan", params={"weekStart": sample_plan["weekStart"]})).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_plan_mode_is_required_and_enum_validated(client, sample_plan):
+    without_mode = {key: value for key, value in sample_plan.items() if key != "planMode"}
+    assert (await client.post("/v2/weekly-plan", json=without_mode)).status_code == 422
+    invalid = {**sample_plan, "planMode": "hotel"}
+    assert (await client.post("/v2/weekly-plan", json=invalid)).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_unsupported_client_is_blocked_only_on_v2_mutation(client, sample_plan):
+    blocked = await client.post(
+        "/v2/weekly-plan",
+        json=sample_plan,
+        headers={"Eundun-Client-Version-Code": "0"},
+    )
+    assert blocked.status_code == 403
+    assert blocked.json() == {
+        "code": "client_update_required",
+        "message": "앱 업데이트가 필요합니다",
+        "minimumSupportedVersionCode": 38,
+    }
+    assert (await client.get("/v2/weekly-plan", params={"weekStart": sample_plan["weekStart"]})).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_public_app_compatibility(client):
+    resp = await client.get("/app-compatibility", params={"platform": "android", "versionCode": 38})
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "platform": "android",
+        "minimumSupportedVersionCode": 38,
+        "updateRequired": False,
+        "playPackageUri": "market://details?id=com.gunnys.eundunhealth",
+    }

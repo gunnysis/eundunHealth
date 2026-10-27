@@ -45,6 +45,7 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.gunnys.eundunhealth.domain.model.Exercise
+import com.gunnys.eundunhealth.domain.model.ExercisePrescriptionUnit
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import kotlinx.coroutines.launch
 
@@ -106,6 +107,10 @@ fun WorkoutDetailScreen(
                 val context = LocalContext.current
                 val clipboard = LocalClipboard.current
                 val scope = rememberCoroutineScope()
+                val prescriptionText = when (ex.prescriptionUnit) {
+                    ExercisePrescriptionUnit.SECONDS -> "${ex.sets}세트 x ${ex.reps}초"
+                    ExercisePrescriptionUnit.REPS -> "${ex.sets}세트 x ${ex.reps}회"
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -113,27 +118,29 @@ fun WorkoutDetailScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                 ) {
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(ex.gifUrl)
-                            .size(512)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = ex.name,
-                        modifier = Modifier.fillMaxWidth().height(250.dp),
-                        contentScale = ContentScale.Fit,
-                        loading = {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
-                        },
-                        error = {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("이미지를 불러올 수 없습니다", style = MaterialTheme.typography.bodySmall)
-                            }
-                        },
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    if (ex.gifUrl.isNotBlank()) {
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(ex.gifUrl)
+                                .size(512)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = ex.name,
+                            modifier = Modifier.fillMaxWidth().height(250.dp),
+                            contentScale = ContentScale.Fit,
+                            loading = {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            },
+                            error = {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("이미지를 불러올 수 없습니다", style = MaterialTheme.typography.bodySmall)
+                                }
+                            },
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                     // 운동 이름·방법을 길게 눌러 선택·복사할 수 있게 SelectionContainer 로 감싼다.
                     SelectionContainer {
                         Column {
@@ -152,7 +159,7 @@ fun WorkoutDetailScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "${ex.sets}세트 x ${ex.reps}회",
+                                prescriptionText,
                                 style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.primary,
                             )

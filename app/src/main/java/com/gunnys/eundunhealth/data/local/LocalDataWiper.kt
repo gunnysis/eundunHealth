@@ -10,6 +10,7 @@ import javax.inject.Singleton
 
 interface LocalDataWiper {
     suspend fun wipeAllForAccountDeletion(userId: String?)
+    suspend fun ensureV2LocalResetCompleted()
 }
 
 @Singleton
@@ -30,5 +31,13 @@ class DefaultLocalDataWiper @Inject constructor(
             smileSessionDao.clearAll()
         }
         themePreferences.clearAll()
+    }
+
+    override suspend fun ensureV2LocalResetCompleted() {
+        if (themePreferences.isV2LocalResetCompleted()) return
+        workManager.cancelUniqueWork(SmileSyncWorker.UNIQUE_WORK_NAME)
+        weeklyPlanDao.clearAll()
+        smileSessionDao.clearAll()
+        themePreferences.markV2LocalResetCompleted()
     }
 }

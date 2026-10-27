@@ -3,14 +3,15 @@ import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.exceptions import BadRequestException, NotFoundException
+from app.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.models.weekly_plan import WeeklyPlan
 from app.repositories.weekly_plan_repo import WeeklyPlanRepository
 from app.schemas.weekly_plan import (
     CompletionRequest,
     WeeklyPlanHistoryResponse,
-    WeeklyPlanRequest,
     WeeklyPlanResponse,
+    WeeklyPlanV2Request,
+    WorkoutPlanMode,
 )
 from app.services.day_plans import parse_day_plans
 
@@ -28,6 +29,7 @@ def _to_response(plan: WeeklyPlan) -> WeeklyPlanResponse:
         id=str(plan.id),
         user_id=plan.user_id,
         week_start=str(plan.week_start),
+        plan_mode=WorkoutPlanMode(plan.plan_mode),
         day_plans=plan.day_plans,
         created_at=str(plan.created_at) if plan.created_at else None,
     )
@@ -59,12 +61,20 @@ class WeeklyPlanService:
             return None
         return _to_response(plan)
 
-    async def upsert_plan(self, user_id: str, req: WeeklyPlanRequest) -> WeeklyPlanResponse:
-        """생성/갱신된 plan을 그대로 반환한다 — Android WorkoutRepository는 response.id로 Room cache에 저장."""
+    async def create_plan(self, user_id: str, req: WeeklyPlanV2Request) -> WeeklyPlanResponse:
+        """새 계획만 생성한다. 동일 주 계획은 변경하지 않고 typed 409를 반환한다."""
         date = _parse_date(req.week_start, "weekStart")
         parse_day_plans(req.day_plans)
-        plan = await self.repo.upsert(user_id, date, req.day_plans)
+        plan = await self.repo.create(user_id, date, req.plan_mode.value, req.day_plans)
+        if plan is None:
+            raise ConflictException("이미 이번 주 운동 계획이 있습니다", code="weekly_plan_exists")
         return _to_response(plan)
+
+    async def delete_plan(self, user_id: str, week_start: str) -> None:
+        """사용자가 명시한 해당 주 계획을 삭제하고, 없으면 404를 반환한다."""
+        date = _parse_date(week_start, "weekStart")
+        if not await self.repo.delete_by_user_and_week(user_id, date):
+            raise NotFoundException("주간 운동 계획이 없습니다")
 
     async def update_completion(self, user_id: str, req: CompletionRequest) -> None:
         """day-level 완료 토글.
@@ -86,6 +96,9 @@ class WeeklyPlanService:
         days = parse_day_plans(plan.day_plans)
         if day_offset >= len(days) or not isinstance(days[day_offset], dict):
             raise BadRequestException("dayPlans 구조가 올바르지 않습니다")
+        if not req.manual and days[day_offset].get("manuallySet") is True:
+            # 늦게 도착한 Health Connect 자동완료가 사용자 명시 완료/해제를 덮지 못하게 서버에서도 보장.
+            return
         days[day_offset]["isCompleted"] = req.completed
         if req.manual:
             # 사용자 명시 토글은 manuallySet 로 박제 → 이후 HC 자동완료가 덮어쓰지 못함(수동 우선).

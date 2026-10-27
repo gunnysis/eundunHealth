@@ -8,6 +8,7 @@ data class WeeklyPlanEntity(
     @PrimaryKey val id: String,
     val userId: String,
     val weekStart: String,
+    val planMode: String,
     val dayPlansJson: String,
     val cachedAt: Long = System.currentTimeMillis(),
 )

@@ -28,8 +28,8 @@ object WeeklyPlanGenerator {
         val legsShuffled = legs.shuffled(seed)
         val cardioShuffled = cardio.shuffled(seed)
         val tueCardio = cardioShuffled.take(2)
-        val thuCardio = cardioShuffled.drop(2).take(2)
-        val satCardio = cardioShuffled.drop(4).take(1)
+        val thuCardio = cardioShuffled.drop(2).take(2).ifEmpty { tueCardio }
+        val satCardio = cardioShuffled.drop(4).take(1).ifEmpty { cardioShuffled.take(1) }
         val restDayOfWeek = DayOfWeek.of(restDay.coerceIn(1, 7))
         val mixedStrength = (pushShuffled + pullShuffled + legsShuffled).shuffled(seed).take(2)
         val workoutSlots: List<List<Exercise>> = listOf(
