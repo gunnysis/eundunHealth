@@ -6,7 +6,7 @@
 
 ## [v0.6.1] — 2026-10-28 — UI/UX 전면 개선 (`PROP-05` Phase 1~4) · M3 포레스트 민트 & Pretendard · Today Hero & 운동 가이드 모드 · 공급망 강화
 
-> **저장소 릴리스 `versionCode=40` (`v0.6.1`).** 백엔드 API·DB 스키마 변경은 없으며(운영 리비전 `eundunhealth-api--0000065` 유지), Android 클라이언트 UI/UX 전면 개편(`PROP-05`)과 빌드·공급망 하드닝을 통합했다.
+> **2026-10-28 Play production 업로드 성공 (`versionCode=40`, 태그 `v0.6.1`, `release.yml` run `40647597577`) 및 백엔드 배포 완료 (`eundunhealth-api--0000066`, `backend.yml` run `40647560099`, 이미지 `c12f969`).** Android 클라이언트 UI/UX 전면 개편(`PROP-05` Phase 1~4)과 빌드·공급망 하드닝을 통합하고 프로덕션 배포를 완료했다(원장 PR #211, `LAST_UPLOADED_VERSION_CODE=40`).
 
 ### 🎨 영역 A — 브랜드 & 디자인 파운데이션 + Quick Wins 4종
 - **Material 3 36슬롯 + 시맨틱 13토큰 (`#006D3C` Modern Forest & Mint)**: `Color.kt`, `Shape.kt`, `Theme.kt`에 Light(`#FBFDF8`)/Dark(`#111412`) 36개 표준 M3 슬롯과 5단계 `surfaceContainerLowest..Highest`, `@Immutable data class EundunExtendedColors`(완료/휴식/주의/탄단지 13개 시맨틱 토큰)를 완비해 API 30 이하 보라색 기본값 유입(`F-1`, `F-6`)을 차단했다. `dynamicColor = false`를 기본값으로 고정하고 프로필 허브에서 Android 12+ opt-in 스위치를 제공한다(`F-8`).
