@@ -9,5 +9,5 @@ ruff==0.17.2
 mypy==2.4.0
 bandit==1.9.4
 pip-audit==2.10.1
-pip-tools==7.5.2
+pip-tools==7.6.2
 types-Markdown==3.10.2.20261007
