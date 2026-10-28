@@ -7,9 +7,10 @@ Gemini는 프로젝트의 아키텍처, 코드 리뷰, UI 및 IDE 통합 개발�
 
 Gemini는 작업을 시작하기 전 반드시 다음 문서를 스캔하고 세션 기준 환경으로 삼아야 합니다.
 
-1. `CLAUDE.md`: 본 프로젝트의 코딩 컨벤션, 아키텍처 제약, 보안 규칙(특히 룰 1~13)의 단일 진실 공급원입니다.
-2. `docs/ops/operations-snapshot.md`: 인프라, 버전 등 최신 운영 상태 파악을 위해 참고합니다.
-3. 기존 코드베이스에 정의된 스타일과 아키텍처를 위반하지 않아야 합니다.
+1. 전역 워크스테이션 규칙(`C:\Users\Administrator\.gemini\config\GEMINI.md` 및 `C:\Users\Administrator\.claude\rules\*.md`): 호스트 PC 사양, Windows + WSL2 Ubuntu(`wsl -d Ubuntu`) 하이브리드 툴체인, 동적 실측 우선 원칙(환경·버전 변경 가능성 상시 고려), 작업 방식 및 프롬프트 계약을 준수합니다.
+2. `CLAUDE.md`: 본 프로젝트의 코딩 컨벤션, 아키텍처 제약, 보안 규칙(특히 룰 1~13)의 단일 진실 공급원입니다.
+3. `docs/ops/operations-snapshot.md`: 인프라, 버전 등 최신 운영 상태 파악을 위해 참고합니다.
+4. 기존 코드베이스에 정의된 스타일과 아키텍처를 위반하지 않아야 합니다.
 
 ## 2. Multi-AI (Claude ↔ Gemini) Handoff Protocol
 
@@ -30,3 +31,8 @@ Claude 모델과의 작업 인계를 위해 `AI_HANDOFF.md`를 스캔하고 업�
   2. 아티팩트 작성 시 `RequestFeedback: true`를 설정하여 사용자 검토용 'Proceed' 버튼을 활성화합니다.
   3. **사용자가 'Proceed' 버튼을 누르거나 채팅으로 명시적 승인을 하기 전까지는 파일 수정(`replace_file_content`, `write_to_file`)이나 부수효과 명령(`run_command`)을 실행하지 말고 대기해야 합니다.**
   4. 사용자의 승인이 완료된 이후에만 계획에 따른 구현 작업을 시작합니다.
+
+## 5. 호스트 WSL2 Ubuntu (`wsl -d Ubuntu`) 활용 및 동적 환경 실측
+
+- 본 PC에는 **WSL2 `Ubuntu` (`wsl -d Ubuntu`)** 및 **Docker Desktop**이 설치되어 있으나, PC 정보·설정·런타임 버전은 언제든 변경될 수 있으므로 스냅샷 값을 맹신하지 않고 필요 시 실시간 명령(`wsl -l -v`, `py -0p`, `fnm list` 등)으로 먼저 확인합니다.
+- GitHub Actions(`ubuntu-latest`)에서 검증되는 공급망 락 파일(`gradle/verification-metadata.xml`의 Linux 네이티브 아티팩트 `aapt2-*-linux.jar`, `backend/requirements.txt` 및 `backend/requirements-dev.txt`의 `--require-hashes` / `--allow-unsafe`), POSIX 셸 스크립트(`scripts/*.sh`), 또는 OS 종속 도구를 변경할 때는 Windows 로컬 검증에만 의존하지 말고 **PR/Push 전 `wsl -d Ubuntu -- bash -lc "..."`(또는 Linux 컨테이너)를 통해 Linux 러너 패리티를 사전 검증**하십시오.
