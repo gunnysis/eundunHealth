@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.4 (2026-10-27 — v0.6.1 UI 접근성·공급망 강화 후보 반영)
-**제품 버전:** 저장소 후보는 `0.6.1` (versionCode `40`, 미태그·미업로드·미배포), Play 프로덕션은 `0.6.0/39`이다. 운영 증거는 `release.yml` run `40469947190`, 원장 `f9eeefc`(`LAST_UPLOADED_VERSION_CODE=39`), backend run `40469877206`, revision `eundunhealth-api--0000065`(image `a0b6701`, Alembic head `d7f4a2c91b10`)이다.
+**문서 버전:** v3.5 (2026-10-28 — v0.6.1 UI/UX 전면 개선 PROP-05 Phase 1~4 및 공급망 강화 프로덕션 출시 반영)
+**제품 버전:** `0.6.1` (versionCode `40`, 태그 `v0.6.1` — Play 프로덕션 `completed` 100% 출시 완료). 운영 증거는 `release.yml` run `40647597577`, 원장 PR #211(`LAST_UPLOADED_VERSION_CODE=40`), backend run `40647560099`, revision `eundunhealth-api--0000066`(image `c12f969`, Alembic head `d7f4a2c91b10`)이다.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

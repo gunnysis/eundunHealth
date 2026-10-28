@@ -1,9 +1,9 @@
 # Multi-AI Handoff Log
 
-## 2026-10-28 (Gemini -> Claude/User) PROP-05 UI/UX 개선 통합 설계서 Phase 1~4 전 구간 구현 + 2차 심층 팩트체크·근본 원인 해결·UI/UX 리팩토링 완료
+## 2026-10-28 (Gemini -> Claude/User) PROP-05 UI/UX 개선 통합 설계서 Phase 1~4 구현 + 2차 심층 리팩토링 + v0.6.1 (versionCode=40) 운영 배포 완료
 
 **현재까지의 작업 상태 (Current Status):**
-- `2026-10-28-ux-improvement-design.md` ([`docs/plans/logs/android.md`](docs/plans/logs/android.md) 2026-10-28 entry로 흡수 완료, `PROP-05`)에 정의된 **Phase 1 ~ Phase 4 전 구간 코드 구현 및 단위 테스트·정적 분석·릴리스(R8) 빌드 검증을 100% 완료**함.
+- **운영 배포 100% 완료 (`v0.6.1`, `versionCode = 40`)**: PR #201(`c12f969`) squash merge → `backend.yml` run `40647560099` (`eundunhealth-api--0000066` & `eundunhealth-reaper` 배포·프로브 5종 검증 완료) → `release.yml` run `40647597577` (태그 `v0.6.1`, Play 프로덕션 `completed` 100% 업로드 + 원장 `LAST_UPLOADED_VERSION_CODE=40` PR #211 반영 완료). `2026-10-28-ux-improvement-design.md` ([`docs/plans/logs/android.md`](docs/plans/logs/android.md) 2026-10-28 entry로 흡수 완료, `PROP-05`)에 정의된 **Phase 1 ~ Phase 4 전 구간 코드 구현 및 단위 테스트·정적 분석·릴리스(R8) 빌드 검증을 100% 완료**함.
   1. **Phase 1 — 브랜드 & 디자인 파운데이션 + Quick Wins 4종**:
      - **M3 36슬롯 + 시맨틱 13토큰 완성**: [`Color.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/Color.kt), [`Shape.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/Shape.kt), [`Theme.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/Theme.kt) (`#006D3C` Modern Forest & Mint, Light `#FBFDF8` / Dark `#111412`, 5단계 `surfaceContainerLowest..Highest`, `@Immutable data class EundunExtendedColors`, `dynamicColor = false` 기본값)
      - **Pretendard Variable 한글 타이포그래피 15슬롯**: [`Type.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/Type.kt) (`R.font.pretendard_variable`, `PlatformTextStyle(includeFontPadding = false)`, `LineHeightStyle`, 한글 음수 자간 `-0.25.sp ~ 0.sp`)
@@ -27,7 +27,7 @@
      - `bash scripts/check-agp10-compat.sh` (PASS), `python scripts/gen_plans_index.py --check` (PASS), `bash scripts/check-plans-links.sh` (PASS), `pytest scripts/agents/test_doc_audit.py -q` (36 passed), 금지 API(`collectAsState(`) 0건 확인
 
 **다음 할 일 (Next Steps / TODO):**
-- **사용자 직접 수행 항목**: Android 실기기에서 콜드 스타트 다크모드 스플래시, `HybridBodyMetricPicker` 룰러/스테퍼 햅틱 피드백, TalkBack 포커스 순서/차트 요약 낭독, 시스템 글꼴 200% 레이아웃 최종 점검 후 커밋/PR 진행.
+- **운영 배포 완료 (`v0.6.1` / `versionCode = 40`)**: 다음 릴리스 작업 시 `LAST_UPLOADED_VERSION_CODE=40`이므로 `versionCode >= 41`로 시작할 것(룰 13). Play 스토어 배포본 설치 후 일상 모니터링 진행.
 
 **주의사항 및 컨텍스트 (Context & Constraints):**
 - `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.

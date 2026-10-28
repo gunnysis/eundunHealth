@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-10-27):** 저장소 후보는 **v0.6.1/40(미배포)**, Play 프로덕션은 **v0.6.0/39(`completed` 100%)**이다. 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-10-28):** Play 프로덕션 및 저장소 최신 릴리스는 **v0.6.1/40(`completed` 100%)**, 백엔드 활성 리비전은 **`eundunhealth-api--0000066` (`c12f969`)**이다. 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -41,7 +41,7 @@
 | 차트 라이브러리 | 미사용 | **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.9.0** |
-| versionCode / versionName | (미정) | **저장소 후보 40 / 0.6.1**, **Play 운영 39 / 0.6.0** (`LAST_UPLOADED_VERSION_CODE=39`) — SSoT 루트 `version.properties`, 업로드 원장 `docs/ops/play-upload-ledger.md` |
+| versionCode / versionName | (미정) | **Play 운영 및 저장소 최신 40 / 0.6.1** (`LAST_UPLOADED_VERSION_CODE=40`) — SSoT 루트 `version.properties`, 업로드 원장 `docs/ops/play-upload-ledger.md` |
 | Alembic head | (미정) | `d7f4a2c91b10` (`v2_weekly_plan_mode_and_reset_audit`; 직전 `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
@@ -76,6 +76,7 @@ v0.1.1~v0.5.0 누적 (Android UI + Auth + Backend 안정화 및 기능 확장):
 - v0.4.0 **적응형 메뉴트리 & Health Connect 투명성** — `오늘·식단·진행·프로필` 4개 최상위 탭(`MainAppShell`), `ProgressHubScreen`/`ProfileHubScreen`, multiple back stack, Health Connect 권한 재조회 및 관리 intent 연동, Play 프로덕션 `completed`(100%) 출시(2026-10-17).
 - v0.5.0 **온디바이스 스마일 트레이닝(Smile Training) & 오프라인 우선 동기화** — 전면 카메라(`CameraX` 1.6.2) + 온디바이스 `ML Kit Face Detection`(17.1.0) 미소 코칭 + 오프라인 우선 Room(`SmileTrainingDatabase`) & `WorkManager`(`SmileSyncWorker`) + 원격 이력 복원(`refreshRemoteHistoryIfEmpty`) + 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) 및 `/smile-training/*` 4개 API + 계정 삭제 로컬 와이퍼(`LocalDataWiper`) + 백엔드(`0000063`) 및 Play 프로덕션 `completed`(100%) 출시(2026-10-26).
 - **v0.6.0 — 적응형 주간 운동 계획 v2 & 휴식 요일 자유 다중 지정 (`restDays`, 2026-10-27)** — `weekly_plans.plan_mode`(`gym`/`home`), `user_profiles.default_workout_plan_mode`, `user_profiles.rest_days`(`INTEGER[]`, `1..6`일), `data_reset_audits` 테이블(alembic `d7f4a2c91b10`) · `/v2/weekly-plan` 7개 API(동일 주 중복 생성 시 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · `PUT /v2/profile/default-workout-plan-mode`(신체 계측 이력 미생성) · `GET /app-compatibility` 및 `Eundun-Client-Version-Code` 가드(`PUT /profile` 포함, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`) · `app/time_utils.py` KST(`UTC+9`) SSoT · Android Room `EundunDatabase` v3 · 내장 18종 무장비 홈트레이닝 카탈로그(`HomeWeeklyPlanGenerator`, `REPS`/`SECONDS` 단위) & 대근육 우선순위 큐 라운드로빈 배치 · `RestDaysSelector` M3 다중 휴식 요일 선택기 + 백엔드(`0000065`, 이미지 `a0b6701`) 및 Play 프로덕션 `completed`(100%, 원장 `f9eeefc`) 출시(2026-10-27).
+- **v0.6.1 — UI/UX 전면 개선 (`PROP-05` Phase 1~4) & 공급망 하드닝 (2026-10-28)** — M3 포레스트 민트 36슬롯 + 시맨틱 13토큰(`EundunExtendedColors`), Pretendard Variable 가변 폰트 15슬롯, DayNight 콜드 스타트 백색 점멸 제거 · `TodayHeroCard` & 단계별 운동 가이드 모드(`WorkoutGuideScreen`/`WorkoutGuideViewModel`) · 3중 하이브리드 바디 피커(`HybridBodyMetricPicker`) & 2단계 온보딩 · 진행/식단/내 정보 허브 고도화 · Gradle/Python hash lock & Repository Gate + 백엔드(`0000066`, 이미지 `c12f969`, run `40647560099`) 및 Play 프로덕션 `completed`(100%, run `40647597577`, 원장 PR #211) 출시(2026-10-28).
 
 ---
 
