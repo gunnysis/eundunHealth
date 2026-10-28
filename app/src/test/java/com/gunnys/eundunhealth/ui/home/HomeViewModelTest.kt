@@ -367,4 +367,34 @@ class HomeViewModelTest {
         val state = vm.uiState.value as HomeUiState.Success
         assertTrue(state.plan.days.first { it.date == monday }.isCompleted)
     }
+
+    @Test
+    fun `refreshHealthConnectStatus 호출 시 권한 허용 상태와 새로 감지된 운동 완료가 즉시 반영된다`() = runTest {
+        val syncedPlan = plan.copy(
+            days = plan.days.map { if (it.date == monday) it.copy(isCompleted = true) else it },
+        )
+        coEvery { syncHealth(any()) } returnsMany listOf(
+            Result.success(
+                HealthSyncResult(plan, isAvailable = true, hasPermission = false, newlyCompletedDates = emptyList()),
+            ),
+            Result.success(
+                HealthSyncResult(syncedPlan, isAvailable = true, hasPermission = true, newlyCompletedDates = listOf(monday)),
+            ),
+        )
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+        val initial = vm.uiState.value as HomeUiState.Success
+        assertFalse("초기에는 권한 미허용 상태", initial.hasHealthPermission)
+        assertEquals(0, initial.completedCount)
+
+        vm.refreshHealthConnectStatus()
+        advanceUntilIdle()
+
+        val updated = vm.uiState.value as HomeUiState.Success
+        assertTrue("권한 허용 후 hasHealthPermission 이 true 로 갱신되어야 한다", updated.hasHealthPermission)
+        assertEquals(1, updated.completedCount)
+        coVerify(exactly = 1) { workoutRepo.updateDayCompletion(plan.id, monday, true, manual = false) }
+        coVerify(exactly = 2) { checkBadges(any()) }
+    }
 }

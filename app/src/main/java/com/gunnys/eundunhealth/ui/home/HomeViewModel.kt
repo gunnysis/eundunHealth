@@ -169,6 +169,41 @@ class HomeViewModel @Inject constructor(
         checkBadges(sync.plan)
     }
 
+    /**
+     * Health Connect 권한 허용/해제 콜백 또는 앱 복귀(ON_RESUME) 시
+     * 전체 주간 계획 API 재호출 없이 현재 계획에 대해 Health Connect 가용성·권한·운동 자동완료만 즉시 재동기화한다.
+     */
+    fun refreshHealthConnectStatus() {
+        val current = _uiState.value
+        if (current !is HomeUiState.Success) return
+        viewModelScope.launch {
+            val sync = syncHealth(current.plan).getOrElse {
+                HealthSyncResult(
+                    plan = current.plan,
+                    isAvailable = false,
+                    hasPermission = false,
+                    newlyCompletedDates = emptyList(),
+                )
+            }
+            val live = _uiState.value
+            if (live !is HomeUiState.Success) return@launch
+            _uiState.value = live.copy(
+                plan = sync.plan,
+                isHealthConnectAvailable = sync.isAvailable,
+                hasHealthPermission = sync.hasPermission,
+                completedCount = sync.plan.days.count { !it.isRestDay && it.isCompleted },
+                totalWorkoutDays = sync.plan.days.count { !it.isRestDay },
+            )
+            sync.newlyCompletedDates.forEach { date ->
+                workoutRepo.updateDayCompletion(sync.plan.id, date, true, manual = false)
+                    .onFailure { it.toReportedAppError() }
+            }
+            if (sync.newlyCompletedDates.isNotEmpty()) {
+                checkBadges(sync.plan)
+            }
+        }
+    }
+
     fun loadPlan() {
         val current = _uiState.value
         if (current is HomeUiState.Creating || current is HomeUiState.AutoCreating) return

@@ -247,7 +247,9 @@ private fun DefaultWorkoutPlanModeDialog(
         title = { Text("기본 운동 환경") },
         text = {
             Column(
-                modifier = Modifier.selectableGroup(),
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .selectableGroup(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(

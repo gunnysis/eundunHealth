@@ -36,6 +36,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -500,6 +501,7 @@ private fun WorkoutGuideCompletedContent(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -538,7 +540,7 @@ private fun WorkoutGuideCompletedContent(
 }
 
 @Composable
-private fun WorkoutGuideExitDialog(
+internal fun WorkoutGuideExitDialog(
     onDismiss: () -> Unit,
     onExitWithoutCompleting: () -> Unit,
     onCompleteAndExit: () -> Unit,
@@ -547,20 +549,52 @@ private fun WorkoutGuideExitDialog(
         onDismissRequest = onDismiss,
         title = { Text("운동을 중단하시겠어요?") },
         text = {
-            Text("지금 나가면 완료 표시 없이 종료하거나, 오늘 운동을 완료 처리하고 나갈 수 있습니다.")
+            Text(
+                text = "지금 나가면 완료 표시 없이 종료하거나, 오늘 운동을 완료 처리하고 나갈 수 있습니다.",
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
         },
+        // 3개 이상의 긴 한국어 액션이 있는 다이얼로그에서 dismissButton 슬롯에 Column을 중첩하면
+        // AlertDialogFlowRow 내부 가로·세로 측정 경합으로 하단 버튼('완료하지 않고 나가기')이 잘린다.
+        // 단일 confirmButton 슬롯 안에 전체 너비(fillMaxWidth) 수직 스택으로 배치해
+        // 모든 화면 폭·글꼴 크기(200%)에서 잘림 없이 시각적 우선순위를 명확히 표현한다.
         confirmButton = {
-            Button(onClick = onDismiss) {
-                Text("계속 운동하기")
-            }
-        },
-        dismissButton = {
-            Column(horizontalAlignment = Alignment.End) {
-                TextButton(onClick = onCompleteAndExit) {
-                    Text("오늘 운동 완료 처리하고 나가기")
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        text = "계속 운동하기",
+                        textAlign = TextAlign.Center,
+                    )
                 }
-                TextButton(onClick = onExitWithoutCompleting) {
-                    Text("완료하지 않고 나가기")
+                FilledTonalButton(
+                    onClick = onCompleteAndExit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        text = "오늘 운동 완료 처리하고 나가기",
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                TextButton(
+                    onClick = onExitWithoutCompleting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        text = "완료하지 않고 나가기",
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
         },

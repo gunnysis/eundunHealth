@@ -114,6 +114,11 @@ private fun MainContent(
                     homeViewModel.loadPlan()
                 }
             }
+            LaunchedEffect(healthPermissionsRevision) {
+                if (healthPermissionsRevision > 0) {
+                    homeViewModel.refreshHealthConnectStatus()
+                }
+            }
             HomeScreen(
                 onExerciseClick = { exerciseId ->
                     navController.navigate(Screen.WorkoutDetail.createRoute(exerciseId))

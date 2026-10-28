@@ -1,12 +1,18 @@
 package com.gunnys.eundunhealth
 
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.app.ActivityCompat
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
@@ -32,12 +38,27 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var themePreferences: ThemePreferences
 
     private var healthPermissionsRevision by mutableIntStateOf(0)
+    private var lastPermissionLaunchRealtimeMs: Long = 0L
 
     private val healthPermissionLauncher = registerForActivityResult(
-        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
-    ) {
+        PermissionController.createRequestPermissionResultContract(),
+    ) { grantedPermissions ->
+        val elapsedMs = SystemClock.elapsedRealtime() - lastPermissionLaunchRealtimeMs
         // 허용·거부 어느 결과든 실제 grant set을 다시 읽어 UI를 갱신한다.
         healthPermissionsRevision++
+
+        // Android / Health Connect 2회 거부(또는 취소) 잠금 시 시스템이 권한 다이얼로그를 띄우지 않고
+        // 즉시 빈 결과를 반환하여 사용자에게 '연동 버튼 무반응'으로 보이는 현상을 방지한다.
+        // 다이얼로그가 표시되지 않고 즉시 종료되었거나(<350ms), Android 14+ 에서 영구 잠금
+        // (결과 후에도 shouldShowRequestPermissionRationale == false) 상태라면
+        // 공식 가이드에 따라 Health Connect 데이터/권한 관리 화면으로 안내한다.
+        if (!grantedPermissions.containsAll(HealthConnectDataSource.PERMISSIONS)) {
+            val isSilentlySuppressed = elapsedMs in 0L..SILENT_DISMISS_THRESHOLD_MS ||
+                isHealthPermissionLockedOutOnApi34()
+            if (isSilentlySuppressed) {
+                openHealthConnectManageData()
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,17 +73,42 @@ class MainActivity : ComponentActivity() {
             ) {
                 AppNavigation(
                     healthPermissionsRevision = healthPermissionsRevision,
-                    onRequestHealthPermissions = {
-                        healthPermissionLauncher.launch(HealthConnectDataSource.PERMISSIONS)
-                    },
-                    onOpenHealthConnectManagement = {
-                        startActivity(
-                            androidx.health.connect.client.HealthConnectClient
-                                .getHealthConnectManageDataIntent(this),
-                        )
-                    },
+                    onRequestHealthPermissions = ::requestHealthPermissions,
+                    onOpenHealthConnectManagement = ::openHealthConnectManageData,
                 )
             }
         }
+    }
+
+    private fun requestHealthPermissions() {
+        lastPermissionLaunchRealtimeMs = SystemClock.elapsedRealtime()
+        runCatching {
+            healthPermissionLauncher.launch(HealthConnectDataSource.PERMISSIONS)
+        }.onFailure {
+            openHealthConnectManageData()
+        }
+    }
+
+    private fun isHealthPermissionLockedOutOnApi34(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+        return HealthConnectDataSource.PERMISSIONS.any { permission ->
+            !ActivityCompat.shouldShowRequestPermissionRationale(this, permission)
+        }
+    }
+
+    private fun openHealthConnectManageData() {
+        runCatching {
+            startActivity(HealthConnectClient.getHealthConnectManageDataIntent(this))
+        }.onFailure {
+            runCatching {
+                startActivity(Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS))
+            }
+        }
+    }
+
+    companion object {
+        // 사용자 눈으로 다이얼로그 진입 애니메이션을 보고 거부 버튼을 누르기까지 물리적으로 불가능한 시간 임계값.
+        // 시스템 PermissionController 가 UI 없이 즉시 finish() 한 경우를 판별한다.
+        private const val SILENT_DISMISS_THRESHOLD_MS = 350L
     }
 }

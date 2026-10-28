@@ -47,6 +47,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -307,7 +308,7 @@ fun OnboardingScreen(
                         },
                         enabled = !uiState.isLoading,
                         modifier = Modifier
-                            .weight(1.6f)
+                            .weight(1.8f)
                             .heightIn(min = 52.dp),
                     ) {
                         if (uiState.isLoading) {
@@ -318,9 +319,13 @@ fun OnboardingScreen(
                                 strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
-                            Text("맞춤 루틴 생성 중...")
+                            Text("맞춤 루틴 생성 중...", textAlign = TextAlign.Center)
                         } else {
-                            Text("내 첫 주 계획 만들고 시작하기", fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "첫 주 계획 시작하기",
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                            )
                         }
                     }
                 }

@@ -1,5 +1,34 @@
 # Multi-AI Handoff Log
 
+## 2026-10-28 (Gemini -> Claude/User) Health Connect '연동' 무반응 근본 해결 + 운동 가이드 종료 다이얼로그('완료하지 않고 나가기') 잘림 및 UI/UX 전수 점검·수정 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. 'Health Connect로 운동 달성을 자동 추적' [연동] 버튼 무반응 현상 근본 원인 해결**:
+  - **원인 1 (연동 허용 직후 홈 화면 상태 미갱신)**: `MainActivity.healthPermissionLauncher` 콜백이 `healthPermissionsRevision++`만 증가시키고, `MainAppShell.kt`에서 `ProfileHub` 라우트에만 `LaunchedEffect(healthPermissionsRevision)`을 연결하고 `Screen.Home.route`에는 연결하지 않아 홈 화면 `HealthConnectPromptCard`가 권한 허용 직후에도 그대로 남아 무반응처럼 보이던 버그 확인.
+  - **원인 2 (Android 14+ / Health Connect 2회 거부 시 시스템 다이얼로그 무음 차단)**: Android 공식 문서 및 `androidx.health.connect:connect-client:1.1.0` 바이트코드(`HealthPermissionsRequestModuleContract`, `HealthPermissionsRequestAppContract`, `HealthConnectClient`) 대조 결과, 권한 요청을 2회 거부/취소하면 OS가 시스템 다이얼로그를 띄우지 않고 즉시 빈 `Set`을 반환함.
+  - **원인 3 (Android 11+ 패키지 가시성)**: `AndroidManifest.xml`의 `<queries>`에 `<package android:name="com.google.android.apps.healthdata" />`가 누락되어 Android 13 이하 기기에서 Health Connect APK 패키지 조회·인텐트 해석이 차단될 수 있었음.
+  - **해결**:
+    - [`MainAppShell.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/MainAppShell.kt), [`HomeScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt), [`HomeViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeViewModel.kt): `HomeViewModel.refreshHealthConnectStatus()` 추가(권한 새로고침 시 `syncHealthConnectWorkouts(plan)`까지 즉시 수행) + `MainAppShell`의 `Screen.Home.route`에서 `LaunchedEffect(healthPermissionsRevision)` 연결 + `HomeScreen` `ON_RESUME` 라이프사이클 옵저버(`RefreshHealthConnectOnResume`) 연결.
+    - [`MainActivity.kt`](app/src/main/java/com/gunnys/eundunhealth/MainActivity.kt): 권한 요청이 다이얼로그 표시 없이 즉시 반환(`<350ms`)되거나 Android 14+에서 영구 잠금(`!shouldShowRequestPermissionRationale`)된 경우 공식 `HealthConnectClient.getHealthConnectManageDataIntent(this)`(폴백 `ACTION_HEALTH_CONNECT_SETTINGS`)로 Health Connect 관리 화면을 즉시 열도록 구현.
+    - [`AndroidManifest.xml`](app/src/main/AndroidManifest.xml): `<queries>`에 `<package android:name="com.google.android.apps.healthdata" />` 추가.
+- **2. '운동을 중단하시겠어요?' 다이얼로그 하단 '완료하지 않고 나가기' 잘림(Clipping) 해결 및 오늘 작업분(v0.6.1) UI/UX 전수 점검·리팩토링**:
+  - **근본 원인 (`WorkoutGuideExitDialog`)**: Material 3 `AlertDialog` 내부의 `AlertDialogFlowRow`는 `dismissButton`과 `confirmButton`을 2버튼 가로 행으로 배치하도록 설계되어 있는데, 기존 코드는 `dismissButton` 슬롯 안에 `Column`으로 2개의 긴 한국어 `TextButton`(`"오늘 운동 완료 처리하고 나가기"`, `"완료하지 않고 나가기"`)을 중첩하고 `confirmButton`에 `Button("계속 운동하기")`을 별도 배치하여 가로·세로 측정 경합으로 하단 버튼이 잘리는 현상이 발생함.
+  - **해결 및 전수 UI 보강**:
+    - [`WorkoutGuideScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt): `WorkoutGuideExitDialog`에서 `dismissButton` 슬롯 중첩을 제거하고, 단일 `confirmButton` 슬롯 내부에 `Modifier.fillMaxWidth()` 수직 `Column`으로 3개 액션(`Button("계속 운동하기")` → `FilledTonalButton("오늘 운동 완료 처리하고 나가기")` → `TextButton("완료하지 않고 나가기")`, 모두 `heightIn(min = 48.dp)`)을 배치 + 본문 `verticalScroll` 및 `WorkoutGuideCompletedContent` `verticalScroll` 추가.
+    - [`ProfileHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt), [`MealPlanScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/mealplan/MealPlanScreen.kt): `DefaultWorkoutPlanModeDialog`(라디오 3종) 및 AI 식단 데이터 처리 동의 `AlertDialog` 본문에 `verticalScroll(rememberScrollState())` 추가하여 소형 화면·200% 대형 글꼴 잘림 원천 차단.
+    - [`OnboardingScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/onboarding/OnboardingScreen.kt): Step 2 하단 2열 CTA 행의 우측 주 버튼 문구를 `"첫 주 계획 시작하기"`(`weight(1.8f)`, `TextAlign.Center`)로 정돈하여 360dp 소형 기기에서 2줄 줄바꿈·잘림 방지.
+    - [`ProgressHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt): 3열 요약 타일(`SummaryMetricTile`)의 값 타이포그래피를 `titleMedium` 및 `padding(horizontal = 6.dp)`로 조정하여 `"-12.5kg"` 등 7자 문자열에서 단위(`kg`)만 다음 줄로 쪼개지는 현상 방지.
+    - [`HealthConnectCards.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/components/HealthConnectCards.kt): `연동`·`설치` `TextButton`에 `Modifier.heightIn(min = 48.dp)` 적용하여 WCAG 최소 터치 타겟 보장.
+- **3. 재발 방지 테스트 및 전체 검증 결과**:
+  - 신규/보강 테스트: [`DialogAndLayoutGuardTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/DialogAndLayoutGuardTest.kt), [`WorkoutGuideExitDialogTest.kt`](app/src/androidTest/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideExitDialogTest.kt), [`HomeViewModelTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/home/HomeViewModelTest.kt), [`ManifestHealthConnectRationaleTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ManifestHealthConnectRationaleTest.kt).
+  - `.\gradlew.bat spotlessApply :app:spotlessCheck :app:detektDebug :app:compileDebugAndroidTestKotlin :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --console=plain` → **BUILD SUCCESSFUL** (단위 테스트 **215개 전수 통과**, Detekt 0건, R8 릴리스 빌드 및 `lintVitalRelease` 통과).
+  - `wsl -d Ubuntu -- bash -lc "cd /mnt/c/programming/apps/eundunHealth && bash scripts/check-agp10-compat.sh"` → **OK: AGP 10 호환성 가드 통과**.
+
+**다음 할 일 (Next Steps / TODO):**
+- 변경사항 커밋 및 차기 핫픽스 릴리스 배포 여부 확인.
+
+---
+
 ## 2026-10-28 (Gemini -> Claude/User) Sentry 이슈 7816180647 (`EUNDUNHEALTH-G`, HTTP 504) 점검·디버깅 및 근본 원인 해결 완료
 
 **현재까지의 작업 상태 (Current Status):**
