@@ -45,7 +45,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val themeMode by themePreferences.themeMode.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
-            EundunHealthTheme(themeMode = themeMode) {
+            val dynamicColor by themePreferences.dynamicColorEnabled.collectAsStateWithLifecycle(initialValue = false)
+            EundunHealthTheme(
+                themeMode = themeMode,
+                dynamicColor = dynamicColor,
+            ) {
                 AppNavigation(
                     healthPermissionsRevision = healthPermissionsRevision,
                     onRequestHealthPermissions = {

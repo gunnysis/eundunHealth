@@ -2,7 +2,7 @@
 # 설계: docs/plans/logs/process-infra.md (옛 페어 2026-07-02-android-cd-play-upload-design.md 흡수)
 # - 서명 자료 = environment `play-release` secrets (required reviewer 승인 게이트, D4)
 # - 빌드 = scripts/preflight-release.sh 단일 진입 (룰 2·13·Sentry 매핑 게이트 상속, D5)
-# - 업로드 성공 시 scripts/update-upload-ledger.sh 가 원장 갱신 커밋 push (INC-2026-06-19-28 사람 의존 갭 해소, D6)
+# - 업로드 성공 시 원장 변경은 별도 PR로 제출한다. 보호된 main에 workflow가 직접 push하지 않는다.
 # - 실패 시 Play 무영향, 수동 업로드 경로는 폴백으로 유지.
 #
 # 트랙 = production, 단일 운영자 앱 정책상 즉시 100% 출시(status=completed).
@@ -32,9 +32,10 @@ jobs:
     environment: play-release
     timeout-minutes: 45
     permissions:
-      contents: write   # 원장 갱신 커밋 push
+      contents: write      # release-ledger/* 브랜치 생성
+      pull-requests: write # 원장 PR 생성
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0   # 태그↔main 관계 확인 + 원장 push
 
@@ -48,14 +49,21 @@ jobs:
             exit 1
           fi
 
+          TAG_COMMIT=$(git rev-parse "$GITHUB_REF^{commit}")
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
+            echo "::error::릴리스 태그는 승인된 main 이력의 commit을 가리켜야 합니다."
+            exit 1
+          fi
+
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6.3.0
+        uses: gradle/actions/setup-gradle@67621b124fd2e251c5e8a0e6e3b91318f2287669
 
       - name: 서명 자료 + 출시 BuildConfig 복원 (environment secrets)
         run: |
@@ -93,7 +101,7 @@ jobs:
 
       - name: Play 프로덕션 트랙 업로드
         if: github.event_name == 'push' || !inputs.dry_run
-        uses: r0adkll/upload-google-play@v1.1.5
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.gunnys.eundunhealth
@@ -104,17 +112,26 @@ jobs:
           status: completed
           mappingFile: app/build/outputs/mapping/release/mapping.txt
 
-      - name: 원장 자동 갱신 (룰 13 — 업로드 성공 직후)
+      - name: 원장 변경 PR 생성 (업로드 성공 직후)
         if: github.event_name == 'push' || !inputs.dry_run
         run: |
           VC=$(grep '^versionCode=' version.properties | cut -d= -f2 | tr -d ' \r')
           VN=$(grep '^versionName=' version.properties | cut -d= -f2 | tr -d ' \r')
-          # 태그 시점 이후 main 이 전진했어도 안전하게: 항상 최신 origin/main 위에 커밋.
+          BRANCH="release-ledger/v${VN}-${VC}"
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git fetch origin main
-          git checkout -B ledger-update origin/main
+          if git ls-remote --exit-code --heads origin "$BRANCH"; then
+            echo "::error::원장 브랜치가 이미 존재합니다: $BRANCH"
+            exit 1
+          fi
+          git checkout -B "$BRANCH" origin/main
           bash scripts/update-upload-ledger.sh docs/ops/play-upload-ledger.md "$VN" "$VC" production
           git add docs/ops/play-upload-ledger.md
-          git commit -m "docs(ledger): v$VN/$VC 프로덕션 트랙 업로드 — 원장 자동 갱신 (release.yml)"
-          git push origin ledger-update:main
+          git commit -m "docs(ledger): v$VN/$VC 프로덕션 업로드"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "docs(ledger): v$VN/$VC 프로덕션 업로드" \
+            --body "Play 업로드 성공 기록입니다. Console 노출과 설치본 MSAL 검증은 별도 확인이 필요합니다."
+        env:
+          GH_TOKEN: ${{ github.token }}

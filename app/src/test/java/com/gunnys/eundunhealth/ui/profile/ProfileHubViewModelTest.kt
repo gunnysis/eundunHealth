@@ -51,9 +51,10 @@ class ProfileHubViewModelTest {
     fun setup() {
         Dispatchers.setMain(dispatcher)
         healthRepository = mockk()
-        themePreferences = mockk()
+        themePreferences = mockk(relaxed = true)
         userRepository = mockk()
         every { themePreferences.themeMode } returns flowOf(ThemeMode.SYSTEM)
+        every { themePreferences.dynamicColorEnabled } returns flowOf(false)
         coEvery { userRepository.getProfile() } returns Result.success(profile)
     }
 
@@ -120,5 +121,20 @@ class ProfileHubViewModelTest {
 
         assertEquals(WorkoutPlanMode.GYM, viewModel.uiState.value.defaultWorkoutPlanMode)
         assertNotNull(viewModel.uiState.value.defaultPlanModeError)
+    }
+
+    @Test
+    fun `setDynamicColorEnabled 호출 시 ThemePreferences 와 상태를 갱신한다`() = runTest {
+        coEvery { healthRepository.isAvailable() } returns false
+
+        val viewModel = ProfileHubViewModel(healthRepository, themePreferences, userRepository)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.dynamicColorEnabled)
+
+        viewModel.setDynamicColorEnabled(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.dynamicColorEnabled)
+        coVerify(exactly = 1) { themePreferences.setDynamicColorEnabled(true) }
     }
 }

@@ -2,6 +2,7 @@
 
 > 작성일: 2026-05-25 / 최근 갱신: **2026-10-27 — v0.6.0/39 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 다중 지정(`restDays`) 백엔드·Play 프로덕션 운영 배포 완료**
 > 작성 기준: 태그 `v0.6.0`의 **v0.6.0/39**이 release workflow run `40469947190`로 Play production `completed`(100%) 업로드됐고, 원장 커밋 `f9eeefc`가 versionCode 39를 기록한다. 백엔드는 C1 운영 DB 마이그레이션(`d7f4a2c91b10`) 및 v2 사용자 데이터 초기화(`v2-cutover-20261027`) 후 run `40469877206`로 revision `eundunhealth-api--0000065`(이미지 `a0b6701`)에 배포됐다.
+> 저장소 상태: **v0.6.1/40 릴리스 후보(미배포)**. 아래 운영 값은 v0.6.0/39 기준이며, 후보의 패키지·빌드 값은 별도 행에 기록한다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -12,17 +13,19 @@
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
 | versionName / versionCode | **`0.6.0` / `39` (태그 `v0.6.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=39` |
+| 저장소 릴리스 후보 | **`0.6.1` / `40` (미태그·미업로드·미배포)** — 로컬 SSoT `version.properties` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.10 / 9.3.2 / 9.7.1** (KSP 2.3.11, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거) |
 | Compose BOM | **2026.08.00** |
+| 후보 빌드 도구 | Kotlin **2.4.21** / KSP **2.3.12** / AGP **9.3.2** / Gradle **9.8.1** / Compose BOM **2026.09.00** (dependency lock + SHA-256 verification) |
 | 차트 | Vico 3.3.1 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
 | 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.1** + ktlint 1.5.0 |
 | API client | openapi-generator **7.25.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 8개 generated client |
-| Sentry SDK | Android **8.57.0** / Gradle plugin **6.21.0** |
+| Sentry SDK | 운영 Android **8.57.0** / Gradle plugin **6.21.0**; 후보 plugin **6.24.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (로컬 최신 = **v0.6.0/39 로컬 빌드, 2026-10-27 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 이 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드해 업로드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
+산출물 경로 (로컬 최신 = **v0.6.1/40 후보 R8 빌드, 2026-10-27 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 v0.6.0/39 CI 빌드이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
 - AAB: `app/build/outputs/bundle/release/app-release.aab` (13,101,779 bytes)
 - APK: `app/build/outputs/apk/release/app-release.apk` (8,840,000+ bytes)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)

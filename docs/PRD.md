@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.3 (2026-10-27 — 적응형 주간 운동 계획 v2 & 휴식 요일 자유 다중 지정(`restDays`) 및 v0.5.0 온디바이스 스마일 트레이닝 반영)
-**제품 버전:** 저장소 = Play 프로덕션 `0.6.0` (versionCode `39`, 태그 `v0.6.0`) — **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`), 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 및 온디바이스 스마일 트레이닝(Smile Training) 정식 출시**. `release.yml` run `40469947190`이 Play production `completed`(100%) 업로드와 원장 갱신(`f9eeefc`, `LAST_UPLOADED_VERSION_CODE=39`)을 성공했고, 백엔드는 `Backend CI/CD` run `40469877206`으로 활성 리비전 `eundunhealth-api--0000065`(이미지 `a0b6701`, Alembic head `d7f4a2c91b10`)에 배포됐다.
+**문서 버전:** v3.4 (2026-10-27 — v0.6.1 UI 접근성·공급망 강화 후보 반영)
+**제품 버전:** 저장소 후보는 `0.6.1` (versionCode `40`, 미태그·미업로드·미배포), Play 프로덕션은 `0.6.0/39`이다. 운영 증거는 `release.yml` run `40469947190`, 원장 `f9eeefc`(`LAST_UPLOADED_VERSION_CODE=39`), backend run `40469877206`, revision `eundunhealth-api--0000065`(image `a0b6701`, Alembic head `d7f4a2c91b10`)이다.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -410,7 +410,8 @@ Splash
 | **PROP-01** | **휴식일 자유 다중 지정 (Flexible Multi-Rest Days)** | `v0.6.0` (구현 완료) | 주 1~6일 자유로운 휴식일 멀티 선택 및 $N$일 기준 동적 주간 완료율 | [plans/logs/android.md](plans/logs/android.md) |
 | **PROP-02** | 식단 섭취 체크 및 영양 리포트 | `v0.7.0+` | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 | [proposals/README.md](proposals/README.md) |
 | **PROP-03** | 맞춤 추천 고도화 (점진적 과부하) | `v0.7.0+` | 운동 이력 기반 AI 운동 루틴 및 중량/볼륨 추천 | [proposals/README.md](proposals/README.md) |
-| **PROP-04** | **적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)** | `v0.7.0+` | 실제 운동 일수($N$)에 적응하는 전신/2분할/3분할 과학적 매트릭스 처방 | [2026-10-27-adaptive-split-engine.md](proposals/2026-10-27-adaptive-split-engine.md) |
+| **PROP-04** | ~~적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)~~ | 기각 | 실제 운동 일수($N$)에 적응하는 전신/2분할/3분할 매트릭스 처방 (Deferred/Rejected) | [rejections/2026-10-27-adaptive-split-engine.md](proposals/rejections/2026-10-27-adaptive-split-engine.md) |
+| **PROP-05** | **UI/UX 개선 종합 기획** | `v0.6.1` (구현 완료) | 브랜드·디자인 기반, 오늘 탭 Today Hero, 운동 가이드 모드, 진행·식단·프로필 허브, 온보딩·첫 경험 개선 | [plans/logs/android.md](plans/logs/android.md) |
 | - | 사용자 정의 루틴 | 백로그 | 자동 생성된 plan을 사용자가 직접 편집 | - |
 | - | 추가 배지 / 시즌 챌린지 | 백로그 | 시즌별 한정 배지, 친구 간 챌린지 | - |
 | - | 소셜 기능 | 백로그 | 친구 추가, 운동 현황 공유 | - |

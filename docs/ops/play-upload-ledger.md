@@ -39,12 +39,13 @@ LAST_UPLOADED_VERSION_CODE=39
 
 ## 유지보수 절차
 
-**자동 경로 (기본 — 2026-07 release.yml)**: 태그 `v*` push 로 업로드하면 워크플로가 성공 직후
-`scripts/update-upload-ledger.sh` 로 마커 갱신 + 이력 행 추가를 **자동 커밋**한다(아래 2번의 사람 의존 제거).
+**자동 경로 (기본 — 2026-10 release.yml)**: 태그 `v*` push 로 업로드하면 워크플로가 성공 직후
+`scripts/update-upload-ledger.sh` 로 마커와 이력 행을 갱신하고 `release-ledger/v<version>-<code>`
+브랜치의 PR을 만든다. 사용자가 업로드 증거를 확인한 뒤 squash merge하며 `main`에는 직접 push하지 않는다.
 수동 업로드(폴백) 시에만 아래 절차를 손으로 수행:
 
 1. `bash scripts/preflight-release.sh` 로 AAB 빌드 — 가드가 `versionCode > LAST_UPLOADED_VERSION_CODE` 를 자동 검증.
-2. Play Console 에 AAB **업로드 성공** 직후, 위 `LAST_UPLOADED_VERSION_CODE=` 값을 방금 올린 versionCode 로 갱신하고 이력 표에 행을 추가한다(같은 커밋 권장). 스크립트 사용 가능: `bash scripts/update-upload-ledger.sh docs/ops/play-upload-ledger.md <versionName> <versionCode> <트랙>`.
+2. Play Console 에 AAB **업로드 성공** 직후, 위 `LAST_UPLOADED_VERSION_CODE=` 값을 방금 올린 versionCode 로 갱신하고 이력 표에 행을 추가한 별도 원장 PR을 만든다. 스크립트 사용 가능: `bash scripts/update-upload-ledger.sh docs/ops/play-upload-ledger.md <versionName> <versionCode> <트랙>`.
 3. 다음 릴리스의 `bash scripts/bump-version.sh <ver>` 는 새 versionCode 가 이 값 이하이면(저장소가 Play 보다 뒤처진 경우) **번프를 중단**한다 → version.properties 의 versionCode 를 `LAST_UPLOADED_VERSION_CODE + 1` 이상으로 올린 뒤 재시도.
 
 > **주의 — 가드 우회 경로**: Android Studio "Generate Signed Bundle/APK" 마법사로 빌드하면
@@ -53,6 +54,6 @@ LAST_UPLOADED_VERSION_CODE=39
 
 ## 향후 자동화(잔여)
 
-내부 트랙 업로드 + 원장 갱신은 release.yml 로 자동화됨(2026-07 P4). 잔여 후보: 가드가 원장 대신
+Play 업로드 + 원장 PR 생성은 release.yml 로 자동화됨. 잔여 후보: 가드가 원장 대신
 Play Developer Publishing API 로 직접 최고 versionCode 를 조회(원장 stale 리스크 제거) — 내부 트랙
 자동화 안정 후 검토(design §2 Out-of-scope).

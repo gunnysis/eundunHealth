@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -43,6 +45,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.BodyMetricsSliders
 import com.gunnys.eundunhealth.ui.components.GenderSelector
@@ -104,12 +107,17 @@ fun ProfileEditScreen(
                 )
             }
             is ProfileUiState.Loaded -> {
+                val safeInitialGender = if (state.profile.gender == Gender.UNSPECIFIED) {
+                    Gender.MALE
+                } else {
+                    state.profile.gender
+                }
                 ProfileEditContent(
-                    initialGender = state.profile.gender,
+                    initialGender = safeInitialGender,
                     initialHeight = state.profile.heightCm,
                     initialWeight = state.profile.weightKg,
-                    initialBodyFat = state.profile.bodyFatPercent ?: 20f,
-                    initialMuscleMass = state.profile.muscleMassKg ?: 30f,
+                    initialBodyFat = state.profile.bodyFatPercent,
+                    initialMuscleMass = state.profile.muscleMassKg,
                     initialRestDays = state.profile.restDays,
                     isSaving = state.isSaving,
                     isDeleting = state.isDeleting,
@@ -152,27 +160,28 @@ fun ProfileEditScreen(
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
 private fun ProfileEditContent(
-    initialGender: com.gunnys.eundunhealth.domain.model.Gender,
+    initialGender: Gender,
     initialHeight: Float,
     initialWeight: Float,
-    initialBodyFat: Float,
-    initialMuscleMass: Float,
+    initialBodyFat: Float?,
+    initialMuscleMass: Float?,
     initialRestDays: List<Int>,
     isSaving: Boolean,
     isDeleting: Boolean,
     saveError: AppError?,
     deleteError: AppError?,
-    onSave: (Float, Float, com.gunnys.eundunhealth.domain.model.Gender, Float, Float, List<Int>) -> Unit,
+    onSave: (Float, Float, Gender, Float?, Float?, List<Int>) -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var gender by rememberSaveable(initialGender) { mutableStateOf(initialGender) }
     var height by rememberSaveable(initialHeight) { mutableFloatStateOf(initialHeight) }
     var weight by rememberSaveable(initialWeight) { mutableFloatStateOf(initialWeight) }
-    var bodyFat by rememberSaveable(initialBodyFat) { mutableFloatStateOf(initialBodyFat) }
-    var muscleMass by rememberSaveable(initialMuscleMass) { mutableFloatStateOf(initialMuscleMass) }
+    var bodyFat by rememberSaveable(initialBodyFat) { mutableStateOf(initialBodyFat) }
+    var muscleMass by rememberSaveable(initialMuscleMass) { mutableStateOf(initialMuscleMass) }
     var restDays by rememberSaveable(initialRestDays) { mutableStateOf<List<Int>>(ArrayList(initialRestDays)) }
 
     Column(
@@ -280,12 +289,16 @@ private fun ProfileActionButtons(
 ) {
     Button(
         onClick = onSave,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp),
         enabled = !isSaving && !isDeleting,
     ) {
         if (isSaving) {
             CircularProgressIndicator(
-                modifier = Modifier.padding(end = 8.dp),
+                modifier = Modifier
+                    .size(20.dp)
+                    .padding(end = 8.dp),
                 strokeWidth = 2.dp,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
@@ -302,7 +315,9 @@ private fun ProfileActionButtons(
 
     OutlinedButton(
         onClick = onDeleteClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp),
         enabled = !isSaving && !isDeleting,
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = MaterialTheme.colorScheme.error,
@@ -310,7 +325,9 @@ private fun ProfileActionButtons(
     ) {
         if (isDeleting) {
             CircularProgressIndicator(
-                modifier = Modifier.padding(end = 8.dp),
+                modifier = Modifier
+                    .size(20.dp)
+                    .padding(end = 8.dp),
                 strokeWidth = 2.dp,
                 color = MaterialTheme.colorScheme.error,
             )

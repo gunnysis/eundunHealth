@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 **문서 버전:** v1.0 (초기 설계, 2026-05-23) — 본문은 그대로 보존.
-**현재 상태(2026-10-27, 저장소 = Play 프로덕션 = v0.6.0/39 [`completed` 100% 업로드, 적응형 주간 운동 계획 v2 & 다중 휴식 요일 `restDays` 출시; 직전 v0.5.0/38 ← v0.4.0/37 ← v0.3.1/36 ← v0.3.0/35 ← v0.2.0/34 ← v0.1.19/33 ← 첫 출시 v0.1.18/32]):** 아래 "구현 후 변경 사항"에 차이만 명시.
+**현재 상태(2026-10-27):** 저장소 후보는 **v0.6.1/40(미배포)**, Play 프로덕션은 **v0.6.0/39(`completed` 100%)**이다. 아래 "구현 후 변경 사항"에 차이만 명시.
 **패키지:** `com.gunnys.eundunhealth`
 **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -21,14 +21,14 @@
 
 | 영역 | TRD v1.0 | 현재 (v0.5.0 + v2) |
 |------|----------|------------|
-| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.141.1 (Python 3.14)** + uvicorn 0.53.0 |
+| Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.161.0 (Python 3.14)** + uvicorn 0.54.0 |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
-| ORM | Exposed 0.61.0 | **SQLAlchemy 2.0.54 async + asyncpg 0.31.0** |
+| ORM | Exposed 0.61.0 | **SQLAlchemy 2.1.6 async + asyncpg 0.32.0** |
 | Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (140 PASS, cov 94%+ / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API & 현지화 | RapidAPI ExerciseDB (영문) | **OSS** `oss.exercisedb.dev` (인증 불필요) + 추천 운동 46종 한국어 번들(`korean_exercises.json` v2) + **홈트레이닝 내장 18종 무장비 카탈로그**(`HomeWeeklyPlanGenerator`, `local:home:<slug>:v2.0`) |
 | 주간 운동 계획 API 계약 | `/weekly-plan` (v1, 덮어쓰기 upsert) | **`/v2/weekly-plan`** (7개 라우트: `planMode = gym \| home` 필수, 동일 주 중복 생성 시 `409 weekly_plan_exists`, 손상 계획 `DELETE /v2/weekly-plan` 204, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`) |
-| AI 맞춤 식단 | 미포함 | **Azure AI Foundry `DeepSeek-V3.2` MaaS** (`openai 3.16.2` AsyncOpenAI, `POST /meals/generate` & `GET /meals/current`, `X-AI-Data-Processing-Consent: true` 동의 헤더 필수, `MEAL_AI_ENABLED` kill switch) |
+| AI 맞춤 식단 | 미포함 | **Azure AI Foundry `DeepSeek-V3.2` MaaS** (`openai 3.37.0` AsyncOpenAI, `POST /meals/generate` & `GET /meals/current`, `X-AI-Data-Processing-Consent: true` 동의 헤더 필수, `MEAL_AI_ENABLED` kill switch) |
 | 온디바이스 스마일 트레이닝 | 미포함 | **CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0** (온디바이스 무저장·무전송 미소 코칭) + **Room `SmileTrainingDatabase` & WorkManager `SmileSyncWorker`** + 백엔드 `/smile-training/sessions`·`/smile-training/statistics` (4개 API) |
 | **인증 제공자** | Supabase Auth (SDK 3.6.0, ES256) | **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` — MSAL Android 8.4.2, 브라우저 위임(Authorization Code + PKCE), **RS256** (2026-09 전환) |
 | **인증 데이터 위치** | Supabase Korea 리전 | **Asia Pacific** — Entra 외부 테넌트가 한국 리전을 제공하지 않는다. 건강 데이터는 그대로 Korea Central. 방침 국외이전 고지: `docs/store/privacy-policy.md` §3-1 |
@@ -36,12 +36,12 @@
 | **계정 삭제** | Supabase Admin API (200) | **Microsoft Graph** `DELETE /users/{oid}`(**204**) + `deletedItems` 즉시 파기 — 30일 소프트 삭제를 방침의 "즉시 영구 삭제" 문구에 맞춤 |
 | **인증 화면 수** | 3 (Login/Signup/ForgotPassword, 959줄) | **1** (`AuthGateScreen`, ui/auth 283줄) — 입력·검증·재발송·비밀번호 재설정이 Entra 호스팅 페이지로 이관 |
 | **App Links / `/auth/confirm`** | 이메일 확인 링크용으로 존재 | **삭제** — Entra 는 브라우저 안에서 검증 코드를 입력받는다 |
-| Sentry 프로젝트 | 단일 `eundunhealth` | **두 프로젝트 분리** — Android `eundunhealth` (8.57.0 / Gradle 6.21.0), Backend `eundunhealth-backend` (2.69.2) |
+| Sentry 프로젝트 | 단일 `eundunhealth` | **두 프로젝트 분리** — Android `eundunhealth` (8.57.0 / Gradle 6.24.0), Backend `eundunhealth-backend` (2.73.0) |
 | Android 정적 분석 & 빌드 | 미적용 | **Detekt 1.23.8 (`detekt-cli` + `androidComponents` 커스텀 태스크) + Spotless 8.10.1 + ktlint 1.5.0** · AGP 9.3.2 내장 Kotlin + 새 DSL 기본 활성 (`org.jetbrains.kotlin.android` 제거) |
 | 차트 라이브러리 | 미사용 | **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트 |
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
-| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.6.0** |
-| versionCode / versionName | (미정) | **저장소 = Play 프로덕션 39 / 0.6.0** (`completed` 100% 업로드, 원장 `LAST_UPLOADED_VERSION_CODE=39`) — SSoT 루트 `version.properties` (bump `scripts/bump-version.sh`, 이력 `docs/CHANGELOG.md`, 정책 `docs/conventions/versioning.md`) |
+| Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.9.0** |
+| versionCode / versionName | (미정) | **저장소 후보 40 / 0.6.1**, **Play 운영 39 / 0.6.0** (`LAST_UPLOADED_VERSION_CODE=39`) — SSoT 루트 `version.properties`, 업로드 원장 `docs/ops/play-upload-ledger.md` |
 | Alembic head | (미정) | `d7f4a2c91b10` (`v2_weekly_plan_mode_and_reset_audit`; 직전 `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |

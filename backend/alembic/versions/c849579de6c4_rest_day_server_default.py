@@ -10,6 +10,7 @@ DB 레벨 기본값이 없다 → rest_day 를 누락한 raw insert 가 실패(O
 prod 는 이미 server_default '7' 을 가지므로 SET DEFAULT 는 무해(idempotent). 모든 환경을
 server_default='7' 로 통일하고, 모델 컬럼에도 server_default 를 부여해 autogen drift 를 제거한다.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

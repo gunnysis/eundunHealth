@@ -1,11 +1,6 @@
-FROM python:3.14-slim
-
-# OS 보안 패치 — base 이미지에 미반영된 fixed-available OS CVE 해소(예: openssl CVE-2026-45447,
-# libssl3t64 3.5.6-1~deb13u1 → deb13u2). Trivy(CRITICAL/HIGH 차단)가 fixed CVE 를 막으므로
-# 빌드 시점에 Debian security 업그레이드를 당겨 base 재빌드 지연으로 인한 deploy 차단을 자가치유한다.
-RUN apt-get update \
- && apt-get upgrade -y \
- && rm -rf /var/lib/apt/lists/*
+# Linux/amd64 digest verified on 2026-10-27. Update only through the Docker
+# dependency workflow so a base-image change is reviewed and reproducible.
+FROM python:3.14-slim@sha256:4b20ddacd9adac0002725db940785e17c19d0c3ed1843f31e57418988effc58c
 
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
@@ -26,8 +21,8 @@ COPY requirements.txt .
 # 부수적으로 이미지도 작아진다.
 #
 # 주의: 이 뒤로는 컨테이너 안에서 `pip install` 이 불가능하다. 의존성 추가는
-# requirements.txt 를 고쳐 **재빌드**하는 경로만 남는다(원래 그래야 한다).
-RUN pip install --no-cache-dir -r requirements.txt \
+# requirements.in 을 고친 뒤 hash lock을 재생성하고 **재빌드**하는 경로만 남는다.
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt \
  && python -m pip uninstall -y pip setuptools wheel 2>/dev/null || true
 
 COPY . .

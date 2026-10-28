@@ -1,0 +1,15 @@
+# Runtime direct dependencies. Do not install this file in CI or Docker; compile it to
+# requirements.txt so every transitive dependency and artifact hash is reviewed.
+fastapi==0.161.0
+starlette==1.9.0
+uvicorn[standard]==0.54.0
+sqlalchemy[asyncio]==2.1.6
+asyncpg==0.32.0
+alembic==1.20.1
+pydantic-settings==2.16.1
+PyJWT[crypto]==2.15.1
+httpx==0.28.1
+sentry-sdk[fastapi]==2.73.0
+markdown==3.11.2
+# Azure MaaS client. The application error boundary is covered by transport mocks.
+openai==3.37.0

@@ -4,6 +4,16 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-27 — CI aggregate gate·Action pin·릴리스 원장 PR 전환
+
+- Android/backend path filter는 유지하면서 항상 완료되는 `Repository Gate`가 변경 영역의 결과를 집계해 필수 검사 pending 문제를 막도록 했다.
+- GitHub Actions를 full commit SHA로 고정하고 workflow별 최소 권한, CODEOWNERS, Docker Dependabot을 적용했다.
+- Play 업로드 뒤 원장을 `main`에 직접 push하던 흐름을 고유 `release-ledger/v<version>-<code>` 브랜치 PR 생성으로 바꿨다. 사용자가 업로드 증거를 확인한 뒤 squash merge한다.
+- Backend CD는 ACR가 반환한 image digest와 expected merge SHA, latest/latest-ready revision, `/health`, `/health/ready`, app/reaper image 일치를 검증한다.
+- GitHub branch protection의 필수 검사 등록, Actions의 PR 생성 권한 및 SSH 서명 tag/allowed-signers 설정은 저장소 관리 권한이 필요한 후속 사용자 gate다.
+
+---
+
 ### 2026-10-16 — 프로덕션 배포 하드닝 및 AI 식단 개인정보 고지 정합화 (v0.3.1, PR #188·#191)
 
 - **PR**: [#188](https://github.com/gunnysis/eundunHealth/pull/188) · [#191](https://github.com/gunnysis/eundunHealth/pull/191)
@@ -83,18 +93,9 @@
 - **범위 밖(별건)**: `allow-azure-services` 규칙 제거(reaper 송신 IP 확인 선행) · `minimalTlsVersion` 설정 · Managed Identity 기반 PG 인증 전환(코드 변경 필요)
 - **설계 원문**: `2026-09-02-db-credential-rotation-{design,plan}.md` (본 entry 로 흡수, git rm)
 
-### 2026-07-29 — RG 이관 apps → rg-eundunhealth-prod-krc (이동 7 + 재생성 9 + RBAC 8 + 구 RG 삭제)
-
-- **PR**: main 직접 (`c954579` 이관 본체 + 후속 점검·개선 커밋)
-- **Why**: 운영 리소스 17개가 범용 이름 RG `apps` 에 있어 CAF 컨벤션(`rg-<workload>-<env>-<region>`) RG 로 이관. 회원님 Cloud Shell 배치 이동이 `ResourceMoveValidationFailed` 9건(알림 8 + UAI = 이동 미지원 타입)으로 전체 거부된 것이 발단. 사용자 0명 = 다운타임 허용 전제.
-- **What**: 공식 문서 조사 기반 design+plan 페어 승인 후 실행 — ① 알림 8+AG 를 IaC 스크립트 `--delete`(이동 불가+ID 참조 무효라 재생성이 정도) ② `validateMoveResources` REST 사전검증(202→Location 폴링→**204**) ③ 7개(PG·ACR·KV·env·app·job·LA) `az resource move` ④ **LA shared key 재생성 대응**: env 로그 설정에 새 key 반영(15분 내 292건 인제스천 실증) ⑤ orphan RBAC 8건 CLI 재부여(`--assignee-object-id`+`--assignee-principal-type`, 8/8 성공 — MSA 제약 미재현) + revision 재시작으로 pull/secret resolve 실증 ⑥ reaper job: `update --yaml` 이 identity 교체 불가(FailedIdentityOperation) → **삭제 + IaC 재생성**(신규 UAI, 전파 지연 1회 재시도 후 성공, 수동 실행 Succeeded, cron `0 18 * * 0` 보존) ⑦ repo 참조 갱신(기능 8곳+문서 7종, diff 전수 검토로 blind-replace 0건) + 빈 `apps` RG 삭제. 후속 점검에서 잔여 갭 3건(check-warm-baseline.sh 기본값·register-azure-credentials.ps1 기본값·verify-deploy.md) + setup-reaper-job.sh already-exists 오인 경고 수정.
-- **Outcome**: 전 게이트 green — 이동 후 `/health`·`/health/ready` 200, backend.yml 자동 배포 run success(OIDC→AcrPush→새 RG update 전 경로), warm-baseline-check success, 알림 8/8 enabled(scope=새 RG 실측), reaper Succeeded, LA 로그 유입 정상. 단일 RG 상태(`apps` 삭제 완료). FQDN·PG 호스트·KV URI 불변 = 앱/Play URL 무영향.
-- **Lessons**: ① **LA workspace 이동은 shared key 를 재생성** — Container Apps env 가 그 key 로 로그 전송하므로 이동 직후 `az containerapp env update --logs-workspace-key` 필수(사전 공식문서 조사로 발견, 실측 확인). ② **리소스 이동은 리소스 범위 역할 할당을 orphan** — 이동 전 `az role assignment list` 스냅샷을 떠 두면 objectId 를 Graph 조회 없이 확보해 CLI 재부여 가능. ③ `az containerapp job update --yaml` 은 **user-assigned identity 교체 불가** — 상태 없는 cron job 은 삭제+IaC 재생성이 정도. ④ 배치 이동은 all-or-nothing — 미지원 타입 제외 후 `validateMoveResources` 사전검증(204/409)이 2차 거부를 막는다. ⑤ 멱등 스크립트의 역할 부여는 `RoleAssignmentExists` 를 성공으로 처리해야 재실행 시 오해 유발 경고가 없다.
-- **Files touched**: `.github/workflows/{backend,warm-baseline-check}.yml`, `backend/{containerapp,reaper-job}.yaml`, `scripts/{setup-azure-alerts,setup-reaper-job,check-warm-baseline}.sh`, `scripts/hooks/secretref-guard.sh`, `scripts/register-azure-credentials.ps1`, `.claude/commands/{naming-audit,verify-deploy}.md`, `docs/ops/{operations-snapshot,monitoring-and-cost,migration-runbook,azure-container-apps-jobs}.md`, CLAUDE.md/README/PR template, (저장소 외) `C:/programming/docker/eundunhealth-api/redeploy.sh`
-- **설계 원문**: `2026-07-29-rg-migration-{design,plan}.md` (본 entry 로 흡수, git rm)
-
 ## Older
 
+- 2026-07-29 RG 이관 apps → rg-eundunhealth-prod-krc (이동 7 + 재생성 9 + RBAC 8 + 구 RG 삭제) — 운영 리소스 17개가 범용 이름 RG `apps` 에 있어 CAF 컨벤션(`rg-<workload>-<env>-<region>`) RG 로 이관.
 - 2026-07-03 CI/CD 권장 개선 P1~P4 완결: concurrency + Azure OIDC(+AZURE_CREDENTIALS 완전 제거) + Android CD(태그 push→Play 내부 트랙) 실 e2e ([#140](https://github.com/gunnysis/eundunHealth/pull/140)) — 2026-06-29 CI/CD 전수 점검 design 의 우선순위 구현 — PR CI 중복 실행 낭비(P1), 장수명 SP secret 보안 부채(P2), Play 업로드 사람 의존 + 원장 갱신 갭 INC-2026-06-19-28(P4).
 - 2026-07-02 repo public 전환(보안감사·스크럽) + open PR 전량 정리 + CodeQL java-kotlin 근본수정 (INC-29) ([#137](https://github.com/gunnysis/eundunHealth/pull/137)) — 회원님 요청 = repo private→public 전환 전 시크릿 유출/보안 위배 전수 점검 → 전환 완료 후 open PR 정리 → CodeQL 기본설정 `Analyze (java-kotlin)` 설정 에러 근본 해결.
 - 2026-06-18 출시 critical 점검: App Links Play 서명키 누락 + Sentry 매핑 게이트 — 회원님이 출시 점검을 여러 번 했는데도 문제 재발 → 핵심 지적: **로컬 테스트는 통과하지만 Play 배포본/승인에서만 터지는 critical** 을 봐야 한다("출시버전 빌드 후 승인 중 문제 = 가장 비쌈").

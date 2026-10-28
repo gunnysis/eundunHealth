@@ -31,9 +31,12 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,8 +51,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -84,6 +92,8 @@ import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.components.SkeletonHomeContent
 import com.gunnys.eundunhealth.ui.home.components.HealthConnectPromptCard
 import com.gunnys.eundunhealth.ui.home.components.HealthConnectUnavailableCard
+import com.gunnys.eundunhealth.ui.home.components.TodayHeroCard
+import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -101,29 +111,41 @@ fun WorkoutPlanMode.displayLabel(): String = when (this) {
 fun HomeScreen(
     onExerciseClick: (String) -> Unit,
     onRequestHealthPermissions: () -> Unit,
+    onStartWorkoutGuide: (LocalDate) -> Unit = {},
+    onNavigateToSmileTraining: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pullState = rememberPullToRefreshState()
-    val isBusyCreating = uiState is HomeUiState.Creating || uiState is HomeUiState.AutoCreating
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    ObserveAsEvents(viewModel.sideEffect) { effect ->
+        when (effect) {
+            is HomeSideEffect.ShowUndoUncompleteSnackbar -> {
+                val result = snackbarHostState.showSnackbar(
+                    message = "운동 완료 표시가 해제되었습니다",
+                    actionLabel = "되돌리기",
+                    duration = SnackbarDuration.Short,
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    viewModel.undoUncomplete(effect.date)
+                }
+            }
+        }
+    }
+
+    val isRefreshing = (uiState as? HomeUiState.Success)?.isRefreshing == true
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("이번 주 운동 계획") },
-                actions = {
-                    IconButton(
-                        onClick = viewModel::loadPlan,
-                        enabled = !isBusyCreating,
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "운동 계획 새로고침")
-                    }
-                },
+                title = { Text("오늘의 운동") },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = uiState is HomeUiState.Loading,
+            isRefreshing = isRefreshing,
             onRefresh = { viewModel.loadPlan() },
             state = pullState,
             modifier = Modifier.padding(padding),
@@ -176,6 +198,12 @@ fun HomeScreen(
                     )
                 }
                 is HomeUiState.Success -> {
+                    val todayPlan = remember(state.plan.days, state.today) {
+                        state.plan.days.find { it.date == state.today }
+                    }
+                    val showSmileCard = !state.isSmileShortcutDismissedToday &&
+                        (todayPlan == null || todayPlan.isRestDay || todayPlan.isCompleted)
+
                     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
                         state.toggleError?.let { err ->
                             item {
@@ -183,6 +211,24 @@ fun HomeScreen(
                                     error = err,
                                     screen = "home_toggle",
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                )
+                            }
+                        }
+                        item {
+                            TodayHeroCard(
+                                todayPlan = todayPlan,
+                                todayDate = state.today,
+                                mode = state.plan.mode,
+                                onStartWorkoutGuide = onStartWorkoutGuide,
+                                onExerciseClick = onExerciseClick,
+                                onToggleComplete = viewModel::toggleDayCompletion,
+                            )
+                        }
+                        if (showSmileCard) {
+                            item {
+                                SmileTrainingContextualCard(
+                                    onStartSmile = onNavigateToSmileTraining,
+                                    onDismissToday = viewModel::dismissSmileShortcutToday,
                                 )
                             }
                         }
@@ -200,18 +246,123 @@ fun HomeScreen(
                         } else if (!state.hasHealthPermission) {
                             item { HealthConnectPromptCard(onRequest = onRequestHealthPermissions) }
                         }
-                        items(state.plan.days, key = { it.date.toString() }) { day ->
-                            // Compose Strong Skipping 최적화: LocalDate(외부 타입) 대신 원시 Boolean 전달
-                            DayPlanCard(
-                                day = day,
-                                isToday = day.date == state.today,
-                                onExerciseClick = onExerciseClick,
-                                onToggleComplete = { viewModel.toggleDayCompletion(day.date) },
+                        item {
+                            WeeklyPlanExpandHeader(
+                                isExpanded = state.isWeeklyListExpanded,
+                                onToggle = viewModel::toggleWeeklyListExpanded,
                             )
+                        }
+                        if (state.isWeeklyListExpanded) {
+                            items(state.plan.days, key = { it.date.toString() }) { day ->
+                                DayPlanCard(
+                                    day = day,
+                                    isToday = day.date == state.today,
+                                    onExerciseClick = onExerciseClick,
+                                    onToggleComplete = { viewModel.toggleDayCompletion(day.date) },
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SmileTrainingContextualCard(
+    onStartSmile: () -> Unit,
+    onDismissToday: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Face,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "가벼운 미소 훈련으로 마무리해 볼까요?",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "온디바이스 안면 근육 운동으로 기분까지 상쾌하게",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                    )
+                }
+                IconButton(onClick = onDismissToday) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "오늘 하루 닫기",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismissToday) {
+                    Text("오늘 하루 닫기")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = onStartSmile) {
+                    Text("미소 훈련 시작")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeeklyPlanExpandHeader(
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    Surface(
+        onClick = onToggle,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .heightIn(min = 48.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (isExpanded) "이번 주 전체 계획 접기" else "이번 주 전체 계획 보기 (7일)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) "접기" else "펼치기",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -707,8 +858,6 @@ fun DayPlanCard(
     onExerciseClick: (String) -> Unit,
     onToggleComplete: () -> Unit,
 ) {
-    // 날짜 라벨은 day.date 가 바뀔 때만 재계산 — 토글 색 애니메이션(animateColorAsState)으로
-    // 카드가 빈번히 recompose 되는데, getDisplayName(ResourceBundle lookup)을 매번 돌리지 않는다.
     val dayLabel = remember(day.date) {
         val name = day.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)
         "$name (${day.date.format(DAY_DATE_FORMATTER)})"

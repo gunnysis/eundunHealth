@@ -152,7 +152,7 @@ fun AppNavigation(
 
 @Composable
 fun UpdateRequiredScreen(
-    minimumVersionCode: Int,
+    @Suppress("UnusedParameter") minimumVersionCode: Int,
     playPackageUri: String,
 ) {
     val context = LocalContext.current
@@ -184,7 +184,7 @@ fun UpdateRequiredScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "안전한 서비스 이용과 최신 운동 계획 기능을 위해 최신 버전(v$minimumVersionCode 이상)으로 업데이트해주세요.",
+                text = "안전한 서비스 이용과 최신 운동 계획 기능을 위해 Play 스토어에서 최신 버전으로 업데이트해 주세요.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

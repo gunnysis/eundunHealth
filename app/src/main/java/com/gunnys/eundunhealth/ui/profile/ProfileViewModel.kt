@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.DEFAULT_REST_DAY
+import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.normalizeRestDays
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
@@ -78,9 +79,9 @@ class ProfileViewModel @Inject constructor(
     fun saveProfile(
         heightCm: Float,
         weightKg: Float,
-        gender: com.gunnys.eundunhealth.domain.model.Gender,
-        bodyFatPct: Float,
-        muscleMassKg: Float,
+        gender: Gender,
+        bodyFatPct: Float? = null,
+        muscleMassKg: Float? = null,
         restDays: List<Int> = listOf(DEFAULT_REST_DAY),
     ) = viewModelScope.launch {
         val current = _uiState.value

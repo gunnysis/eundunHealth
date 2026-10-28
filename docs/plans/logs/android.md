@@ -4,6 +4,28 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-28 — UI/UX 전면 개선 (`PROP-05` Phase 1~4: 브랜드·M3·Pretendard·Today Hero·운동 가이드 모드·허브·3중 하이브리드 바디 피커·2단계 온보딩) 구현 및 심층 리팩토링 (v0.6.1/40)
+
+- **Commit**: (HEAD)
+- **Why**: `v0.4.0~v0.6.0` 기능 확장 이후에도 시각 기반과 핵심 루프("앱 진입 → 오늘 운동 파악 → 자세 확인 및 완료")가 초기 `v0.1` 구조에 머물러 있던 8대 구조적 결함(`F-1` M3 색 역할 누락/보라 톤 유입, `F-2` 다크모드 콜드 스타트 백색 점멸, `F-3` 체성분 미입력자 `20%`/`30kg` 가짜 기본값 강제 저장, `F-4` 홈 새로고침 시 전체 화면 깜빡임, `F-5` 식단 재생성 부재 및 상태 패턴 미준수, `F-6` 5단계 `surfaceContainer*` 부재, `F-7` 타이포그래피 8종 결손·한글 자간 벌어짐, `F-8` Dynamic Color 기본 강제로 브랜드 그린 소실)을 근본 해결하고 사용자 경험을 전면 고도화해야 했다.
+- **What**:
+  - **영역 A (브랜드 & 디자인 파운데이션 + Quick Wins 4종)**: `#006D3C` Modern Forest & Mint 기반 M3 36슬롯 + 시맨틱 13토큰(`EundunExtendedColors`, 5단계 `surfaceContainerLowest..Highest`), `Pretendard Variable` 한글 타이포그래피 15슬롯(`includeFontPadding = false`, 음수 자간), DayNight 스플래시 테마(`values-night`, `values-v31`, `values-night-v31`), `MotionTokens` 및 `HapticFeedbackHelper`, `dynamicColor = false` 기본값 + Android 12+ opt-in, 체성분 미입력 `null` 전송(`F-3`), 홈 인플레이스 갱신(`isRefreshing = true`, `F-4`), 로그아웃 확인 다이얼로그, `UpdateRequiredScreen` 문구 개선.
+  - **영역 B & C ('오늘' 탭 Today Hero & 단계별 운동 가이드 모드)**: `WorkoutDurationEstimator` 및 `TodayHeroCard`(예상 소요 시간, 종목 칩, 가이드 시작 주 CTA + 바로 완료 보조 액션), 완료 해제 시 5초 Undo 스낵바(`HomeSideEffect.ShowUndoUncompleteSnackbar`), 휴식일/운동 완료 후 스마일 트레이닝 바로가기 카드, 기본 접힘 7일 계획, `WorkoutGuideScreen` & `WorkoutGuideViewModel`(`HorizontalPager`, `FLAG_KEEP_SCREEN_ON`, 3지 선다 이탈 확인 다이얼로그, 마지막 종목 완료 시 당일 운동 자동 완료 및 `savedStateHandle` 홈 즉시 갱신).
+  - **영역 D & E (허브 고도화 & 3중 하이브리드 바디 피커 + 2단계 온보딩)**: `ProgressHubScreen` 3열 요약 타일(`IntrinsicSize.Max` 균일 높이, 병렬 로드), `StatisticsScreen` 차트 TalkBack 요약 및 헬스장/홈트 비율 카드, `GoalScreen` 달성률 바 및 체지방 미입력 안내, `HistoryScreen` 한국어 요일 및 아코디언 상세, `MealPlanScreen` `@Immutable` 상태 + `regenerateError` 인라인 배너(룰 8/11) + 오늘 식단 최상단 자동 펼침, `ProfileHubScreen` 5대 섹션 그룹화, 레거시 `ProfileSlider` 삭제 및 `HybridBodyMetricPicker`(`rememberUpdatedState` + `BoxWithConstraints` 동적 중앙 패딩 눈금자 휠 + 숫자패드 + 스테퍼 + 성별 스마트 앵커링) + `OptionalBodyCompositionCard` + 2지 선다 `GenderSelector`, `AuthGateScreen` 3슬라이드 소개 페이저, 2단계 `OnboardingScreen` 위저드(완료 즉시 첫 주간 계획 자동 생성).
+- **Outcome**: Android Spotless/AGP 10 가드/Detekt(0건)/단위 테스트 **209/209 PASS**(43 파일)/`releaseArtifacts`(R8 full mode + Sentry mapping) 통과.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/ui/**`, `app/src/main/java/com/gunnys/eundunhealth/domain/util/WorkoutDurationEstimator.kt`, `app/src/main/res/font/pretendard_variable.ttf`, `app/src/main/res/values*/themes.xml`, `app/src/test/java/com/gunnys/eundunhealth/**`
+- **설계 원문**: `2026-10-28-ux-improvement-design.md` (`PROP-05`, 본 entry 로 흡수, git rm)
+
+### 2026-10-27 — v0.6.1 휴식일·프로필 UI 접근성 및 반응형 레이아웃
+
+- **Commit**: (HEAD)
+- **Why**: 7요일 단일 행은 320dp 폭과 큰 글꼴에서 겹칠 수 있고 선택 상태가 색상에 과도하게 의존했다. 프로필 label/value `SpaceBetween` 행도 긴 텍스트의 충돌 위험이 있었다.
+- **What**:
+-  - **`RestDaysSelector.kt`**: `FlowRow` 기반 48dp 이상 `FilterChip`, 기본 체크 표시, selected semantics, 오류 `LiveRegionMode.Polite`를 적용했다. 휴식일 1~6일 API/DB 계약은 유지했다.
+  - **`ProfileSummaryCard.kt`**: label/value가 독립적으로 줄바꿈되는 적층 셀과 불투명 의미 색상 토큰으로 변경했다.
+- **Outcome**: Android Spotless/Detekt/unit/lint/debug/androidTest compile/R8 release 통과. 연결 기기가 없어 screenshot matrix와 TalkBack·Switch Access 실행은 후속 사용자 기기 gate다. 저장소는 `0.6.1/40` 후보이며 운영은 `0.6.0/39`다.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/ui/components/RestDaysSelector.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/components/ProfileSummaryCard.kt`
+
 ### 2026-10-27 — 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 풀스택 구현 및 운영 출시 (v0.6.0, commit `a0b6701`)
 
 - **Commit**: `a0b6701` (`4562506` + `6ef6fb1` + `a0b6701`; Play 프로덕션 업로드 run `40469947190` / 원장 `f9eeefc`, 백엔드 배포 run `40469877206` / 리비전 `0000065`)
