@@ -21,6 +21,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -99,6 +100,35 @@ class ProfileViewModelTest {
                 match {
                     it.restDays == listOf(2, 4, 7) &&
                         it.defaultWorkoutPlanMode == WorkoutPlanMode.HOME
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `saveProfile 는 체성분이 null 인 경우 가짜 값으로 덮어쓰지 않고 null 로 저장한다`() = runTest {
+        coEvery { authRepo.getCurrentUserId() } returns "user-1"
+        coEvery { userRepo.saveProfile(any()) } returns Result.success(Unit)
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.saveProfile(
+            heightCm = 174f,
+            weightKg = 72f,
+            gender = Gender.MALE,
+            bodyFatPct = null,
+            muscleMassKg = null,
+            restDays = listOf(7),
+        )
+        advanceUntilIdle()
+
+        val state = vm.uiState.value as ProfileUiState.Loaded
+        assertNull(state.profile.bodyFatPercent)
+        assertNull(state.profile.muscleMassKg)
+        coVerify(exactly = 1) {
+            userRepo.saveProfile(
+                match {
+                    it.bodyFatPercent == null && it.muscleMassKg == null
                 },
             )
         }

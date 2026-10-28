@@ -24,11 +24,17 @@ class ThemePreferences @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val themeKey = stringPreferencesKey("theme_mode")
+    private val dynamicColorKey = booleanPreferencesKey("dynamic_color_enabled")
     private val autoCreateWeekKey = stringPreferencesKey("auto_create_attempted_week_start")
     private val v2ResetCompletedKey = booleanPreferencesKey("v2_local_reset_completed")
+    private val smileDismissedDateKey = stringPreferencesKey("smile_shortcut_dismissed_date")
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
         prefs[themeKey]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM
+    }
+
+    val dynamicColorEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[dynamicColorKey] ?: false
     }
 
     // DataStore Preferences.edit is suspend; detekt 1.23 type resolution misses this contract.
@@ -36,6 +42,27 @@ class ThemePreferences @Inject constructor(
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { prefs ->
             prefs[themeKey] = mode.name
+        }
+    }
+
+    // DataStore Preferences.edit is suspend; detekt 1.23 type resolution misses this contract.
+    @Suppress("RedundantSuspendModifier")
+    suspend fun setDynamicColorEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[dynamicColorKey] = enabled
+        }
+    }
+
+    suspend fun isSmileShortcutDismissed(today: LocalDate): Boolean {
+        val prefs = context.dataStore.data.first()
+        return prefs[smileDismissedDateKey] == today.toString()
+    }
+
+    // DataStore Preferences.edit is suspend; keep this API suspend for callers.
+    @Suppress("RedundantSuspendModifier")
+    suspend fun markSmileShortcutDismissed(today: LocalDate) {
+        context.dataStore.edit { prefs ->
+            prefs[smileDismissedDateKey] = today.toString()
         }
     }
 

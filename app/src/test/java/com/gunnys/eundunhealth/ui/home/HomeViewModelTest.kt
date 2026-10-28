@@ -18,13 +18,16 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -74,6 +77,7 @@ class HomeViewModelTest {
         coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Found(plan)
         coEvery { loadDefaultWorkoutPlanMode() } returns null
         coEvery { themePreferences.hasAutoCreateAttempted(any()) } returns false
+        coEvery { themePreferences.isSmileShortcutDismissed(any()) } returns false
         coEvery { syncHealth(any()) } answers {
             val inputPlan = firstArg<WeeklyPlan>()
             Result.success(
@@ -324,5 +328,43 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         coVerify(exactly = 1) { workoutRepo.updateDayCompletion(any(), monday, true, manual = true) }
+    }
+
+    @Test
+    fun `Success 상태에서 loadPlan 호출 시 Loading 으로 리셋되지 않고 isRefreshing 만 갱신된다`() = runTest {
+        val vm = createViewModel()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value is HomeUiState.Success)
+
+        vm.loadPlan()
+        assertTrue("Success 상태 유지", vm.uiState.value is HomeUiState.Success)
+        assertTrue("새로고침 중 플래그 활성", (vm.uiState.value as HomeUiState.Success).isRefreshing)
+
+        advanceUntilIdle()
+        val after = vm.uiState.value as HomeUiState.Success
+        assertFalse(after.isRefreshing)
+    }
+
+    @Test
+    fun `완료 해제 시 ShowUndoUncompleteSnackbar 이벤트가 발행되고 undoUncomplete 로 복원된다`() = runTest {
+        val vm = createViewModel()
+        val effects = mutableListOf<HomeSideEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.sideEffect.collect { effects.add(it) }
+        }
+        advanceUntilIdle()
+
+        vm.toggleDayCompletion(monday) // 완료 처리
+        advanceUntilIdle()
+        assertTrue(effects.isEmpty())
+
+        vm.toggleDayCompletion(monday) // 완료 해제
+        advanceUntilIdle()
+        assertEquals(listOf(HomeSideEffect.ShowUndoUncompleteSnackbar(monday)), effects)
+
+        vm.undoUncomplete(monday) // 되돌리기
+        advanceUntilIdle()
+        val state = vm.uiState.value as HomeUiState.Success
+        assertTrue(state.plan.days.first { it.date == monday }.isCompleted)
     }
 }

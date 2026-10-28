@@ -116,9 +116,9 @@
 ### Android — Clean Architecture
 
 ```
-ui/          # Jetpack Compose 화면 14개 + ViewModel 12개 + Navigation (sealed Screen + 적응형 MainAppShell)
-  components/    # 공용 컴포넌트 9개 (AuthErrorBanner, BodyMetricsSliders, LineChart, ProfileSlider, ProfileSummaryCard, RestDaysSelector, Skeleton, Error, Empty)
-  auth/ home/ onboarding/ profile/ progress/ statistics/ goal/ meal/ smile/ history/ badges/ workout/ splash/
+ui/          # Jetpack Compose 화면 15개 + ViewModel 14개 + Navigation (sealed Screen + 적응형 MainAppShell)
+  components/    # 공용 컴포넌트 12개 (AuthErrorBanner, BodyMetricDefaults, BodyMetricsSliders, GenderSelector, HybridBodyMetricPicker, LineChart, OptionalBodyCompositionCard, ProfileSummaryCard, RestDaysSelector, Skeleton, Error, Empty)
+  auth/ home/ onboarding/ profile/ navigation/ statistics/ goal/ mealplan/ smile/ history/ badge/ workout/ splash/ theme/ util/
 domain/      # 모델 + 리포지토리 인터페이스 + UseCase(LoadCurrentWeekPlan / CreateWeeklyPlan / HomeWeeklyPlanGenerator 등) + 스마일 신호 평가기(smile/) + AppError sealed class
 data/        # Repository 구현 + OpenAPI 생성 클라이언트 + Room(2종) + WorkManager(sync/) + ML Kit(smile/) + Health Connect + MSAL(auth/) + 한국어 번역(translation/) + DataStore
 di/          # Hilt 모듈 4개 (NetworkModule, DatabaseModule, RepositoryModule, CoroutineModule)

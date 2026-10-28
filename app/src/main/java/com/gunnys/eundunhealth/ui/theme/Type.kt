@@ -1,59 +1,135 @@
 package com.gunnys.eundunhealth.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
+import com.gunnys.eundunhealth.R
+
+val PretendardFontFamily = FontFamily(
+    Font(resId = R.font.pretendard_variable, weight = FontWeight.Normal),
+    Font(resId = R.font.pretendard_variable, weight = FontWeight.Medium),
+    Font(resId = R.font.pretendard_variable, weight = FontWeight.SemiBold),
+    Font(resId = R.font.pretendard_variable, weight = FontWeight.Bold),
+)
+
+private val KoreanPlatformTextStyle = PlatformTextStyle(
+    includeFontPadding = false,
+)
+
+private val KoreanLineHeightStyle = LineHeightStyle(
+    alignment = LineHeightStyle.Alignment.Center,
+    trim = LineHeightStyle.Trim.None,
+)
+
+private fun eundunTextStyle(
+    fontWeight: FontWeight,
+    fontSizeSp: Int,
+    lineHeightSp: Int,
+    letterSpacingSp: Float,
+) = TextStyle(
+    fontFamily = PretendardFontFamily,
+    fontWeight = fontWeight,
+    fontSize = fontSizeSp.sp,
+    lineHeight = lineHeightSp.sp,
+    letterSpacing = letterSpacingSp.sp,
+    platformStyle = KoreanPlatformTextStyle,
+    lineHeightStyle = KoreanLineHeightStyle,
+)
 
 val Typography = Typography(
-    headlineLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+    displayLarge = eundunTextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = 0.sp,
+        fontSizeSp = 44,
+        lineHeightSp = 52,
+        letterSpacingSp = -0.25f,
     ),
-    headlineMedium = TextStyle(
-        fontFamily = FontFamily.Default,
+    displayMedium = eundunTextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
-        letterSpacing = 0.sp,
+        fontSizeSp = 36,
+        lineHeightSp = 44,
+        letterSpacingSp = -0.2f,
     ),
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+    displaySmall = eundunTextStyle(
+        fontWeight = FontWeight.Bold,
+        fontSizeSp = 32,
+        lineHeightSp = 40,
+        letterSpacingSp = -0.2f,
+    ),
+    headlineLarge = eundunTextStyle(
+        fontWeight = FontWeight.Bold,
+        fontSizeSp = 28,
+        lineHeightSp = 36,
+        letterSpacingSp = -0.2f,
+    ),
+    headlineMedium = eundunTextStyle(
+        fontWeight = FontWeight.Bold,
+        fontSizeSp = 24,
+        lineHeightSp = 32,
+        letterSpacingSp = -0.15f,
+    ),
+    headlineSmall = eundunTextStyle(
         fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp,
+        fontSizeSp = 22,
+        lineHeightSp = 30,
+        letterSpacingSp = -0.15f,
     ),
-    titleMedium = TextStyle(
-        fontFamily = FontFamily.Default,
+    titleLarge = eundunTextStyle(
+        fontWeight = FontWeight.SemiBold,
+        fontSizeSp = 20,
+        lineHeightSp = 28,
+        letterSpacingSp = -0.15f,
+    ),
+    titleMedium = eundunTextStyle(
+        fontWeight = FontWeight.SemiBold,
+        fontSizeSp = 16,
+        lineHeightSp = 24,
+        letterSpacingSp = -0.1f,
+    ),
+    titleSmall = eundunTextStyle(
         fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp,
+        fontSizeSp = 14,
+        lineHeightSp = 20,
+        letterSpacingSp = -0.1f,
     ),
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+    bodyLarge = eundunTextStyle(
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp,
+        fontSizeSp = 16,
+        lineHeightSp = 24,
+        letterSpacingSp = -0.1f,
     ),
-    bodyMedium = TextStyle(
-        fontFamily = FontFamily.Default,
+    bodyMedium = eundunTextStyle(
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.25.sp,
+        fontSizeSp = 14,
+        lineHeightSp = 20,
+        letterSpacingSp = -0.1f,
     ),
-    labelLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+    bodySmall = eundunTextStyle(
+        fontWeight = FontWeight.Normal,
+        fontSizeSp = 12,
+        lineHeightSp = 18,
+        letterSpacingSp = 0f,
+    ),
+    labelLarge = eundunTextStyle(
+        fontWeight = FontWeight.SemiBold,
+        fontSizeSp = 14,
+        lineHeightSp = 20,
+        letterSpacingSp = 0f,
+    ),
+    labelMedium = eundunTextStyle(
         fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp,
+        fontSizeSp = 12,
+        lineHeightSp = 16,
+        letterSpacingSp = 0f,
+    ),
+    labelSmall = eundunTextStyle(
+        fontWeight = FontWeight.Medium,
+        fontSizeSp = 11,
+        lineHeightSp = 16,
+        letterSpacingSp = 0f,
     ),
 )

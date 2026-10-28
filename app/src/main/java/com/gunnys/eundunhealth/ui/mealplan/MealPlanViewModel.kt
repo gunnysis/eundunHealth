@@ -1,8 +1,11 @@
 package com.gunnys.eundunhealth.ui.mealplan
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.WeeklyMealPlan
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.MealPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,11 +14,29 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@Immutable
 sealed interface MealPlanUiState {
-    object Loading : MealPlanUiState
-    object Empty : MealPlanUiState
-    data class Success(val plan: WeeklyMealPlan) : MealPlanUiState
-    data class Error(val message: String) : MealPlanUiState
+    @Immutable
+    data object Loading : MealPlanUiState
+
+    @Immutable
+    data object Empty : MealPlanUiState
+
+    @Immutable
+    data class Generating(
+        val previousPlan: WeeklyMealPlan? = null,
+    ) : MealPlanUiState
+
+    @Immutable
+    data class Success(
+        val plan: WeeklyMealPlan,
+        val regenerateError: AppError? = null,
+    ) : MealPlanUiState
+
+    @Immutable
+    data class Error(
+        val error: AppError,
+    ) : MealPlanUiState
 }
 
 @HiltViewModel
@@ -41,22 +62,34 @@ class MealPlanViewModel @Inject constructor(
                         _uiState.value = MealPlanUiState.Empty
                     }
                 },
-                onFailure = {
-                    _uiState.value = MealPlanUiState.Error(it.message ?: "식단을 불러오는데 실패했습니다.")
+                onFailure = { err ->
+                    _uiState.value = MealPlanUiState.Error(err.toReportedAppError())
                 },
             )
         }
     }
 
     fun generatePlan() {
-        _uiState.value = MealPlanUiState.Loading
+        val current = _uiState.value
+        if (current is MealPlanUiState.Generating) return
+        val existingPlan = (current as? MealPlanUiState.Success)?.plan
+        _uiState.value = MealPlanUiState.Generating(previousPlan = existingPlan)
         viewModelScope.launch {
             repository.generatePlan().fold(
                 onSuccess = { plan ->
-                    _uiState.value = MealPlanUiState.Success(plan)
+                    _uiState.value = MealPlanUiState.Success(plan = plan, regenerateError = null)
                 },
-                onFailure = {
-                    _uiState.value = MealPlanUiState.Error(it.message ?: "식단 생성에 실패했습니다.")
+                onFailure = { err ->
+                    val appErr = err.toReportedAppError()
+                    if (existingPlan != null) {
+                        // 기존 식단이 있는 상태에서 재생성에 실패하면 기존 식단을 보존하고 인라인 배너로 알린다 (룰 8)
+                        _uiState.value = MealPlanUiState.Success(
+                            plan = existingPlan,
+                            regenerateError = appErr,
+                        )
+                    } else {
+                        _uiState.value = MealPlanUiState.Error(appErr)
+                    }
                 },
             )
         }

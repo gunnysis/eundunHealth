@@ -1,5 +1,6 @@
 package com.gunnys.eundunhealth.ui.profile
 
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,13 +16,16 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,6 +33,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -43,10 +48,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 
@@ -59,22 +66,34 @@ fun ProfileHubScreen(
     onOpenHealthConnectManagement: () -> Unit,
     onRefreshHealthConnectStatus: () -> Unit,
     onCycleTheme: () -> Unit,
+    onToggleDynamicColor: (Boolean) -> Unit = {},
     onLogout: () -> Unit,
     onUpdateDefaultWorkoutPlanMode: (WorkoutPlanMode?) -> Unit = {},
 ) {
     var showModeDialog by rememberSaveable { mutableStateOf(false) }
+    var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
 
     RefreshOnResume(onRefreshHealthConnectStatus)
     Scaffold(topBar = { TopAppBar(title = { Text("프로필") }) }) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("계정 및 설정", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+            // 1. 내 정보
+            ProfileSectionHeader("내 정보")
             state.defaultPlanModeError?.let { err ->
                 AuthErrorBanner(error = err, screen = "profile_default_plan_mode")
             }
-            SettingsRow(Icons.Default.Person, "신체 정보", "운동 계획에 반영되는 정보를 수정합니다", onEditProfile)
+            SettingsRow(
+                icon = Icons.Default.Person,
+                title = "신체 정보 및 휴식 요일",
+                summary = "운동 계획에 반영되는 신체 정보와 휴식일을 수정합니다",
+                onClick = onEditProfile,
+            )
             SettingsRow(
                 icon = Icons.Default.FitnessCenter,
                 title = "기본 운동 환경",
@@ -82,6 +101,10 @@ fun ProfileHubScreen(
                 onClick = { showModeDialog = true },
                 enabled = !state.isUpdatingDefaultPlanMode,
             )
+
+            // 2. 연동
+            Spacer(Modifier.height(4.dp))
+            ProfileSectionHeader("연동")
             val healthSummary = when {
                 state.isHealthConnectLoading -> "연결 상태를 확인하고 있습니다"
                 !state.isHealthConnectAvailable -> "이 기기에서 사용할 수 없습니다"
@@ -95,20 +118,74 @@ fun ProfileHubScreen(
                 else -> onRequestHealthPermissions
             }
             SettingsRow(
-                Icons.Default.HealthAndSafety,
-                "Health Connect",
-                healthSummary,
-                healthAction,
+                icon = Icons.Default.HealthAndSafety,
+                title = "Health Connect",
+                summary = healthSummary,
+                onClick = healthAction,
                 enabled = state.isHealthConnectAvailable && !state.isHealthConnectLoading,
                 showChevron = state.isHealthConnectAvailable && !state.isHealthConnectLoading,
             )
-            SettingsRow(Icons.Default.DarkMode, "테마", state.themeMode.displayName(), onCycleTheme)
-            Spacer(Modifier.height(8.dp))
-            Card(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
+
+            // 3. 화면
+            Spacer(Modifier.height(4.dp))
+            ProfileSectionHeader("화면")
+            SettingsRow(
+                icon = Icons.Default.DarkMode,
+                title = "테마",
+                summary = state.themeMode.displayName(),
+                onClick = onCycleTheme,
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onToggleDynamicColor(!state.dynamicColorEnabled) },
+                ) {
+                    ListItem(
+                        headlineContent = { Text("배경화면 색상 사용 (Dynamic Color)") },
+                        supportingContent = {
+                            Text(
+                                if (state.dynamicColorEnabled) {
+                                    "기기 배경화면 팔레트 사용 중"
+                                } else {
+                                    "은둔헬스 브랜드 그린 팔레트 사용 중"
+                                },
+                            )
+                        },
+                        leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) },
+                        trailingContent = {
+                            // Card 자체에 onClick이 있으므로 Switch는 onCheckedChange = null로 두어
+                            // TalkBack 이중 포커스를 방지하고 행 전체를 단일 48dp+ 타겟으로 동작시킨다.
+                            Switch(
+                                checked = state.dynamicColorEnabled,
+                                onCheckedChange = null,
+                            )
+                        },
+                    )
+                }
+            }
+
+            // 4. 정보
+            Spacer(Modifier.height(4.dp))
+            ProfileSectionHeader("정보")
+            Card(modifier = Modifier.fillMaxWidth()) {
+                ListItem(
+                    headlineContent = { Text("앱 버전") },
+                    supportingContent = { Text("v${BuildConfig.VERSION_NAME}") },
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
+                )
+            }
+
+            // 5. 계정
+            Spacer(Modifier.height(4.dp))
+            ProfileSectionHeader("계정")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { showLogoutDialog = true },
+            ) {
                 ListItem(
                     headlineContent = { Text("로그아웃") },
                     leadingContent = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) },
-                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
                 )
             }
         }
@@ -123,7 +200,40 @@ fun ProfileHubScreen(
                 onDismiss = { showModeDialog = false },
             )
         }
+
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                title = { Text("로그아웃 하시겠어요?") },
+                text = { Text("다시 로그인하면 저장된 운동 계획과 기록을 이어서 볼 수 있습니다.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showLogoutDialog = false
+                            onLogout()
+                        },
+                    ) {
+                        Text("로그아웃")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutDialog = false }) {
+                        Text("취소")
+                    }
+                },
+            )
+        }
     }
+}
+
+@Composable
+private fun ProfileSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.semantics { heading() },
+    )
 }
 
 @Composable
@@ -223,7 +333,7 @@ private fun SettingsRow(
             supportingContent = { Text(summary) },
             leadingContent = { Icon(icon, contentDescription = null) },
             trailingContent = if (showChevron) {
-                { Icon(Icons.Default.ChevronRight, contentDescription = null) }
+                { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
             } else {
                 null
             },

@@ -4,24 +4,32 @@
 
 ---
 
-## [v0.6.1] — 2026-10-27 — 릴리스 후보: UI 접근성 · 의존성 · 공급망 강화
+## [v0.6.1] — 2026-10-28 — UI/UX 전면 개선 (`PROP-05` Phase 1~4) · M3 포레스트 민트 & Pretendard · Today Hero & 운동 가이드 모드 · 공급망 강화
 
-> **저장소 후보 `versionCode=40`; 미배포.** 태그, Play 업로드, Azure 배포 및 원장 갱신은 수행하지 않았다. 현재 운영 버전은 `v0.6.0/39`이다.
+> **저장소 릴리스 `versionCode=40` (`v0.6.1`).** 백엔드 API·DB 스키마 변경은 없으며(운영 리비전 `eundunhealth-api--0000065` 유지), Android 클라이언트 UI/UX 전면 개편(`PROP-05`)과 빌드·공급망 하드닝을 통합했다.
 
-### UI/UX 및 회귀 방지
-- 휴식 요일 선택기를 7개 고정 단일 행에서 `FlowRow` 기반 48dp 이상 `FilterChip`으로 바꿔 320dp 폭과 큰 글꼴에서 겹침을 방지하고, 체크 표시·선택 semantics·오류 polite live region을 유지했다.
-- `ProfileSummaryCard`를 줄바꿈 가능한 label/value 적층 구조와 불투명 의미 색상 토큰으로 바꿔 좁은 화면 및 라이트/다크 대비를 개선했다.
-- 휴식일 1~6일 경계·semantics UI 테스트와 DataStore 저장 후 재읽기 instrumentation 회귀 테스트를 추가했다. 연결 기기가 없어 APK 컴파일까지만 확인했으며 실기기 TalkBack·Switch Access 실행은 후속 승인 게이트다.
+### 🎨 영역 A — 브랜드 & 디자인 파운데이션 + Quick Wins 4종
+- **Material 3 36슬롯 + 시맨틱 13토큰 (`#006D3C` Modern Forest & Mint)**: `Color.kt`, `Shape.kt`, `Theme.kt`에 Light(`#FBFDF8`)/Dark(`#111412`) 36개 표준 M3 슬롯과 5단계 `surfaceContainerLowest..Highest`, `@Immutable data class EundunExtendedColors`(완료/휴식/주의/탄단지 13개 시맨틱 토큰)를 완비해 API 30 이하 보라색 기본값 유입(`F-1`, `F-6`)을 차단했다. `dynamicColor = false`를 기본값으로 고정하고 프로필 허브에서 Android 12+ opt-in 스위치를 제공한다(`F-8`).
+- **Pretendard Variable 한글 타이포그래피 15슬롯 (`F-7`)**: `res/font/pretendard_variable.ttf` 단일 가변 폰트와 `PlatformTextStyle(includeFontPadding = false)`, `LineHeightStyle`, 한글 최적화 음수 자간(`-0.25.sp ~ 0.sp`)을 M3 15개 전 슬롯에 적용했다.
+- **DayNight 콜드 스타트 백색 점멸(`F-2`) 원천 차단**: `values/themes.xml`, `values-night/themes.xml`, `values-v31/themes.xml`, `values-night-v31/themes.xml` 및 `SplashScreen.kt`를 정합화해 다크모드 콜드 스타트 시 흰 화면 깜빡임을 제거했다.
+- **Quick Wins 4종**: ① 체성분(골격근량·체지방률) 미입력 시 가짜 기본값(`20f`/`30f`) 대신 `null` 저장(`F-3`) ② `HomeViewModel.loadPlan()`이 `Success` 상태에서 `Loading` 리셋 대신 `isRefreshing = true` 인플레이스 갱신 수행(`F-4`) ③ 로그아웃 확인 `AlertDialog` 추가 ④ `UpdateRequiredScreen`에서 내부 `versionCode` 노출 제거 및 직관적 안내 문구 적용.
 
-### 패키지·빌드·공급망
+### 🏋️ 영역 B & C — '오늘' 탭 Today Hero 중심 재편 & 단계별 운동 가이드 모드 (`WorkoutGuideScreen`)
+- **`TodayHeroCard` & `WorkoutDurationEstimator`**: 홈 화면 최상단에 오늘의 운동 상태(운동일 진행 전/완료/휴식일), 예상 소요 시간(근력 세트당 2분, 유산소/홈트 시간 기반 산출), 종목 미리보기 칩, 주 CTA(`[운동 시작 (가이드 모드)]`)와 보조 액션(`[오늘 운동 바로 완료 체크]`)을 배치했다. 완료 해제 시 즉시 서버/캐시를 갱신하고 5초간 `[실행 취소]`(Undo) 스낵바를 제공한다.
+- **휴식일·운동 완료 후 스마일 트레이닝 바로가기 & 접이식 7일 계획**: 휴식일 또는 당일 운동 완료 시 `오늘 하루 닫기 — 스마일 트레이닝 시작` 카드를 노출하고, 주간 7일 계획은 기본 접힘(`AnimatedVisibility`)으로 인지 부하를 낮췄다.
+- **단계별 운동 가이드 모드 (`WorkoutGuideScreen`, `WorkoutGuideViewModel`)**: `HorizontalPager` 기반으로 오늘의 종목을 한 화면에 하나씩 집중 안내하며, 진입 시 `FLAG_KEEP_SCREEN_ON` 자동 유지(종료 시 해제), 200% 폰트 대응 `FlowRow` 메타데이터 칩, Coil `512px` 리사이징, 중도 이탈 시 3지 선다 확인 다이얼로그(`계속하기` / `오늘 운동 완료로 기록하고 나가기` / `미완료로 나가기`), 마지막 종목 완료 시 당일 운동 자동 완료 및 홈 화면 즉시 동기화(`savedStateHandle`)를 구현했다.
+
+### 📊 영역 D & E — 기록·식단·내 정보 허브 고도화 & 2단계 온보딩 + 3중 하이브리드 바디 피커
+- **진행·통계·목표·기록 허브**: `ProgressHubScreen` 상단 3열 요약 지표 타일(이번 주 완료율·연속 달성 주·스마일 연속일 병렬 조회), `StatisticsScreen` 차트 TalkBack 요약 낭독 및 헬스장/홈트 수행 비율 카드, `GoalScreen` 목표 달성률 프로그레스 바 및 체지방 미입력 안내 카드, `HistoryScreen` 한국어 요일(`월~일`) 및 아코디언 종목 상세를 추가했다.
+- **식단 탭 (`MealPlanScreen`, `MealPlanViewModel`, `F-5`)**: 룰 11(`@Immutable` `MealPlanUiState`) 및 룰 8(`regenerateError` 인라인 `AuthErrorBanner` + `LiveRegionMode.Polite`로 재생성 실패 시 기존 식단 화면 유지)을 준수하고, 상단 `[다시 만들기]`, 오늘 식단 카드 최상단 고정·자동 펼침, `FlowRow` 탄단지 매크로 칩을 적용했다.
+- **내 정보 허브 (`ProfileHubScreen`)**: `내 정보`·`연동`·`화면`·`정보`·`계정` 5대 섹션 그룹화, Android 12+ 동적 색상 스위치 단일 포커스 접근성(`Role.Switch`), 휴식일 `FlowRow` 48dp `FilterChip` 및 `ProfileSummaryCard` 반응형 적층 레이아웃을 적용했다.
+- **3중 하이브리드 바디 피커 (`HybridBodyMetricPicker`) & 2단계 온보딩**: 레거시 `ProfileSlider`를 제거하고 44sp 대형 수치 탭(인라인 숫자패드) + 반응형 중앙 정렬 가로 눈금자 휠(`SnapFlingBehavior` + 1단위 햅틱 틱) + `±` 48dp 미세조정 스테퍼 및 성별 연동 스마트 기본값(`남성 174cm/72kg`, `여성 161cm/54kg`)을 도입했다. 로그인 전 `AuthGateScreen` 3슬라이드 가치 소개 페이저와 2단계 온보딩 위저드(완료 즉시 첫 주간 계획 자동 생성)를 구현했다.
+
+### 📦 패키지·빌드·공급망 및 CI/CD 검증
 - Kotlin 2.4.21, KSP 2.3.12, Gradle 9.8.1, Compose BOM 2026.09.00, Core KTX 1.19.1, Navigation 2.10.2, DataStore 1.3.0, Sentry Gradle plugin 6.24.0으로 갱신했다. AGP 9.3.2와 JDK 17은 유지했다.
 - Python 직접 의존성을 `requirements.in` / `requirements-dev.in`으로 분리하고 Python 3.14에서 생성한 전이 의존성 hash lock을 CI와 Docker의 `--require-hashes` 설치에 공통 적용했다.
-- Gradle dependency lock과 SHA-256 verification metadata를 추가하고 Gradle 배포본 checksum, Python/PostgreSQL base image digest를 고정했다. Dockerfile의 `apt-get upgrade`와 런타임 임의 pip 업그레이드를 제거했다.
-
-### CI/CD 및 검증
-- 모든 GitHub Action을 full commit SHA로 고정하고 최소 권한, CODEOWNERS, Docker Dependabot, 항상 완료되는 `Repository Gate`를 추가했다.
-- Play 업로드 성공 후 `main` 직접 push 대신 `release-ledger/v<version>-<code>` 브랜치의 원장 PR을 생성하도록 변경했다. Azure 배포는 ACR digest와 expected SHA/revision/readiness/app-reaper 일치를 함께 검증한다.
-- 로컬 검증: Android Spotless·AGP guard·Detekt·unit·lint/debug·androidTest compile·R8 release, Backend Ruff·Mypy·pytest 140건·pip-audit·Bandit, Docker build, version monotonic 및 workflow SHA 검증 통과. 외부 CI, 실제 PostgreSQL 동시성 smoke, Play/Azure, 실기기 접근성·MSAL은 아직 실행하지 않았다.
+- Gradle dependency lock과 SHA-256 verification metadata를 추가하고 Gradle 배포본 checksum, Python/PostgreSQL base image digest를 고정했다. 모든 GitHub Action을 full commit SHA로 고정하고 CODEOWNERS, Docker Dependabot, `Repository Gate` 및 `release-ledger/v<version>-<code>` 원장 PR 자동 생성을 적용했다.
+- 검증: Android `spotlessCheck`·`check-agp10-compat.sh`·`detektDebug`(0건)·단위 테스트 **209건**(43 파일)·`releaseArtifacts`(R8 full mode + Sentry mapping), Backend `ruff`·`mypy`·`pytest` **140건**·`pip-audit`·`bandit` 전수 통과.
 
 ---
 

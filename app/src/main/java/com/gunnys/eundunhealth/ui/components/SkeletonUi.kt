@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,22 +33,25 @@ import androidx.compose.ui.unit.dp
 fun ShimmerBox(modifier: Modifier = Modifier, height: Dp = 16.dp) {
     val transition = rememberInfiniteTransition(label = "shimmer")
     val alpha by transition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
+        initialValue = 0.25f,
+        targetValue = 0.6f,
         animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
         label = "shimmerAlpha",
     )
     Box(
         modifier = modifier
             .height(height)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)),
     )
 }
 
 @Composable
 fun SkeletonDayCard() {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             ShimmerBox(modifier = Modifier.fillMaxWidth(0.45f), height = 20.dp)
             Spacer(modifier = Modifier.height(6.dp))
@@ -60,17 +64,52 @@ fun SkeletonDayCard() {
     }
 }
 
+/**
+ * 오늘 탭(`HomeScreen`)의 새로운 레이아웃 구조(TodayHeroCard + WeeklyProgressCard + 접이식 주간 헤더)와
+ * 1:1로 대응하는 스켈레톤 UI. 로딩 완료 시 레이아웃 점프(CLS)를 방지한다.
+ */
 @Composable
 fun SkeletonHomeContent(modifier: Modifier = Modifier) {
-    Column(modifier = modifier.padding(top = 8.dp)) {
-        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = modifier.padding(top = 4.dp)) {
+        // 1. TodayHeroCard 스켈레톤
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ShimmerBox(modifier = Modifier.fillMaxWidth(0.42f), height = 18.dp)
+                    ShimmerBox(modifier = Modifier.size(width = 56.dp, height = 22.dp), height = 22.dp)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                ShimmerBox(modifier = Modifier.fillMaxWidth(0.7f), height = 26.dp)
+                Spacer(modifier = Modifier.height(18.dp))
+                repeat(3) {
+                    ShimmerBox(modifier = Modifier.fillMaxWidth(), height = 52.dp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                ShimmerBox(modifier = Modifier.fillMaxWidth(), height = 52.dp)
+            }
+        }
+
+        // 2. WeeklyProgressCard 스켈레톤
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    ShimmerBox(modifier = Modifier.fillMaxWidth(0.35f), height = 18.dp)
+                    ShimmerBox(modifier = Modifier.fillMaxWidth(0.4f), height = 18.dp)
                     ShimmerBox(modifier = Modifier.size(width = 52.dp, height = 24.dp), height = 24.dp)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -89,8 +128,20 @@ fun SkeletonHomeContent(modifier: Modifier = Modifier) {
                 }
             }
         }
-        repeat(4) {
-            SkeletonDayCard()
+
+        // 3. WeeklyPlanExpandHeader 스켈레톤
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ShimmerBox(modifier = Modifier.fillMaxWidth(0.5f), height = 16.dp)
+                ShimmerBox(modifier = Modifier.size(20.dp), height = 20.dp)
+            }
         }
     }
 }

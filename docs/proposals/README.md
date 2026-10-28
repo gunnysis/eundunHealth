@@ -13,7 +13,8 @@
 | **PROP-01** | **휴식일 자유 다중 지정 (Flexible Multi-Rest Days)** | `Shipped (v0.6.0)` | `v0.6.0` (완료) | Profile, WeeklyPlan, Progress, Room | [docs/plans/logs/android.md](../plans/logs/android.md) |
 | **PROP-02** | 식단 섭취 영양소 매크로(칼로리/탄단지) 트래킹 & 피드백 | `Idea` | `v0.7.0+` | MealPlan, Profile | [docs/PRD.md](../PRD.md#향후-확장-후보) |
 | **PROP-03** | 운동 이력 기반 점진적 과부하 AI 중량/볼륨 추천 | `Idea` | `v0.7.0+` | Workout, History | [docs/PRD.md](../PRD.md#향후-확장-후보) |
-| **PROP-04** | **운동 일수($N$) 기반 적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)** | `Exploring` | `v0.7.0+` | WeeklyPlan, Exercise Catalog, MealPlan | [2026-10-27-adaptive-split-engine.md](2026-10-27-adaptive-split-engine.md) |
+| **PROP-04** | **운동 일수($N$) 기반 적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)** | `Deferred (Rejected)` | - | WeeklyPlan, Exercise Catalog, MealPlan | [rejections/2026-10-27-adaptive-split-engine.md](rejections/2026-10-27-adaptive-split-engine.md) |
+| **PROP-05** | **UI/UX 개선 종합 기획 (브랜드·Today Hero·운동 가이드·허브·온보딩)** | `Shipped (v0.6.1)` | `v0.6.1` (완료) | Theme, Home, Workout, Hubs, Onboarding | [docs/plans/logs/android.md](../plans/logs/android.md) |
 
 ---
 
@@ -38,6 +39,7 @@
   - 해당 버전 개발 스프린트가 시작되어, `docs/plans/`의 공식 `{design,plan}.md` 페어로 승격되어 개발에 착수된 상태.
 - **`Deferred` (보류/폐기)**:
   - 기술적/전략적 사유로 당분간 추진하지 않기로 결정된 상태 (사유 기록).
+  - 기각된 기획서는 `rejections/` 하위로 이동하여 보관합니다.
 
 ---
 

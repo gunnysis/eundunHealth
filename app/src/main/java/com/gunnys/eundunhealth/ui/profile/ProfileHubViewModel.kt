@@ -24,6 +24,7 @@ data class ProfileHubUiState(
     val isHealthConnectAvailable: Boolean = false,
     val hasHealthPermission: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val dynamicColorEnabled: Boolean = false,
     val defaultWorkoutPlanMode: WorkoutPlanMode? = null,
     val isUpdatingDefaultPlanMode: Boolean = false,
     val defaultPlanModeError: AppError? = null,
@@ -41,7 +42,14 @@ class ProfileHubViewModel @Inject constructor(
     init {
         refreshHealthConnectStatus()
         refreshDefaultWorkoutPlanMode()
-        viewModelScope.launch { _uiState.value = _uiState.value.copy(themeMode = themePreferences.themeMode.first()) }
+        viewModelScope.launch {
+            val mode = themePreferences.themeMode.first()
+            val dynamicColor = runCatching { themePreferences.dynamicColorEnabled.first() }.getOrDefault(false)
+            _uiState.value = _uiState.value.copy(
+                themeMode = mode,
+                dynamicColorEnabled = dynamicColor,
+            )
+        }
     }
 
     fun refreshHealthConnectStatus() = viewModelScope.launch {
@@ -99,5 +107,10 @@ class ProfileHubViewModel @Inject constructor(
         }
         themePreferences.setThemeMode(next)
         _uiState.value = _uiState.value.copy(themeMode = next)
+    }
+
+    fun setDynamicColorEnabled(enabled: Boolean) = viewModelScope.launch {
+        themePreferences.setDynamicColorEnabled(enabled)
+        _uiState.value = _uiState.value.copy(dynamicColorEnabled = enabled)
     }
 }

@@ -1,5 +1,125 @@
 # Multi-AI Handoff Log
 
+## 2026-10-28 (Gemini -> Claude/User) PROP-05 UI/UX 개선 통합 설계서 Phase 1~4 전 구간 구현 + 2차 심층 팩트체크·근본 원인 해결·UI/UX 리팩토링 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- `2026-10-28-ux-improvement-design.md` ([`docs/plans/logs/android.md`](docs/plans/logs/android.md) 2026-10-28 entry로 흡수 완료, `PROP-05`)에 정의된 **Phase 1 ~ Phase 4 전 구간 코드 구현 및 단위 테스트·정적 분석·릴리스(R8) 빌드 검증을 100% 완료**함.
+  1. **Phase 1 — 브랜드 & 디자인 파운데이션 + Quick Wins 4종**:
+     - **M3 36슬롯 + 시맨틱 13토큰 완성**: [`Color.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/Color.kt), [`Shape.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/Shape.kt), [`Theme.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/Theme.kt) (`#006D3C` Modern Forest & Mint, Light `#FBFDF8` / Dark `#111412`, 5단계 `surfaceContainerLowest..Highest`, `@Immutable data class EundunExtendedColors`, `dynamicColor = false` 기본값)
+     - **Pretendard Variable 한글 타이포그래피 15슬롯**: [`Type.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/Type.kt) (`R.font.pretendard_variable`, `PlatformTextStyle(includeFontPadding = false)`, `LineHeightStyle`, 한글 음수 자간 `-0.25.sp ~ 0.sp`)
+     - **모션·햅틱·설정 인프라**: [`MotionTokens.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/theme/MotionTokens.kt), [`HapticFeedbackHelper.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/util/HapticFeedbackHelper.kt), [`ThemePreferences.kt`](app/src/main/java/com/gunnys/eundunhealth/data/preferences/ThemePreferences.kt), [`MainActivity.kt`](app/src/main/java/com/gunnys/eundunhealth/MainActivity.kt)
+     - **DayNight 콜드 스타트 백색 점멸(White Flash) 원천 차단**: [`values/themes.xml`](app/src/main/res/values/themes.xml), [`values-night/themes.xml`](app/src/main/res/values-night/themes.xml), [`values-v31/themes.xml`](app/src/main/res/values-v31/themes.xml), [`values-night-v31/themes.xml`](app/src/main/res/values-night-v31/themes.xml), [`SplashScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/splash/SplashScreen.kt) (외부 의존성 추가 없이 플랫폼 DayNight 테마로 완벽 해결하여 Gradle lockfile/verification-metadata 무결성 유지)
+     - **Quick Wins 4종**: [`AppNavigation.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/AppNavigation.kt) (`UpdateRequiredScreen` 버전 코드 대신 사용자 친화 문구), [`HomeViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeViewModel.kt) (`Success` 상태에서 `loadPlan()` 시 `Loading` 리셋 대신 동기적 `isRefreshing = true` 인플레이스 갱신으로 `F-4` 해결), [`ProfileHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt) (로그아웃 확인 `AlertDialog`), 온보딩/프로필 체성분 미입력 시 `null` 전송(`F-3` 해결)
+  2. **Phase 2 — '오늘' 탭 Today Hero 중심 재편 & 단계별 운동 가이드 모드**:
+     - [`WorkoutDurationEstimator.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/util/WorkoutDurationEstimator.kt), [`TodayHeroCard.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/components/TodayHeroCard.kt), [`HomeScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt): 상단 `TodayHeroCard` 집중 배치, `[운동 시작 (가이드 모드)]` 주 CTA + `[오늘 운동 바로 완료 체크]` 보조 액션, 완료 해제 시 Undo `SnackbarHost` (`HomeSideEffect.ShowUndoUncompleteSnackbar`), 휴식일/완료 후 스마일 트레이닝 바로가기 카드(`오늘 하루 닫기`), 하단 접이식 7일 전체 계획
+     - [`WorkoutGuideViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideViewModel.kt), [`WorkoutGuideScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt), [`WorkoutDetailScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutDetailScreen.kt), [`Screen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/Screen.kt), [`MainAppShell.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/MainAppShell.kt): `HorizontalPager` 기반 종목별 가이드, `FLAG_KEEP_SCREEN_ON` 자동 관리, 세트 체크박스·휴식 타이머 배제, 중도 이탈 시 3지 선다 다이얼로그(`D-2`), 마지막 종목 완료 시 당일 운동 자동 완료 처리
+  3. **Phase 3 — 기록·식단·내 정보 허브 고도화 & 2단계 온보딩 + 3중 하이브리드 바디 피커**:
+     - [`ProgressHubViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubViewModel.kt), [`ProgressHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt), [`StatisticsScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/statistics/StatisticsScreen.kt), [`GoalScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/goal/GoalScreen.kt), [`HistoryScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/history/HistoryScreen.kt): 3열 요약 지표 타일(`coroutineScope` 병렬 조회 + 개별 `"—"` 폴백), 차트 TalkBack 요약문 + 헬스장/홈트 비율 카드, 목표 프로그레스 바 + 체지방 미입력 안내 카드, 히스토리 요일 라벨(`월~일`) + 아코디언 상세
+     - [`MealPlanViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/mealplan/MealPlanViewModel.kt), [`MealPlanScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/mealplan/MealPlanScreen.kt): 룰 11 `@Immutable` `MealPlanUiState`, `Generating(previousPlan)` 및 재생성 실패 시 기존 식단 보존 인라인 `AuthErrorBanner`(`regenerateError`, 룰 8), 상단 `[다시 만들기]`, 오늘 식단 카드 최상단 고정·자동 펼침, `FlowRow` 영양소 칩
+     - [`ProfileHubViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubViewModel.kt), [`ProfileHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt): 5대 섹션 그룹화(`내 정보/연동/화면/정보/계정`), Android 12+ Dynamic Color opt-in 스위치, 로그아웃 확인 다이얼로그
+     - [`GenderSelector.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/GenderSelector.kt), [`BodyMetricDefaults.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/BodyMetricDefaults.kt), [`HybridBodyMetricPicker.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/HybridBodyMetricPicker.kt), [`OptionalBodyCompositionCard.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/OptionalBodyCompositionCard.kt), [`BodyMetricsSliders.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/BodyMetricsSliders.kt), [`ProfileSummaryCard.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/ProfileSummaryCard.kt): 레거시 `ProfileSlider.kt` 완전 삭제 및 3중 하이브리드 바디 피커(`D-4`) + 2지 선다 성별 선택(`D-5`) + 접이식 선택 체성분 카드(`D-6`) 적용
+     - [`AuthGateScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/auth/AuthGateScreen.kt), [`OnboardingScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/onboarding/OnboardingScreen.kt), [`OnboardingViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/onboarding/OnboardingViewModel.kt), [`ProfileScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileScreen.kt), [`ProfileViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileViewModel.kt): 로그인 전 3슬라이드 가치 소개 페이저, 2단계 온보딩 위저드 + 완료 즉시 첫 주간 계획 자동 생성(`CreateWeeklyPlanUseCase`)
+  4. **Phase 4 — 테스트·전수 검증 게이트 통과 및 2차 심층 감사(Root-Cause & UI/UX/A11y 리팩토링 10건)**:
+     - **Compose Side-Effect Stale Closure 근본 차단**: [`HybridBodyMetricPicker.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/HybridBodyMetricPicker.kt) (`HorizontalRulerWheel`에 `rememberUpdatedState` + `BoxWithConstraints` 동적 중앙 패딩 `(maxWidth - tickStepWidth) / 2` + `firstVisibleItemScrollOffset` 반올림 보정 적용), [`WorkoutGuideScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt) (`LaunchedEffect(pagerState)`에 `rememberUpdatedState` 적용 + 200% 폰트 대응 `FlowRow` 태그 + Coil `ImageRequest.size(512)` 적용)
+     - **화면 간 상태 동기화**: [`MainAppShell.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/MainAppShell.kt) (`WorkoutGuideScreen` 운동 완료 복귀 시 `savedStateHandle["refresh_home_plan"]`으로 `HomeViewModel.loadPlan()` 즉시 트리거, `GoalScreen` 복귀 시 `ProgressHubViewModel.loadSummary()` 즉시 갱신)
+     - **접근성(TalkBack) & 200% 대형 글꼴·레이아웃 대칭성 고도화**: [`OptionalBodyCompositionCard.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/OptionalBodyCompositionCard.kt) (부분 입력 시 정확한 서브타이틀 표기), [`OnboardingScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/onboarding/OnboardingScreen.kt) (체크박스 행 `Modifier.toggleable(role = Role.Checkbox)` 적용), [`ProfileHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt) (Dynamic Color `Switch(onCheckedChange = null)` 단일 포커스화 및 `Icons.AutoMirrored.Filled.KeyboardArrowRight` 통일), [`AuthGateScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/auth/AuthGateScreen.kt) (`Scaffold` + `verticalScroll` 적용), [`ProgressHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt) (3열 요약 타일 `IntrinsicSize.Max` + `.fillMaxHeight()` 높이 균일화), [`HistoryScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/history/HistoryScreen.kt) (`FlowRow` 헤더 + 상세 종목 `weight(1f)` 우측 정렬), [`ProfileScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileScreen.kt) (버튼 내부 `CircularProgressIndicator` `.size(20.dp)` 고정), [`MealPlanScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/mealplan/MealPlanScreen.kt) (`LiveRegionMode.Polite` + `FlowRow` 헤더 + `MacroNutrientChip` `BorderStroke`), [`SkeletonUi.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/SkeletonUi.kt) (`TodayHeroCard` + `WeeklyProgressCard` + 접이식 헤더 1:1 매칭으로 CLS 제거)
+     - `.\gradlew.bat :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease` → **BUILD SUCCESSFUL** (단위 테스트 **209개 전수 통과**, Detekt 이슈 **0건**, R8 full mode 릴리스 패키징 및 `lintVitalRelease` 통과)
+     - `bash scripts/check-agp10-compat.sh` (PASS), `python scripts/gen_plans_index.py --check` (PASS), `bash scripts/check-plans-links.sh` (PASS), `pytest scripts/agents/test_doc_audit.py -q` (36 passed), 금지 API(`collectAsState(`) 0건 확인
+
+**다음 할 일 (Next Steps / TODO):**
+- **사용자 직접 수행 항목**: Android 실기기에서 콜드 스타트 다크모드 스플래시, `HybridBodyMetricPicker` 룰러/스테퍼 햅틱 피드백, TalkBack 포커스 순서/차트 요약 낭독, 시스템 글꼴 200% 레이아웃 최종 점검 후 커밋/PR 진행.
+
+**주의사항 및 컨텍스트 (Context & Constraints):**
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
+## 2026-10-28 (Gemini -> Claude/User) PROP-05 UI/UX 개선 종합 구현 설계서 격상 및 단일 문서 병합 완료 (코드 무변경)
+
+**현재까지의 작업 상태 (Current Status):**
+- 사용자 지시에 따라 `2026-10-28-ux-improvement-design.md`와 기존 구현 계획서(plan)를 **하나의 완성형 구현 설계 파일([`docs/plans/logs/android.md`](docs/plans/logs/android.md) 2026-10-28 entry로 흡수)로 완전 병합**하고, 최종 구현 직전 단계인 **'통합 구현 설계서(Integrated Implementation Design Specification)'로 격상** 완료함.
+  1. **단일 통합 구현 설계서 (`2026-10-28-ux-improvement-design.md` → `docs/plans/logs/android.md`)**:
+     - **확정된 의사결정 (`D-1`~`D-6`)**:
+       - `D-1`: 북극성 지표 = 주간 운동 계획 완주율 (`/v2/weekly-plan/statistics` 재활용, 신규 SDK 불필요)
+       - `D-2`: 운동 가이드 중간 종료 시 기본 미완료 유지 + 종료 확인 다이얼로그 내 명시적 완료/미완료 선택 제공
+       - `D-3`: 브랜드 대표 시드 컬러 = **옵션 1: 모던 포레스트 민트 (`#006D3C` Primary / `#00D287` Electric Mint Accent)** 채택
+       - `D-4`: 키·몸무게 입력 = **3중 하이브리드 바디 피커 (`HybridBodyMetricPicker`: 44sp 대형 Display + 인라인 숫자패드 + 가로형 햅틱 눈금자 휠 `SnapFlingBehavior` + ± 48dp 미세조정 스테퍼 + 성별 연동 스마트 중앙값 앵커링 남성 `174cm/72kg`, 여성 `161cm/54kg`)** 채택 (`ProfileSlider` 폐기)
+       - `D-5`: 성별 선택 = **`[남성] | [여성]` 2지 선다 필수화** (`선택 안 함` UI 제거, 터치 영역 50% 확대)
+       - `D-6`: 체성분(골격근량·체지방률) 입력 = **접이식 선택사항 카드 (`OptionalBodyCompositionCard`, 미입력 시 `null` 저장)** 채택 ('모름' 전용 토글 로직 배제, 가짜 기본값 `20f`/`30f` 강제 주입 근절)
+     - **★ 사용자 필수 작업 가이드 (Action Required by User — 우회 금지) ★ 명통화**:
+       - `res/font/pretendard_variable.ttf` 폰트 바이너리 다운로드 및 리소스 경로 배치 (SIL OFL 1.1 준수)
+       - 실기기(Physical Device) 접근성(TalkBack) 및 4단계 햅틱 감각, 200% 대형 글꼴 레이아웃 검증
+       - 단계별 PR 머지 및 릴리스 배포 승인
+     - **영역별 상세 명세 및 공식 기술 표준 연계**:
+       - M3 Expressive 가이드라인, 5단계 Surface Container 깊이 체계, Dynamic Color 기본 OFF + opt-in
+       - `androidx.core:core-splashscreen` DayNight 콜드 스타트 점멸 근본 차단 (`values-night/themes.xml`)
+       - Pretendard Variable 한글 타이포그래피 매트릭스 15종, `includeFontPadding = false`, 음수 자간
+       - Clean Architecture & UDF (룰 11: 단일 `StateFlow`, `@Immutable`, `collectAsStateWithLifecycle`, 원샷 `Channel`)
+       - 인라인 에러 배너 (룰 8: `AuthErrorBanner` + `LiveRegionMode.Polite`)
+       - Quick Wins 4종: Home 인플레이스 새로고침(`F-4` 해결), 체성분 `null` 정합화(`F-3` 해결), 로그아웃 확인 다이얼로그, 업데이트 화면 버전명
+       - 영역 B/C/D/E 상세 컴포넌트 구조 및 5대 상태 머신
+     - **Phase 1~4 상세 TDD 구현 계획 및 작업 분할 (Task 0~15)**:
+       - Phase 1 (`v0.6.2`, Task 0~4) → Phase 2 (`v0.7.0`, Task 5~8) → Phase 3 (`v0.8.0`, Task 9~13) → Phase 4 (전면 리팩토링 & 최종 회귀 검증, Task 14~15)
+     - **트러블슈팅, 재발 방지 및 엣지 케이스 방어 매트릭스**: 7대 장애 시나리오별 근본 원인 및 방어 설계 완비.
+  2. **기존 구현 계획서(plan.md) 및 원천 기획서(proposals) 삭제 후 단일 SSoT 정합화 완료**:
+     - `docs/PRD.md`, `docs/proposals/README.md` 전수 단일 `2026-10-28-ux-improvement-design.md`(`docs/plans/logs/android.md`) 링크로 정합화.
+  3. **검증 가드 통과**:
+     - `gen_plans_index.py`, `check-plans-links.sh`, `test_doc_audit.py` 전건 패스 확인 예정.
+
+**다음 할 일 (Next TODOs):**
+- 사용자에게 단일 통합 구현 설계서 검토 요청 및 구현 착수 승인 확인.
+- 사용자 승인 후 Phase 1 착수 시, 먼저 사용자에게 **`pretendard_variable.ttf` 폰트 파일 배치**를 요청하고 배치 완료 확인 후 Task 1~4 순서로 TDD 구현 진행.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- 사용자가 작업해야 하는 항목(폰트 파일 배치, 실기기 햅틱/TalkBack 검증 등)은 절대 AI가 임의로 우회하거나 가짜 파일/대안으로 처리하지 말고 사용자에게 직접 요청할 것!
+- 제외 범위 10종(리마인더/알림, 세트 카운팅/휴식 타이머, 약관 링크 신설, 미래 날짜 완료 방지, 식단 재생성 횟수 제한, 홈트 18종 일러스트 제작, 안전 팝업, 계정 삭제 화면 분리, 성별 '선택 안 함', 체성분 '모름' 토글) 엄수.
+- git stash의 사용자 `autostash`는 그대로 둘 것.
+
+---
+
+## 2026-10-28 (Gemini -> Claude/User) PROP-05 UI/UX 개선 종합 기획 단일 문서화 (코드 무변경)
+
+**현재까지의 작업 상태 (Current Status):**
+- 단일 기획서 `docs/proposals/2026-10-28-ux-improvement.md`(PROP-05, `Exploring`)를 작성함. 영역 A 브랜드·디자인 기반, B Today Hero, C 운동 가이드 모드, D 허브, E 온보딩. 팩트체크 F-1~F-8, 결정 대기 D-3~D-6, 로드맵 v0.6.2→v0.7.0→v0.8.0을 담음.
+- **영역 A 디자인 시스템(Design System & Foundation) 대폭 고도화**:
+  - M3 컬러 시스템 완성: 브랜드 컬러 자유 기획 방침에 따라 3가지 테마 옵션(옵션 1: 모던 포레스트 민트 [권장], 옵션 2: 바이탈 선라이즈 오렌지, 옵션 3: 네오 슬레이트 인디고) 기획, 45개 핵심 토큰, M3 표준 **5단계 Surface Container 깊이 체계**, 시맨틱 기능성 컬러(완료/휴식/주의/3대 영양소), Dynamic Color 기본 OFF 거버넌스, `res/values-night/themes.xml` 및 `core-splashscreen` 완결. Material Color Utilities 모듈형 아키텍처로 시드 교체 시 전체 팔레트 자동 동기화.
+  - Pretendard Variable 가변 폰트(SIL OFL 1.1, 단일 파일 1.2MB): M3 15개 전체 텍스트 스타일 매트릭스(Display/Headline/Title/Body/Label) 정의 및 한글 최적화 음수 자간(-0.02em / -0.2sp), `includeFontPadding = false` 정합성 확보.
+  - 형태(Shape) 및 엘리베이션: 4dp~999dp 곡률 규격, 무거운 그림자 배제 + 1dp `outlineVariant` 미세 스트로크.
+  - M3 Expressive 스프링 물리 모션(감쇠비 0.75 + 강성 400f 바운스) 및 4단계 햅틱 피드백 매트릭스(휠 틱, 버튼 탭, 완료 컨펌, 에러 리젝트) 표준화.
+- 사용자 요청에 따라 **① 리마인더·알림, 배지·스트릭·축하 연출(동기부여) 제외 ② 세트 세기(카운팅) 및 휴식 시간 타이머 기능 제외 ③ 이용약관·개인정보처리방침 링크 및 신설 내용 제외 ④ 미래 날짜 운동 완료 방지 검증 제외 ⑤ 식단 재생성 횟수 제한 및 AI 동의 기억 내용 제외 ⑥ 감성형 부위/테마 타이틀('오늘은 당기기 데이' 등) 제외 ⑦ 홈트 18종 일러스트 부재 관련 내용 본문 제거 및 우선순위 조정으로 holding/ 분리 ⑧ 운동 가이드 안전 안내 팝업 문구 제외 ⑨ 계정 삭제 화면 분리/신설 내용 제외(현행 위치 유지) ⑩ 성별 '선택 안 함' 제거 및 [남성]/[여성] 2지 선다 필수화 ⑪ 체성분 '모름' 토글 로직 배제(오버 리소스 방지) 및 1단계 접이식 선택사항(Optional, 기본 null 전송) 개편으로 온보딩 2단계 초슬림화**를 적용함.
+- **키·몸무게 신체 정보 입력 방식 심층 연구 및 개선**: 기존 슬라이더의 터치 가림·어긋남 문제를 해결하기 위해 대형 Display + 햅틱 눈금자 휠(Horizontal Ruler) + ± 미세조정 스테퍼 + 다이렉트 숫자패드 탭의 **하이브리드 바디 피커**로 전면 개편 설계를 수립·반영함. 성별 선택(남성 174cm/72kg, 여성 161cm/54kg)과 즉각 연계되는 스마트 앵커링 도입.
+- **홈트레이닝 18종 일러스트 제작 방식**은 `docs/proposals/holding/2026-10-28-homet-illustrations-production.md`로 별도 정리하여 holding 문서로 분리함.
+- `docs/proposals/README.md`와 `docs/PRD.md` 향후 확장 후보 표 갱신: PROP-04를 `rejections/` 경로와 기각 상태로 고치고, PROP-05 행을 추가함.
+- 검증 통과: `check-plans-links.sh`, `gen_plans_index.py --check`, `test_doc_audit.py`(36 passed).
+- 참고: `docs/plans/logs/process-infra.md`의 기존 미커밋 변경(2026-07-29 entry를 Older로 이동)에 맞춰 `docs/plans/README.md` 카운트(7/22→6/23)가 재생성됨.
+
+**다음 할 일 (Next TODOs):**
+- 사용자가 D-3~D-6 결정 → `Accepted` → 영역 A(v0.6.2)부터 `docs/plans/` 페어로 승격.
+- **범위 밖 결함(별도 추적 필요)**: 배지 9종 중 7종 획득 불가(`FIRST_WORKOUT`·`WEEK_1_COMPLETE`만 지급, 서버 자동 지급 없음), `checkBadges` 결과 폐기.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- PROP-01 삭제, PROP-04 `rejections/` 이동은 사용자가 한 작업이니 되돌리지 마세요.
+- git stash의 사용자 `autostash`는 그대로 두세요.
+
+---
+
+## 2026-10-28 (Gemini -> Claude/User) Android 앱 전체 UI/UX 정적 감사 보고 (코드 무변경)
+
+**현재까지의 작업 상태 (Current Status):**
+- `app/src/main/java/.../ui/**`·`theme/`·`res/values/themes.xml` 정적 분석 후 보고서 작성(대화 아티팩트 `ux_audit_report.md`). 저장소 코드는 수정하지 않음.
+- **P0 후보**: ① `Theme.kt` 색 토큰 누락(`outlineVariant`·`errorContainer`·`surfaceContainer*` 등 → API ≤30에서 M3 기본 보라 톤 유입) ② `dynamicColor=true` 기본으로 브랜드 색 소실 ③ `themes.xml`(Light 고정·`values-night` 없음)+Compose Splash 이중 스플래시/다크모드 흰 화면 깜빡임 ④ `HomeViewModel.onPlanReady`의 `checkBadges` 결과 폐기 + 토글 시 배지 미검사 → 획득 알림 없음 ⑤ 체지방/골격근 기본값(20/30, `?: 20f`)이 실측 없이 저장됨.
+- **P1 후보**: "오늘" 탭에 Today Hero 없음, `loadPlan()`이 매번 `Loading` → 새로고침 시 화면 깜빡임, 미래 날짜 완료 가능, 운동 상세에 세트/휴식 타이머·홈트 시각자료 없음, 식단 `Generating` 상태·재생성 없음(`MealPlanViewModel` 룰 11 미준수), 진행 허브 데이터 없음(스마일 스트릭 배지 미구현), 계정 삭제가 신체 정보 수정 화면에 위치.
+
+**다음 할 일 (Next TODOs):**
+- 사용자 승인 시 Sprint 1(디자인 기반: 전체 색 토큰·Dynamic Color 기본 OFF·core-splashscreen·DayNight·Type 15종/한글 폰트)부터 `/plan` 후 착수.
+- 1-5(체성분 nullable 저장)는 착수 전 백엔드 `PUT /profile` 스키마 nullable 허용 여부 확인 필요.
+
+**의존성 및 주의사항 (Context & Constraints):**
+- 실기기 미검증(정적 분석). 스마일 트레이닝 화면은 구조만 확인.
+- git stash 목록에 사용자의 `autostash`(gradlew.bat 줄바꿈 변경)가 있으니 건드리지 마세요.
+
+---
+
 ## 2026-10-27 (Gemini -> Claude/User) 사용자 작업(GitHub Ruleset, Actions 권한, SSH 서명) 전수 검증 및 점검 100% 완결
 
 **현재까지의 작업 상태 (Current Status):**

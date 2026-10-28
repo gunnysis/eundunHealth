@@ -6,6 +6,8 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -52,6 +56,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.domain.model.ExercisePrescriptionUnit
+import com.gunnys.eundunhealth.domain.model.ExerciseType
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import kotlinx.coroutines.launch
 
@@ -68,7 +73,7 @@ private fun buildCopyText(ex: Exercise): String = buildString {
  * `exerciseId` 는 파라미터로 받지 않는다 — `WorkoutDetailViewModel` 이 `SavedStateHandle` 로
  * 네비 인자에서 직접 읽으므로, 여기서 또 받으면 미사용 인자가 된다.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun WorkoutDetailScreen(
     onBack: () -> Unit,
@@ -114,9 +119,10 @@ fun WorkoutDetailScreen(
                 val clipboard = LocalClipboard.current
                 val scope = rememberCoroutineScope()
                 val prescriptionText = when (ex.prescriptionUnit) {
-                    ExercisePrescriptionUnit.SECONDS -> "${ex.sets}세트 x ${ex.reps}초"
-                    ExercisePrescriptionUnit.REPS -> "${ex.sets}세트 x ${ex.reps}회"
+                    ExercisePrescriptionUnit.SECONDS -> "목표 처방: ${ex.sets}세트 · ${ex.reps}초 유지"
+                    ExercisePrescriptionUnit.REPS -> "목표 처방: ${ex.sets}세트 · ${ex.reps}회"
                 }
+                val typeLabel = if (ex.type == ExerciseType.CARDIO) "유산소" else "근력"
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -156,27 +162,46 @@ fun WorkoutDetailScreen(
                             Text(
                                 ex.name,
                                 style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
                                 modifier = Modifier.semantics { heading() },
                             )
-                            Text(
-                                "${ex.bodyPart} | ${ex.equipment}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.semantics {
-                                    contentDescription = "부위 ${ex.bodyPart}, 장비 ${ex.equipment}"
-                                },
-                            )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                prescriptionText,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.semantics {
+                                    contentDescription = "부위 ${ex.bodyPart}, 장비 ${ex.equipment}, 유형 $typeLabel"
+                                },
+                            ) {
+                                if (ex.bodyPart.isNotBlank()) {
+                                    DetailMetaChip(ex.bodyPart)
+                                }
+                                if (ex.equipment.isNotBlank()) {
+                                    DetailMetaChip(ex.equipment)
+                                }
+                                DetailMetaChip(typeLabel)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                ),
+                            ) {
+                                Text(
+                                    text = prescriptionText,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                            }
                             Spacer(modifier = Modifier.height(24.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     "운동 방법",
                                     style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
                                     modifier = Modifier.weight(1f).semantics { heading() },
                                 )
                                 // 버튼은 선택 제스처 대상에서 제외 (DisableSelection).
@@ -187,11 +212,6 @@ fun WorkoutDetailScreen(
                                                 clipboard.setClipEntry(
                                                     ClipEntry(ClipData.newPlainText("운동 방법", buildCopyText(ex))),
                                                 )
-                                                // Android 13(API 33)+ 는 시스템이 복사 확인 UI 를 띄운다 —
-                                                // 앱 토스트를 함께 띄우면 같은 내용이 두 번 표시된다. 공식 문서가
-                                                // "remove your custom copy confirmation" 을 명시한다.
-                                                // https://developer.android.com/develop/ui/compose/touch-input/copy-and-paste
-                                                // minSdk 26 이라 12L 이하 기기에는 그대로 토스트가 필요하다.
                                                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                                                     Toast.makeText(context, "운동 방법을 복사했어요", Toast.LENGTH_SHORT).show()
                                                 }
@@ -215,6 +235,22 @@ fun WorkoutDetailScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DetailMetaChip(label: String) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
     }
 }
 

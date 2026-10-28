@@ -23,16 +23,27 @@ import com.gunnys.eundunhealth.domain.model.normalizeRestDays
 fun ProfileSummaryCard(
     height: Float,
     weight: Float,
-    bodyFat: Float,
-    muscleMass: Float,
+    bodyFat: Float?,
+    muscleMass: Float?,
     title: String = "입력 요약",
     restDays: List<Int>? = null,
     modifier: Modifier = Modifier,
 ) {
+    val bodyCompText = when {
+        muscleMass != null && bodyFat != null ->
+            "${"%.1f".format(muscleMass)}kg · ${"%.1f".format(bodyFat)}%"
+        muscleMass != null ->
+            "골격근량 ${"%.1f".format(muscleMass)}kg · 체지방률 미입력"
+        bodyFat != null ->
+            "골격근량 미입력 · 체지방률 ${"%.1f".format(bodyFat)}%"
+        else ->
+            "미입력 (선택 항목)"
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -49,7 +60,7 @@ fun ProfileSummaryCard(
             Spacer(modifier = Modifier.height(6.dp))
             SummaryEntry(
                 label = "골격근량 / 체지방률",
-                value = "${"%.1f".format(muscleMass)}kg · ${"%.1f".format(bodyFat)}%",
+                value = bodyCompText,
             )
             restDays?.let { days ->
                 val normalized = normalizeRestDays(days)
@@ -96,8 +107,8 @@ private fun ProfileSummaryCardPreview() {
         ProfileSummaryCard(
             height = 175f,
             weight = 70.5f,
-            bodyFat = 18.2f,
-            muscleMass = 32.1f,
+            bodyFat = null,
+            muscleMass = null,
             restDays = listOf(6, 7),
         )
     }
