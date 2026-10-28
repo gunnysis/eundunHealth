@@ -1,5 +1,29 @@
 # Multi-AI Handoff Log
 
+## 2026-10-28 (Gemini -> Claude/User) Sentry 이슈 7816180647 (`EUNDUNHEALTH-G`, HTTP 504) 점검·디버깅 및 근본 원인 해결 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **Sentry 이슈 `7816180647` (`EUNDUNHEALTH-G`) 실측 분석 완료**:
+  - 발생 시각: `2026-10-28T07:57:11.845Z` (`16:57:11 KST`), 릴리스 `com.gunnys.eundunhealth@0.6.1+40` (`count=1`, `userCount=1`).
+  - 발생 기기: Google Play Console **Pre-launch Report (자동 사전 출시 테스트 / Robo 크롤러)** 가상 기기 (`OnePlus8Pro`, `QKR1.191246.002`, 커널 `android-build@apa28.mtv.corp.google.com`, `country_code: US`).
+  - 네트워크·서버 대조 결과:
+    1. `07:55:56.882Z` (서버 UTC `07:55:58.142Z`): 앱 최초 기동 시 `GET /app-compatibility?platform=android&versionCode=40` `200 OK` 성공.
+    2. 이후 약 74.5초간 크롤러가 MSAL 브라우저 로그인 화면 진입·취소(`user_cancelled`)를 2회 반복한 뒤 `07:57:11.312Z`에 `MainActivity`를 재생성하며 다시 `GET /app-compatibility` 호출.
+    3. **1차 시도 (`07:57:11.386Z ~ 07:57:11.796Z`)**: 유휴 상태였던 커넥션 재사용 중 `unexpected end of stream` 및 중간 게이트웨이 `HTTP 504` 발생(Azure Container Apps `eundunhealth-api--0000066` 컨테이너 로그에는 `504` 없음).
+    4. **2차 시도 (`RetryInterceptor` 500ms 백오프 재시도 → 서버 UTC `07:57:14.376Z`)**: `eundunhealth-api--0000066`에서 `GET /app-compatibility?platform=android&versionCode=40` **`200 OK` 정상 처리 완료**.
+- **근본 원인 해결 ([`NetworkModule.kt`](app/src/main/java/com/gunnys/eundunhealth/di/NetworkModule.kt), [`RetryInterceptorTest.kt`](app/src/test/java/com/gunnys/eundunhealth/data/remote/interceptor/RetryInterceptorTest.kt))**:
+  1. **인터셉터 순서 교정 (`SentryOkHttpInterceptor`를 `RetryInterceptor` 앞/바깥으로 이동)**: 기존에는 `RetryInterceptor`가 바깥(`#1`), `SentryOkHttpInterceptor`가 안쪽(`#3`)에 있어 1차 시도가 `504`로 실패하는 순간 `RetryInterceptor`가 재시도(`200 OK`)하기도 전에 `SentryOkHttpEvent`가 조기 종료(`isEventFinished = true`)되며 `SentryHttpClientException`을 발송하고 2차 성공 응답을 무시하던 구조적 버그를 해결.
+  2. **`captureFailedRequests = false` 명시 및 `provideExerciseDbOkHttpClient` 방어**: `SentryOkHttpInterceptor(captureFailedRequests = false)`를 `backendOkHttpBuilder`와 `provideExerciseDbOkHttpClient` 모두 최외곽에 명시 배치하여, Sentry Gradle Plugin ASM(`RealCall.getResponseWithInterceptorChain$okhttp`)이 기본 `SentryOkHttpInterceptor(captureFailedRequests = true)`를 `RetryInterceptor` 뒤에 자동 주입하는 현상까지 원천 차단([`AppError.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/model/AppError.kt) 정책과 정합; HTTP 스팬·브레드크럼은 그대로 유지).
+  3. **검증 완료**: `.\gradlew.bat spotlessApply :app:testDebugUnitTest --tests "com.gunnys.eundunhealth.data.remote.interceptor.RetryInterceptorTest" :app:detektDebug spotlessCheck` → **BUILD SUCCESSFUL** (신규 회귀 테스트 2건 포함 통과).
+
+**다음 할 일 (Next Steps / TODO):**
+- 변경사항 커밋/PR 반영 및 Sentry 이슈 `7816180647` (`EUNDUNHEALTH-G`) Resolve 처리 여부 확인.
+
+**주의사항 및 컨텍스트 (Context & Constraints):**
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
 ## 2026-10-28 (Gemini -> Claude/User) PROP-05 UI/UX 개선 통합 설계서 Phase 1~4 구현 + 2차 심층 리팩토링 + v0.6.1 (versionCode=40) 운영 배포 완료
 
 **현재까지의 작업 상태 (Current Status):**

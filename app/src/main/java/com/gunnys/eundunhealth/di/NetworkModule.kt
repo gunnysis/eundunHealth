@@ -56,6 +56,12 @@ object NetworkModule {
         tokenHolder: AtomicReference<String?>,
         msalProvider: MsalClientProvider,
     ): OkHttpClient.Builder = OkHttpClient.Builder()
+        // SentryOkHttpInterceptor 는 반드시 RetryInterceptor 바깥(앞)에 배치한다.
+        // 안쪽에 두면 1차 시도가 일시적 5xx/IOException 으로 실패했을 때 재시도(2차 200 OK) 전에
+        // SentryOkHttpEvent 가 조기 종료(finish)되어 실패로 오탐 기록된다.
+        // 또한 captureFailedRequests=false 로 설정해 HTTP 5xx 응답이 SentryHttpClientException
+        // 노이즈 이슈로 중복 수집되지 않게 한다(AppError.Server 정책과 정합; 스팬·브레드크럼은 유지).
+        .addInterceptor(SentryOkHttpInterceptor(captureFailedRequests = false))
         .addInterceptor(RetryInterceptor())
         .addInterceptor { chain ->
             val token = tokenHolder.get()
@@ -67,7 +73,6 @@ object NetworkModule {
             chain.proceed(builder.build())
         }
         .authenticator(TokenAuthenticator(EntraSessionRefresher(msalProvider), tokenHolder))
-        .addInterceptor(SentryOkHttpInterceptor())
         .addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = if (BuildConfig.DEBUG) {
@@ -146,7 +151,10 @@ object NetworkModule {
     @Singleton
     @Named("exercisedb")
     fun provideExerciseDbOkHttpClient(): OkHttpClient = // OSS ExerciseDB(https://oss.exercisedb.dev)는 인증 헤더 불필요한 공개 API.
+        // Sentry Gradle Plugin ASM 이 RetryInterceptor 뒤에 기본 SentryOkHttpInterceptor(captureFailedRequests=true)를
+        // 자동 주입하지 않도록 명시적으로 앞에 배치한다.
         OkHttpClient.Builder()
+            .addInterceptor(SentryOkHttpInterceptor(captureFailedRequests = false))
             .addInterceptor(RetryInterceptor())
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
