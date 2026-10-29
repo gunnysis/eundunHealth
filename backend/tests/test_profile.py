@@ -37,16 +37,19 @@ async def test_update_profile(client, sample_profile):
 
 @pytest.mark.asyncio
 async def test_update_profile_blocks_unsupported_client_from_resetting_rest_days(client, sample_profile):
-    """구버전(<=40) 클라이언트가 PUT /profile을 호출해 rest_days를 초기화하는 것을 차단한다."""
+    """지원 최소 버전 미만 클라이언트가 PUT /profile을 호출해 rest_days를 초기화하는 것을 차단한다."""
+    from app.config import get_settings
+
+    min_code = get_settings().minimum_supported_android_version_code
     await client.put("/profile", json={**sample_profile, "restDays": [3, 6, 7]})
     blocked = await client.put(
         "/profile",
         json=sample_profile,
-        headers={"Eundun-Client-Version-Code": "40"},
+        headers={"Eundun-Client-Version-Code": str(min_code - 1)},
     )
     assert blocked.status_code == 403
     assert blocked.json()["code"] == "client_update_required"
-    assert blocked.json()["minimumSupportedVersionCode"] == 41
+    assert blocked.json()["minimumSupportedVersionCode"] == min_code
 
     got = await client.get("/profile")
     assert got.json()["restDays"] == [3, 6, 7]

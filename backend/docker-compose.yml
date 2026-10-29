@@ -34,9 +34,8 @@ services:
       DEEPSEEK_KEY: ${DEEPSEEK_KEY:-placeholder}
       SENTRY_DSN: ""
       ENVIRONMENT: development
-      # 0.6.1 is a client patch; do not raise the server compatibility floor
-      # until a separately approved backend compatibility change requires it.
-      MINIMUM_SUPPORTED_ANDROID_VERSION_CODE: 39
+      # version.properties의 최신 versionCode와 SSoT 동기화 (scripts/bump-version.sh 자동 관리)
+      MINIMUM_SUPPORTED_ANDROID_VERSION_CODE: 44
     depends_on:
       db:
         condition: service_healthy

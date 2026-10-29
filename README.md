@@ -6,8 +6,8 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.7.2-blue)
-![versionCode](https://img.shields.io/badge/versionCode-43-blue)
+![versionName](https://img.shields.io/badge/versionName-0.7.3-blue)
+![versionCode](https://img.shields.io/badge/versionCode-44-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB)
@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원 또는 홈트레이닝 실천자, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **v0.7.2 (versionCode 43, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`, 2026-10-29)**. 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 탭 비주얼 대시보드·간소화 개편, 골격근량·체지방률 직접 입력 `0.1` 정밀도 수정, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (`GlobalStandard`, `100K TPM / 100 RPM`, OpenAI Strict JSON Schema) 전환, 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어(룰 14)·AGP 거버넌스(룰 15)·배포 연동 PR 트리아지(룰 16) 수립, 스마일 트레이닝 v2 전면 리팩토링(`2.0초 유지 × 3회 반복` 단일 표준 스펙, `READY` 1.0초 자동 시작, 풀블리드 카메라 HUD, 4대 접속 경로 IA, `/v2/smile-training/*` 컷오버, Room DB v2), Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, 운영 DB 하드 리셋 `hard-reset-v2-pg18-prod-20261029`), AGP 9.4.1 정식 업그레이드가 포함된다(프로덕션 업로드: `release.yml` run `40847386065`, 원장 PR #223 `LAST_UPLOADED_VERSION_CODE=43`, 백엔드 활성 리비전 `eundunhealth-api--0000068`).
+- **현재 단계** — **v0.7.3 (versionCode 44, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`, 2026-10-29)**. 앱 업데이트 감지 및 강제 안내 시스템 고도화(`Strict Mandatory Update`: Google Play In-App Updates `2.1.0` `IMMEDIATE` + 포그라운드 `ON_START` 재검증 + `ErrorContent` 스토어 이동 CTA + 버전 SSoT 자동화), 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 탭 비주얼 대시보드·간소화 개편, 골격근량·체지방률 직접 입력 `0.1` 정밀도 수정, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (`GlobalStandard`, `100K TPM / 100 RPM`, OpenAI Strict JSON Schema) 전환, 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어(룰 14)·AGP 거버넌스(룰 15)·배포 연동 PR 트리아지(룰 16) 수립, 스마일 트레이닝 v2 전면 리팩토링(`2.0초 유지 × 3회 반복` 단일 표준 스펙, `READY` 1.0초 자동 시작, 풀블리드 카메라 HUD, 4대 접속 경로 IA, `/v2/smile-training/*` 컷오버, Room DB v2), Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, 운영 DB 하드 리셋 `hard-reset-v2-pg18-prod-20261029`), AGP 9.4.1 정식 업그레이드가 포함된다.
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 

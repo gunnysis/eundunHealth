@@ -21,6 +21,8 @@ import com.gunnys.eundunhealth.domain.repository.MealPlanRepository
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
+import com.gunnys.eundunhealth.ui.update.InAppUpdateChecker
+import com.gunnys.eundunhealth.ui.update.PlayInAppUpdateChecker
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -56,6 +58,9 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindMlKitFaceModuleManager(impl: MlKitFaceModuleInstaller): MlKitFaceModuleManager
+
+    @Binds @Singleton
+    abstract fun bindInAppUpdateChecker(impl: PlayInAppUpdateChecker): InAppUpdateChecker
 
     companion object {
         @Provides

@@ -1,5 +1,21 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update Architecture`) 구현 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. 근본 원인 해결 및 정식 설계/구현 계획서 작성 (`docs/plans/logs/android.md`, 옛 페어 `docs/plans/2026-10-29-mandatory-app-update-{design,plan}.md` 흡수)**:
+  - 구버전 앱(`v0.7.0/41`, `v0.7.1/42`) 재실행 시 신규 프로덕션 출시 버전(`v0.7.2/43`) 업데이트 안내가 뜨지 않던 5대 구조적 원인(`F1`~`F5`)을 전수 규명하고, 새 버전 출시 시 예외 없이 최신 버전을 사용하도록 강제하는 **Strict Mandatory Update** 아키텍처로 구현 완료.
+- **2. Backend 최소 지원 버전(`43`) 즉시 상향 및 SSoT 자동화 (`F1`, `D5`)**:
+  - [`backend/app/config.py`](backend/app/config.py)(`41`→`43`), [`backend/containerapp.yaml`](backend/containerapp.yaml)(`41`→`43`), [`backend/docker-compose.yml`](backend/docker-compose.yml)(레거시 `39`→`43`), [`scripts/verify_containerapp_deployment.py`](scripts/verify_containerapp_deployment.py)(`41`→`43`), [`docs/TRD.md`](docs/TRD.md), [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md)를 모두 `43`으로 동기화.
+  - [`backend/tests/conftest.py`](backend/tests/conftest.py), [`backend/tests/test_weekly_plan.py`](backend/tests/test_weekly_plan.py), [`backend/tests/test_profile.py`](backend/tests/test_profile.py)에서 버전 숫자(`41`, `40`) 하드코딩 레거시를 제거하고 `get_settings().minimum_supported_android_version_code` 동적 참조로 리팩토링(향후 버전 번프 시 테스트 수동 수정 불필요).
+  - [`scripts/bump-version.sh`](scripts/bump-version.sh)가 버전 번프 시 백엔드 설정 3곳·배포 검증기·문서의 최소 지원 버전까지 자동 치환하도록 확장하고, [`scripts/check-version-monotonic.sh`](scripts/check-version-monotonic.sh)에 `--check-ssot` 및 preflight SSoT 불변식 검증 가드 추가.
+- **3. Android 이중 채널 강제 업데이트 감지 (Backend `/app-compatibility` OR Google Play In-App Updates `2.1.0`) & 포그라운드(`ON_START`) 재검증 (`F2`~`F5`, `D1`~`D4`, `D6`)**:
+  - [`gradle/libs.versions.toml`](gradle/libs.versions.toml) 및 [`app/build.gradle.kts`](app/build.gradle.kts)에 `com.google.android.play:app-update:2.1.0` 및 `app-update-ktx:2.1.0` 추가 (`app/gradle.lockfile`, `gradle/verification-metadata.xml` 동기화 및 삭제된 `EundunApi.kt` 레거시 주석 제거).
+  - [`PlayInAppUpdateChecker.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/update/PlayInAppUpdateChecker.kt): `AppUpdateManager.requestAppUpdateInfo()` 기반으로 `UpdateAvailability.UPDATE_AVAILABLE` 및 중단된 업데이트(`DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS`)를 감지하고 `AppUpdateType.IMMEDIATE` 전체화면 업데이트 시트를 실행(룰 14 준수 `by lazy` 초기화, 사이드로드 `InstallException` 안전 폴백).
+  - [`AuthViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/auth/AuthViewModel.kt) & [`AppNavigation.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/AppNavigation.kt): `Lifecycle.Event.ON_START` 옵저버(`onAppForegrounded()`, 30초 쿨다운 + 오프라인 실패 시 즉시 재시도)를 연결하여 앱을 강제 종료하지 않고 재실행할 때도 즉시 `SessionState.UpdateRequired`로 전환. `UpdateRequiredScreen`의 미사용 레거시 파라미터 `@Suppress("UnusedParameter") minimumVersionCode` 제거.
+  - [`ErrorContent.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/components/ErrorContent.kt): 런타임 `403 client_update_required` (`AppError.ClientUpdateRequired`) 수신 시 의미 없는 `"다시 시도"` 버튼 대신 `"Google Play에서 업데이트"` 스토어 이동 CTA 버튼 노출.
+  - [`AuthViewModelTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/auth/AuthViewModelTest.kt) 및 [`PlayInAppUpdateCheckerTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/update/PlayInAppUpdateCheckerTest.kt) 단위 테스트 9건 추가 완료.
+
 ## 2026-10-29 (Gemini -> Claude/User) `v0.7.2` (`versionCode=43`) 프로덕션 배포 완료 · 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드 개편 · 체성분 직접 입력 0.1 정밀도 버그 수정 · 레거시 DeepSeek 인프라 정리 · 전수 문서 최신화 완결
 
 **현재까지의 작업 상태 (Current Status):**

@@ -4,6 +4,17 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-29 — 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update`: Google Play In-App Updates `2.1.0` + 포그라운드 `ON_START` 재검증 + 버전 SSoT 자동화, v0.7.3/44)
+
+- **Why**: 신규 프로덕션 버전(`v0.7.2/43`) 출시 후에도 기존 설치 앱(`v0.7.0/41`, `v0.7.1/42`)을 재실행했을 때 업데이트 안내가 표시되지 않던 5대 구조적 결함(① 백엔드 `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` 4중 드리프트 및 번프 스크립트 미연동, ② 런타임 `403 client_update_required` 수신 시 `ErrorContent` 스토어 이동 버튼 부재, ③ `AuthViewModel.init` 1회 한정 체크로 인한 웜 스타트 미감지, ④ 단말 Google Play In-App Updates 미연동, ⑤ `UpdateRequiredScreen` 미사용 파라미터 및 죽은 주석 잔존)을 근본 해결해야 했다.
+- **What**:
+  - **Android 이중 채널 강제 업데이트 감지 & `ON_START` 재검증**: `com.google.android.play:app-update:2.1.0` 및 `app-update-ktx:2.1.0`을 도입해 `PlayInAppUpdateChecker`(`UPDATE_AVAILABLE` 및 중단된 업데이트 `DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS` 감지, `AppUpdateType.IMMEDIATE` 전체화면 시트 실행, 룰 14 준수 `by lazy` 초기화)를 구현하고, `AuthViewModel.onAppForegrounded()`(30초 쿨다운 + 오프라인 실패 시 즉시 재시도) 및 `AppNavigation` `Lifecycle.Event.ON_START` 옵저버를 연결하여 콜드 스타트와 포그라운드 재진입 모두에서 즉시 `SessionState.UpdateRequired`로 전환.
+  - **런타임 `403` 스토어 이동 CTA 및 레거시 제거**: `ErrorContent`에서 `AppError.ClientUpdateRequired`일 때 `"Google Play에서 업데이트"` 버튼을 노출하고, `UpdateRequiredScreen`의 미사용 `minimumVersionCode` 파라미터 및 `app/build.gradle.kts` 죽은 주석을 제거.
+  - **버전 SSoT 자동화 & 테스트 하드코딩 제거**: `scripts/bump-version.sh`가 백엔드(`config.py`, `containerapp.yaml`, `docker-compose.yml`), 배포 검증기(`verify_containerapp_deployment.py`), 문서(`TRD.md`, `operations-snapshot.md`)의 최소 지원 버전을 원자적으로 함께 치환하도록 확장하고, `scripts/check-version-monotonic.sh`에 SSoT 불변식 검증 가드를 추가. `conftest.py`, `test_weekly_plan.py`, `test_profile.py`의 버전 숫자 하드코딩을 `get_settings().minimum_supported_android_version_code` 동적 참조로 리팩토링.
+- **Outcome**: Backend pytest 147/147 PASS, Android Spotless/Detekt(0건)/AGP 10 가드/단위 테스트(`AuthViewModelTest`, `PlayInAppUpdateCheckerTest` 신규 9건 포함) 전수 PASS, 버전 SSoT(`44`) 및 단조성 가드 통과.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/ui/update/PlayInAppUpdateChecker.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/auth/AuthViewModel.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/navigation/AppNavigation.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/components/ErrorContent.kt`, `app/src/main/java/com/gunnys/eundunhealth/di/RepositoryModule.kt`, `backend/app/config.py`, `backend/containerapp.yaml`, `backend/docker-compose.yml`, `backend/tests/{conftest,test_weekly_plan,test_profile}.py`, `scripts/{bump-version,check-version-monotonic}.sh`, `scripts/verify_containerapp_deployment.py`
+- **설계 원문**: `2026-10-29-mandatory-app-update-design.md`, `2026-10-29-mandatory-app-update-plan.md` (본 entry 로 흡수, git rm)
+
 ### 2026-10-29 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 버그 수정 및 운영 출시 (v0.7.2/43, commit `bfb9ee8`)
 
 - **Commit**: `bfb9ee8` (PR #221 squash merge; Play 프로덕션 업로드 run `40847386065` / 원장 PR #223 `a89447a` `LAST_UPLOADED_VERSION_CODE=43`, 백엔드 활성 리비전 `eundunhealth-api--0000068`)

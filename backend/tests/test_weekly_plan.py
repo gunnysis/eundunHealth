@@ -115,36 +115,42 @@ async def test_plan_mode_is_required_and_enum_validated(client, sample_plan):
 
 @pytest.mark.asyncio
 async def test_unsupported_client_is_blocked_only_on_v2_mutation(client, sample_plan):
+    from app.config import get_settings
+
+    min_code = get_settings().minimum_supported_android_version_code
     blocked = await client.post(
         "/v2/weekly-plan",
         json=sample_plan,
-        headers={"Eundun-Client-Version-Code": "40"},
+        headers={"Eundun-Client-Version-Code": str(min_code - 1)},
     )
     assert blocked.status_code == 403
     assert blocked.json() == {
         "code": "client_update_required",
         "message": "앱 업데이트가 필요합니다",
-        "minimumSupportedVersionCode": 41,
+        "minimumSupportedVersionCode": min_code,
     }
     assert (await client.get("/v2/weekly-plan", params={"weekStart": sample_plan["weekStart"]})).status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_public_app_compatibility(client):
-    resp_old = await client.get("/app-compatibility", params={"platform": "android", "versionCode": 40})
+    from app.config import get_settings
+
+    min_code = get_settings().minimum_supported_android_version_code
+    resp_old = await client.get("/app-compatibility", params={"platform": "android", "versionCode": min_code - 1})
     assert resp_old.status_code == 200
     assert resp_old.json() == {
         "platform": "android",
-        "minimumSupportedVersionCode": 41,
+        "minimumSupportedVersionCode": min_code,
         "updateRequired": True,
         "playPackageUri": "market://details?id=com.gunnys.eundunhealth",
     }
 
-    resp_supported = await client.get("/app-compatibility", params={"platform": "android", "versionCode": 41})
+    resp_supported = await client.get("/app-compatibility", params={"platform": "android", "versionCode": min_code})
     assert resp_supported.status_code == 200
     assert resp_supported.json() == {
         "platform": "android",
-        "minimumSupportedVersionCode": 41,
+        "minimumSupportedVersionCode": min_code,
         "updateRequired": False,
         "playPackageUri": "market://details?id=com.gunnys.eundunhealth",
     }

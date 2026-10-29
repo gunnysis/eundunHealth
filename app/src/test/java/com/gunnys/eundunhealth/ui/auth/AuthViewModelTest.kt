@@ -1,6 +1,10 @@
 package com.gunnys.eundunhealth.ui.auth
 
 import android.app.Activity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
+import com.gunnys.eundunhealth.api.generated.api.AppCompatibilityApi
+import com.gunnys.eundunhealth.api.generated.model.AppCompatibilityResponse
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.AppErrorException
 import com.gunnys.eundunhealth.domain.model.UserProfile
@@ -8,6 +12,7 @@ import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
+import com.gunnys.eundunhealth.ui.update.InAppUpdateChecker
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,13 +26,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import retrofit2.Response
 import java.net.UnknownHostException
 
 /**
- * AuthViewModel 테스트 — 세션 복원 + 인증 게이트 상태 전이.
+ * AuthViewModel 테스트 — 세션 복원 + 인증 게이트 상태 전이 + 강제 업데이트 이중 가드(콜드 스타트 & ON_START 포그라운드 복귀).
  *
  * 브라우저 위임 전환으로 Login/Signup/ForgotPassword VM 3종이 사라져 그 테스트들도 함께
- * 폐기됐다. 대신 여기서 게이트의 상태 전이를 검증한다.
+ * 폐기됐다. 대신 여기서 게이트의 상태 전이와 강제 업데이트 감지를 검증한다.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModelTest {
@@ -82,8 +88,13 @@ class AuthViewModelTest {
         // 신규 사용자를 홈으로 보내는 반대 방향은 홈 에러 + 재시도로 회복 가능하다.
         val vm = createViewModel(
             restoreSessionUserId = "user-1",
-            profileResult = Result.failure(UnknownHostException("offline")),
-        )
+            profileResult = Result.success(sampleProfile()),
+        ).let {
+            createViewModel(
+                restoreSessionUserId = "user-1",
+                profileResult = Result.failure(UnknownHostException("offline")),
+            )
+        }
         advanceUntilIdle()
 
         val session = vm.sessionState.value
@@ -121,6 +132,122 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         assertEquals(true, (vm.sessionState.value as SessionState.Authenticated).needsOnboarding)
+    }
+
+    // ---- 강제 업데이트 이중 가드 (콜드 스타트 + ON_START 포그라운드 복귀) ----
+
+    @Test
+    fun `콜드 스타트 시 백엔드 updateRequired 가 true 이면 UpdateRequired 로 전이한다`() = runTest {
+        val compatApi = FakeAppCompatibilityApi(updateRequired = true, minimumVersionCode = 44)
+        val vm = createViewModel(
+            restoreSessionUserId = "user-1",
+            appCompatibilityApi = compatApi,
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            SessionState.UpdateRequired(playPackageUri = DEFAULT_PLAY_PACKAGE_URI),
+            vm.sessionState.value,
+        )
+    }
+
+    @Test
+    fun `콜드 스타트 시 백엔드가 false 여도 Play InAppUpdateChecker 가 true 이면 UpdateRequired 로 전이한다`() = runTest {
+        val compatApi = FakeAppCompatibilityApi(updateRequired = false, minimumVersionCode = 43)
+        val updateChecker = FakeInAppUpdateChecker(immediateAvailable = true)
+        val vm = createViewModel(
+            restoreSessionUserId = "user-1",
+            appCompatibilityApi = compatApi,
+            inAppUpdateChecker = updateChecker,
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            SessionState.UpdateRequired(playPackageUri = DEFAULT_PLAY_PACKAGE_URI),
+            vm.sessionState.value,
+        )
+    }
+
+    @Test
+    fun `Authenticated 상태에서 포그라운드 복귀(onAppForegrounded) 시 쿨다운 경과 후 새 버전이 감지되면 즉시 UpdateRequired 로 전환한다`() = runTest {
+        val compatApi = FakeAppCompatibilityApi(updateRequired = false, minimumVersionCode = 43)
+        val updateChecker = FakeInAppUpdateChecker(immediateAvailable = false)
+        var nowMs = 1_000L
+        val vm = createViewModel(
+            restoreSessionUserId = "user-1",
+            profileResult = Result.success(sampleProfile()),
+            appCompatibilityApi = compatApi,
+            inAppUpdateChecker = updateChecker,
+        ).also { it.clockMs = { nowMs } }
+        advanceUntilIdle()
+
+        assertTrue(vm.sessionState.value is SessionState.Authenticated)
+        assertEquals(1, compatApi.callCount)
+
+        // 스토어에 새 버전 출시 & 30초 쿨다운 경과 후 앱 재실행(ON_START)
+        updateChecker.immediateAvailable = true
+        nowMs += AuthViewModel.FOREGROUND_CHECK_COOLDOWN_MS + 1L
+        vm.onAppForegrounded()
+        advanceUntilIdle()
+
+        assertEquals(
+            SessionState.UpdateRequired(playPackageUri = DEFAULT_PLAY_PACKAGE_URI),
+            vm.sessionState.value,
+        )
+        assertEquals(2, compatApi.callCount)
+    }
+
+    @Test
+    fun `포그라운드 복귀가 30초 쿨다운 이내에 연속 발생하면 중복 버전 체크를 생략한다`() = runTest {
+        val compatApi = FakeAppCompatibilityApi(updateRequired = false, minimumVersionCode = 43)
+        var nowMs = 5_000L
+        val vm = createViewModel(
+            restoreSessionUserId = "user-1",
+            profileResult = Result.success(sampleProfile()),
+            appCompatibilityApi = compatApi,
+        ).also { it.clockMs = { nowMs } }
+        advanceUntilIdle()
+
+        assertEquals(1, compatApi.callCount)
+
+        // 10초 뒤 포그라운드 복귀 (30초 미만) → 호출 생략
+        nowMs += 10_000L
+        vm.onAppForegrounded()
+        advanceUntilIdle()
+
+        assertEquals(1, compatApi.callCount)
+    }
+
+    @Test
+    fun `콜드 스타트 시 오프라인으로 백엔드 체크가 실패했으면 다음 포그라운드 복귀 시 쿨다운 없이 즉시 재시도한다`() = runTest {
+        val compatApi = FakeAppCompatibilityApi(
+            updateRequired = true,
+            minimumVersionCode = 44,
+            shouldThrowOffline = true,
+        )
+        var nowMs = 1_000L
+        val vm = createViewModel(
+            restoreSessionUserId = "user-1",
+            profileResult = Result.success(sampleProfile()),
+            appCompatibilityApi = compatApi,
+        ).also { it.clockMs = { nowMs } }
+        advanceUntilIdle()
+
+        // 오프라인 시에는 기존 세션으로 진입 허용
+        assertTrue(vm.sessionState.value is SessionState.Authenticated)
+        assertEquals(1, compatApi.callCount)
+
+        // 2초 뒤 네트워크 복구 후 포그라운드 재진입 → 쿨다운 없이 즉시 감지하여 UpdateRequired 전환
+        compatApi.shouldThrowOffline = false
+        nowMs += 2_000L
+        vm.onAppForegrounded()
+        advanceUntilIdle()
+
+        assertEquals(
+            SessionState.UpdateRequired(playPackageUri = DEFAULT_PLAY_PACKAGE_URI),
+            vm.sessionState.value,
+        )
+        assertEquals(2, compatApi.callCount)
     }
 
     // ---- 인증 게이트 상태 전이 (설계 §5.3) ----
@@ -235,10 +362,50 @@ class AuthViewModelTest {
         restoreSessionUserId: String? = null,
         profileResult: Result<UserProfile?> = Result.success(null),
         authenticateResult: Result<String> = Result.failure(IllegalStateException("not stubbed")),
+        appCompatibilityApi: AppCompatibilityApi? = null,
+        inAppUpdateChecker: InAppUpdateChecker? = null,
     ): AuthViewModel = AuthViewModel(
         FakeAuthRepository(restoreSessionUserId, authenticateResult),
         FakeUserRepository(profileResult),
+        appCompatibilityApi = appCompatibilityApi,
+        inAppUpdateChecker = inAppUpdateChecker,
     )
+
+    private class FakeAppCompatibilityApi(
+        var updateRequired: Boolean = false,
+        var minimumVersionCode: Int = 43,
+        var shouldThrowOffline: Boolean = false,
+    ) : AppCompatibilityApi {
+        var callCount = 0
+            private set
+
+        override suspend fun getAppCompatibility(
+            platform: AppCompatibilityApi.PlatformGetAppCompatibility,
+            versionCode: Int,
+        ): Response<AppCompatibilityResponse> {
+            callCount++
+            if (shouldThrowOffline) {
+                throw UnknownHostException("offline")
+            }
+            return Response.success(
+                AppCompatibilityResponse(
+                    platform = "android",
+                    minimumSupportedVersionCode = minimumVersionCode,
+                    updateRequired = updateRequired,
+                    playPackageUri = DEFAULT_PLAY_PACKAGE_URI,
+                ),
+            )
+        }
+    }
+
+    private class FakeInAppUpdateChecker(
+        var immediateAvailable: Boolean = false,
+    ) : InAppUpdateChecker {
+        override suspend fun isImmediateUpdateAvailable(): Boolean = immediateAvailable
+        override suspend fun launchImmediateUpdateIfAvailable(
+            launcher: ActivityResultLauncher<IntentSenderRequest>,
+        ): Boolean = immediateAvailable
+    }
 
     private class FakeAuthRepository(
         private val restoreSessionUserId: String? = null,
