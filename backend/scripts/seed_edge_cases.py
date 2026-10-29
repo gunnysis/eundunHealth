@@ -606,7 +606,7 @@ async def verify_schema_constraints_and_cascades(session: AsyncSession) -> list[
         Badge(
             id=uuid.uuid4(),
             user_id="edge-user-01-null-optout",
-            badge_key="invalid_badge_key_999",
+            badge_key="nonexistent",
         ),
     )
 
