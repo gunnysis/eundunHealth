@@ -85,4 +85,22 @@ class DialogAndLayoutGuardTest {
                 progressHub.contains("Lifecycle.Event.ON_RESUME"),
         )
     }
+
+    @Test
+    fun `ProfileHubScreen 은 신체 루틴 히어로 대시보드와 통합 설정 카드 및 원탭 테마 세그먼트를 사용한다`() {
+        val profileHub = resolveSourceFile("com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt").readText()
+        assertTrue(
+            "ProfileHubScreen must include ProfileBodyHeroCard with BodyMetricMiniGrid and RestDayVisualStrip",
+            profileHub.contains("ProfileBodyHeroCard") &&
+                profileHub.contains("BodyMetricMiniGrid") &&
+                profileHub.contains("RestDayVisualStrip"),
+        )
+        assertTrue(
+            "ProfileHubScreen must consolidate settings into WorkoutAndHealthIntegrationCard and AppearanceSettingsCard with ThemeModeSegmentedRow",
+            profileHub.contains("WorkoutAndHealthIntegrationCard") &&
+                profileHub.contains("AppearanceSettingsCard") &&
+                profileHub.contains("ThemeModeSegmentedRow") &&
+                profileHub.contains("AccountAndVersionFooter"),
+        )
+    }
 }

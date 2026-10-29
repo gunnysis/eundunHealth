@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
 import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
@@ -20,6 +21,7 @@ import javax.inject.Inject
 
 @Immutable
 data class ProfileHubUiState(
+    val profile: UserProfile? = null,
     val isHealthConnectLoading: Boolean = true,
     val isHealthConnectAvailable: Boolean = false,
     val hasHealthPermission: Boolean = false,
@@ -65,6 +67,7 @@ class ProfileHubViewModel @Inject constructor(
         userRepository.getProfile()
             .onSuccess { profile ->
                 _uiState.value = _uiState.value.copy(
+                    profile = profile,
                     defaultWorkoutPlanMode = profile?.defaultWorkoutPlanMode,
                 )
             }
@@ -84,6 +87,7 @@ class ProfileHubViewModel @Inject constructor(
         userRepository.updateDefaultWorkoutPlanMode(mode)
             .onSuccess { updatedProfile ->
                 _uiState.value = _uiState.value.copy(
+                    profile = updatedProfile,
                     defaultWorkoutPlanMode = updatedProfile.defaultWorkoutPlanMode,
                     isUpdatingDefaultPlanMode = false,
                     defaultPlanModeError = null,
@@ -97,6 +101,11 @@ class ProfileHubViewModel @Inject constructor(
                     defaultPlanModeError = appErr,
                 )
             }
+    }
+
+    fun setThemeMode(mode: ThemeMode) = viewModelScope.launch {
+        themePreferences.setThemeMode(mode)
+        _uiState.value = _uiState.value.copy(themeMode = mode)
     }
 
     fun cycleTheme() = viewModelScope.launch {
