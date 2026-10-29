@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.6 (2026-10-29 — 스마일 트레이닝 v2 단일 표준 규격 리팩토링 및 4대 진입 경로 통합 반영)
-**제품 버전:** `0.6.1` (versionCode `40`, 태그 `v0.6.1` — Play 프로덕션 `completed` 100% 출시 완료; 저장소 스마일 트레이닝 v2 리팩토링 적용, Alembic head `e8b2c4d6f1a0`). 운영 증거는 `release.yml` run `40647597577`, 원장 PR #211(`LAST_UPLOADED_VERSION_CODE=40`), backend run `40647560099`, revision `eundunhealth-api--0000066`(image `c12f969`)이다.
+**문서 버전:** v3.7 (2026-10-29 — v0.7.0 스마일 트레이닝 v2 단일 표준 규격 컷오버 · 4대 진입 경로 통합 · PostgreSQL 18 스키마 하드 리셋 반영)
+**제품 버전:** v0.7.0 (versionCode 41) — 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `minimumSupportedVersionCode = 41`. 직전 프로덕션은 `0.6.1` (versionCode `40`, `release.yml` run `40647597577`, 원장 PR #211 `LAST_UPLOADED_VERSION_CODE=40`, backend run `40647560099` revision `eundunhealth-api--0000066`).
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

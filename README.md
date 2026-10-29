@@ -6,8 +6,8 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.6.1-blue)
-![versionCode](https://img.shields.io/badge/versionCode-40-blue)
+![versionName](https://img.shields.io/badge/versionName-0.7.0-blue)
+![versionCode](https://img.shields.io/badge/versionCode-41-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB)
@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원 또는 홈트레이닝 실천자, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **v0.6.1 (versionCode 40) Play 프로덕션(`completed` 100%, run `40647597577`, 원장 `LAST_UPLOADED_VERSION_CODE=40`) 및 Azure 백엔드(`eundunhealth-api--0000066` / image `c12f969`, run `40647560099`, Alembic head `d7f4a2c91b10`) 운영 배포 완료 (2026-10-28)**. PROP-05 Phase 1~4 UI/UX 전면 개선(M3 포레스트 민트 36슬롯 + 시맨틱 13토큰, Pretendard Variable 타이포그래피, Today Hero & 단계별 운동 가이드 모드, 3중 하이브리드 바디 피커 & 2단계 온보딩, 진행·식단·내 정보 허브 고도화), 패키지 업데이트, hash/Gradle lock, 컨테이너 digest 고정, Repository Gate 및 릴리스 원장 PR 흐름이 포함된다.
+- **현재 단계** — **v0.7.0 (versionCode 41, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`, 2026-10-29)**. 스마일 트레이닝 v2 전면 리팩토링(`2.0초 유지 × 3회 반복` 단일 표준 스펙, `READY` 1.0초 자동 시작, 풀블리드 카메라 HUD, 4대 접속 경로 IA, `/v2/smile-training/*` 컷오버, Room DB v2), Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, 운영 DB 하드 리셋 `hard-reset-v2-pg18-prod-20261029`), AGP 9.4.1 정식 업그레이드, Health Connect 연동 및 운동 가이드 UX 개선이 포함된다(직전 프로덕션: v0.6.1 / versionCode 40, `LAST_UPLOADED_VERSION_CODE=40`).
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
