@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
 > 작성일: 2026-05-25 / 최근 갱신: **2026-10-29 — v0.7.2/43 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환 · PR Triage 거버넌스(룰 16) 수립 (직전 v0.7.1/42 콜드 스타트 크래시 핫픽스 · 5계층 심층 방어 룰 14 & AGP 거버넌스 룰 15)**
-> 작성 기준: 태그 `v0.7.2`의 **v0.7.2/43**이 release workflow run `40847386065`로 Play production `completed`(100%) 업로드됐고, 원장 PR #223이 `LAST_UPLOADED_VERSION_CODE=43`을 기록한다. 백엔드는 run `40838433732`로 revision `eundunhealth-api--0000068`(이미지 `db8b4f8`, digest `sha256:93355c9ca21b7fb256240be2e9a1e9608c913bbcee8badffdbee936a504c6471`)에 배포 및 reaper Job 동기화 완료됐다.
+> 작성 기준: 태그 `v0.7.3`의 **v0.7.3/44**가 release workflow run `40868910274`로 Play production `completed`(100%) 업로드됐고, 원장 PR #226이 `LAST_UPLOADED_VERSION_CODE=44`를 기록한다. 백엔드는 run `40868854537`로 revision `eundunhealth-api--0000069`(이미지 `6357981`, digest `sha256:8be02b3bc8a8693fa2d60f53e9466277b37fc568781c750cbe918fc4ba16e00c`)에 배포 및 reaper Job 동기화 완료됐다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |---|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.7.3` / `44` (태그 `v0.7.2`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=43` |
+| versionName / versionCode | **`0.7.3` / `44` (태그 `v0.7.3`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=44` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.21 / 9.4.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** |
@@ -28,7 +28,7 @@
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.7.2/43**(2026-10-29 `release.yml` run `40847386065`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #223). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
+> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.7.3/44**(2026-10-29 `release.yml` run `40868910274`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #226). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
 > 이력: v0.7.1/42(2026-10-29, 원장 PR #217) ← v0.7.0/41(2026-10-29, 원장 PR #215) ← v0.6.1/40(2026-10-28, 원장 PR #211) ← v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=43` — 다음 릴리스 versionCode ≥ 44(룰 13 가드).
 > **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 정본은 `backend/sql/02_schema_create_all.sql`(`python -m app.schema_bootstrap`). 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
@@ -43,8 +43,8 @@
 | Resource Group | `rg-eundunhealth-prod-krc` (2026-07-29 `apps` 에서 이관 — 이동 7 + 알림/AG/UAI 재생성, RBAC 8건 재부여, LA shared key 갱신, 구 RG 삭제. 상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry — 원문 페어 `2026-07-29-rg-migration-{design,plan}.md` 는 흡수 후 git rm) |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
-| 활성 revision | `eundunhealth-api--0000068` (100% traffic, **warm — min=1**, 2026-10-29 실측) |
-| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:db8b4f8` (`@sha256:93355c9ca21b7fb256240be2e9a1e9608c913bbcee8badffdbee936a504c6471`, **MI pull**, app/reaper 일치 — PR #218 배포 run `40838433732`) |
+| 활성 revision | `eundunhealth-api--0000069` (100% traffic, **warm — min=1**, 2026-10-29 실측) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:6357981` (`@sha256:8be02b3bc8a8693fa2d60f53e9466277b37fc568781c750cbe918fc4ba16e00c`, **MI pull**, app/reaper 일치 — PR #225 배포 run `40868854537`) |
 | Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
