@@ -1,6 +1,6 @@
 # Multi-AI Handoff Log
 
-## 2026-10-29 (Gemini -> Claude/User) 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update Architecture`) 구현 완료
+## 2026-10-29 (Gemini -> Claude/User) `v0.7.3` (`versionCode=44`) 프로덕션 배포 완료 · 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update Architecture`, PR #225 / 원장 PR #226 / `release.yml` `40868910274` / `backend.yml` `40868854537` `eundunhealth-api--0000069`)
 
 **현재까지의 작업 상태 (Current Status):**
 - **1. 근본 원인 해결 및 정식 설계/구현 계획서 작성 (`docs/plans/logs/android.md`, 옛 페어 `docs/plans/2026-10-29-mandatory-app-update-{design,plan}.md` 흡수)**:
