@@ -5,6 +5,7 @@ import com.gunnys.eundunhealth.api.generated.api.AccountApi
 import com.gunnys.eundunhealth.data.local.LocalDataWiper
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.AppErrorException
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.microsoft.identity.client.AcquireTokenParameters
@@ -94,7 +95,7 @@ class AuthRepositoryImpl @Inject constructor(
         throw AppErrorException(mapMsalError(e))
     }
 
-    override suspend fun signOut(): Result<Unit> = runCatching {
+    override suspend fun signOut(): Result<Unit> = runSuspendCatching {
         val client = msalProvider.get()
         suspendCancellableCoroutine { cont ->
             client.signOut(
@@ -109,7 +110,7 @@ class AuthRepositoryImpl @Inject constructor(
         tokenHolder.set(null)
     }
 
-    override suspend fun deleteAccount(): Result<Unit> = runCatching {
+    override suspend fun deleteAccount(): Result<Unit> = runSuspendCatching {
         val userId = getCurrentUserId()
         // 백엔드가 Entra 사용자 + 앱 DB 데이터를 모두 삭제한다 (FastAPI account_service)
         val resp = accountApi.deleteAccount()

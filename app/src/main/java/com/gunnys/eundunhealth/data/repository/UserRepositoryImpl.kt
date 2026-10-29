@@ -10,9 +10,9 @@ import com.gunnys.eundunhealth.domain.model.Gender
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.model.normalizeRestDays
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.model.toWorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.UserRepository
-import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.math.BigDecimal
 import javax.inject.Inject
@@ -66,13 +66,4 @@ class UserRepositoryImpl @Inject constructor(
         restDays = normalizeRestDays(restDays),
         defaultWorkoutPlanMode = defaultWorkoutPlanMode?.value?.toWorkoutPlanMode(),
     )
-}
-
-@Suppress("TooGenericExceptionCaught")
-private suspend fun <T> runSuspendCatching(block: suspend () -> T): Result<T> = try {
-    Result.success(block())
-} catch (e: CancellationException) {
-    throw e
-} catch (e: Exception) {
-    Result.failure(e)
 }

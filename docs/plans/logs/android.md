@@ -4,6 +4,29 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-29 — 콜드 스타트 기동 크래시(`EUNDUNHEALTH-H`) 핫픽스 · Room 지연 초기화 · 5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) (v0.7.1/42)
+
+- **Why**: `v0.7.0/41` 배포 후 기기 업데이트 시 콜드 스타트 과정에서 `AuthViewModel -> DefaultLocalDataWiper -> DatabaseModule.provideSmileTrainingDatabase`가 호출될 때, `Room.databaseBuilder`에 `MIGRATION_1_2`(`startVersion = 1`)와 `fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)`이 동시에 등록되어 `RoomDatabase.Builder.validateMigrationsNotRequired()`가 `IllegalArgumentException`을 던지며 앱이 100% 자동 종료됐다(`INC-2026-10-29-34`, Sentry `EUNDUNHEALTH-H`). 또한 단위 테스트가 DAO를 Mock으로 대체하여 실제 Hilt `@Provides` 빌더 조합을 호출하지 않던 테스트 사각지대를 근본 해소해야 했다.
+- **What**:
+  - **콜드 스타트 크래시 근본 해결 & 초기화 리팩토링**: `DatabaseModule.provideSmileTrainingDatabase`에서 충돌하던 `.fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)` 제거, `DefaultLocalDataWiper`에 `dagger.Lazy<WeeklyPlanDao>` / `dagger.Lazy<SmileSessionDao>` 지연 주입 적용(콜드 스타트 메인 스레드 Room DB 동기 초기화 차단), `runSuspendCatching` 공통화 및 `AppError.reportToSentry()`의 `CancellationException` 재던지기 가드 전수 적용(12개 클래스).
+  - **5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) 테스트·스크립트 구축**: `DatabaseModuleTest`, `NetworkModuleTest`, `DefaultLocalDataWiperTest`, `AgpBuildContractTest` 단위 테스트(238건), `DatabaseMigrationAndInitTest` 계측 테스트, `scripts/smoke-cold-start.sh` 에뮬레이터/실기기 콜드 스타트 런타임 스모크 게이트 및 `scripts/check-agp10-compat.sh` 고도화.
+- **Outcome**: Spotless/Detekt(0건)/AGP 호환성 가드/단위 테스트 238/238 PASS, 에뮬레이터(`Galaxy_S25_Ultra`, Android 16) 계측 테스트 2/2 PASS 및 Debug/Release APK 콜드 스타트 스모크 게이트(`FATAL EXCEPTION` 0건) 통과.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/di/DatabaseModule.kt`, `app/src/main/java/com/gunnys/eundunhealth/data/local/LocalDataWiper.kt`, `app/src/main/java/com/gunnys/eundunhealth/domain/model/AppError.kt`, `app/src/test/java/com/gunnys/eundunhealth/di/*`, `app/src/test/java/com/gunnys/eundunhealth/AgpBuildContractTest.kt`, `app/src/androidTest/java/com/gunnys/eundunhealth/data/local/DatabaseMigrationAndInitTest.kt`, `scripts/smoke-cold-start.sh`, `scripts/check-agp10-compat.sh`, `scripts/preflight-release.sh`, `CLAUDE.md`
+
+### 2026-10-29 — 스마일 트레이닝 v2 리팩토링 · Zero-Legacy Cutover · 4대 접속 경로(IA) 구현 및 운영 출시 (v0.7.0/41, commit 40595a1)
+
+- **Commit**: `40595a1` (PR #213 release/v0.7.0 머지; Play 프로덕션 업로드 run `40816257901` / 원장 PR #215 `LAST_UPLOADED_VERSION_CODE=41`, 백엔드 배포 run `40816129146` / 리비전 `0000067`)
+- **Why**: `v0.5.0`에 도입된 스마일 트레이닝 v1의 복잡한 3중 설정(루틴 3 × 난이도 3 × 횟수 5 = 45개 조합)과 5점 감정 회고 설문이 높은 이탈률을 유발하고, `READY` 단계 프레임 무시 결함(수동 2차 버튼 터치 강제) 및 홈 화면 접근성 단절이 존재하여, 이를 단일 표준 규격(`2초 유지 × 3회 반복`)과 1.0초 얼굴 정렬 자동 시작, 4대 접속 경로(IA)로 개편하고 전 계층 v1 레거시를 전면 소거해야 했다.
+- **What**:
+  - **도메인 & 비전 단일 표준화**: `SmileRoutineType`, `SmileDifficultyLevel`, `reflectionEmoji`, `REFLECTION` 상태를 전량 제거하고 단일 표준 스펙 상수(`SmileTrainingSpec`)로 통합. `SmileSignalEvaluator`에 지수 이동 평균(EMA alpha 0.6f) 스무딩과 `READY` 단계 1.0초 연속 얼굴 정렬 시 자동 시작 트리거(`allowAutoStart = !isPaused`) 구현.
+  - **Room DB v2 Cutover Reset & 오프라인 워커**: `SmileSessionEntity`에서 루틴·난이도·이모지 컬럼 제거, `SmileTrainingDatabase` v2(`MIGRATION_1_2` + `fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)`), `SmileSyncWorker`에 `ExistingWorkPolicy.APPEND_OR_REPLACE` 및 10배치 반복 드레인 적용, `deleteAllSessions()` 시 WorkManager 예약 취소 연동.
+  - **UI/UX 리팩토링 & 경량화**: `SmileTrainingScreen.kt` 1,114줄 → 606줄 대폭 경량화, `Modern Forest & Mint` 브랜드 토큰 적용, 풀블리드 카메라 HUD + 플로팅 글래스 시트, `ACTIVE -> COMPLETED` 직행 자동 저장, TalkBack `liveRegion` 깜빡임 방지 및 200% 대형 글꼴 스크롤 가드, 어두운 HUD 진입 시 상태바 명암 자동 전환.
+  - **4대 접속 경로(IA) 확립**: 홈 상단바 우측 상시 `SmileQuickActionChip`("스마일" / "✓ 스마일 완료"), `TodayHeroCard` 하단 스마트 `SmileTrainingContextualCard`(미완료 시 노출/완료 시 자동 숨김), `WorkoutGuideScreen` 완료 화면 쿨다운 브릿지 버튼, `ProgressHubScreen` 최상단 마음 연습 카드 승격.
+  - **백엔드 v2 API 승격**: `/v2/smile-training/sessions` (POST/GET/DELETE) 및 `/v2/smile-training/statistics` (GET) 4개 라우트 승격(`CamelSchema` 및 `operation_id` 보존). 구형 `/smile-training/*` 및 v1 세션 데이터 완전 정리.
+- **Outcome**: Android Spotless/AGP 10 가드/Detekt(0건)/단위 테스트 212/212 PASS, Zero-Legacy Grep Gate(잔존 0건) 통과, R8 릴리스 빌드 완료 및 Google Play 프로덕션(`completed` 100%, run `40816257901`)·백엔드(`0000067`, run `40816129146`) 배포 완료.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/domain/smile/*`, `app/src/main/java/com/gunnys/eundunhealth/data/local/*`, `app/src/main/java/com/gunnys/eundunhealth/data/sync/*`, `app/src/main/java/com/gunnys/eundunhealth/ui/smile/*`, `app/src/main/java/com/gunnys/eundunhealth/ui/home/*`, `app/src/main/java/com/gunnys/eundunhealth/ui/workout/*`, `app/src/main/java/com/gunnys/eundunhealth/ui/navigation/*`, `backend/app/routers/smile_training.py`
+- **설계 원문**: `2026-10-29-smile-training-v2-plan.md` (본 entry 로 흡수, git rm)
+
 ### 2026-10-28 — UI/UX 전면 개선 (`PROP-05` Phase 1~4: 브랜드·M3·Pretendard·Today Hero·운동 가이드 모드·허브·3중 하이브리드 바디 피커·2단계 온보딩) 구현·심층 리팩토링 및 운영 출시 (v0.6.1/40, commit `c12f969`)
 
 - **Commit**: `c12f969` (PR #201 squash merge; Play 프로덕션 업로드 run `40647597577` / 원장 PR #211 `LAST_UPLOADED_VERSION_CODE=40`, 백엔드 배포 run `40647560099` / 리비전 `0000066`)

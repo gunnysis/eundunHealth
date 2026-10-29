@@ -5,6 +5,7 @@ import com.gunnys.eundunhealth.api.generated.model.BadgeResponse
 import com.gunnys.eundunhealth.data.remote.util.bodyOrThrow
 import com.gunnys.eundunhealth.domain.model.Badge
 import com.gunnys.eundunhealth.domain.model.BadgeCatalog
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.repository.BadgeRepository
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -78,11 +79,11 @@ class BadgeRepositoryImpl internal constructor(
         return fresh
     }
 
-    override suspend fun getEarnedBadges(): Result<List<Badge>> = runCatching {
+    override suspend fun getEarnedBadges(): Result<List<Badge>> = runSuspendCatching {
         getOrFetchBadges().map { it.toDomain() }
     }
 
-    override suspend fun awardBadge(badgeKey: String): Result<Badge> = runCatching {
+    override suspend fun awardBadge(badgeKey: String): Result<Badge> = runSuspendCatching {
         // 적립이 성공했을 때만 무효화한다 — 실패까지 무효화하면 매 실패마다 불필요한 재조회가 붙는다.
         val dto = api.awardBadge(badgeKey).bodyOrThrow()
         mutex.withLock {
@@ -93,7 +94,7 @@ class BadgeRepositoryImpl internal constructor(
         dto.toDomain()
     }
 
-    override suspend fun hasBadge(badgeKey: String): Result<Boolean> = runCatching {
+    override suspend fun hasBadge(badgeKey: String): Result<Boolean> = runSuspendCatching {
         getOrFetchBadges().any { it.badgeKey == badgeKey }
     }
 

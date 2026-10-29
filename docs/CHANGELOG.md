@@ -4,6 +4,24 @@
 
 ---
 
+## [v0.7.1] — 2026-10-29 — 콜드 스타트 크래시 핫픽스 (`EUNDUNHEALTH-H`) · Room 지연 초기화 · 5계층 심층 방어(룰 14) · AGP 아키텍처 거버넌스(룰 15)
+
+> **2026-10-29 `v0.7.1` (`versionCode=42`) 핫픽스 릴리스.** `v0.7.0/41` 배포 직후 기기 콜드 스타트 시 `SmileTrainingDatabase` 빌더의 `MIGRATION_1_2`(`startVersion = 1`)와 `fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)` 충돌(`IllegalArgumentException: Migrations andFallbackToDestructiveMigrationFrom cannot be configured for the same version: 1`)로 발생한 100% 기동 즉시 종료 장애([`INC-2026-10-29-34`](ops/incident-log.md), Sentry `EUNDUNHEALTH-H`)를 근본 수정하고, 배포 후 장애 재발을 원천 차단하는 **5계층 심층 방어 정책(룰 14)** 과 **AGP 아키텍처·호환성·업그레이드 거버넌스(룰 15)** 를 수립·자동화했다.
+
+### 🚨 영역 A — 콜드 스타트 기동 크래시 근본 해결 & 초기화 경로 리팩토링
+- **`DatabaseModule.provideSmileTrainingDatabase` Room 버전 충돌 제거 ([`INC-2026-10-29-34`](ops/incident-log.md))**: `RoomDatabase.Builder.validateMigrationsNotRequired()`에서 `MIGRATION_1_2`(`startVersion = 1`)와 상호 배타 조건에 걸리던 `.fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)`을 제거하고, `v1 -> v2`는 `MIGRATION_1_2`로 무손실 이전하며 그 외 미정의 경로는 `.fallbackToDestructiveMigration(dropAllTables = true)`로 보호하도록 정합화했다.
+- **`DefaultLocalDataWiper` `dagger.Lazy<Dao>` 지연 주입 전환**: `AuthViewModel` 생성(`MainActivity` 콜드 스타트) 시점에 `LocalDataWiper` 주입만으로 메인 스레드에서 `EundunDatabase`와 `SmileTrainingDatabase`의 `RoomDatabase.build()`가 즉시 동기 실행되던 결합을 제거하고, 실제 로컬 데이터 초기화가 필요한 시점에만 DAO 및 Room DB가 생성되도록 `dagger.Lazy<WeeklyPlanDao>` / `dagger.Lazy<SmileSessionDao>`로 리팩토링했다.
+- **코루틴 취소 예외(`CancellationException`) 전파 보장 및 Sentry 오염 차단**: `runSuspendCatching`을 `domain/model/AppError.kt` 공통 유틸리티로 승격하고, `AppError.reportToSentry()` 초입에 `if (throwable is CancellationException) throw throwable` 이중 방어선을 추가했다. 또한 `Repository`·`UseCase`·`ViewModel` 12개 클래스의 `suspend` 블록 내 일반 `runCatching`을 전수 `runSuspendCatching`으로 교체해 화면 전환·취소 시 구조적 동시성 위반과 Sentry 오탐 보고를 원천 차단했다.
+
+### 🛡️ 영역 B — 배포 후 결함 재발 방지 5계층 심층 방어 정책 (`CLAUDE.md` 룰 14) & AGP 거버넌스 (룰 15)
+- **Layer 1 (DI & Builder Contract Unit Tests)**: Mock이 가리는 실제 Hilt `@Provides` 팩토리 메서드를 단위 테스트에서 직접 호출해 검증하는 [`DatabaseModuleTest`](../app/src/test/java/com/gunnys/eundunhealth/di/DatabaseModuleTest.kt)(Room 빌더 `validateMigrationsNotRequired` 및 스키마 JSON 무결성), [`NetworkModuleTest`](../app/src/test/java/com/gunnys/eundunhealth/di/NetworkModuleTest.kt)(3개 `OkHttpClient`의 `SentryOkHttpInterceptor` 최외곽 순서 불변식), [`DefaultLocalDataWiperTest`](../app/src/test/java/com/gunnys/eundunhealth/data/local/DefaultLocalDataWiperTest.kt)(`Lazy` DB 미초기화 검증)를 신설했다.
+- **Layer 2 (Room Migration & Init Instrumented Test)**: 실제 Android SQLite 런타임에서 `EundunDatabase` 및 `SmileTrainingDatabase`의 신규 생성과 `v1 -> v2` 마이그레이션 데이터 보존을 검증하는 [`DatabaseMigrationAndInitTest`](../app/src/androidTest/java/com/gunnys/eundunhealth/data/local/DatabaseMigrationAndInitTest.kt)를 구축했다.
+- **Layer 3 (AGP 아키텍처·호환성·업그레이드 6단계 거버넌스 — 룰 15)**: [`AgpBuildContractTest`](../app/src/test/java/com/gunnys/eundunhealth/AgpBuildContractTest.kt) 및 [`scripts/check-agp10-compat.sh`](../scripts/check-agp10-compat.sh)를 고도화해 AGP 정식 버전 포맷(`^\d+\.\d+\.\d+$`), 폐기 옵션 8종 차단, `kotlinOptions {}` 재도입 차단, `androidComponents.onVariants` 기반 `detektDebug` 등록, `useLegacyPackaging = false` 고정, Windows/Linux `aapt2` 듀얼 해시 정합성을 자동 강제한다.
+- **Layer 4 (Cold-Start Runtime Smoke Gate)**: [`scripts/smoke-cold-start.sh`](../scripts/smoke-cold-start.sh)를 신설하고 [`scripts/preflight-release.sh`](../scripts/preflight-release.sh)에 통합해 에뮬레이터/실기기에서 `adb install -> am start -W -S -> 5초 대기 -> pidof 생존 + logcat -b crash FATAL EXCEPTION 0건`을 자동 검증한다.
+- **검증**: Android `spotlessCheck`·`check-agp10-compat.sh`·`detektDebug`(0건)·단위 테스트 **238건**·계측 테스트(`DatabaseMigrationAndInitTest` 2/2 PASS)·에뮬레이터(`Galaxy_S25_Ultra`, Android 16) 콜드 스타트 스모크 게이트(Debug & R8 Release APK `FATAL EXCEPTION` 0건) 전수 통과.
+
+---
+
 ## [v0.7.0] — 2026-10-29 — 스마일 트레이닝 v2 전면 리팩토링(Zero-Legacy) · PostgreSQL 18 스키마 하드 리셋 파이프라인 · AGP 9.4.1 정식 업그레이드
 
 > **2026-10-29 `v0.7.0` (`versionCode=41`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`) 풀스택 릴리스.** 온디바이스 스마일 트레이닝 v2 단일 규격(`2.0초 유지 × 3회 반복` · `READY` 1.0초 얼굴 정렬 자동 시작 · 4대 접속 경로 IA) 컷오버와 Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, Alembic 전수 제거)을 통합하고, 운영 DB 하드 리셋(`hard-reset-v2-pg18-prod-20261029`)을 완료했다.

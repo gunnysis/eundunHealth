@@ -1,6 +1,7 @@
 package com.gunnys.eundunhealth.data.repository
 
 import com.gunnys.eundunhealth.data.healthconnect.HealthConnectDataSource
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import java.time.LocalDate
 import javax.inject.Inject
@@ -32,5 +33,5 @@ class HealthRepositoryImpl @Inject constructor(
     // 근거: docs/plans/logs/process-infra.md (옛 페어 2026-09-01-tech-debt-runtime-modernization-plan.md T7)
     @Suppress("ktlint:standard:function-signature")
     override suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): Result<List<LocalDate>> =
-        runCatching { healthConnect.getExerciseDatesThisWeek(weekStart) }
+        runSuspendCatching { healthConnect.getExerciseDatesThisWeek(weekStart) }
 }

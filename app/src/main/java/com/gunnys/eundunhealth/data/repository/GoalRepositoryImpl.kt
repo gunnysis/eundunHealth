@@ -9,6 +9,7 @@ import com.gunnys.eundunhealth.data.remote.util.bodyOrThrow
 import com.gunnys.eundunhealth.domain.model.Goal
 import com.gunnys.eundunhealth.domain.model.GoalType
 import com.gunnys.eundunhealth.domain.model.ProfileHistoryPoint
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -22,7 +23,7 @@ class GoalRepositoryImpl @Inject constructor(
     private val profileApi: ProfileApi,
 ) : GoalRepository {
 
-    override suspend fun getGoals(): Result<List<Goal>> = runCatching {
+    override suspend fun getGoals(): Result<List<Goal>> = runSuspendCatching {
         goalsApi.getGoals().bodyOrThrow().mapNotNull { dto ->
             dto.toDomain() ?: run {
                 // 알 수 없는 goalType 은 silent 하게 사라지면 데이터 손실처럼 보인다 → 관측 가능하게 보고.
@@ -38,7 +39,7 @@ class GoalRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun upsertGoal(type: GoalType, targetValue: Float): Result<Goal> = runCatching {
+    override suspend fun upsertGoal(type: GoalType, targetValue: Float): Result<Goal> = runSuspendCatching {
         // GoalRequest.GoalType은 generated nested enum — Android GoalType.key("weight"/"body_fat")와 1:1.
         val dto = goalsApi.upsertGoal(
             GoalRequest(
@@ -49,7 +50,7 @@ class GoalRepositoryImpl @Inject constructor(
         dto.toDomain() ?: error("서버 응답의 goalType을 해석할 수 없습니다: ${dto.goalType}")
     }
 
-    override suspend fun getProfileHistory(limit: Int): Result<List<ProfileHistoryPoint>> = runCatching {
+    override suspend fun getProfileHistory(limit: Int): Result<List<ProfileHistoryPoint>> = runSuspendCatching {
         // 람다 파라미터를 `it` 로 두면 detekt 가 수신자 타입을 못 풀어 아래 private
         // `ProfileHistoryEntry.toDomain()` 을 미사용으로 오탐한다(MEASURED 2026-09-01). 명시할 것.
         profileApi.getProfileHistory(limit).bodyOrThrow().map { entry: ProfileHistoryEntry -> entry.toDomain() }

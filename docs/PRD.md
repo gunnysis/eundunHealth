@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.7 (2026-10-29 — v0.7.0 스마일 트레이닝 v2 단일 표준 규격 컷오버 · 4대 진입 경로 통합 · PostgreSQL 18 스키마 하드 리셋 반영)
-**제품 버전:** v0.7.0 (versionCode 41) — 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `minimumSupportedVersionCode = 41`. 직전 프로덕션은 `0.6.1` (versionCode `40`, `release.yml` run `40647597577`, 원장 PR #211 `LAST_UPLOADED_VERSION_CODE=40`, backend run `40647560099` revision `eundunhealth-api--0000066`).
+**문서 버전:** v3.7 (2026-10-29 — v0.7.1 콜드 스타트 크래시 핫픽스 · v0.7.0 스마일 트레이닝 v2 단일 표준 규격 컷오버 · 4대 진입 경로 통합 · PostgreSQL 18 스키마 하드 리셋 반영)
+**제품 버전:** v0.7.1 (versionCode 42) — 콜드 스타트 크래시(`EUNDUNHEALTH-H`) 핫픽스 및 5계층 심층 방어·AGP 거버넌스 적용, 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `minimumSupportedVersionCode = 41`. 직전 프로덕션은 `0.7.0` (versionCode `41`, `release.yml` run `40816257901`, 원장 PR #215 `LAST_UPLOADED_VERSION_CODE=41`, backend run `40816129146` revision `eundunhealth-api--0000067`).
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

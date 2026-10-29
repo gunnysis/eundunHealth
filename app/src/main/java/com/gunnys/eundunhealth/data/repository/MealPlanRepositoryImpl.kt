@@ -5,6 +5,7 @@ import com.gunnys.eundunhealth.data.remote.util.bodyOrNull404
 import com.gunnys.eundunhealth.domain.model.DailyMealPlan
 import com.gunnys.eundunhealth.domain.model.MealInfo
 import com.gunnys.eundunhealth.domain.model.WeeklyMealPlan
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.repository.MealPlanRepository
 import javax.inject.Inject
 import com.gunnys.eundunhealth.api.generated.model.DailyMealPlan as ApiDailyMealPlan
@@ -15,8 +16,8 @@ class MealPlanRepositoryImpl @Inject constructor(
     private val api: MealsApi,
 ) : MealPlanRepository {
 
-    override suspend fun getCurrentPlan(): Result<WeeklyMealPlan?> = runCatching {
-        val dto: ApiWeeklyMealPlanResponse = api.getCurrentMealPlanMealsCurrentGet().bodyOrNull404() ?: return@runCatching null
+    override suspend fun getCurrentPlan(): Result<WeeklyMealPlan?> = runSuspendCatching {
+        val dto: ApiWeeklyMealPlanResponse = api.getCurrentMealPlanMealsCurrentGet().bodyOrNull404() ?: return@runSuspendCatching null
 
         WeeklyMealPlan(
             summary = dto.summary,
@@ -39,7 +40,7 @@ class MealPlanRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun generatePlan(): Result<WeeklyMealPlan> = runCatching {
+    override suspend fun generatePlan(): Result<WeeklyMealPlan> = runSuspendCatching {
         // The UI presents a prominent disclosure immediately before this call.
         // The required header also blocks older clients that did not obtain affirmative consent.
         val response = api.generateMealPlanMealsGeneratePost(xAIDataProcessingConsent = true)

@@ -4,6 +4,19 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-29 — Azure PostgreSQL 18 업그레이드 · 스키마 전면 리팩토링 및 하드 리셋(Drop & Recreate) 파이프라인 구축 (v0.7.0, commit 40595a1)
+
+- **Commit**: `40595a1` (PR #213 release/v0.7.0 머지; 백엔드 배포 run `40816129146` / 활성 리비전 `eundunhealth-api--0000067` / 이미지 `40595a1`, 원장 PR #215)
+- **Why**: 10단계 Alembic 점진적 마이그레이션 누적으로 인한 자식 테이블 FK 누락(고아 데이터 위험), UNIQUE-인덱스 중복 7건, DB 레벨 도메인 CHECK 제약 부재를 해소하고, 운영 Flexible Server(`healthapp`, PostgreSQL 18.4)와 로컬/CI Docker(`postgres:16-alpine`) 간의 2개 메이저 버전 드리프트를 해소하며, Alembic 점진 마이그레이션을 영구 폐기하고 완전한 Drop & Recreate(Hard Reset) 및 멱등 스키마 부트스트랩 체계로 전환해야 했다.
+- **What**:
+  - **PostgreSQL 18 엔진 동기화 & 튜닝**: 로컬/CI Docker Compose를 `postgres:18-alpine` 최신 다이제스트로 업그레이드하고 공식 PG 18 볼륨 경로(`/var/lib/postgresql`) 반영. Azure Flexible Server(`healthapp`)에 동적 파라미터 5종(`idle_in_transaction_session_timeout=60s`, `azure.extensions=PG_STAT_STATEMENTS`, `track_io_timing=on`, `log_min_duration_statement=1s`, `pg_stat_statements.track=top`) 적용.
+  - **클린업 & 3NF 정규화 DDL**: `backend/sql/01_cleanup_drop_all.sql`(`public` 스키마 권한을 100% 보존하며 사용자 객체 전수 동적 DROP CASCADE) 및 `backend/sql/02_schema_create_all.sql`(9개 테이블 3NF 정규화, PostgreSQL 18 네이티브 `DEFAULT uuidv7()` PK, `ON DELETE CASCADE` 외래키, 도메인 CHECK 제약 11종 강제, 중복 인덱스 전량 제거).
+  - **SQLAlchemy 2.0 ORM & 부트스트랩/하드 리셋 CLI**: `backend/app/models/*.py` 8개 파일 전면 재작성(`Uuid(as_uuid=True)`, `default=uuid.uuid7`, `POSTGRES_NAMING_CONVENTION`), 컨테이너 기동용 멱등 부트스트랩(`python -m app.schema_bootstrap`) 및 운영/개발 전용 파괴적 하드 리셋 CLI(`backend/scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS`). Azure B1ms 맞춤 커넥션 풀(`pool_size=3, max_overflow=2, pool_recycle=1800`).
+  - **100건 엣지케이스 Seeder & 음수 제약 검증**: `backend/scripts/seed_edge_cases.py`로 정확히 100건 정상 데이터 삽입 및 SAVEPOINT 기반 11개 제약조건 위반/CASCADE 차단 실증(`backend/tests/test_v2_reset.py`, 146 passed).
+  - **레거시 Alembic 전면 폐기**: `backend/alembic/**`, `backend/alembic.ini`, `scripts/alembic-autogen.sh`, `backend/scripts/reset_v2_user_data.py` 완전 삭제 및 `alembic` 패키지 의존성 전면 제거 후 해시 락 갱신.
+- **Outcome**: 로컬 및 운영 Azure Flexible Server(`healthapp`) 라이브 하드 리셋 완수(클린 9개 테이블 및 100건 엣지케이스/11개 음수 제약 실증 완료), 백엔드 테스트 146/146 PASS, Zero-Legacy Grep Gate 통과, uvicorn 컨테이너 리비전 `0000067` 정상 가동.
+- **설계 원문**: `2026-10-29-postgresql-schema-hard-reset-plan.md` (본 entry 로 흡수, git rm)
+
 ### 2026-10-27 — 적응형 주간 운동 계획 v2(`/v2/weekly-plan`) · 다중 휴식 요일(`rest_days` `INTEGER[]`) · KST 시간대 SSoT 및 운영 컷오버 (v0.6.0, commit `a0b6701`)
 
 - **Commit**: `a0b6701` (백엔드 배포 run `40469877206` / 활성 리비전 `eundunhealth-api--0000065` / 이미지 `a0b6701`)

@@ -135,8 +135,17 @@ echo "  versionName = $VN"
 echo "  AAB         = $AAB ($(stat -c%s "$AAB" 2>/dev/null || stat -f%z "$AAB") bytes)"
 echo "  APK         = $APK ($(stat -c%s "$APK" 2>/dev/null || stat -f%z "$APK") bytes)"
 echo "================================================================"
+
+# --- Cold-Start 스모크 검증 (연결된 기기/에뮬레이터가 있으면 즉시 실행) -----------------
+# INC-2026-10-29-34: 빌드가 성공해도 DI/Room/R8 런타임 초기화 결함으로 기동 즉시 죽는 사고 차단.
+if [ -f "$REPO_ROOT/scripts/smoke-cold-start.sh" ]; then
+    run "Cold-Start Smoke Gate" bash "$REPO_ROOT/scripts/smoke-cold-start.sh" "$APK"
+fi
+# ---------------------------------------------------------------------------------------
+
 echo ""
 echo "다음 단계:"
+echo "  • 기기 미연결 상태였다면: bash scripts/smoke-cold-start.sh $APK --require-device 로 Cold Start 필수 검증"
 echo "  • Play Console에 $AAB 업로드"
 echo "  • git tag v${VN} && git push origin v${VN}"
 echo "  • adb install -r $APK 로 사이드로드 검증"

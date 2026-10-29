@@ -64,20 +64,18 @@ class OnboardingViewModel @Inject constructor(
             return@launch
         }
         val defaultMode = if (saveAsDefaultMode) selectedMode else null
-        runCatching {
-            userRepo.saveProfile(
-                UserProfile(
-                    userId = userId,
-                    heightCm = heightCm,
-                    weightKg = weightKg,
-                    gender = gender,
-                    bodyFatPercent = bodyFatPct,
-                    muscleMassKg = muscleMassKg,
-                    restDays = normalizeRestDays(restDays),
-                    defaultWorkoutPlanMode = defaultMode,
-                ),
-            ).getOrThrow()
-        }
+        userRepo.saveProfile(
+            UserProfile(
+                userId = userId,
+                heightCm = heightCm,
+                weightKg = weightKg,
+                gender = gender,
+                bodyFatPercent = bodyFatPct,
+                muscleMassKg = muscleMassKg,
+                restDays = normalizeRestDays(restDays),
+                defaultWorkoutPlanMode = defaultMode,
+            ),
+        )
             .onSuccess {
                 // 프로필 저장 성공 시 첫 주 계획도 즉시 생성을 시도한다.
                 // 계획 생성이 일시적 네트워크 오류로 실패해도 홈 화면(NoPlan/AutoCreate)에서 안전하게 이어받는다.

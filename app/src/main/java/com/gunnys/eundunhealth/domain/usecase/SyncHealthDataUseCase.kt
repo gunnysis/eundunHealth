@@ -2,6 +2,7 @@ package com.gunnys.eundunhealth.domain.usecase
 
 import androidx.compose.runtime.Immutable
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import java.time.LocalDate
@@ -24,10 +25,10 @@ data class HealthSyncResult(
 class SyncHealthDataUseCase @Inject constructor(
     private val healthRepo: HealthRepository,
 ) {
-    suspend operator fun invoke(plan: WeeklyPlan): Result<HealthSyncResult> = runCatching {
+    suspend operator fun invoke(plan: WeeklyPlan): Result<HealthSyncResult> = runSuspendCatching {
         val available = healthRepo.isAvailable()
         if (!available || !healthRepo.hasPermissions()) {
-            return@runCatching HealthSyncResult(
+            return@runSuspendCatching HealthSyncResult(
                 plan = plan,
                 isAvailable = available,
                 hasPermission = false,

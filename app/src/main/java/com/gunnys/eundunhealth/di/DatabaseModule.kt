@@ -44,8 +44,10 @@ object DatabaseModule {
     fun provideSmileTrainingDatabase(@ApplicationContext context: Context): SmileTrainingDatabase =
         Room.databaseBuilder(context, SmileTrainingDatabase::class.java, "smile_training.db")
             // 승인된 v2 cutover 경계에서 v1 테이블을 초기화하고 v2 스키마로 재생성한다.
+            // ⚠️ addMigrations(1->2)와 fallbackToDestructiveMigrationFrom(1)을 동시에 주면
+            // RoomDatabase.Builder.build()의 validateMigrationsNotRequired()가 즉시
+            // IllegalArgumentException을 던져 앱 기동 시 크래시한다(INC-2026-10-29-34).
             .addMigrations(SmileTrainingDatabase.MIGRATION_1_2)
-            .fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)
             .build()
 
     @Provides
