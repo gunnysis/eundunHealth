@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -88,6 +89,7 @@ import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 fun WorkoutGuideScreen(
     onBack: () -> Unit,
     onWorkoutCompleted: () -> Unit = {},
+    onNavigateToSmileTraining: () -> Unit = {},
     viewModel: WorkoutGuideViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -200,6 +202,11 @@ fun WorkoutGuideScreen(
                     onFinish = {
                         onWorkoutCompleted()
                         onBack()
+                    },
+                    onStartSmileCooldown = {
+                        onWorkoutCompleted()
+                        onBack()
+                        onNavigateToSmileTraining()
                     },
                     modifier = Modifier.padding(padding),
                 )
@@ -496,6 +503,7 @@ private fun GuideTagChip(text: String) {
 private fun WorkoutGuideCompletedContent(
     exerciseCount: Int,
     onFinish: () -> Unit,
+    onStartSmileCooldown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -535,6 +543,21 @@ private fun WorkoutGuideCompletedContent(
                 .heightIn(min = 52.dp),
         ) {
             Text("오늘 탭으로 돌아가기")
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        FilledTonalButton(
+            onClick = onStartSmileCooldown,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.SentimentSatisfiedAlt,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("마무리 10초 스마일 트레이닝 하기")
         }
     }
 }

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from enum import StrEnum
 from typing import Annotated
 
 from pydantic import Field, field_validator
@@ -15,27 +14,12 @@ MAX_PAST_DAYS = 90
 MAX_FUTURE_MINUTES = 5
 
 
-class SmileRoutine(StrEnum):
-    GENTLE = "GENTLE"
-    SUSTAINED = "SUSTAINED"
-    SMILE_AND_FRONT = "SMILE_AND_FRONT"
-
-
-class SmileDifficulty(StrEnum):
-    COMFORTABLE = "COMFORTABLE"
-    STANDARD = "STANDARD"
-    CHALLENGE = "CHALLENGE"
-
-
 class SmileTrainingSessionRequest(CamelSchema):
-    """POST /smile-training/sessions — 완료된 스마일 트레이닝 세션 요약 생성 요청."""
+    """POST /v2/smile-training/sessions — 완료된 스마일 트레이닝 v2 세션 요약 생성 요청."""
 
     id: uuid.UUID = Field(..., description="클라이언트가 생성한 멱등 UUID")
-    routine: SmileRoutine = Field(..., description="루틴 종류")
-    difficulty: SmileDifficulty = Field(..., description="난이도")
     duration_sec: Annotated[int, Field(ge=0, le=MAX_DURATION_SEC, description="총 수행 시간(초)")]
     completed_reps: Annotated[int, Field(ge=1, le=MAX_COMPLETED_REPS, description="완료한 반복 횟수")]
-    reflection_emoji: Annotated[int | None, Field(default=None, ge=1, le=5, description="선택형 감정 회고 (1~5)")]
     occurred_at: datetime = Field(..., description="클라이언트 세션 완료 시각 (ISO-8601, timezone 포함)")
 
     @field_validator("occurred_at")
@@ -54,14 +38,11 @@ class SmileTrainingSessionRequest(CamelSchema):
 
 
 class SmileTrainingSessionResponse(CamelSchema):
-    """스마일 트레이닝 세션 요약 응답."""
+    """스마일 트레이닝 v2 세션 요약 응답."""
 
     id: str
-    routine: SmileRoutine
-    difficulty: SmileDifficulty
     duration_sec: int
     completed_reps: int
-    reflection_emoji: int | None
     occurred_at: str
     created_at: str
 

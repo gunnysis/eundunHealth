@@ -4,8 +4,10 @@ import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.CurrentWeekPlanRead
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.PlanSource
+import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
+import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.CreateWeeklyPlanUseCase
@@ -15,9 +17,11 @@ import com.gunnys.eundunhealth.domain.usecase.LoadDefaultWorkoutPlanModeUseCase
 import com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -62,6 +66,8 @@ class HomeViewModelTest {
     private lateinit var syncHealth: SyncHealthDataUseCase
     private lateinit var checkBadges: CheckAndAwardBadgesUseCase
     private lateinit var workoutRepo: WorkoutRepository
+    private lateinit var smileTrainingRepo: SmileTrainingRepository
+    private lateinit var smileStatsFlow: MutableStateFlow<SmileSummaryStats>
 
     @Before
     fun setup() {
@@ -73,11 +79,14 @@ class HomeViewModelTest {
         syncHealth = mockk()
         checkBadges = mockk()
         workoutRepo = mockk()
+        smileTrainingRepo = mockk()
+        smileStatsFlow = MutableStateFlow(SmileSummaryStats())
 
         coEvery { loadCurrentWeekPlan() } returns CurrentWeekPlanRead.Found(plan)
         coEvery { loadDefaultWorkoutPlanMode() } returns null
         coEvery { themePreferences.hasAutoCreateAttempted(any()) } returns false
         coEvery { themePreferences.isSmileShortcutDismissed(any()) } returns false
+        every { smileTrainingRepo.observeSummaryStats() } returns smileStatsFlow
         coEvery { syncHealth(any()) } answers {
             val inputPlan = firstArg<WeeklyPlan>()
             Result.success(
@@ -99,6 +108,7 @@ class HomeViewModelTest {
         syncHealth = syncHealth,
         checkBadges = checkBadges,
         workoutRepo = workoutRepo,
+        smileTrainingRepo = smileTrainingRepo,
     )
 
     @Test
@@ -116,7 +126,32 @@ class HomeViewModelTest {
         assertEquals(LocalDate.now(ZoneId.of("Asia/Seoul")), state.today)
         assertTrue(state.isHealthConnectAvailable)
         assertTrue(state.hasHealthPermission)
+        assertFalse(state.isSmileCompletedToday)
+        assertEquals(0, state.smileCurrentStreakDays)
         coVerify(exactly = 1) { themePreferences.clearAutoCreateAttempt() }
+    }
+
+    @Test
+    fun `smileTrainingRepo 요약 통계 변경 시 Success 상태의 isSmileCompletedToday 와 smileCurrentStreakDays 가 갱신된다`() = runTest {
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        val initial = vm.uiState.value as HomeUiState.Success
+        assertFalse(initial.isSmileCompletedToday)
+        assertEquals(0, initial.smileCurrentStreakDays)
+
+        smileStatsFlow.value = SmileSummaryStats(
+            totalSessions = 5,
+            totalDurationSec = 60,
+            isCompletedToday = true,
+            currentStreakDays = 4,
+            longestStreakDays = 4,
+        )
+        advanceUntilIdle()
+
+        val updated = vm.uiState.value as HomeUiState.Success
+        assertTrue(updated.isSmileCompletedToday)
+        assertEquals(4, updated.smileCurrentStreakDays)
     }
 
     @Test

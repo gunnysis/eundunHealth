@@ -49,7 +49,7 @@
 
 - **적응형 주간 운동 계획 v2 (`헬스장` / `홈트레이닝`) & 다중 휴식 요일(`restDays`)** — 매주 첫 진입 시 `헬스장`(OSS ExerciseDB + 추천 운동 46종 한국어 번들 `korean_exercises.json` v2) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위 지원)을 선택해 계획을 생성하거나, 프로필의 `기본 운동 환경` 설정으로 주간 자동 생성. 주 1~6일 원하는 휴식 요일(`restDays`)을 자유롭게 지정하고 대근육 우선순위 큐로 운동을 균형 배치
 - **AI 맞춤 주간 식단** (v0.3.0 / v0.3.1) — 신체 지표·목표·주간 운동량을 바탕으로 Azure AI Foundry `DeepSeek-V3.2` 모델이 7일×4끼 맞춤 식단과 영양소(칼로리·탄단지)를 생성 (국외 이전 사전 고지 및 `X-AI-Data-Processing-Consent: true` 명시적 동의 기반)
-- **온디바이스 스마일 트레이닝** (v0.5.0) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(루틴 3종 × 난이도 3단계 × 1~5회 반복)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db`) 및 `WorkManager`로 세션 요약·연속일을 서버와 동기화
+- **온디바이스 스마일 트레이닝 v2** (v0.5.0 / v2) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(단일 표준 스펙 `SmileTrainingSpec`: `2.0초 유지 × 3회 반복`, `READY` 1.0초 자동 시작, 종료 후 감정 설문 제거 및 자동 완료)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db` v2) 및 `WorkManager`로 세션 요약·연속일을 서버(`/v2/smile-training/*`)와 동기화
 - **Health Connect 연동** — 운동 세션 자동 감지 및 완료 추적
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
 - **목표 설정 및 진행 시각화** (v0.3) — 체중 / 체지방률 목표 + 프로필 변화 이력 차트
@@ -66,12 +66,12 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Kotlin 2.4.21, Java 17 | KSP 2.3.12 |
-| 빌드 | Gradle 9.8.1, AGP 9.3.2 | Min SDK 26 / Target SDK 37, dependency locking + SHA-256 verification |
+| 빌드 | Gradle 9.8.1, AGP 9.4.1 | Min SDK 26 / Target SDK 37, dependency locking + SHA-256 verification |
 | UI | Jetpack Compose (BOM 2026.09.00) | Material 3 |
 | DI | Hilt 2.60.1 | 4개 모듈 (`NetworkModule`, `DatabaseModule`, `RepositoryModule`, `CoroutineModule`) |
 | 비동기 | kotlinx-coroutines + Flow | |
 | 네트워크 | Retrofit 3.0.0 + OkHttp 5.5.0 + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 + `Eundun-Client-Version-Code` 헤더 |
-| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v1, KSP 스키마 export) |
+| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v2, KSP 스키마 export) |
 | 카메라 & 온디바이스 비전 | CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0 | Google Play services unbundled (`ModuleInstallClient`) |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
 | Auth | MSAL Android 8.4.2 | RS256 JWT · `oid` claim |
@@ -88,7 +88,7 @@
 | 프레임워크 | FastAPI 0.161.0 + uvicorn 0.54.0 | hash lock 공통 설치 |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.1.6 async + asyncpg 0.32.0 | `Mapped[T]` 패턴 |
-| 마이그레이션 | Alembic 1.20.1 (head: `d7f4a2c91b10`) | async 엔진 연동 |
+| 마이그레이션 | Alembic 1.20.1 (head: `e8b2c4d6f1a0`) | async 엔진 연동 |
 | HTTP 코어 | starlette 1.9.0 | |
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | AI 클라이언트 | openai 3.37.0 (`AsyncOpenAI`) | Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 |
@@ -143,7 +143,7 @@ app/schemas/          # Pydantic CamelSchema (alias_generator=to_camel)
 app/repositories/     # DB 접근 추상화
 app/services/         # 비즈니스 로직 (account / statistics / goal / meal_plan / meal_ai_client / smile_training ...)
 app/routers/          # 얇은 라우터, Service 위임
-alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b10)
+alembic/versions/     # async 엔진 연동 마이그레이션 (head: e8b2c4d6f1a0)
 ```
 
 ### API 엔드포인트 (27 개 — JWT 필요 22 + 공개 5)
@@ -176,8 +176,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b
 | `GET` / `PUT` | `/goals` | v0.3 |
 | `POST` | `/meals/generate` | v0.3.0 / v0.3.1 AI 주간 식단 생성 (`X-AI-Data-Processing-Consent: true` 필수) |
 | `GET` | `/meals/current` | v0.3.0 현재 주간 식단 조회 |
-| `POST` / `GET` / `DELETE` | `/smile-training/sessions` | v0.5.0 스마일 트레이닝 세션 멱등 기록 · 커서 조회 · 전체 삭제 |
-| `GET` | `/smile-training/statistics` | v0.5.0 KST 기준 연속일 및 누적 통계 조회 |
+| `POST` / `GET` / `DELETE` | `/v2/smile-training/sessions` | v2 스마일 트레이닝 세션 멱등 기록 · 커서 조회 · 전체 삭제 |
+| `GET` | `/v2/smile-training/statistics` | v2 KST 기준 연속일 및 누적 통계 조회 |
 | `DELETE` | `/account` | Microsoft Graph 연동 (삭제 204 + `deletedItems` 즉시 파기) |
 
 ---
@@ -189,7 +189,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b
 ├── app/                      # Android 앱 (Kotlin / Compose)
 ├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
-│   ├── alembic/              # DB 마이그레이션 (head: d7f4a2c91b10)
+│   ├── alembic/              # DB 마이그레이션 (head: e8b2c4d6f1a0)
 │   ├── tests/                # pytest (140 PASS, coverage 94%+)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동

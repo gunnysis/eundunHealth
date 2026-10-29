@@ -20,20 +20,14 @@ def _now_iso(offset_minutes: int = 0) -> str:
 
 def _sample_payload(
     session_id: str | None = None,
-    routine: str = "GENTLE",
-    difficulty: str = "STANDARD",
     duration_sec: int = 12,
     completed_reps: int = 3,
-    reflection_emoji: int | None = 4,
     occurred_at: str | None = None,
 ) -> dict[str, object]:
     return {
         "id": session_id or str(uuid.uuid4()),
-        "routine": routine,
-        "difficulty": difficulty,
         "durationSec": duration_sec,
         "completedReps": completed_reps,
-        "reflectionEmoji": reflection_emoji,
         "occurredAt": occurred_at or _now_iso(),
     }
 
@@ -42,23 +36,27 @@ def _sample_payload(
 async def test_record_smile_session_creates_and_is_idempotent(client):
     payload = _sample_payload(session_id="22222222-2222-4222-8222-222222222222")
 
-    resp1 = await client.post("/smile-training/sessions", json=payload)
+    resp1 = await client.post("/v2/smile-training/sessions", json=payload)
     assert resp1.status_code == 201
     body1 = resp1.json()
     assert body1["id"] == payload["id"]
-    assert body1["routine"] == "GENTLE"
-    assert body1["difficulty"] == "STANDARD"
     assert body1["durationSec"] == 12
     assert body1["completedReps"] == 3
-    assert body1["reflectionEmoji"] == 4
+    assert set(body1.keys()) == {
+        "id",
+        "durationSec",
+        "completedReps",
+        "occurredAt",
+        "createdAt",
+    }
 
     # 동일 user + 동일 UUID + 동일 payload 재전송 → 200 OK (멱등)
-    resp2 = await client.post("/smile-training/sessions", json=payload)
+    resp2 = await client.post("/v2/smile-training/sessions", json=payload)
     assert resp2.status_code == 200
     assert resp2.json()["id"] == body1["id"]
 
     # 목록에 중복 생성되지 않고 1건만 존재하는지 확인
-    list_resp = await client.get("/smile-training/sessions")
+    list_resp = await client.get("/v2/smile-training/sessions")
     assert list_resp.status_code == 200
     assert len(list_resp.json()["items"]) == 1
 
@@ -67,17 +65,17 @@ async def test_record_smile_session_creates_and_is_idempotent(client):
 async def test_record_smile_session_conflict_on_different_payload_or_user(client):
     sid = "a3333333-b333-4333-8333-c33333333333"
     base = _sample_payload(session_id=sid, completed_reps=2)
-    assert (await client.post("/smile-training/sessions", json=base)).status_code == 201
+    assert (await client.post("/v2/smile-training/sessions", json=base)).status_code == 201
 
     # 동일 user가 같은 ID에 다른 payload 전송 → 409 Conflict
     mutated = dict(base, completedReps=4)
-    conflict_resp = await client.post("/smile-training/sessions", json=mutated)
+    conflict_resp = await client.post("/v2/smile-training/sessions", json=mutated)
     assert conflict_resp.status_code == 409
     assert conflict_resp.json()["code"] == "CONFLICT"
 
     # 다른 user가 같은 ID로 전송 → 409 Conflict (500 노출 금지)
     set_test_user("other-user-id")
-    other_user_resp = await client.post("/smile-training/sessions", json=base)
+    other_user_resp = await client.post("/v2/smile-training/sessions", json=base)
     assert other_user_resp.status_code == 409
 
 
@@ -85,24 +83,24 @@ async def test_record_smile_session_conflict_on_different_payload_or_user(client
 async def test_record_smile_session_validation_guards(client):
     # 1) timezone 없는 occurredAt 거부 (422)
     naive_payload = _sample_payload(occurred_at="2026-10-26T12:00:00")
-    assert (await client.post("/smile-training/sessions", json=naive_payload)).status_code == 422
+    assert (await client.post("/v2/smile-training/sessions", json=naive_payload)).status_code == 422
 
     # 2) 미래 10분 시각 거부 (422)
     future_payload = _sample_payload(occurred_at=_now_iso(offset_minutes=10))
-    assert (await client.post("/smile-training/sessions", json=future_payload)).status_code == 422
+    assert (await client.post("/v2/smile-training/sessions", json=future_payload)).status_code == 422
 
     # 3) 과거 100일 전 시각 거부 (422)
     old_dt = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=100)).isoformat()
     old_payload = _sample_payload(occurred_at=old_dt)
-    assert (await client.post("/smile-training/sessions", json=old_payload)).status_code == 422
+    assert (await client.post("/v2/smile-training/sessions", json=old_payload)).status_code == 422
 
     # 4) completedReps = 0 거부 (422)
     zero_rep_payload = _sample_payload(completed_reps=0)
-    assert (await client.post("/smile-training/sessions", json=zero_rep_payload)).status_code == 422
+    assert (await client.post("/v2/smile-training/sessions", json=zero_rep_payload)).status_code == 422
 
-    # 5) reflectionEmoji 범위 밖(6) 거부 (422)
-    bad_emoji_payload = _sample_payload(reflection_emoji=6)
-    assert (await client.post("/smile-training/sessions", json=bad_emoji_payload)).status_code == 422
+    # 5) completedReps 범위 밖(6) 거부 (422)
+    over_rep_payload = _sample_payload(completed_reps=6)
+    assert (await client.post("/v2/smile-training/sessions", json=over_rep_payload)).status_code == 422
 
 
 @pytest.mark.asyncio
@@ -115,15 +113,15 @@ async def test_list_smile_sessions_cursor_pagination_and_isolation(client):
     ]
     # 동일한 occurred_at을 가진 2건 + 더 최신 1건을 넣어 tie-breaker(id DESC)까지 검증
     await client.post(
-        "/smile-training/sessions",
+        "/v2/smile-training/sessions",
         json=_sample_payload(session_id=ids[0], occurred_at=base_time.isoformat()),
     )
     await client.post(
-        "/smile-training/sessions",
+        "/v2/smile-training/sessions",
         json=_sample_payload(session_id=ids[1], occurred_at=base_time.isoformat()),
     )
     await client.post(
-        "/smile-training/sessions",
+        "/v2/smile-training/sessions",
         json=_sample_payload(
             session_id=ids[2],
             occurred_at=(base_time + datetime.timedelta(minutes=5)).isoformat(),
@@ -132,23 +130,23 @@ async def test_list_smile_sessions_cursor_pagination_and_isolation(client):
 
     # 타 사용자 세션 추가 (격리 검증)
     set_test_user("other-user")
-    await client.post("/smile-training/sessions", json=_sample_payload())
+    await client.post("/v2/smile-training/sessions", json=_sample_payload())
     set_test_user("test-user-id")
 
-    page1 = await client.get("/smile-training/sessions?limit=2")
+    page1 = await client.get("/v2/smile-training/sessions?limit=2")
     assert page1.status_code == 200
     data1 = page1.json()
     assert [item["id"] for item in data1["items"]] == [ids[2], ids[1]]
     assert data1["nextCursor"] is not None
 
-    page2 = await client.get(f"/smile-training/sessions?limit=2&cursor={data1['nextCursor']}")
+    page2 = await client.get(f"/v2/smile-training/sessions?limit=2&cursor={data1['nextCursor']}")
     assert page2.status_code == 200
     data2 = page2.json()
     assert [item["id"] for item in data2["items"]] == [ids[0]]
     assert data2["nextCursor"] is None
 
     # 잘못된 cursor 요청 시 400
-    bad_cursor = await client.get("/smile-training/sessions?cursor=not-a-valid-cursor")
+    bad_cursor = await client.get("/v2/smile-training/sessions?cursor=not-a-valid-cursor")
     assert bad_cursor.status_code == 400
 
 
@@ -173,11 +171,8 @@ async def test_smile_statistics_kst_boundary_and_streak(db_engine):
                 SmileTrainingSession(
                     id=uuid.uuid4(),
                     user_id=user_id,
-                    routine="GENTLE",
-                    difficulty="STANDARD",
                     duration_sec=10 * idx,
-                    completed_reps=2,
-                    reflection_emoji=5,
+                    completed_reps=3,
                     occurred_at=ts,
                 )
             )
@@ -215,24 +210,24 @@ async def test_smile_statistics_kst_boundary_and_streak(db_engine):
 
 @pytest.mark.asyncio
 async def test_delete_all_smile_sessions_isolates_user(client):
-    await client.post("/smile-training/sessions", json=_sample_payload())
-    await client.post("/smile-training/sessions", json=_sample_payload())
+    await client.post("/v2/smile-training/sessions", json=_sample_payload())
+    await client.post("/v2/smile-training/sessions", json=_sample_payload())
 
     set_test_user("other-user")
-    await client.post("/smile-training/sessions", json=_sample_payload())
+    await client.post("/v2/smile-training/sessions", json=_sample_payload())
     set_test_user("test-user-id")
 
-    del_resp = await client.delete("/smile-training/sessions")
+    del_resp = await client.delete("/v2/smile-training/sessions")
     assert del_resp.status_code == 200
     assert del_resp.json()["deletedCount"] == 2
 
     # 내 기록은 0건
-    my_stats = await client.get("/smile-training/statistics")
+    my_stats = await client.get("/v2/smile-training/statistics")
     assert my_stats.json()["totalSessions"] == 0
 
     # 다른 사용자 기록은 그대로 보존
     set_test_user("other-user")
-    other_stats = await client.get("/smile-training/statistics")
+    other_stats = await client.get("/v2/smile-training/statistics")
     assert other_stats.json()["totalSessions"] == 1
 
 
@@ -249,11 +244,8 @@ async def test_reaper_discovers_session_only_orphan_user(db_engine):
             SmileTrainingSession(
                 id=uuid.uuid4(),
                 user_id="smile-only-orphan",
-                routine="GENTLE",
-                difficulty="STANDARD",
                 duration_sec=15,
-                completed_reps=1,
-                reflection_emoji=None,
+                completed_reps=3,
                 occurred_at=datetime.datetime.now(datetime.UTC),
             )
         )

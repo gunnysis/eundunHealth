@@ -48,14 +48,11 @@ async def test_delete_account_purges_all_user_data(client, db_engine, sample_pro
     await client.post("/badges/first_workout")  # badges
     await client.put("/goals", json={"goalType": "weight", "targetValue": 65.0})  # goals
     await client.post(
-        "/smile-training/sessions",
+        "/v2/smile-training/sessions",
         json={
             "id": "a1111111-b111-4111-8111-c11111111111",
-            "routine": "GENTLE",
-            "difficulty": "STANDARD",
             "durationSec": 15,
             "completedReps": 3,
-            "reflectionEmoji": 4,
             "occurredAt": datetime.datetime.now(datetime.UTC).isoformat(),
         },
     )  # smile_training_sessions

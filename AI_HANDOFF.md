@@ -1,5 +1,134 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) 스마일 트레이닝 v2 전면 리팩토링 · Zero-Legacy Cutover · 4대 접속 경로(IA) 구현 및 프로젝트 문서 최신화 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **Task 1 ~ Task 6 전 구간 구현 및 검증 완료 ([`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md))**:
+  1. **백엔드 스마일 트레이닝 v2 & DB 컷오버 마이그레이션 (Task 1)**:
+     - [`backend/app/models/smile_training.py`](backend/app/models/smile_training.py), [`backend/app/schemas/smile_training.py`](backend/app/schemas/smile_training.py), [`backend/app/repositories/smile_training_repo.py`](backend/app/repositories/smile_training_repo.py), [`backend/app/services/smile_training_service.py`](backend/app/services/smile_training_service.py), [`backend/app/routers/smile_training.py`](backend/app/routers/smile_training.py): 구형 `/smile-training` 및 `SmileRoutine`·`SmileDifficulty`·`reflection_emoji` 레거시 전수 제거 → `/v2/smile-training/sessions` (`POST`/`GET`/`DELETE`), `/v2/smile-training/statistics` (`GET`) 4개 엔드포인트(`CamelSchema` 및 `operation_id` 보존)로 컷오버.
+     - [`backend/alembic/versions/e8b2c4d6f1a0_cutover_smile_training_to_v2.py`](backend/alembic/versions/e8b2c4d6f1a0_cutover_smile_training_to_v2.py): `down_revision = "d7f4a2c91b10"`. `DELETE FROM smile_training_sessions` 후 체크 제약조건 및 3개 레거시 컬럼 드롭(`downgrade()` 왕복 지원). Docker PostgreSQL 16 (`dev:devpass@localhost:5432/eundunhealth`) 위에서 `upgrade head -> downgrade -1 -> upgrade head` 왕복 실측 통과.
+     - [`docs/store/privacy-policy.md`](docs/store/privacy-policy.md), [`docs/store/account-deletion.md`](docs/store/account-deletion.md), [`backend/openapi.json`](backend/openapi.json) 동기화(`sync-legal-docs.sh`, `sync-openapi.sh`, `:app:openApiGenerate`).
+  2. **Android 도메인 & `SmileSignalEvaluator` v2 (Task 2)**:
+     - [`SmileTrainingModels.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/model/SmileTrainingModels.kt), [`SmileSignalEvaluator.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/smile/SmileSignalEvaluator.kt): `SmileRoutineType`, `SmileDifficultyLevel`, `reflectionEmoji` 완전 삭제 → 단일 표준 스펙 `SmileTrainingSpec`(`2,000ms 유지 × 3회 반복`) 통합, 지수 이동 평균(`EMA alpha = 0.6f`) 스무딩, `READY` 단계 1.0초(`1,000ms`) 연속 얼굴 정렬 시 자동 시작(`evaluateReadyFrame`, `allowAutoStart = !isPaused`) 구현.
+  3. **Android Room DB v2 Cutover Reset & Repository (Task 3)**:
+     - [`SmileSessionEntity.kt`](app/src/main/java/com/gunnys/eundunhealth/data/local/entity/SmileSessionEntity.kt), [`SmileTrainingDatabase.kt`](app/src/main/java/com/gunnys/eundunhealth/data/local/SmileTrainingDatabase.kt) (`version = 2`, `MIGRATION_1_2` + `fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)`), [`DatabaseModule.kt`](app/src/main/java/com/gunnys/eundunhealth/di/DatabaseModule.kt), [`SmileTrainingRepositoryImpl.kt`](app/src/main/java/com/gunnys/eundunhealth/data/repository/SmileTrainingRepositoryImpl.kt) 및 Room KSP 스키마 [`2.json`](app/schemas/com.gunnys.eundunhealth.data.local.SmileTrainingDatabase/2.json) 생성.
+  4. **Android UI & ViewModel v2 리팩토링 (Task 4)**:
+     - [`SmileTrainingViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingViewModel.kt), [`SmileCameraStage.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [`SmileTrainingScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingScreen.kt) (1,114줄 → 606줄): 상단 안내 배너·옵션 선택기·기분 설문(`REFLECTION`) 전수 삭제, `ACTIVE -> COMPLETED` 직행 자동 저장 + 오늘 완료 시 홈 바로가기 자동 숨김(`markSmileShortcutDismissed`), 풀블리드 카메라 HUD + 하단 플로팅 글래스 시트(`Modern Forest & Mint` 토큰, `AuthErrorBanner`, `HapticFeedbackHelper`) 적용.
+  5. **4대 접속 경로(IA) 구현 (Task 5)**:
+     - [`HomeViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeViewModel.kt), [`HomeScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt): 상단바 우측 상시 `SmileQuickActionChip` (`"스마일"` / `"✓ 스마일 완료"`) + `TodayHeroCard` 하단 스마트 `SmileTrainingContextualCard`(`!state.isSmileCompletedToday && !state.isSmileShortcutDismissedToday`).
+     - [`WorkoutGuideScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt), [`MainAppShell.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/MainAppShell.kt): 운동 가이드 완료 화면에 `[마무리 10초 스마일 트레이닝 하기]` 쿨다운 브릿지 버튼 추가.
+     - [`ProgressHubViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubViewModel.kt), [`ProgressHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt): `"마음 연습 > 스마일 트레이닝"` 섹션을 3열 요약 타일 직하단 최상단으로 승격하고 실시간 연속일·완료 배지 표시.
+  6. **레거시 잔존 0건 검증(`Zero-Legacy Grep Gate`) & 프로젝트 문서 최신화 (Task 6)**:
+     - [`docs/PRD.md`](docs/PRD.md), [`docs/SPEC.md`](docs/SPEC.md), [`docs/TRD.md`](docs/TRD.md), [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md), [`CLAUDE.md`](CLAUDE.md), [`README.md`](README.md), [`docs/plans/README.md`](docs/plans/README.md) 최신화 완료.
+     - `Zero-Legacy Grep Gate` 실행 결과: **`OK: 0 legacy symbols remaining across all scanned paths.`**
+     - 백엔드: `pytest tests/ -q` (**140 passed**), `ruff check` (**0건**), `mypy app/` (**0건**), `bandit -r app -ll` (**0건**), `test_doc_audit.py` (**36 passed**).
+     - Android: `spotlessCheck`, `detektDebug` (**0건**), `testDebugUnitTest` (**212 passed**), `assembleRelease` (R8 릴리스 빌드), `check-agp10-compat.sh`, `check-plans-links.sh`, `collectAsState` 가드 모두 통과.
+
+**다음 할 일 (Next Steps / TODO):**
+- 실물 Android 기기(또는 웹캠 에뮬레이터)에서 전면 카메라 `READY` 1.0초 자동 시작 감도 및 햅틱 피드백 체감 확인 후 PR/배포 진행.
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) 프로젝트 필수 MCP 서버(Azure · Sentry · GitHub · Context7 · Sequential Thinking) 설정 및 패리티 복구 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **점검 및 근본 원인 분석 (`claude mcp list` 및 Antigravity `mcp_config.json` 대조)**:
+  1. **Antigravity (`~/.gemini/config/mcp_config.json`)**: `eundunHealth` 운영·개발에 필수적인 `azure`, `sentry`, `context7`, `sequential-thinking` 4개 서버가 누락되어 있었음.
+  2. **Claude Code (`~/.claude.json`)**:
+     - `github` (`https://api.githubcopilot.com/mcp`): 만료된 구 PAT(`ghp_t7mx...`)가 남아 있어 `HTTP 401 (✘ Failed to connect)` 발생.
+     - `sentry` (`https://mcp.sentry.dev/mcp`): 브라우저 OAuth 세션 만료로 `! Needs authentication` 상태였으며, 호스트에는 유효한 `SENTRY_AUTH_TOKEN`(길이 71자, `gunnys` 조직 `eundunhealth`·`eundunhealth-backend` 접근 가능)이 있었으나 `@sentry/mcp-server`가 요구하는 `SENTRY_ACCESS_TOKEN` 환경변수가 미설정 상태였음.
+     - `.claude.json` 내부 `projects` 객체에 대소문자만 다른 중복 키(`c:/programming/apps/eundunHealth`)가 존재해 PowerShell `ConvertFrom-Json` 파싱 시 에러가 발생했고, 본 프로젝트에 불필요한 `wikidocs` 프로젝트 스코프 MCP가 남아 있었음.
+  3. **슬래시 명령 ([`.claude/commands/verify-deploy.md`](.claude/commands/verify-deploy.md))**: `mcp__sentry__search_issues` 호출 가이드를 실제 Sentry 조직 슬러그(`gunnys`, [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md) §6 정합) 대신 `eundunhealth`로 잘못 기재하고 있었음.
+- **적용 및 해결 내역**:
+  1. **Windows 사용자 환경변수 설정 (`setx` 미사용 원칙 준수)**: `[Environment]::SetEnvironmentVariable('SENTRY_ACCESS_TOKEN', ..., 'User')`로 `SENTRY_ACCESS_TOKEN` 영구 등록.
+  2. **Antigravity (`~/.gemini/config/mcp_config.json`)**: 기존 5종에 더해 `azure`(`@azure/mcp@latest server start`, `AZURE_TENANT_ID=f11653ca-c627-4753-ae79-ad0d9689dbc8`), `sentry`(`@sentry/mcp-server@latest --organization-slug=gunnys`), `context7`(`https://mcp.context7.com/mcp`), `sequential-thinking`(`@modelcontextprotocol/server-sequential-thinking`) 총 9종 구성 완료.
+  3. **Claude Code (`~/.claude.json`)**: `github` 헤더를 유효한 최신 PAT(`HTTP 200` 검증)로 교체, `sentry`를 `@sentry/mcp-server@latest --organization-slug=gunnys` stdio 방식으로 전환(OAuth 만료 재발 원천 차단), 대소문자 중복 프로젝트 키 및 불필요한 `wikidocs` 엔트리 정리.
+  4. **저장소 파일 보강**: [`.claude/commands/verify-deploy.md`](.claude/commands/verify-deploy.md)의 `organizationSlug`를 `gunnys`로 정정하고, [`.gitignore`](.gitignore)에 `.mcp.json` 및 `.agents/mcp_config.json`을 추가해 public 저장소에 로컬 MCP 자격증명이 커밋되지 않도록 차단.
+- **실측 검증 결과**:
+  - `claude mcp list` → `context7` (`✔ Connected`), `github` (`✔ Connected`), `sentry` (`✔ Connected`), `azure` (`✔ Connected`), `sequential-thinking` (`✔ Connected`) 전수 연결 확인.
+  - `@sentry/mcp-server` `find_projects(organizationSlug="gunnys")` → `eundunhealth`, `eundunhealth-backend` 정상 조회 확인.
+  - `Get-Content ~/.claude.json -Raw | ConvertFrom-Json` 및 `Get-Content ~/.gemini/config/mcp_config.json -Raw | ConvertFrom-Json` 무오류 파싱 확인.
+  - `C:\programming\windows-dev-setup\pwsh-doctor.ps1` → **`PASS 86 / WARN 0 / FAIL 0`** 통과.
+
+**다음 할 일 (Next Steps / TODO):**
+- Antigravity IDE / CLI에서 새 세션 시작(또는 MCP Servers 새로고침) 시 추가된 `azure`, `sentry`, `context7`, `sequential-thinking` 도구가 즉시 로드됨.
+
+---
+
+## 2026-10-29 (Claude -> Gemini/User) AGP 9.3.2 → 9.4.1 정식 업그레이드 (플러그인 해석 시 Dependency Verification 실패 근본 해결)
+
+**현재까지의 작업 상태 (Current Status):**
+- **원인**: 09:26 Android Studio(AGP Upgrade Assistant 추정)가 `gradle/libs.versions.toml`의 `agp`를 `9.3.2 → 9.4.1`로 변경 → `com.android.application.gradle.plugin-9.4.1.pom` 등 신규 아티팩트의 SHA-256이 `verification-metadata.xml`·`app/gradle.lockfile`에 없어 플러그인 해석 단계에서 차단. 사용자가 원복 대신 **정식 업그레이드**를 선택.
+- **호환성 팩트체크**: AGP 9.4.x 최소 Gradle 9.6.0 / JDK 17 / 최대 API 37 (developer.android.com) → 현재 Gradle 9.8.1·targetSdk 37 충족.
+- **변경**:
+  - `.\gradlew.bat --write-verification-metadata sha256 --write-locks :app:dependencies :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:compileDebugAndroidTestKotlin` → `gradle/verification-metadata.xml`(+AGP 9.4.1/tools 32.4.1 계열 등), `app/gradle.lockfile` 재생성. 기존 9.3.2 항목은 Gradle 동작상 잔존(무해, 추후 정리 가능).
+  - Windows 생성 시 누락되는 **`aapt2-9.4.1-15978811-linux.jar` / `-osx.jar`** SHA-256을 Google Maven 원본 다운로드로 산출해 수동 등록(동일 방법으로 산출한 windows 해시가 Gradle 생성값과 일치함을 대조).
+  - 문서: `CLAUDE.md`(L112, L199), `README.md`, `docs/TRD.md` AGP 9.4.1로 갱신. `docs/ops/operations-snapshot.md`는 **운영 배포본(v0.6.1/40)이 AGP 9.3.2로 빌드되었으므로 의도적으로 미변경** — 다음 릴리스 배포 시 갱신.
+- **검증**: Windows 엄격 검증 빌드(spotless/detekt/unit/assembleDebug/assembleRelease R8), Linux Docker(`eclipse-temurin:17-jdk`, 엄격 검증) `:app:dependencies` + `:app:processDebugResources :app:compileDebugKotlin` BUILD SUCCESSFUL, AGP10 가드 통과.
+- **AGP 9.3.2 레거시 정리(후속, Gemini)**:
+  - `app/gradle.lockfile`: `--write-locks`는 이번 빌드에서 해석되지 않은 구성의 lock 상태를 보존하므로, AGP 9.4.1에서 사라진 `unified-test-platform-*` 12개 구성(UTP `32.3.2`, grpc/netty/`com.google.testing.platform` 등)이 잔존했음. lockfile 삭제 후 `:app:dependencies --write-locks`로 재생성 → GAV 111개 제거, 신규 GAV 0(버전 변경 없음). AGP 9.4.1 UTP는 `unified-test-platform-gradle-work-action`(32.4.1) 1개만 사용.
+  - `gradle/verification-metadata.xml`: 빈 components로 from-scratch 재생성본과 대조해 **272개 component 제거**(9.3.2/32.3.2/`aapt2 9.3.2-15703166` 계열 + 이들만 끌어오던 전이 의존성·parent POM). 잔여 9.3.2/32.3.2 = 0. 재생성본에 없지만 유지한 9개(jackson 모듈 BOM, `legacy-support-core-ui`, groovy 3.0.22, compose `ui-backhandler-android-debug`, `gradle:gradle:9.8.1` 등)는 9.3.2와 무관해 보존.
+  - 검증: Windows 엄격 검증(`--rerun-tasks` spotless/detekt/unit/assembleDebug/assembleRelease/bundleRelease/compileDebugAndroidTestKotlin/:app:dependencies) BUILD SUCCESSFUL, Linux Docker 엄격 검증, AGP10 가드.
+
+**다음 할 일 (Next Steps / TODO):**
+- Android Studio `Sync Project with Gradle Files` 재확인 → 커밋/PR(CI `android.yml`에서 최종 Linux 패리티 확인).
+- 미추적 파일 `docs/plans/2026-10-29-smile-training-v2-*.md`는 본 작업과 무관(타 세션/사용자 작업) — 건드리지 않음.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) 스마일 트레이닝 v2 리팩토링 · 레거시 전면 제거(Zero-Legacy Cutover) · 접속 경로(IA) 구현 설계서 격상 및 코드베이스 1:1 팩트체크 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **10인 멀티 에이전트 협의체(`[팀장, 기획, 디자이너, 실무, 책임, 개발, 구현, 유지보수, QA/QC, DevOps]`) 기반 구현 설계서 격상 및 코드베이스 25개 파일 1:1 라인 단위 팩트체크 보정 완료**:
+  - 단일 통합 구현 설계 문서: [`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md) (`status: approved`)
+  - 인덱스 자동 생성 및 링크 무결성 검증: [`docs/plans/README.md`](docs/plans/README.md) (`python scripts/gen_plans_index.py --check` 및 `bash scripts/check-plans-links.sh` 통과, 끊긴 참조 0건).
+- **코드베이스 정밀 감사(`§2.2 Audit-1 ~ Audit-7`)로 발견·보정한 핵심 기술 사항**:
+  1. **Audit-1 (`READY` 단계 프레임 무시 버그 수정)**: 현행 `SmileTrainingViewModel.kt:343`이 `if (phase != ACTIVE) return`으로 `READY` 프레임을 전부 버리고 있던 결함을 발견 → `onFrameSignal`이 `READY`와 `ACTIVE` 모두에서 동작하도록 설계.
+  2. **Audit-2 (일시정지 `isPaused` 재진입 무한 루프 방지)**: `pauseActiveExercise()`가 `phase = READY`를 재사용하므로, `SmileTrainingUiState`에 `isPaused: Boolean = false`를 추가해 최초 진입(`!isPaused`)에서만 1.0초 자동 시작이 작동하고 일시정지 상태에서는 수동 `[이어서 시작하기]` 탭을 기다리도록 격리.
+  3. **Audit-3 (정확한 도메인 vs OpenAPI 심볼 매칭)**: 도메인 모델(`SmileRoutineType`, `SmileDifficultyLevel`, `SmileSummaryStats`, `SmileSyncStatus`, `observeSummaryStats()`)과 OpenAPI 생성 모델(`SmileRoutine`, `SmileDifficulty`)을 모두 정확히 반영하고 `Zero-Legacy Grep Gate` 차단 목록에 4종 모두 등록.
+  4. **Audit-4 (Room `SmileSessionEntity` 인덱스 및 컬럼 정합성)**: 오프라인 워커(`SmileSyncWorker`)와 다중 계정 격리에 필수적인 `userId`, `occurredAtUtc`, `syncStatus`, `syncedAtUtc`, `lastSyncErrorCode`와 복합 인덱스 2개는 유지하고 `routine`, `difficulty`, `reflectionEmoji` 3개 컬럼만 제거(`MIGRATION_1_2` + `fallbackToDestructiveMigrationFrom(1)` 이중 가드).
+  5. **Audit-5 (PostgreSQL `ck_smile_sessions_reflection_emoji_range` 제약조건 및 Alembic `d7f4a2c91b10`)**: `DELETE FROM smile_training_sessions` 후 `drop_constraint("ck_smile_sessions_reflection_emoji_range")` 선행 및 `downgrade()` 시 `server_default` 지정으로 왕복 마이그레이션 무결성 확보.
+  6. **Audit-6 (FastAPI `CamelSchema` 및 4개 `operation_id` 보존)**: `/v2/smile-training` 라우터의 4개 엔드포인트(`recordSmileTrainingSession`, `listSmileTrainingSessions`, `getSmileTrainingStatistics`, `deleteAllSmileTrainingSessions`) `operation_id`와 `CamelSchema` 상속을 유지하여 `NetworkModule.kt` 변경 없이 OpenAPI 클라이언트 재생성 호환성 확보.
+  7. **Audit-7 (스크립트 실제 경로 정합)**: `scripts/sync-legal-docs.sh`(`docs/store/*.md` → `backend/app/legal/*.md`) 및 `scripts/sync-openapi.sh`(`backend/openapi.json` → `./gradlew openApiGenerate`) 파이프라인 명시.
+
+**다음 할 일 (Next Steps / TODO):**
+- 사용자의 구현 착수 지시(`"구현 진행"` 또는 `"승인"`) 즉시 [`2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md)의 Task 1 ~ Task 6 순서로 코드 구현 및 레거시 전수 제거 수행.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) Android Studio 소스 다운로드 시 Dependency Verification 실패(196개 sources.jar 및 gradle-9.8.1-src.zip) 근본 해결
+
+**현재까지의 작업 상태 (Current Status):**
+- **문제 증상 및 원인 분석**:
+  - Android Studio(IDE)에서 프로젝트 동기화(Sync) 및 라이브러리/Gradle 스크립트 코드 탐색 및 디버깅을 지원하기 위해 `:app:detachedConfiguration*`을 통해 의존성들의 `*-sources.jar`, `*-javadoc.jar` 및 Gradle 자체 소스 배포판 `gradle-9.8.1-src.zip`(`gradle:gradle:9.8.1`)을 다운로드하려고 시도함.
+  - Gradle Dependency Verification (`gradle/verification-metadata.xml`)에 소스/문서 아티팩트에 대한 신뢰(`trusted-artifacts`) 규칙 및 Gradle distribution source 항목이 누락되어 있어, 체크섬이 없는 196개의 `*-sources.jar` 및 `gradle-9.8.1-src.zip` 다운로드 시 Gradle verification이 차단됨.
+- **근본 원인 해결 ([`gradle/verification-metadata.xml`](gradle/verification-metadata.xml))**:
+  1. **소스 및 Javadoc, Gradle 배포판 아티팩트 자동 신뢰 규칙 추가**:
+     - Gradle 공식 권장 사항(`https://docs.gradle.org/9.8.1/userguide/dependency_verification.html#sec:troubleshooting-verification`)에 따라 `<configuration>` 블록 내에 `<trusted-artifacts>`를 선언하여 `.*-javadoc[.]jar`, `.*-sources[.]jar`, `.*-src[.]zip` 및 `^gradle$` 그룹 아티팩트를 자동 신뢰하도록 추가:
+       ```xml
+       <trusted-artifacts>
+          <trust file=".*-javadoc[.]jar" regex="true"/>
+          <trust file=".*-sources[.]jar" regex="true"/>
+          <trust file=".*-src[.]zip" regex="true"/>
+          <trust group="^gradle$" regex="true" reason="Gradle distribution artifacts"/>
+       </trusted-artifacts>
+       ```
+  2. **Gradle 9.8.1 공식 소스 ZIP SHA-256 체크섬 직접 등록 (이중 방어)**:
+     - `gradle:gradle:9.8.1`의 공식 배포 아티팩트 `gradle-9.8.1-src.zip`의 SHA-256 체크섬(`6c5598a3253d0a61a39b27363aef32780cf235dc07ad50bafb30c7c0f309c49c`)을 `<components>` 블록에 명시적으로 등록함.
+  3. **공급망 보안 무결성 보존**:
+     - 컴파일/런타임에 실행되는 모든 핵심 바이너리(AAR, JAR, POM, MODULE 등)의 SHA-256 검증 및 공급망 무결성은 100% 온전히 유지하면서, IDE 탐색용 소스/문서/Gradle 배포판 아카이브 다운로드만 안전하게 허용함.
+- **실측 검증 결과**:
+  - 실제 에러 대상 아티팩트(`FastInfoset-1.2.16-sources.jar`, `JavaEWAH-1.2.3-sources.jar`, `checker-qual-3.43.0-sources.jar`)에 대한 detached configuration 소스 아티팩트 해소(Resolution) 테스트 성공 (`BUILD SUCCESSFUL`).
+  - `gradle-9.8.1-src.zip` 공식 SHA-256 대조 및 캐시 무결성 검증 완료.
+  - `.\gradlew.bat :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleDebug` → **BUILD SUCCESSFUL in 8s** (단위 테스트 215개 전수 통과, Detekt 0건, 디버그 APK 빌드 성공).
+  - `wsl -d Ubuntu -- bash -lc "cd /mnt/c/programming/apps/eundunHealth && bash scripts/check-agp10-compat.sh"` → **OK: AGP 10 호환성 가드 통과**.
+
+**다음 할 일 (Next Steps / TODO):**
+- Android Studio에서 `Sync Project with Gradle Files` 재실행하여 에러 없이 정상 동기화되는지 확인.
+
+---
+
 ## 2026-10-28 (Gemini -> Claude/User) Health Connect '연동' 무반응 근본 해결 + 운동 가이드 종료 다이얼로그('완료하지 않고 나가기') 잘림 및 UI/UX 전수 점검·수정 완료
 
 **현재까지의 작업 상태 (Current Status):**

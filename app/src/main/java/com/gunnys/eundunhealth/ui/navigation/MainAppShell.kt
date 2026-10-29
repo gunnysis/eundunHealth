@@ -196,6 +196,7 @@ private fun MainContent(
                         ?.savedStateHandle
                         ?.set(KEY_REFRESH_HOME, true)
                 },
+                onNavigateToSmileTraining = onNavigateToSmileTraining,
             )
         }
         composable(Screen.Badges.route) { BadgeScreen(onBack = { navController.popBackStack() }) }

@@ -54,7 +54,7 @@ docker compose down -v                # 정리
 .venv/Scripts/bandit -r app -ll
 .venv/Scripts/pip-audit -r requirements.txt --strict   # ignore-vuln 사용 금지 (CI와 동일 — backend.yml 주석 참조)
 
-# Alembic 마이그레이션 (현재 head: d7f4a2c91b10)
+# Alembic 마이그레이션 (현재 head: e8b2c4d6f1a0)
 .venv/Scripts/alembic upgrade head
 .venv/Scripts/alembic revision --autogenerate -m "..."
 
@@ -109,7 +109,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 호환성 (MEASURED 2026-06-08, 블로커 0):
 - 디바이스 **API 30+ 필수** — 본 앱 `minSdk=26` 이므로 **API 30+ 에뮬레이터/기기로 배포**해야 Live Edit 활성 (API 26~29 기기는 비활성).
-- `kotlinOptions.moduleName` 커스텀 금지. AGP 9.3.2 built-in Kotlin은 Java 17 `compileOptions`에서 JVM target을 상속한다. 별도 Kotlin Android 플러그인·`android.builtInKotlin` opt-out은 사용하지 않는다 (`scripts/check-agp10-compat.sh` 가드).
+- `kotlinOptions.moduleName` 커스텀 금지. AGP 9.4.1 built-in Kotlin은 Java 17 `compileOptions`에서 JVM target을 상속한다. 별도 Kotlin Android 플러그인·`android.builtInKotlin` opt-out은 사용하지 않는다 (`scripts/check-agp10-compat.sh` 가드).
 
 적용 범위 — **Composable 함수 *바디* 만** 핫스왑:
 - ✅ `Modifier`(padding/spacing), `Color`/`dp` 상수, 애니메이션 튜닝, 레이아웃 미세조정 → `ui/theme/`·`ui/components/` 시각 마감 작업의 inner-loop 가속.
@@ -130,8 +130,8 @@ Package: `com.gunnys.eundunhealth`
 
 **Clean Architecture layers:**
 - **UI** (`ui/`): Compose 화면 + ViewModels. Navigation은 `navigation/` 의 sealed `Screen` 및 적응형 앱 셸 `MainAppShell`(`오늘·식단·진행·프로필` 4개 최상위 탭). 화면 **15개**: splash, **auth gate**(`AuthGateScreen` — 3슬라이드 가치 소개 페이저 + Entra 호스팅 페이지 브라우저 위임), onboarding(2단계 위저드), home(`TodayHeroCard` + 접이식 7일 계획), **meal plan**(`MealPlanScreen`, v0.3.0 AI 맞춤 주간 식단 + 상단 재생성), **progress hub**(`ProgressHubScreen`, v0.4.0 + 3열 요약 지표 타일), **profile hub**(`ProfileHubScreen`, v0.4.0 + 5대 섹션 그룹화), profile, workout detail, **workout guide**(`WorkoutGuideScreen`, v0.6.1 `HorizontalPager` 단계별 운동 가이드 모드), history, badges, **statistics**(v0.2), **goal**(v0.3), **smile training**(`SmileTrainingScreen`, v0.5.0 온디바이스 스마일 트레이닝 루트 모달).
-- **Domain** (`domain/`): 모델, 리포 인터페이스, use case(`LoadCurrentWeekPlanUseCase`, `LoadDefaultWorkoutPlanModeUseCase`, `CreateWeeklyPlanUseCase`, `HomeWeeklyPlanGenerator`, `WeeklyPlanGenerator` 등), 예상 운동 소요시간 계산기(`util/WorkoutDurationEstimator.kt`), 스마일 신호 평가기(`smile/SmileRoutineRule.kt`, `smile/SmileSignalEvaluator.kt`). `domain/model/AppError.kt`에 통일 에러 sealed class + `Throwable.toAppError()` + `AppError.reportToSentry()`.
-- **Data** (`data/`): Repository 구현, OpenAPI 생성 클라이언트(`api.generated.client.*`), Room(`local/EundunDatabase` v3, `local/SmileTrainingDatabase` v1), WorkManager(`sync/SmileSyncWorker`), 로컬 데이터 와이퍼(`local/DefaultLocalDataWiper`), 온디바이스 ML Kit 얼굴 검출(`smile/MlKitFaceModuleInstaller`, `smile/MlKitSmileSignalAnalyzer`), Health Connect, Entra auth(`auth/AuthRepositoryImpl.kt` + `auth/MsalClientProvider.kt`), ExerciseDB 한국어 번역(`translation/ExerciseTranslationProvider.kt` + `assets/korean_exercises.json`), DataStore.
+- **Domain** (`domain/`): 모델, 리포 인터페이스, use case(`LoadCurrentWeekPlanUseCase`, `LoadDefaultWorkoutPlanModeUseCase`, `CreateWeeklyPlanUseCase`, `HomeWeeklyPlanGenerator`, `WeeklyPlanGenerator` 등), 예상 운동 소요시간 계산기(`util/WorkoutDurationEstimator.kt`), 스마일 신호 평가기(`smile/SmileSignalEvaluator.kt`). `domain/model/AppError.kt`에 통일 에러 sealed class + `Throwable.toAppError()` + `AppError.reportToSentry()`.
+- **Data** (`data/`): Repository 구현, OpenAPI 생성 클라이언트(`api.generated.client.*`), Room(`local/EundunDatabase` v3, `local/SmileTrainingDatabase` v2), WorkManager(`sync/SmileSyncWorker`), 로컬 데이터 와이퍼(`local/DefaultLocalDataWiper`), 온디바이스 ML Kit 얼굴 검출(`smile/MlKitFaceModuleInstaller`, `smile/MlKitSmileSignalAnalyzer`), Health Connect, Entra auth(`auth/AuthRepositoryImpl.kt` + `auth/MsalClientProvider.kt`), ExerciseDB 한국어 번역(`translation/ExerciseTranslationProvider.kt` + `assets/korean_exercises.json`), DataStore.
 - **DI** (`di/`): Hilt 모듈 **4개** — `NetworkModule`(8개 OpenAPI client provider), `DatabaseModule`(`EundunDatabase` + `SmileTrainingDatabase`), `RepositoryModule`(`GoalRepository`·`MealPlanRepository`·`SmileTrainingRepository`·`LocalDataWiper`·`ExerciseTranslationProvider` 포함), `CoroutineModule`. (`SupabaseModule`·`CoilModule` 은 제거 — MSAL 은 `MsalClientProvider` 가 지연 초기화)
 
 **Key patterns:**
@@ -158,8 +158,8 @@ Package: `app`
 - `app/schemas/` — Pydantic `CamelSchema` (alias_generator=to_camel, populate_by_name=True). v0.3에 `goal.py`, `statistics.py`, v0.3.0에 `meal_plan.py`, v0.5.0에 `smile_training.py`, v2에 `app_compatibility.py` 추가.
 - `app/repositories/` — DB 접근 추상화. `profile_history_repo`, `goal_repo` (v0.3), `meal_plan_repo` (v0.3.0), `smile_training_repo` (v0.5.0).
 - `app/services/` — 비즈니스 로직. `account_service`가 Microsoft Graph 로 Entra 사용자 삭제(204) + `deletedItems` 즉시 파기. `statistics_service` (v0.2), `goal_service` (v0.3), `meal_plan_service` + `meal_ai_client` (v0.3.0, Azure AI Foundry `DeepSeek-V3.2`), `smile_training_service` (v0.5.0).
-- `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py`, v0.3.0 `meal_plan.py` (`/meals` prefix), v0.5.0 `smile_training.py` (`/smile-training` prefix), v2 `app_compatibility.py` (`/app-compatibility`) 및 `weekly_plan.py` (`/v2/weekly-plan`).
-- **alembic/** — async 엔진 연동. **head: `d7f4a2c91b10` (`v2_weekly_plan_mode_and_reset_audit`; 직전 `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)**.
+- `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py`, v0.3.0 `meal_plan.py` (`/meals` prefix), v2 `smile_training.py` (`/v2/smile-training` prefix), v2 `app_compatibility.py` (`/app-compatibility`) 및 `weekly_plan.py` (`/v2/weekly-plan`).
+- **alembic/** — async 엔진 연동. **head: `e8b2c4d6f1a0` (`cutover_smile_training_to_v2`; 직전 `d7f4a2c91b10` `v2_weekly_plan_mode_and_reset_audit` ← `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)**.
 
 **API Endpoints (총 27 = JWT 필요 22 + 공개 5. 공개 라우트 `/health`·`/health/ready`·`/app-compatibility`·`/privacy`·`/account-deletion`. 뒤 둘은 `docs/store/*.md` 를 `app/legal/` 로 동기화(sync-legal-docs.sh)해 md→HTML 렌더 — Play 등록 URL이며 `include_in_schema=False` 라 openapi.json[Android 생성기 입력]에서 제외된다[죽은 클라이언트 메서드 방지]. `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 Entra 전환으로 **삭제**됐다 — 검증을 브라우저 안에서 처리해 App Links 경로가 불필요):**
 ```
@@ -185,10 +185,10 @@ GET    /goals                                # v0.3
 PUT    /goals                                # v0.3
 POST   /meals/generate                       # v0.3.0/v0.3.1 — AI 주간 식단 생성 (X-AI-Data-Processing-Consent: true 필수)
 GET    /meals/current                        # v0.3.0 — 현재 주간 식단 조회
-POST   /smile-training/sessions              # v0.5.0 — 스마일 트레이닝 세션 멱등 기록 (UUID PK)
-GET    /smile-training/sessions              # v0.5.0 — 커서 기반 세션 이력 조회
-GET    /smile-training/statistics            # v0.5.0 — KST 기준 연속일 및 누적 통계 조회
-DELETE /smile-training/sessions              # v0.5.0 — 사용자의 전체 스마일 트레이닝 세션 삭제
+POST   /v2/smile-training/sessions           # v2 — 스마일 트레이닝 세션 멱등 기록 (UUID PK)
+GET    /v2/smile-training/sessions           # v2 — 커서 기반 세션 이력 조회
+GET    /v2/smile-training/statistics         # v2 — KST 기준 연속일 및 누적 통계 조회
+DELETE /v2/smile-training/sessions           # v2 — 사용자의 전체 스마일 트레이닝 세션 삭제
 DELETE /account
 ```
 
@@ -196,7 +196,7 @@ DELETE /account
 
 ### Android App
 - **Kotlin 2.4.21**, KSP 2.3.12 (Kotlin과 호환 필요)
-- **Gradle 9.8.1**, AGP 9.3.2 (내장 Kotlin + 새 DSL 기본 활성; dependency lock + SHA-256 verification)
+- **Gradle 9.8.1**, AGP 9.4.1 (2026-10-29 9.3.2→9.4.1, AGP 9.4 최소 Gradle 9.6.0 충족; 내장 Kotlin + 새 DSL 기본 활성; dependency lock + SHA-256 verification)
 - **Min SDK 26**, Target SDK 37, Java 17
 - **Compose BOM 2026.09.00**, Activity Compose 1.13.0, Navigation Compose 2.10.2, Lifecycle 2.11.0, Core KTX 1.19.1
 - **Hilt 2.60.1**, Room 2.8.5, WorkManager 2.12.0 (`hilt-work` 1.4.0), CameraX 1.6.2 (`camera-compose`), ML Kit Face Detection 17.1.0 (`play-services-mlkit-face-detection`, unbundled `play-services-base` 18.11.1), DataStore 1.3.0, Health Connect 1.1.0, Retrofit 3.0.0, MSAL 8.4.2, OpenAPI Generator 7.25.0
@@ -219,7 +219,7 @@ DELETE /account
 - **pydantic-settings 2.16.1**, **PyJWT[crypto] 2.15.1** (JWKS), **httpx 0.28.1**, **markdown 3.11.2**, **openai 3.37.0**
 - **Sentry SDK 2.73.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
 - mypy 2.4.0 strict, ruff 0.17.2 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.1.1 — 140/140 PASS**. `requirements.in`/`requirements-dev.in`을 원본으로 하고 생성된 hash lock을 CI/Docker에서 `--require-hashes`로 설치한다.
-- Alembic head `d7f4a2c91b10` (`v2_weekly_plan_mode_and_reset_audit`; 직전 `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)
+- Alembic head `e8b2c4d6f1a0` (`cutover_smile_training_to_v2`; 직전 `d7f4a2c91b10` `v2_weekly_plan_mode_and_reset_audit` ← `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure

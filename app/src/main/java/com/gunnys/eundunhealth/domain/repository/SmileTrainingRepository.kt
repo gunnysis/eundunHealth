@@ -1,7 +1,5 @@
 package com.gunnys.eundunhealth.domain.repository
 
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
 import com.gunnys.eundunhealth.domain.model.SmileSessionRecord
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import kotlinx.coroutines.flow.Flow
@@ -12,11 +10,8 @@ interface SmileTrainingRepository {
     fun observeSummaryStats(): Flow<SmileSummaryStats>
 
     suspend fun saveCompletedSession(
-        routine: SmileRoutineType,
-        difficulty: SmileDifficultyLevel,
         durationSec: Int,
         completedReps: Int,
-        reflectionEmoji: Int?,
         occurredAtEpochMs: Long = System.currentTimeMillis(),
     ): Result<SmileSessionRecord>
 

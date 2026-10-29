@@ -83,13 +83,14 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import android.util.Size as AndroidSize
 
-private val DarkHudSurface = Color(0xCC10141D)
-private val VignetteScrim = Color(0x990B0E14)
+// Modern Forest & Mint HUD Tokens (v0.7.0)
+private val DarkHudSurface = Color(0xCC0D1812)
+private val VignetteScrim = Color(0x9908110C)
 private val GuideBorderIdle = Color(0x99FFFFFF)
-private val GuideBorderAligned = Color(0xFF40C4FF)
-private val ProgressStartColor = Color(0xFF40C4FF)
-private val ProgressEndColor = Color(0xFF69F0AE)
-private val WarningBadgeColor = Color(0xFFFFD54F)
+private val GuideBorderAligned = Color(0xFF9CF1B6)
+private val ProgressStartColor = Color(0xFF7CDA9C)
+private val ProgressEndColor = Color(0xFF9CF1B6)
+private val WarningBadgeColor = Color(0xFFF59E0B)
 private val AnalysisTargetResolution = AndroidSize(640, 480)
 
 @Composable
@@ -181,8 +182,13 @@ internal fun SmileCameraStage(
         }
     }
 
+    val rawTargetProgress = when (uiState.phase) {
+        SmileSessionPhase.READY -> uiState.readyAlignmentProgress
+        SmileSessionPhase.REP_SUCCESS -> 1f
+        else -> uiState.holdProgress
+    }
     val animatedProgress by animateFloatAsState(
-        targetValue = uiState.holdProgress.coerceIn(0f, 1f),
+        targetValue = rawTargetProgress.coerceIn(0f, 1f),
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessMediumLow,
@@ -212,8 +218,6 @@ internal fun SmileCameraStage(
                 .windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
             TopHudBar(
-                routineName = uiState.selectedRoutine.displayName,
-                difficultyName = uiState.selectedDifficulty.displayName,
                 currentRep = uiState.currentRep,
                 targetReps = uiState.targetReps,
                 onCloseClick = onCloseClick,
@@ -323,13 +327,12 @@ private fun FaceOvalVignetteOverlay(
             style = Stroke(width = 3.dp.toPx()),
         )
 
-        val effectiveProgress = if (phase == SmileSessionPhase.REP_SUCCESS) 1f else holdProgress
-        if (effectiveProgress > 0.01f) {
+        if (holdProgress > 0.01f) {
             val ringPadding = 8.dp.toPx()
             drawArc(
                 brush = progressBrush,
                 startAngle = -90f,
-                sweepAngle = 360f * effectiveProgress,
+                sweepAngle = 360f * holdProgress,
                 useCenter = false,
                 topLeft = Offset(topLeft.x - ringPadding, topLeft.y - ringPadding),
                 size = Size(ovalSize.width + ringPadding * 2, ovalSize.height + ringPadding * 2),
@@ -341,8 +344,6 @@ private fun FaceOvalVignetteOverlay(
 
 @Composable
 private fun TopHudBar(
-    routineName: String,
-    difficultyName: String,
     currentRep: Int,
     targetReps: Int,
     onCloseClick: () -> Unit,
@@ -366,7 +367,7 @@ private fun TopHudBar(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "$routineName · $difficultyName",
+                        text = "스마일 트레이닝 · 2초 유지",
                         style = MaterialTheme.typography.labelLarge,
                         color = Color.White,
                     )
@@ -440,6 +441,7 @@ private fun BottomCoachingOverlay(
         ) {
             AlignmentStatusBadge(
                 phase = uiState.phase,
+                isPaused = uiState.isPaused,
                 isFaceAligned = uiState.isFaceAligned,
                 isInSmileState = uiState.isInSmileState,
             )
@@ -473,6 +475,7 @@ private fun BottomCoachingOverlay(
 
             if (uiState.phase == SmileSessionPhase.READY) {
                 ReadyStartButton(
+                    isPaused = uiState.isPaused,
                     currentRep = uiState.currentRep,
                     targetReps = uiState.targetReps,
                     onStartExercise = onStartExercise,
@@ -485,12 +488,15 @@ private fun BottomCoachingOverlay(
 @Composable
 private fun AlignmentStatusBadge(
     phase: SmileSessionPhase,
+    isPaused: Boolean,
     isFaceAligned: Boolean,
     isInSmileState: Boolean,
 ) {
     val (label, badgeColor) = when {
         phase == SmileSessionPhase.REP_SUCCESS -> "반복 성공!" to ProgressEndColor
-        phase == SmileSessionPhase.READY -> "준비 단계 · 가이드에 얼굴 맞추기" to GuideBorderAligned
+        phase == SmileSessionPhase.READY && isPaused -> "일시정지 상태" to WarningBadgeColor
+        phase == SmileSessionPhase.READY && isFaceAligned -> "정렬 완료 · 1초 후 자동 시작" to GuideBorderAligned
+        phase == SmileSessionPhase.READY -> "준비 단계 · 얼굴 정렬 시 자동 시작" to GuideBorderAligned
         isInSmileState -> "미소 유지 감지 중" to ProgressEndColor
         isFaceAligned -> "정면 정렬 완료 · 미소를 지어보세요" to GuideBorderAligned
         else -> "가이드 타원에 얼굴을 맞춰주세요" to WarningBadgeColor
@@ -561,22 +567,23 @@ private fun ActiveHoldProgressSection(
 
 @Composable
 private fun ReadyStartButton(
+    isPaused: Boolean,
     currentRep: Int,
     targetReps: Int,
     onStartExercise: () -> Unit,
 ) {
     Spacer(Modifier.height(4.dp))
-    val buttonLabel = if (currentRep > 0) {
-        " 이어서 연습 시작 ($currentRep/${targetReps}회 완료)"
+    val buttonLabel = if (isPaused || currentRep > 0) {
+        " 이어서 시작하기 ($currentRep/${targetReps}회 완료)"
     } else {
-        " 준비 완료 · 연습 시작"
+        " 바로 시작하기"
     }
     Button(
         onClick = onStartExercise,
         modifier = Modifier.fillMaxWidth().height(52.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = ProgressEndColor,
-            contentColor = Color(0xFF0A1912),
+            contentColor = Color(0xFF062112),
         ),
     ) {
         Icon(Icons.Default.PlayArrow, contentDescription = null)

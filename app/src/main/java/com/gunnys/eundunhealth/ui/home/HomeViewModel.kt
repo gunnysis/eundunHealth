@@ -7,9 +7,11 @@ import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.CurrentWeekPlanRead
 import com.gunnys.eundunhealth.domain.model.PlanSource
+import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
+import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.CreateWeeklyPlanUseCase
@@ -87,6 +89,8 @@ sealed class HomeUiState {
         val isRefreshing: Boolean = false,
         val isWeeklyListExpanded: Boolean = false,
         val isSmileShortcutDismissedToday: Boolean = false,
+        val isSmileCompletedToday: Boolean = false,
+        val smileCurrentStreakDays: Int = 0,
     ) : HomeUiState() {
         val completionRate: Float get() = if (totalWorkoutDays > 0) completedCount.toFloat() / totalWorkoutDays else 0f
     }
@@ -96,6 +100,7 @@ sealed class HomeUiState {
 }
 
 @HiltViewModel
+@Suppress("LongParameterList")
 class HomeViewModel @Inject constructor(
     private val loadCurrentWeekPlan: LoadCurrentWeekPlanUseCase,
     private val loadDefaultWorkoutPlanMode: LoadDefaultWorkoutPlanModeUseCase,
@@ -104,6 +109,7 @@ class HomeViewModel @Inject constructor(
     private val syncHealth: SyncHealthDataUseCase,
     private val checkBadges: CheckAndAwardBadgesUseCase,
     private val workoutRepo: WorkoutRepository,
+    private val smileTrainingRepo: SmileTrainingRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -115,8 +121,26 @@ class HomeViewModel @Inject constructor(
     // 같은 날짜의 토글 전송을 직렬화 — 빠른 체크/해제 시 이전 전송을 취소해 최신 의도만 서버에 반영.
     private val toggleJobs = mutableMapOf<LocalDate, Job>()
 
+    private var latestSmileStats: SmileSummaryStats = SmileSummaryStats()
+
     init {
         loadPlan()
+        observeSmileTrainingStats()
+    }
+
+    private fun observeSmileTrainingStats() {
+        viewModelScope.launch {
+            smileTrainingRepo.observeSummaryStats().collect { stats ->
+                latestSmileStats = stats
+                val current = _uiState.value
+                if (current is HomeUiState.Success) {
+                    _uiState.value = current.copy(
+                        isSmileCompletedToday = stats.isCompletedToday,
+                        smileCurrentStreakDays = stats.currentStreakDays,
+                    )
+                }
+            }
+        }
     }
 
     private fun currentWeekStart(): LocalDate = LocalDate.now(KST_ZONE).with(DayOfWeek.MONDAY)
@@ -139,6 +163,8 @@ class HomeViewModel @Inject constructor(
             isRefreshing = false,
             isWeeklyListExpanded = isWeeklyListExpanded,
             isSmileShortcutDismissedToday = isSmileDismissed,
+            isSmileCompletedToday = latestSmileStats.isCompletedToday,
+            smileCurrentStreakDays = latestSmileStats.currentStreakDays,
         )
     }
 

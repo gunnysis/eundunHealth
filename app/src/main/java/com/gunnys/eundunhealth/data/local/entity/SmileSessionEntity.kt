@@ -14,11 +14,8 @@ import androidx.room.PrimaryKey
 data class SmileSessionEntity(
     @PrimaryKey val id: String,
     val userId: String,
-    val routine: String,
-    val difficulty: String,
     val durationSec: Int,
     val completedReps: Int,
-    val reflectionEmoji: Int?,
     val occurredAtUtc: Long,
     val syncStatus: String,
     val syncedAtUtc: Long? = null,

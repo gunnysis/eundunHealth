@@ -3,17 +3,16 @@ package com.gunnys.eundunhealth.ui.smile
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.data.smile.MlKitFaceModuleManager
 import com.gunnys.eundunhealth.data.smile.MlKitModuleState
 import com.gunnys.eundunhealth.domain.model.AppError
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
 import com.gunnys.eundunhealth.domain.model.SmileSessionRecord
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
+import com.gunnys.eundunhealth.domain.model.SmileTrainingSpec
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.smile.FrameSignal
-import com.gunnys.eundunhealth.domain.smile.SmileRoutineRule
 import com.gunnys.eundunhealth.domain.smile.SmileSignalEvaluator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.sentry.Breadcrumb
@@ -30,8 +29,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlin.math.roundToInt
+
+private val KST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
 
 @Immutable
 enum class SmileSessionPhase {
@@ -43,7 +46,6 @@ enum class SmileSessionPhase {
     READY,
     ACTIVE,
     REP_SUCCESS,
-    REFLECTION,
     COMPLETED,
 }
 
@@ -63,19 +65,18 @@ sealed interface SmileTrainingSideEffect {
 @Immutable
 data class SmileTrainingUiState(
     val phase: SmileSessionPhase = SmileSessionPhase.INTRO,
-    val selectedRoutine: SmileRoutineType = SmileRoutineType.GENTLE,
-    val selectedDifficulty: SmileDifficultyLevel = SmileDifficultyLevel.STANDARD,
-    val targetReps: Int = DEFAULT_TARGET_REPS,
+    val isPaused: Boolean = false,
+    val readyAlignmentProgress: Float = 0f,
+    val targetReps: Int = SmileTrainingSpec.TARGET_REPS,
     val currentRep: Int = 0,
     val holdProgress: Float = 0f,
     val heldDurationMs: Long = 0L,
-    val targetHoldDurationMs: Long = SmileRoutineType.GENTLE.baseHoldDurationMs,
+    val targetHoldDurationMs: Long = SmileTrainingSpec.HOLD_DURATION_MS,
     val isInSmileState: Boolean = false,
     val isFaceAligned: Boolean = false,
     val guideMessage: String = "얼굴을 가이드 타원 안에 맞춰주세요",
     val modelDownloadPercent: Int? = null,
     val modelUnavailableReason: String? = null,
-    val selectedReflectionEmoji: Int? = null,
     val sessionDurationSec: Int = 0,
     val summaryStats: SmileSummaryStats = SmileSummaryStats(),
     val recentSessions: List<SmileSessionRecord> = emptyList(),
@@ -84,16 +85,13 @@ data class SmileTrainingUiState(
     val showExitConfirmDialog: Boolean = false,
     val showDeleteConfirmDialog: Boolean = false,
     val error: AppError? = null,
-) {
-    companion object {
-        const val DEFAULT_TARGET_REPS = 3
-    }
-}
+)
 
 @HiltViewModel
 class SmileTrainingViewModel @Inject constructor(
     private val repository: SmileTrainingRepository,
     private val moduleManager: MlKitFaceModuleManager,
+    private val themePreferences: ThemePreferences,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SmileTrainingUiState())
@@ -102,13 +100,10 @@ class SmileTrainingViewModel @Inject constructor(
     private val _sideEffect = Channel<SmileTrainingSideEffect>(Channel.BUFFERED)
     val sideEffect = _sideEffect.receiveAsFlow()
 
-    private var evaluator: SmileSignalEvaluator = buildEvaluator(
-        routine = SmileRoutineType.GENTLE,
-        difficulty = SmileDifficultyLevel.STANDARD,
-        targetReps = SmileTrainingUiState.DEFAULT_TARGET_REPS,
-    )
+    private var evaluator: SmileSignalEvaluator = SmileSignalEvaluator()
     private var activeSessionStartedMs: Long? = null
     private var repTransitionJob: Job? = null
+    private var hasSavedCurrentSession: Boolean = false
 
     init {
         observeRepositoryData()
@@ -133,31 +128,6 @@ class SmileTrainingViewModel @Inject constructor(
             runCatching { repository.refreshRemoteHistoryIfEmpty() }
             runCatching { repository.syncPendingSessions() }
         }
-    }
-
-    fun selectRoutine(routine: SmileRoutineType) {
-        _uiState.update { current ->
-            val rule = SmileRoutineRule(routine, current.selectedDifficulty)
-            current.copy(
-                selectedRoutine = routine,
-                targetHoldDurationMs = rule.targetHoldDurationMs,
-            )
-        }
-    }
-
-    fun selectDifficulty(difficulty: SmileDifficultyLevel) {
-        _uiState.update { current ->
-            val rule = SmileRoutineRule(current.selectedRoutine, difficulty)
-            current.copy(
-                selectedDifficulty = difficulty,
-                targetHoldDurationMs = rule.targetHoldDurationMs,
-            )
-        }
-    }
-
-    fun selectTargetReps(reps: Int) {
-        val coerced = reps.coerceIn(MIN_TARGET_REPS, MAX_TARGET_REPS)
-        _uiState.update { it.copy(targetReps = coerced) }
     }
 
     fun onStartClicked(hasCameraPermission: Boolean) {
@@ -233,33 +203,35 @@ class SmileTrainingViewModel @Inject constructor(
     }
 
     private fun moveToReadyPhase() {
-        val state = _uiState.value
-        val rule = SmileRoutineRule(state.selectedRoutine, state.selectedDifficulty)
-        evaluator = SmileSignalEvaluator(rule = rule, targetReps = state.targetReps)
+        evaluator = SmileSignalEvaluator(targetReps = _uiState.value.targetReps)
         activeSessionStartedMs = null
+        hasSavedCurrentSession = false
         _uiState.update {
             it.copy(
                 phase = SmileSessionPhase.READY,
+                isPaused = false,
+                readyAlignmentProgress = 0f,
                 currentRep = 0,
                 holdProgress = 0f,
                 heldDurationMs = 0L,
-                targetHoldDurationMs = rule.targetHoldDurationMs,
+                targetHoldDurationMs = SmileTrainingSpec.HOLD_DURATION_MS,
                 isInSmileState = false,
                 isFaceAligned = false,
-                guideMessage = "얼굴을 가이드 타원 안에 맞추고 시작을 눌러주세요",
+                guideMessage = "얼굴을 가이드 타원 안에 맞추면 자동으로 시작됩니다",
             )
         }
     }
 
     fun beginActiveExercise(nowElapsedMs: Long? = null) {
         val state = _uiState.value
-        val rule = SmileRoutineRule(state.selectedRoutine, state.selectedDifficulty)
-        val isResumingPausedSession = state.currentRep > 0
+        val isResumingPausedSession = state.isPaused || state.currentRep > 0
         if (!isResumingPausedSession) {
-            evaluator = SmileSignalEvaluator(rule = rule, targetReps = state.targetReps)
+            evaluator = SmileSignalEvaluator(targetReps = state.targetReps)
             activeSessionStartedMs = nowElapsedMs
+            hasSavedCurrentSession = false
         } else {
             evaluator.clearActiveHold()
+            evaluator.resetReadyAlignment()
             if (activeSessionStartedMs == null && nowElapsedMs != null) {
                 activeSessionStartedMs = nowElapsedMs
             }
@@ -267,20 +239,22 @@ class SmileTrainingViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 phase = SmileSessionPhase.ACTIVE,
+                isPaused = false,
+                readyAlignmentProgress = 0f,
                 currentRep = if (isResumingPausedSession) state.currentRep else 0,
                 holdProgress = 0f,
                 heldDurationMs = 0L,
-                targetHoldDurationMs = rule.targetHoldDurationMs,
+                targetHoldDurationMs = SmileTrainingSpec.HOLD_DURATION_MS,
                 isInSmileState = false,
                 isFaceAligned = false,
-                guideMessage = "얼굴을 가이드 타원 안에 맞춰주세요",
+                guideMessage = "정면을 바라보며 입꼬리를 부드럽게 올려보세요",
                 error = null,
             )
         }
         val announceMsg = if (isResumingPausedSession) {
-            "${state.selectedRoutine.displayName} 연습을 이어서 시작합니다."
+            "스마일 트레이닝 연습을 이어서 시작합니다."
         } else {
-            "${state.selectedRoutine.displayName} 연습을 시작합니다."
+            "스마일 트레이닝 연습을 시작합니다."
         }
         _sideEffect.trySend(SmileTrainingSideEffect.AnnounceAccessibility(announceMsg))
     }
@@ -294,9 +268,12 @@ class SmileTrainingViewModel @Inject constructor(
         }
         repTransitionJob?.cancel()
         evaluator.clearActiveHold()
+        evaluator.resetReadyAlignment()
         _uiState.update {
             it.copy(
                 phase = SmileSessionPhase.READY,
+                isPaused = true,
+                readyAlignmentProgress = 0f,
                 holdProgress = 0f,
                 heldDurationMs = 0L,
                 isInSmileState = false,
@@ -317,6 +294,7 @@ class SmileTrainingViewModel @Inject constructor(
         repTransitionJob?.cancel()
         evaluator.reset()
         activeSessionStartedMs = null
+        hasSavedCurrentSession = false
         Sentry.addBreadcrumb(
             Breadcrumb().apply {
                 category = "smile.camera_error"
@@ -325,13 +303,14 @@ class SmileTrainingViewModel @Inject constructor(
             },
         )
         _uiState.update { current ->
-            val rule = SmileRoutineRule(current.selectedRoutine, current.selectedDifficulty)
             current.copy(
                 phase = SmileSessionPhase.INTRO,
+                isPaused = false,
+                readyAlignmentProgress = 0f,
                 currentRep = 0,
                 holdProgress = 0f,
                 heldDurationMs = 0L,
-                targetHoldDurationMs = rule.targetHoldDurationMs,
+                targetHoldDurationMs = SmileTrainingSpec.HOLD_DURATION_MS,
                 isInSmileState = false,
                 isFaceAligned = false,
                 showExitConfirmDialog = false,
@@ -341,8 +320,36 @@ class SmileTrainingViewModel @Inject constructor(
     }
 
     fun onFrameSignal(signal: FrameSignal) {
-        if (_uiState.value.phase != SmileSessionPhase.ACTIVE) return
+        when (_uiState.value.phase) {
+            SmileSessionPhase.READY -> handleReadyFrame(signal)
+            SmileSessionPhase.ACTIVE -> handleActiveFrame(signal)
+            else -> Unit
+        }
+    }
 
+    private fun handleReadyFrame(signal: FrameSignal) {
+        val state = _uiState.value
+        val readySnapshot = evaluator.evaluateReadyFrame(signal, allowAutoStart = !state.isPaused)
+        _uiState.update { current ->
+            current.copy(
+                isFaceAligned = readySnapshot.isFaceAligned,
+                readyAlignmentProgress = readySnapshot.alignmentProgress,
+                guideMessage = if (current.isPaused && !readySnapshot.isFaceAligned) {
+                    readySnapshot.guideMessage
+                } else if (current.isPaused) {
+                    "일시정지됨 · 얼굴이 정렬되었습니다. 이어서 시작을 눌러주세요"
+                } else {
+                    readySnapshot.guideMessage
+                },
+            )
+        }
+        if (readySnapshot.shouldAutoStart) {
+            _sideEffect.trySend(SmileTrainingSideEffect.TriggerRepSuccessHaptic)
+            beginActiveExercise(nowElapsedMs = signal.timestampElapsedMs)
+        }
+    }
+
+    private fun handleActiveFrame(signal: FrameSignal) {
         val currentStart = activeSessionStartedMs
         if (currentStart == null || signal.timestampElapsedMs < currentStart) {
             activeSessionStartedMs = signal.timestampElapsedMs
@@ -368,15 +375,22 @@ class SmileTrainingViewModel @Inject constructor(
                     ((signal.timestampElapsedMs - started).coerceAtLeast(1000L) / 1000.0).roundToInt()
                 } ?: ((snapshot.targetHoldDurationMs * snapshot.targetReps) / 1000L).toInt().coerceAtLeast(1)
 
+                val safeDurationSec = elapsedSec.coerceAtLeast(1)
+                val safeCompletedReps = snapshot.currentRep.coerceAtLeast(1)
+
                 _uiState.update {
                     it.copy(
-                        phase = SmileSessionPhase.REFLECTION,
-                        sessionDurationSec = elapsedSec.coerceAtLeast(1),
-                        selectedReflectionEmoji = null,
+                        phase = SmileSessionPhase.COMPLETED,
+                        sessionDurationSec = safeDurationSec,
+                        error = null,
                     )
                 }
                 _sideEffect.trySend(
-                    SmileTrainingSideEffect.AnnounceAccessibility("모든 반복을 완료했습니다. 오늘 연습 후 기분을 선택해주세요."),
+                    SmileTrainingSideEffect.AnnounceAccessibility("모든 미소 연습을 완료했습니다!"),
+                )
+                saveCompletedSessionAutomatically(
+                    durationSec = safeDurationSec,
+                    completedReps = safeCompletedReps,
                 )
             } else {
                 _uiState.update { it.copy(phase = SmileSessionPhase.REP_SUCCESS) }
@@ -404,41 +418,39 @@ class SmileTrainingViewModel @Inject constructor(
         }
     }
 
-    fun selectReflectionEmoji(emojiScore: Int?) {
-        _uiState.update { it.copy(selectedReflectionEmoji = emojiScore) }
-    }
-
-    fun finishAndSaveSession(skipReflection: Boolean = false) {
-        val state = _uiState.value
-        if (state.isSavingSession) return
-
-        val reflection = if (skipReflection) null else state.selectedReflectionEmoji
-        val durationSec = state.sessionDurationSec.coerceAtLeast(1)
-        val completedReps = state.currentRep.coerceAtLeast(1)
+    private fun saveCompletedSessionAutomatically(
+        durationSec: Int,
+        completedReps: Int,
+    ) {
+        if (hasSavedCurrentSession) return
+        hasSavedCurrentSession = true
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingSession = true, error = null) }
             repository.saveCompletedSession(
-                routine = state.selectedRoutine,
-                difficulty = state.selectedDifficulty,
                 durationSec = durationSec,
                 completedReps = completedReps,
-                reflectionEmoji = reflection,
             ).onSuccess {
-                _uiState.update {
-                    it.copy(
-                        isSavingSession = false,
-                        phase = SmileSessionPhase.COMPLETED,
-                    )
-                }
+                runCatching { themePreferences.markSmileShortcutDismissed(LocalDate.now(KST_ZONE)) }
+                _uiState.update { it.copy(isSavingSession = false) }
                 viewModelScope.launch {
                     runCatching { repository.syncPendingSessions() }
                 }
             }.onFailure { throwable ->
+                hasSavedCurrentSession = false
                 val appErr = throwable.toReportedAppError()
                 _uiState.update { it.copy(isSavingSession = false, error = appErr) }
             }
         }
+    }
+
+    fun retrySaveCompletedSession() {
+        val state = _uiState.value
+        if (state.phase != SmileSessionPhase.COMPLETED || state.isSavingSession) return
+        saveCompletedSessionAutomatically(
+            durationSec = state.sessionDurationSec.coerceAtLeast(1),
+            completedReps = state.currentRep.coerceAtLeast(1),
+        )
     }
 
     fun retryBlockedSync() {
@@ -509,10 +521,6 @@ class SmileTrainingViewModel @Inject constructor(
                 resetToIntro()
                 false
             }
-            SmileSessionPhase.REFLECTION -> {
-                finishAndSaveSession(skipReflection = true)
-                false
-            }
             SmileSessionPhase.INTRO -> true
         }
     }
@@ -530,17 +538,18 @@ class SmileTrainingViewModel @Inject constructor(
         repTransitionJob?.cancel()
         evaluator.reset()
         activeSessionStartedMs = null
+        hasSavedCurrentSession = false
         _uiState.update { current ->
-            val rule = SmileRoutineRule(current.selectedRoutine, current.selectedDifficulty)
             current.copy(
                 phase = SmileSessionPhase.INTRO,
+                isPaused = false,
+                readyAlignmentProgress = 0f,
                 currentRep = 0,
                 holdProgress = 0f,
                 heldDurationMs = 0L,
-                targetHoldDurationMs = rule.targetHoldDurationMs,
+                targetHoldDurationMs = SmileTrainingSpec.HOLD_DURATION_MS,
                 isInSmileState = false,
                 isFaceAligned = false,
-                selectedReflectionEmoji = null,
                 sessionDurationSec = 0,
                 showExitConfirmDialog = false,
                 error = null,
@@ -552,18 +561,7 @@ class SmileTrainingViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
-    private fun buildEvaluator(
-        routine: SmileRoutineType,
-        difficulty: SmileDifficultyLevel,
-        targetReps: Int,
-    ): SmileSignalEvaluator = SmileSignalEvaluator(
-        rule = SmileRoutineRule(routine, difficulty),
-        targetReps = targetReps,
-    )
-
     companion object {
-        const val MIN_TARGET_REPS = 1
-        const val MAX_TARGET_REPS = 5
         const val REP_REST_DELAY_MS = 1200L
         private const val MAX_RECENT_HISTORY = 10
     }

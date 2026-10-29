@@ -1,10 +1,8 @@
 package com.gunnys.eundunhealth.domain.smile
 
 import androidx.compose.runtime.Immutable
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
+import com.gunnys.eundunhealth.domain.model.SmileTrainingSpec
 import kotlin.math.abs
-import kotlin.math.roundToLong
 
 @Immutable
 data class FrameSignal(
@@ -33,11 +31,19 @@ sealed interface FrameVerdict {
     data object Satisfied : FrameVerdict
 
     data class BelowThreshold(
-        val userGuide: String = "입꼬리를 부드럽게 올리고 유지해보세요",
+        val userGuide: String = "입꼬리를 부드럽게 올리고 2초간 유지해보세요",
     ) : FrameVerdict
 
     data class Unmeasurable(val reason: UnmeasurableReason) : FrameVerdict
 }
+
+@Immutable
+data class ReadyAlignmentSnapshot(
+    val isFaceAligned: Boolean,
+    val alignmentProgress: Float,
+    val shouldAutoStart: Boolean,
+    val guideMessage: String,
+)
 
 @Immutable
 data class SmileEvaluatorSnapshot(
@@ -53,39 +59,40 @@ data class SmileEvaluatorSnapshot(
     val isSessionCompleted: Boolean = false,
 )
 
-class SmileRoutineRule(
-    val routine: SmileRoutineType,
-    val difficulty: SmileDifficultyLevel,
-    val minFaceWidthRatio: Float = DEFAULT_MIN_FACE_WIDTH_RATIO,
-    val eyeOpenThreshold: Float = DEFAULT_EYE_OPEN_THRESHOLD,
+class SmileStandardRule(
+    val enterSmileThreshold: Float = SmileTrainingSpec.ENTER_SMILE_THRESHOLD,
+    val exitSmileThreshold: Float = SmileTrainingSpec.EXIT_SMILE_THRESHOLD,
+    val targetHoldDurationMs: Long = SmileTrainingSpec.HOLD_DURATION_MS,
+    val minFaceWidthRatio: Float = SmileTrainingSpec.MIN_FACE_WIDTH_RATIO,
+    val eyeOpenThreshold: Float = SmileTrainingSpec.MIN_EYE_OPEN_PROBABILITY,
+    val maxYawDeg: Float = SmileTrainingSpec.MAX_YAW_DEG,
+    val maxRollDeg: Float = SmileTrainingSpec.MAX_ROLL_DEG,
 ) {
-    val enterSmileThreshold: Float =
-        (routine.baseEnterSmileThreshold + difficulty.smileThresholdDelta).coerceIn(0.35f, 0.90f)
-    val exitSmileThreshold: Float =
-        (routine.baseExitSmileThreshold + difficulty.smileThresholdDelta).coerceIn(0.25f, enterSmileThreshold - 0.05f)
-    val targetHoldDurationMs: Long =
-        (routine.baseHoldDurationMs * difficulty.holdMultiplier).roundToLong().coerceAtLeast(800L)
-
-    fun evaluate(signal: FrameSignal, currentlySmiling: Boolean): FrameVerdict {
+    fun evaluateReadyAlignment(signal: FrameSignal): FrameVerdict {
         val precheck = checkFaceGeometry(signal)
         if (precheck != null) return precheck
 
         val eyeCheck = checkEyeRequirement(signal)
         if (eyeCheck != null) return eyeCheck
 
-        val smile = signal.smileProbability
+        return FrameVerdict.Satisfied
+    }
+
+    fun evaluate(signal: FrameSignal, currentlySmiling: Boolean, smoothedSmileProbability: Float? = signal.smileProbability): FrameVerdict {
+        val precheck = checkFaceGeometry(signal)
+        if (precheck != null) return precheck
+
+        val eyeCheck = checkEyeRequirement(signal)
+        if (eyeCheck != null) return eyeCheck
+
+        val smile = smoothedSmileProbability
             ?: return FrameVerdict.Unmeasurable(UnmeasurableReason.SIGNAL_UNAVAILABLE)
 
         val threshold = if (currentlySmiling) exitSmileThreshold else enterSmileThreshold
         return if (smile >= threshold) {
             FrameVerdict.Satisfied
         } else {
-            val guide = if (routine == SmileRoutineType.SMILE_AND_FRONT) {
-                "정면을 바라보며 미소를 지어보세요"
-            } else {
-                "입꼬리를 부드럽게 올리고 유지해보세요"
-            }
-            FrameVerdict.BelowThreshold(guide)
+            FrameVerdict.BelowThreshold("정면을 바라보며 입꼬리를 부드럽게 올려보세요")
         }
     }
 
@@ -94,15 +101,14 @@ class SmileRoutineRule(
         signal.faceCount > 1 -> FrameVerdict.Unmeasurable(UnmeasurableReason.MULTIPLE_FACES)
         signal.faceWidthRatio == null || signal.faceWidthRatio < minFaceWidthRatio ->
             FrameVerdict.Unmeasurable(UnmeasurableReason.FACE_TOO_SMALL)
-        signal.yawDeg == null || abs(signal.yawDeg) > difficulty.maxYawDeg ->
+        signal.yawDeg == null || abs(signal.yawDeg) > maxYawDeg ->
             FrameVerdict.Unmeasurable(UnmeasurableReason.NOT_FRONT_FACING)
-        signal.rollDeg == null || abs(signal.rollDeg) > difficulty.maxRollDeg ->
+        signal.rollDeg == null || abs(signal.rollDeg) > maxRollDeg ->
             FrameVerdict.Unmeasurable(UnmeasurableReason.HEAD_TILTED)
         else -> null
     }
 
     private fun checkEyeRequirement(signal: FrameSignal): FrameVerdict? {
-        if (!routine.requiresEyesOpen) return null
         val left = signal.leftEyeOpenProbability
         val right = signal.rightEyeOpenProbability
         if (left == null || right == null) {
@@ -114,25 +120,23 @@ class SmileRoutineRule(
             null
         }
     }
-
-    companion object {
-        const val DEFAULT_MIN_FACE_WIDTH_RATIO = 0.22f
-        const val DEFAULT_EYE_OPEN_THRESHOLD = 0.60f
-    }
 }
 
 /**
- * 순수 도메인 신호 평가기.
+ * 순수 도메인 신호 평가기 (v2 단일 표준 스펙 2초 × 3회).
  *
  * - 프레임 수가 아니라 `timestampElapsedMs`(단조 시간) 기준으로 유지 시간을 계산한다.
- * - 최근 1,000ms 슬라이딩 윈도우 내 측정 가능 프레임의 충족 비율(>= 75%)과 히스테리시스를 결합해
- *   미세한 프레임 노이즈로 게이지가 즉시 0으로 튀는 현상을 방지한다.
+ * - 지수 이동 평균(EMA, alpha=0.6) 스무딩 + 최근 1,000ms 슬라이딩 윈도우 충족 비율(>= 75%) + 히스테리시스를 결합해
+ *   미세한 프레임 노이즈로 게이지가 튀는 현상을 방지한다.
+ * - READY 단계에서는 얼굴 정렬이 1,000ms 연속 유지되면 자동 시작(`shouldAutoStart = true`)을 트리거한다.
  */
 class SmileSignalEvaluator(
-    private val rule: SmileRoutineRule,
-    private val targetReps: Int,
+    private val rule: SmileStandardRule = SmileStandardRule(),
+    private val targetReps: Int = SmileTrainingSpec.TARGET_REPS,
     private val windowSizeMs: Long = DEFAULT_WINDOW_SIZE_MS,
     private val minWindowSatisfiedRatio: Float = DEFAULT_MIN_WINDOW_RATIO,
+    private val readyAutoStartHoldMs: Long = SmileTrainingSpec.READY_AUTO_START_HOLD_MS,
+    private val emaAlpha: Float = SmileTrainingSpec.EMA_SMOOTHING_ALPHA,
 ) {
     private data class TimedVerdict(val timestampMs: Long, val isSatisfied: Boolean)
 
@@ -142,6 +146,10 @@ class SmileSignalEvaluator(
     private var accumulatedHoldMs: Long = 0L
     private var lastFrameTimestampMs: Long? = null
     private var lastTrackingId: Int? = null
+    private var smoothedSmileProbability: Float? = null
+
+    private var readyAlignedAccumulatedMs: Long = 0L
+    private var lastReadyTimestampMs: Long? = null
 
     fun reset() {
         recentWindow.clear()
@@ -150,6 +158,13 @@ class SmileSignalEvaluator(
         accumulatedHoldMs = 0L
         lastFrameTimestampMs = null
         lastTrackingId = null
+        smoothedSmileProbability = null
+        resetReadyAlignment()
+    }
+
+    fun resetReadyAlignment() {
+        readyAlignedAccumulatedMs = 0L
+        lastReadyTimestampMs = null
     }
 
     fun clearActiveHold() {
@@ -157,6 +172,55 @@ class SmileSignalEvaluator(
         currentlySmiling = false
         accumulatedHoldMs = 0L
         lastFrameTimestampMs = null
+        smoothedSmileProbability = null
+    }
+
+    fun evaluateReadyFrame(signal: FrameSignal, allowAutoStart: Boolean = true): ReadyAlignmentSnapshot {
+        val deltaMs = lastReadyTimestampMs?.let { prev ->
+            (signal.timestampElapsedMs - prev).coerceIn(0L, MAX_FRAME_DELTA_MS)
+        } ?: 0L
+        lastReadyTimestampMs = signal.timestampElapsedMs
+
+        return when (val verdict = rule.evaluateReadyAlignment(signal)) {
+            is FrameVerdict.Unmeasurable -> {
+                readyAlignedAccumulatedMs = 0L
+                ReadyAlignmentSnapshot(
+                    isFaceAligned = false,
+                    alignmentProgress = 0f,
+                    shouldAutoStart = false,
+                    guideMessage = verdict.reason.userGuide,
+                )
+            }
+            is FrameVerdict.BelowThreshold -> {
+                readyAlignedAccumulatedMs = 0L
+                ReadyAlignmentSnapshot(
+                    isFaceAligned = false,
+                    alignmentProgress = 0f,
+                    shouldAutoStart = false,
+                    guideMessage = verdict.userGuide,
+                )
+            }
+            FrameVerdict.Satisfied -> {
+                if (allowAutoStart) {
+                    readyAlignedAccumulatedMs += deltaMs
+                } else {
+                    readyAlignedAccumulatedMs = 0L
+                }
+                val progress = (readyAlignedAccumulatedMs.toFloat() / readyAutoStartHoldMs.toFloat()).coerceIn(0f, 1f)
+                val shouldStart = allowAutoStart && readyAlignedAccumulatedMs >= readyAutoStartHoldMs
+                val guide = if (allowAutoStart) {
+                    "자세가 좋아요! 잠시 후 연습이 자동으로 시작됩니다"
+                } else {
+                    "연습이 일시정지되었습니다. 아래 버튼을 눌러 이어서 시작하세요"
+                }
+                ReadyAlignmentSnapshot(
+                    isFaceAligned = true,
+                    alignmentProgress = progress,
+                    shouldAutoStart = shouldStart,
+                    guideMessage = guide,
+                )
+            }
+        }
     }
 
     fun onFrame(signal: FrameSignal): SmileEvaluatorSnapshot {
@@ -176,7 +240,16 @@ class SmileSignalEvaluator(
             lastTrackingId = signal.trackingId
         }
 
-        val verdict = rule.evaluate(signal, currentlySmiling)
+        val smoothedSmile = signal.smileProbability?.let { raw ->
+            val clamped = raw.coerceIn(0f, 1f)
+            val next = smoothedSmileProbability?.let { prev ->
+                emaAlpha * clamped + (1f - emaAlpha) * prev
+            } ?: clamped
+            smoothedSmileProbability = next
+            next
+        }
+
+        val verdict = rule.evaluate(signal, currentlySmiling, smoothedSmile)
         val deltaMs = lastFrameTimestampMs?.let { prev ->
             (signal.timestampElapsedMs - prev).coerceIn(0L, MAX_FRAME_DELTA_MS)
         } ?: 0L

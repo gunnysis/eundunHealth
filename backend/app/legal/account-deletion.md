@@ -42,7 +42,7 @@
 | 신체 정보 | 키, 몸무게, 체지방률, 골격근량, 휴식일, 기본 운동 환경 설정(헬스장/홈트레이닝) | Azure PostgreSQL |
 | 신체 계측 이력 | 몸무게·체지방률·골격근량 변화 기록(진행 차트 원본) | Azure PostgreSQL |
 | 운동 기록 | 주간 운동 계획(운동 환경 포함), 완료 여부 | Azure PostgreSQL 및 기기 내부 DB |
-| 스마일 트레이닝 기록 | 루틴 종류, 난이도, 수행 시간(초), 완료 반복 횟수, 기분 점수(1~5), 완료 시각 | Azure PostgreSQL 및 기기 내부 DB |
+| 스마일 트레이닝 기록 | 수행 시간(초), 완료 반복 횟수, 완료 시각 | Azure PostgreSQL 및 기기 내부 DB |
 | AI 생성 식단 | 주간 식단, 영양소 정보, AI 요약 | Azure PostgreSQL |
 | 목표 | 목표 체중·체지방률 | Azure PostgreSQL |
 | 배지 | 획득한 배지 이력 | Azure PostgreSQL |

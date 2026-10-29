@@ -2,14 +2,10 @@ package com.gunnys.eundunhealth.data.repository
 
 import androidx.work.WorkManager
 import com.gunnys.eundunhealth.api.generated.api.SmileTrainingApi
-import com.gunnys.eundunhealth.api.generated.model.SmileDifficulty
-import com.gunnys.eundunhealth.api.generated.model.SmileRoutine
 import com.gunnys.eundunhealth.api.generated.model.SmileTrainingSessionResponse
 import com.gunnys.eundunhealth.api.generated.model.SmileTrainingSessionsPageResponse
 import com.gunnys.eundunhealth.data.local.dao.SmileSessionDao
 import com.gunnys.eundunhealth.data.local.entity.SmileSessionEntity
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
 import com.gunnys.eundunhealth.domain.model.SmileSyncStatus
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.SyncBatchOutcome
@@ -70,19 +66,13 @@ class SmileTrainingRepositoryImplTest {
         val repo = SmileTrainingRepositoryImpl(dao, api, authRepo, workManager)
 
         val saved1 = repo.saveCompletedSession(
-            routine = SmileRoutineType.GENTLE,
-            difficulty = SmileDifficultyLevel.STANDARD,
             durationSec = 30,
             completedReps = 3,
-            reflectionEmoji = 4,
         ).getOrThrow()
 
         val saved2 = repo.saveCompletedSession(
-            routine = SmileRoutineType.SUSTAINED,
-            difficulty = SmileDifficultyLevel.CHALLENGE,
             durationSec = 45,
             completedReps = 3,
-            reflectionEmoji = null,
         ).getOrThrow()
 
         // First session succeeds (201), second session gets 422 Unprocessable Entity -> marked BLOCKED
@@ -92,11 +82,8 @@ class SmileTrainingRepositoryImplTest {
             201,
             SmileTrainingSessionResponse(
                 id = saved1.id,
-                routine = SmileRoutine.GENTLE,
-                difficulty = SmileDifficulty.STANDARD,
                 durationSec = 30,
                 completedReps = 3,
-                reflectionEmoji = 4,
                 occurredAt = "2026-10-26T00:00:00Z",
                 createdAt = "2026-10-26T00:00:00Z",
             ),
@@ -143,11 +130,8 @@ class SmileTrainingRepositoryImplTest {
                 items = listOf(
                     SmileTrainingSessionResponse(
                         id = "11111111-2222-3333-4444-555555555555",
-                        routine = SmileRoutine.SMILE_AND_FRONT,
-                        difficulty = SmileDifficulty.CHALLENGE,
                         durationSec = 55,
-                        completedReps = 4,
-                        reflectionEmoji = 5,
+                        completedReps = 3,
                         occurredAt = "2026-10-25T10:00:00Z",
                         createdAt = "2026-10-25T10:00:01Z",
                     ),
@@ -165,7 +149,8 @@ class SmileTrainingRepositoryImplTest {
         assertEquals(1, records.size)
         assertEquals("11111111-2222-3333-4444-555555555555", records.first().id)
         assertEquals(SmileSyncStatus.SYNCED, records.first().syncStatus)
-        assertEquals(SmileRoutineType.SMILE_AND_FRONT, records.first().routine)
+        assertEquals(55, records.first().durationSec)
+        assertEquals(3, records.first().completedReps)
 
         // Second call when local DB is already populated -> skips network call and returns 0
         val secondInserted = repo.refreshRemoteHistoryIfEmpty().getOrThrow()
@@ -188,11 +173,8 @@ class SmileTrainingRepositoryImplTest {
         return SmileSessionEntity(
             id = "id-$year-$month-$day-$hour-$minute",
             userId = "user-1",
-            routine = SmileRoutineType.GENTLE.name,
-            difficulty = SmileDifficultyLevel.STANDARD.name,
             durationSec = durationSec,
             completedReps = 3,
-            reflectionEmoji = 5,
             occurredAtUtc = epochMs,
             syncStatus = status.name,
         )

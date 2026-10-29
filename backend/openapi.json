@@ -345,24 +345,6 @@
         "title": "ProfileHistoryEntry",
         "type": "object"
       },
-      "SmileDifficulty": {
-        "enum": [
-          "COMFORTABLE",
-          "STANDARD",
-          "CHALLENGE"
-        ],
-        "title": "SmileDifficulty",
-        "type": "string"
-      },
-      "SmileRoutine": {
-        "enum": [
-          "GENTLE",
-          "SUSTAINED",
-          "SMILE_AND_FRONT"
-        ],
-        "title": "SmileRoutine",
-        "type": "string"
-      },
       "SmileTrainingDeleteResponse": {
         "description": "전체 스마일 트레이닝 세션 삭제 응답.",
         "properties": {
@@ -383,7 +365,7 @@
         "type": "object"
       },
       "SmileTrainingSessionRequest": {
-        "description": "POST /smile-training/sessions — 완료된 스마일 트레이닝 세션 요약 생성 요청.",
+        "description": "POST /v2/smile-training/sessions — 완료된 스마일 트레이닝 v2 세션 요약 생성 요청.",
         "properties": {
           "completedReps": {
             "description": "완료한 반복 횟수",
@@ -391,10 +373,6 @@
             "minimum": 1.0,
             "title": "Completedreps",
             "type": "integer"
-          },
-          "difficulty": {
-            "$ref": "#/components/schemas/SmileDifficulty",
-            "description": "난이도"
           },
           "durationSec": {
             "description": "총 수행 시간(초)",
@@ -414,30 +392,10 @@
             "format": "date-time",
             "title": "Occurredat",
             "type": "string"
-          },
-          "reflectionEmoji": {
-            "anyOf": [
-              {
-                "maximum": 5.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "선택형 감정 회고 (1~5)",
-            "title": "Reflectionemoji"
-          },
-          "routine": {
-            "$ref": "#/components/schemas/SmileRoutine",
-            "description": "루틴 종류"
           }
         },
         "required": [
           "id",
-          "routine",
-          "difficulty",
           "durationSec",
           "completedReps",
           "occurredAt"
@@ -446,7 +404,7 @@
         "type": "object"
       },
       "SmileTrainingSessionResponse": {
-        "description": "스마일 트레이닝 세션 요약 응답.",
+        "description": "스마일 트레이닝 v2 세션 요약 응답.",
         "properties": {
           "completedReps": {
             "title": "Completedreps",
@@ -455,9 +413,6 @@
           "createdAt": {
             "title": "Createdat",
             "type": "string"
-          },
-          "difficulty": {
-            "$ref": "#/components/schemas/SmileDifficulty"
           },
           "durationSec": {
             "title": "Durationsec",
@@ -470,29 +425,12 @@
           "occurredAt": {
             "title": "Occurredat",
             "type": "string"
-          },
-          "reflectionEmoji": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reflectionemoji"
-          },
-          "routine": {
-            "$ref": "#/components/schemas/SmileRoutine"
           }
         },
         "required": [
           "id",
-          "routine",
-          "difficulty",
           "durationSec",
           "completedReps",
-          "reflectionEmoji",
           "occurredAt",
           "createdAt"
         ],
@@ -1470,7 +1408,92 @@
         ]
       }
     },
-    "/smile-training/sessions": {
+    "/v2/profile/default-workout-plan-mode": {
+      "put": {
+        "description": "신체 측정 이력을 추가하지 않고 다음 계획의 기본 환경만 변경한다.",
+        "operationId": "updateDefaultWorkoutPlanModeV2",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Eundun-Client-Version-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Eundun-Client-Version-Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefaultWorkoutPlanModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientUpdateRequiredErrorResponse"
+                }
+              }
+            },
+            "description": "지원 종료된 Android 클라이언트"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "프로필이 없음"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Default Workout Plan Mode",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/v2/smile-training/sessions": {
       "delete": {
         "description": "인증 사용자의 모든 스마일 트레이닝 세션을 삭제한다.",
         "operationId": "deleteAllSmileTrainingSessions",
@@ -1607,7 +1630,7 @@
         ]
       }
     },
-    "/smile-training/statistics": {
+    "/v2/smile-training/statistics": {
       "get": {
         "description": "인증 사용자의 KST 기준 스마일 트레이닝 연속일·당일 완료 여부·누적 통계를 반환한다.",
         "operationId": "getSmileTrainingStatistics",
@@ -1631,91 +1654,6 @@
         "summary": "Get Statistics",
         "tags": [
           "smile-training"
-        ]
-      }
-    },
-    "/v2/profile/default-workout-plan-mode": {
-      "put": {
-        "description": "신체 측정 이력을 추가하지 않고 다음 계획의 기본 환경만 변경한다.",
-        "operationId": "updateDefaultWorkoutPlanModeV2",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Eundun-Client-Version-Code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Eundun-Client-Version-Code"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DefaultWorkoutPlanModeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserProfileResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ClientUpdateRequiredErrorResponse"
-                }
-              }
-            },
-            "description": "지원 종료된 Android 클라이언트"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            },
-            "description": "프로필이 없음"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Update Default Workout Plan Mode",
-        "tags": [
-          "profile"
         ]
       }
     },

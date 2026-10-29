@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.CurrentWeekPlanRead
 import com.gunnys.eundunhealth.domain.model.GoalType
+import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
+import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,6 +15,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.abs
@@ -25,6 +28,7 @@ data class ProgressHubUiState(
     val recentFourWeeksSubLabel: String = "최근 4주 달성률",
     val goalDeltaValue: String = "—",
     val goalDeltaSubLabel: String = "목표 체중까지",
+    val smileStats: SmileSummaryStats = SmileSummaryStats(),
     val isLoading: Boolean = true,
 )
 
@@ -33,6 +37,7 @@ class ProgressHubViewModel @Inject constructor(
     private val workoutRepo: WorkoutRepository,
     private val goalRepo: GoalRepository,
     private val userRepo: UserRepository,
+    private val smileTrainingRepo: SmileTrainingRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProgressHubUiState())
@@ -40,10 +45,19 @@ class ProgressHubViewModel @Inject constructor(
 
     init {
         loadSummary()
+        observeSmileTrainingStats()
+    }
+
+    private fun observeSmileTrainingStats() {
+        viewModelScope.launch {
+            smileTrainingRepo.observeSummaryStats().collect { stats ->
+                _uiState.update { it.copy(smileStats = stats) }
+            }
+        }
     }
 
     fun loadSummary() = viewModelScope.launch {
-        _uiState.value = _uiState.value.copy(isLoading = true)
+        _uiState.update { it.copy(isLoading = true) }
 
         val currentWeekDeferred = async { runCatching { workoutRepo.loadCurrentWeekPlan() }.getOrNull() }
         val statsDeferred = async { workoutRepo.getStatistics(weeks = 4).getOrNull() }
@@ -87,14 +101,16 @@ class ProgressHubViewModel @Inject constructor(
             "—" to "목표 미설정"
         }
 
-        _uiState.value = ProgressHubUiState(
-            thisWeekValue = thisWeekText,
-            thisWeekSubLabel = "이번 주 완료",
-            recentFourWeeksValue = fourWeekText,
-            recentFourWeeksSubLabel = "최근 4주 달성률",
-            goalDeltaValue = goalText,
-            goalDeltaSubLabel = goalSub,
-            isLoading = false,
-        )
+        _uiState.update { current ->
+            current.copy(
+                thisWeekValue = thisWeekText,
+                thisWeekSubLabel = "이번 주 완료",
+                recentFourWeeksValue = fourWeekText,
+                recentFourWeeksSubLabel = "최근 4주 달성률",
+                goalDeltaValue = goalText,
+                goalDeltaSubLabel = goalSub,
+                isLoading = false,
+            )
+        }
     }
 }
