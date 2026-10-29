@@ -109,7 +109,7 @@ jobs:
           echo "openapi.json in sync."
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@f9fe539f5290016afa014f8ef31597d3a61c2dea
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
         with:
           files: ${{ env.BACKEND_DIR }}/coverage.xml
           flags: backend
@@ -236,7 +236,7 @@ jobs:
       # dispatch sub claim 실증 완료(2026-07-02). 이후 az 스텝들은 로그인 세션 그대로 사용.
       # 설계: docs/plans/logs/process-infra.md (옛 페어 2026-06-29-cicd-recommended-design.md §5.5), 롤백 = revert(D7).
       - name: Azure login (OIDC)
-        uses: azure/login@935127ca5bb3c4b02c9c2c10060028383878f33f
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
