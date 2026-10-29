@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-10-29 — v0.7.1/42 콜드 스타트 크래시 핫픽스(`EUNDUNHEALTH-H` / `INC-2026-10-29-34`) · 5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) 수립 (직전 v0.7.0/41 스마일 트레이닝 v2 · PostgreSQL 18.4 하드 리셋 · AGP 9.4.1 업그레이드)**
-> 작성 기준: 태그 `v0.7.1`의 **v0.7.1/42**가 release workflow run `40825396534`로 Play production `completed`(100%) 업로드됐고, 원장 PR #217이 `LAST_UPLOADED_VERSION_CODE=42`를 기록한다. 백엔드는 run `40816129146`으로 revision `eundunhealth-api--0000067`(이미지 `40595a1`, digest `sha256:80b271e1ef76519c3958aa750d35b2c67f793fa7505aec5d0894d695ca57c18f`)에 배포 및 reaper Job 동기화 완료됐다.
+> 작성일: 2026-05-25 / 최근 갱신: **2026-10-29 — v0.7.2/43 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환 · PR Triage 거버넌스(룰 16) 수립 (직전 v0.7.1/42 콜드 스타트 크래시 핫픽스 · 5계층 심층 방어 룰 14 & AGP 거버넌스 룰 15)**
+> 작성 기준: 태그 `v0.7.2`의 **v0.7.2/43**이 release workflow run `40847386065`로 Play production `completed`(100%) 업로드됐고, 원장 PR #223이 `LAST_UPLOADED_VERSION_CODE=43`을 기록한다. 백엔드는 run `40838433732`로 revision `eundunhealth-api--0000068`(이미지 `db8b4f8`, digest `sha256:93355c9ca21b7fb256240be2e9a1e9608c913bbcee8badffdbee936a504c6471`)에 배포 및 reaper Job 동기화 완료됐다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |---|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.7.2` / `43` (태그 `v0.7.1`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=42` |
+| versionName / versionCode | **`0.7.2` / `43` (태그 `v0.7.2`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=43` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.21 / 9.4.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** |
@@ -22,14 +22,14 @@
 | Sentry SDK | 운영 Android **8.61.1** / Gradle plugin **6.24.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (로컬 최신 = **v0.7.0/41 R8 빌드, 2026-10-29 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 v0.7.0/41 CI 빌드(`release.yml` run `40816257901`)이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (16,462,142 bytes)
-- APK: `app/build/outputs/apk/release/app-release.apk` (11,881,917 bytes)
+산출물 경로 (로컬 최신 = **v0.7.2/43 R8 빌드, 2026-10-29 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 v0.7.2/43 CI 빌드(`release.yml` run `40847386065`)이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (16,670,847 bytes)
+- APK: `app/build/outputs/apk/release/app-release.apk` (12,062,201 bytes)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.7.0/41**(2026-10-29 `release.yml` run `40816257901`이 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #215). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
-> 이력: v0.6.1/40(2026-10-28, 원장 PR #211) ← v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=41` — 다음 릴리스 versionCode ≥ 42(룰 13 가드).
+> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.7.2/43**(2026-10-29 `release.yml` run `40847386065`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #223). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
+> 이력: v0.7.1/42(2026-10-29, 원장 PR #217) ← v0.7.0/41(2026-10-29, 원장 PR #215) ← v0.6.1/40(2026-10-28, 원장 PR #211) ← v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=43` — 다음 릴리스 versionCode ≥ 44(룰 13 가드).
 > **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 정본은 `backend/sql/02_schema_create_all.sql`(`python -m app.schema_bootstrap`). 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
 
@@ -43,8 +43,8 @@
 | Resource Group | `rg-eundunhealth-prod-krc` (2026-07-29 `apps` 에서 이관 — 이동 7 + 알림/AG/UAI 재생성, RBAC 8건 재부여, LA shared key 갱신, 구 RG 삭제. 상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry — 원문 페어 `2026-07-29-rg-migration-{design,plan}.md` 는 흡수 후 git rm) |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
-| 활성 revision | `eundunhealth-api--0000067` (100% traffic, **warm — min=1**, 2026-10-29 실측) |
-| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:40595a1` (`@sha256:80b271e1ef76519c3958aa750d35b2c67f793fa7505aec5d0894d695ca57c18f`, **MI pull**, app/reaper 일치 — v0.7.0 배포 run `40816129146`) |
+| 활성 revision | `eundunhealth-api--0000068` (100% traffic, **warm — min=1**, 2026-10-29 실측) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:db8b4f8` (`@sha256:93355c9ca21b7fb256240be2e9a1e9608c913bbcee8badffdbee936a504c6471`, **MI pull**, app/reaper 일치 — PR #218 배포 run `40838433732`) |
 | Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
@@ -63,7 +63,7 @@
 | `SENTRY_DSN` | secretref | `sentry-dsn-backend` |
 | `DEEPSEEK_ENDPOINT` | secretref | `deepseek-endpoint` |
 | `DEEPSEEK_KEY` | secretref | `deepseek-key` |
-| MEAL_AI_MODEL | value | p-eundunhealth-meal-ai (gpt-5.4-mini, 2026-03-17, GlobalStandard capacity: 100 = 100K TPM) |
+| `MEAL_AI_MODEL` | value | `ep-eundunhealth-meal-ai` (`gpt-5.4-mini`, `2026-03-17`, `GlobalStandard` `capacity: 100` = 100K TPM) |
 | `MEAL_AI_ENABLED` | value | `true` (AI 식단 생성 긴급 kill switch — `'false'` 설정 시 즉시 503 차단) |
 | `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `41` (`backend/containerapp.yaml` 정의값; v0.7.0 컷오버 적용 완료) |
 | `ENVIRONMENT` | value | `production` |
@@ -615,4 +615,4 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-10-29 | **스마일 트레이닝 v2 전면 리팩토링 · Zero-Legacy Cutover · 4대 접속 경로(IA) 구현 완료**. ① 단일 표준 스펙(`SmileTrainingSpec`: `2.0초 유지 × 3회 반복`) 단일화 및 종료 후 감정 설문 제거(`ACTIVE -> COMPLETED` 자동 저장·동기화), `READY` 1.0초 정렬 시 자동 시작(`isPaused` 격리), 상단 안내 배너 제거 및 풀블리드 카메라 HUD + 하단 플로팅 글래스 시트(`SmileTrainingScreen` 1,114줄 → 606줄) ② Room `SmileTrainingDatabase` v2(`MIGRATION_1_2`) & 백엔드 `/v2/smile-training/sessions`·`/v2/smile-training/statistics` 4개 엔드포인트 · 법적 고지(`privacy-policy.md`, `account-deletion.md`) 및 `openapi.json` 동기화 ③ 4대 접속 경로(오늘 상단 `SmileQuickActionChip`, 오늘 스마트 `SmileTrainingContextualCard`, 운동 가이드 완료 쿨다운 브릿지, 기록 허브 상단 승격 및 실시간 통계 연동). backend pytest **140/140** · android @Test **212/212** |
 | 2026-10-29 | **v0.7.0/41 — PostgreSQL 18 스키마 하드 리셋(Drop & Recreate) 파이프라인 구축 · 운영 `healthapp` 하드 리셋 실증 · AGP 9.4.1 정식 업그레이드 및 전사 리팩토링**. ① 운영 Azure PostgreSQL 18.4(`healthapp`) 무중단 동적 파라미터 5종 튜닝 및 로컬/CI Docker `postgres:18-alpine`(`18.6`) 업그레이드 ② Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql` PostgreSQL 18 `DEFAULT uuidv7()`), 기동 멱등 부트스트랩(`python -m app.schema_bootstrap`), 하드 리셋 CLI(`hard_reset_db.py`), 100건 엣지 케이스 Seeder(`seed_edge_cases.py`), 11개 제약 위반/연쇄 삭제 검증 스위트(`test_v2_reset.py`) 구축 및 레거시 Alembic 전수 제거 ③ 운영 `healthapp` 하드 리셋(`hard-reset-v2-pg18-prod-20261029`) 및 `/health`·`/health/ready` 200 검증 완료 ④ AGP 9.4.1 업그레이드, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41` 상향, Android/Backend 전사 엣지 케이스 리팩토링 완료. backend pytest **146/146** · android @Test **222/222** |
 | 2026-10-29 | **v0.7.1/42 — 콜드 스타트 크래시 핫픽스(`EUNDUNHEALTH-H` / `INC-2026-10-29-34`) · Room 지연 초기화 · 5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) 수립**. ① `DatabaseModule.provideSmileTrainingDatabase`에서 `MIGRATION_1_2`(`startVersion = 1`)와 충돌하던 `.fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)` 제거로 콜드 스타트 `IllegalArgumentException` 근본 해결 ② `DefaultLocalDataWiper`에 `dagger.Lazy<Dao>` 주입을 적용해 콜드 스타트 메인 스레드 Room DB 동기 초기화 결합 해소 ③ `runSuspendCatching` 공통화 및 `AppError.reportToSentry()` `CancellationException` 재던지기 가드 전수 적용 ④ DI 팩토리/빌더 계약 단위 테스트(`DatabaseModuleTest`, `NetworkModuleTest`, `DefaultLocalDataWiperTest`, `AgpBuildContractTest`), 계측 테스트(`DatabaseMigrationAndInitTest`), 콜드 스타트 런타임 스모크 게이트(`scripts/smoke-cold-start.sh`) 신설 및 `CLAUDE.md` 룰 14·15 제정. backend pytest **146/146** · android @Test **238/238** |
-| 2026-10-29 | **v0.7.2/43 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 시각화 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환**. ① `ProgressHubScreen`: '한눈에 보는 요약'을 원형 프로그레스 링+7일 요일 스탬프 히어로 카드 및 4주 미니 막대 그래프·목표 비교 타일로 개편하고, 중복되던 '운동 기록과 목표'의 통계·기록·목표 3개 행을 제거해 단일 `챌린지 배지` 컬렉션 쇼케이스 카드로 간소화 ② `ProfileHubScreen`: 5개 파편화 섹션을 내 신체·루틴 히어로 대시보드(`ProfileBodyHeroCard`), 운동 환경·Health Connect 통합 카드, 원탭 3버튼 테마 세그먼트(`ThemeModeSegmentedRow`) 통합 카드, 경량 푸터로 개편 ③ `HybridBodyMetricPicker` 직접 입력 `0.1` 정밀도 보존 수정(`BodyMetricAnchorTest`) ④ `ep-eundunhealth-meal-ai`(`gpt-5.4-mini`, `100K TPM / 100 RPM`, OpenAI Strict JSON Schema) 배포(`eundunhealth-api--0000068`), 인프라 스크립트 정본화(`meal-ai-endpoint.bicep`), `okhttp 5.5.1`·`coil 3.6.3` 갱신 및 `dependabot.yml` AGP 자동 번프 제외 가드 적용 |
+| 2026-10-29 | **v0.7.2/43 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 시각화 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환 · Play 프로덕션 출시 완료**. ① `ProgressHubScreen`: '한눈에 보는 요약'을 원형 프로그레스 링+7일 요일 스탬프 히어로 카드 및 4주 미니 막대 그래프·목표 비교 타일로 개편하고, 중복되던 '운동 기록과 목표'의 통계·기록·목표 3개 행을 제거해 단일 `챌린지 배지` 컬렉션 쇼케이스 카드로 간소화 ② `ProfileHubScreen`: 5개 파편화 섹션을 내 신체·루틴 히어로 대시보드(`ProfileBodyHeroCard`), 운동 환경·Health Connect 통합 카드, 원탭 3버튼 테마 세그먼트(`ThemeModeSegmentedRow`) 통합 카드, 경량 푸터로 개편 ③ `HybridBodyMetricPicker` 직접 입력 `0.1` 정밀도 보존 수정(`BodyMetricAnchorTest`) ④ `ep-eundunhealth-meal-ai`(`gpt-5.4-mini`, `100K TPM / 100 RPM`, OpenAI Strict JSON Schema) 배포(`eundunhealth-api--0000068`, run `40838433732`, 이미지 `db8b4f8`), 인프라 스크립트 정본화(`meal-ai-endpoint.bicep`), `okhttp 5.5.1`·`coil 3.6.3` 갱신 및 `dependabot.yml` AGP 자동 번프 제외 가드 적용 ⑤ 태그 `v0.7.2` `release.yml`(run `40847386065`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 PR #223 병합(`a89447a`, `LAST_UPLOADED_VERSION_CODE=43`). backend pytest **146/146** · android @Test **242/242** |

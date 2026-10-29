@@ -4,6 +4,16 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-29 — Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (100K TPM) 전환 & OpenAI Strict Structured Outputs 적용 (v0.7.2, commit `db8b4f8`)
+
+- **Commit**: `db8b4f8` (PR #218 머지; 백엔드 배포 run `40838433732` / 활성 리비전 `eundunhealth-api--0000068` / 이미지 `db8b4f8`)
+- **Why**: 기존 `ep-eundunhealth-deepseekv3` (`DeepSeek-V3.2`, `capacity: 1` = `1 RPM / 1K TPM`) 배포가 주간 식단 1회 생성(~2,200 토큰) 직후 재생성 또는 동시 요청 시 즉시 `429 RateLimitError`를 발생시키고 응답에 15~25초가 소요되던 병목을 근본 해결해야 했다.
+- **What**:
+  - **Azure AI Foundry `gpt-5.4-mini` 프로비저닝**: Korea Central `hub-eundunhealth-prod`에 `ep-eundunhealth-meal-ai` (`OpenAI` `gpt-5.4-mini` `2026-03-17`, `GlobalStandard`, `capacity: 100` = `100,000 TPM / 100 RPM`) 배포 및 레거시 `ep-eundunhealth-deepseekv3` 삭제. 인프라 IaC를 `scripts/infra/meal-ai-endpoint.bicep` 및 `deploy-meal-ai-endpoint.ps1`로 정본화.
+  - **OpenAI Native Strict JSON Schema 적용**: `backend/app/services/meal_ai_client.py`에 `_WEEKLY_MEAL_JSON_SCHEMA`(`response_format={"type": "json_schema", "json_schema": {"name": "weekly_meal_plan", "strict": True, ...}}`) 및 `max_completion_tokens=4000`을 적용해 마크다운 코드펜스 오염과 스키마 불일치를 원천 차단.
+- **Outcome**: 식단 생성 응답 시간 ~6.0초 단축 및 `100K TPM / 100 RPM` 처리량 확보, 백엔드 pytest 146/146 PASS, `eundunhealth-api--0000068` 및 `eundunhealth-reaper` 동기 배포 완료.
+- **Files touched**: `backend/app/config.py`, `backend/app/services/meal_ai_client.py`, `backend/containerapp.yaml`, `backend/tests/test_meals.py`, `scripts/infra/{meal-ai-endpoint.bicep,deploy-meal-ai-endpoint.ps1,provision-ai-foundry.ps1,verify-meal-ai-e2e.ps1}`, `docs/store/privacy-policy.md`
+
 ### 2026-10-29 — Azure PostgreSQL 18 업그레이드 · 스키마 전면 리팩토링 및 하드 리셋(Drop & Recreate) 파이프라인 구축 (v0.7.0, commit 40595a1)
 
 - **Commit**: `40595a1` (PR #213 release/v0.7.0 머지; 백엔드 배포 run `40816129146` / 활성 리비전 `eundunhealth-api--0000067` / 이미지 `40595a1`, 원장 PR #215)

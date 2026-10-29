@@ -1,14 +1,19 @@
 # Multi-AI Handoff Log
 
-## 2026-10-29 (Gemini -> Claude/User) 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 페이지 전면 개선·간소화 · 체성분 직접 입력 0.1 정밀도 버그 수정 · 레거시 DeepSeek 인프라 정리
+## 2026-10-29 (Gemini -> Claude/User) `v0.7.2` (`versionCode=43`) 프로덕션 배포 완료 · 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드 개편 · 체성분 직접 입력 0.1 정밀도 버그 수정 · 레거시 DeepSeek 인프라 정리 · 전수 문서 최신화 완결
 
 **현재까지의 작업 상태 (Current Status):**
+- **0. `v0.7.2` (`versionCode=43`) 운영 배포 및 오픈 PR 전량 종결 (`Open PR = 0`)**:
+  - **PR [#221](https://github.com/gunnysis/eundunHealth/pull/221)** (`bfb9ee8`) 모든 필수 CI 체크(`Android CI`, `Backend required checks`, `CodeQL`, `Repository Gate`) 통과 후 `main` 병합.
+  - 태그 `v0.7.2` 푸시 → **`release.yml` (run [`40847386065`](https://github.com/gunnysis/eundunHealth/actions/runs/40847386065))** `play-release` 환경 승인 및 Google Play 프로덕션 트랙 `completed`(100%) 업로드 성공 (AAB `16,670,847B`, APK `12,062,201B`, Sentry ProGuard 매핑 업로드 완료).
+  - 자동 생성된 원장 PR **[#223](https://github.com/gunnysis/eundunHealth/pull/223)** (`release-ledger/v0.7.2-43`, `a89447a`) 및 CI 액션 그룹 업데이트 PR **[#222](https://github.com/gunnysis/eundunHealth/pull/222)** (`1b63178`) CI 통과 후 `main` 병합 완료 (`LAST_UPLOADED_VERSION_CODE=43`).
+  - Dependabot PR **[#220](https://github.com/gunnysis/eundunHealth/pull/220)** 트리아지 완료: 안전한 라이브러리(`okhttp 5.5.1`, `coil 3.6.3`)는 흡수하고, 룰 15를 우회하던 AGP 마이너 자동 번프는 `.github/dependabot.yml` ignore 가드에 추가 후 PR #220 종료.
 - **1. 프로필 페이지 (`ProfileHubScreen.kt` / `ProfileHubViewModel.kt`) 불필요 요소 정리 및 시각화 대시보드 개발**:
   - **5개 파편화 섹션(`내 정보 · 연동 · 화면 · 정보 · 계정`) → 3대 핵심 영역 + 하단 푸터로 과감히 통합·정리**:
     - **① 내 신체 & 루틴 요약 대시보드 히어로 (`ProfileBodyHeroCard`)**: 기존에 아무 수치도 보여주지 않던 정적 행(`"신체 정보 및 휴식 요일"`)을 전면 개편하여, 성별·운동 수준 배지(`남성 · 중급 코칭`), 3열 신체 지표 그리드(`BodyMetricMiniGrid`: 신장·체중, BMI 지수 및 판정, 골격근·체지방률), 주간 루틴 & 7일 요일 원형 스탬프 바(`RestDayVisualStrip`: `주 6일 운동 · 휴식 (일)` 및 `월~일` 배지)를 한눈에 시각화.
     - **② 운동 환경 및 기기 연동 통합 카드 (`WorkoutAndHealthIntegrationCard`)**: 따로 찢어져 있던 `기본 운동 환경`과 `Health Connect`를 단일 그룹 카드로 통합하고, Health Connect 상태 배지(`연결됨` 시맨틱 그린 / `권한 필요` / `미지원`)와 틴트 아이콘 배지(`TintedIconBadge`)를 적용.
     - **③ 화면 스타일 통합 카드 (`AppearanceSettingsCard` + `ThemeModeSegmentedRow`)**: 기존에 원하는 테마로 바꾸기 위해 여러 번 탭해 순환해야 했던 불편함을 개선하여, **원탭 3버튼 세그먼트(`자동 · 라이트 · 다크`)**(`ProfileHubViewModel.setThemeMode`)와 Dynamic Color 스위치를 단일 카드로 결합.
-    - **④ 불필요한 `'정보'`(앱 버전 단독 카드) · `'계정'` 섹션 헤더 제거 (`AccountAndVersionFooter`)**: 화면 공간을 낭비하던 `'정보'` 섹션과 `'앱 버전'` 단독 카드를 과감히 제거하고, 깔끔한 `로그아웃` 아웃라인 버튼과 하단 버전 캡션(`은둔헬스 v0.7.1 (42)`)으로 경량화.
+    - **④ 불필요한 `'정보'`(앱 버전 단독 카드) · `'계정'` 섹션 헤더 제거 (`AccountAndVersionFooter`)**: 화면 공간을 낭비하던 `'정보'` 섹션과 `'앱 버전'` 단독 카드를 과감히 제거하고, 깔끔한 `로그아웃` 아웃라인 버튼과 하단 버전 캡션(`은둔헬스 v0.7.2 (43)`)으로 경량화.
 - **2. 진행 페이지 (`ProgressHubScreen.kt` / `ProgressHubViewModel.kt`) 전면 개선 및 고효율 통합**:
   - **'한눈에 보는 요약' (`VisualProgressSummaryDashboard`) 시각화·가독성 대폭 강화**:
     - 기존의 단조로운 3열 텍스트 박스를 **상단 주간 히어로 카드(`ThisWeekVisualHeroCard`) + 하단 2열 시각 타일(`FourWeekTrendVisualTile`, `GoalProgressVisualTile`)** 계층 구조로 개편.

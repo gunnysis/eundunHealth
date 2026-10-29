@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.7 (2026-10-29 — v0.7.1 콜드 스타트 크래시 핫픽스 · v0.7.0 스마일 트레이닝 v2 단일 표준 규격 컷오버 · 4대 진입 경로 통합 · PostgreSQL 18 스키마 하드 리셋 반영)
-**제품 버전:** v0.7.2 (versionCode 43) — 콜드 스타트 크래시(`EUNDUNHEALTH-H`) 핫픽스 및 5계층 심층 방어·AGP 거버넌스 적용, 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `minimumSupportedVersionCode = 41`. 직전 프로덕션은 `0.7.0` (versionCode `41`, `release.yml` run `40816257901`, 원장 PR #215 `LAST_UPLOADED_VERSION_CODE=41`, backend run `40816129146` revision `eundunhealth-api--0000067`).
+**문서 버전:** v3.8 (2026-10-29 — v0.7.2 진행·프로필 허브 비주얼 대시보드 개편 & AI 식단 `gpt-5.4-mini` 전환 · v0.7.1 콜드 스타트 크래시 핫픽스 · v0.7.0 스마일 트레이닝 v2 단일 표준 규격 컷오버 · PostgreSQL 18 스키마 하드 리셋 반영)
+**제품 버전:** v0.7.2 (versionCode 43) — 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편, 체성분 직접 입력 0.1 정밀도 보존, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (100K TPM) 전환, 콜드 스타트 크래시(`EUNDUNHEALTH-H`) 핫픽스 및 5계층 심층 방어·AGP 거버넌스 적용, 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `minimumSupportedVersionCode = 41`. 프로덕션 배포 기준: `release.yml` run `40847386065`, 원장 PR #223 `LAST_UPLOADED_VERSION_CODE=43`, backend run `40838433732` revision `eundunhealth-api--0000068`.
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -166,7 +166,7 @@
        → 성별·키·몸무게·체지방률·골격근량·운동일 기반 7일 식단 생성·저장
 ```
 
-- Azure AI Foundry DeepSeek-V3.2 `GlobalStandard`를 사용하므로 추론은 한국 외 Azure 리전에서
+- Azure AI Foundry `gpt-5.4-mini` `GlobalStandard`를 사용하므로 추론은 한국 외 Azure 리전에서
   처리될 수 있다. 앱은 생성 직전에 이를 고지하고 명시적 동의를 받는다.
 - backend는 `X-AI-Data-Processing-Consent: true`가 없는 요청을 모델 호출 전에 거부한다.
 - 결과는 참고용 비의료 정보이며 알레르기·질환이 있는 사용자는 전문가 확인 안내를 받는다.
@@ -375,8 +375,8 @@ Splash
 | History | 과거 주간 운동 기록 (운동 환경 배지 포함) |
 | Badge | 배지 목록 9종 (획득/미획득) |
 | Profile | 신체 정보·성별·휴식일 편집, 로그아웃, 회원 탈퇴 |
-| ProgressHub | 진행 탭 허브 — 요약 타일 바로 아래 마음 연습(스마일 트레이닝 실시간 달성/연속일 표시) 및 통계·기록·목표·배지 진입 (v0.4.0 / v2) |
-| ProfileHub | 프로필 탭 허브 — 신체 정보 요약·기본 운동 환경 설정·Health Connect 상태·테마·계정 관리 (v0.4.0/v2) |
+| ProgressHub | 진행 탭 허브 — 마음 연습(스마일 트레이닝 실시간 달성/연속일 표시) · 한눈에 보는 요약 비주얼 대시보드(이번 주 원형 프로그레스 링·7일 미니 스탬프·운동 기록 열기 칩, 4주 추이 미니 스파크바, 목표 진행 타일) · 챌린지 배지 쇼케이스 진입 (v0.4.0 / v0.7.2) |
+| ProfileHub | 프로필 탭 허브 — 내 신체·루틴 히어로 대시보드(키·체중·BMI·골격근량·체지방률 미니 그리드 + 7일 원형 요일 스탬프) · 기본 운동 환경 & Health Connect 통합 카드 · 인라인 1-Tap 3단 테마 토글 & 다이내믹 컬러 · 경량 계정/버전 푸터 (v0.4.0 / v0.7.2) |
 | SmileTraining | 온디바이스 카메라 스마일 트레이닝 v2 루트 모달 — 단일 표준 규격(2초×3회)·자동 시작 미소 코칭·즉시 저장 및 동기화 관리 (v0.5.0 / v2) |
 
 ---
@@ -393,12 +393,12 @@ Splash
 | 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
 | 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
 
-### v0.2.0 ~ v0.7.1에서 추가 완료 (2026-09 ~ 2026-10)
+### v0.2.0 ~ v0.7.2에서 추가 완료 (2026-09 ~ 2026-10)
 
 | 영역 | 도입 버전 | 비고 |
 |------|----------|------|
 | Microsoft Entra External ID 브라우저 위임 인증 전환 | v0.2.0 | `AuthGateScreen` 단일화, RS256 JWKS, Graph 계정 삭제 |
-| AI 맞춤 주간 식단 (`DeepSeek-V3.2` MaaS) + 프로필 `gender` | v0.3.0 | `POST /meals/generate`, `GET /meals/current`, `MealPlanScreen` |
+| AI 맞춤 주간 식단 (`DeepSeek-V3.2` MaaS → v0.7.2 `gpt-5.4-mini`) + 프로필 `gender` | v0.3.0 | `POST /meals/generate`, `GET /meals/current`, `MealPlanScreen` |
 | 추천 운동 46종 한국어 현지화 번들 (`korean_exercises.json` v2) | v0.3.1 | SHA-256 지문 대조 + 영문 폴백, 부위·장비·근육 태그 한글화 |
 | AI 식단 국외 처리 사전 동의 헤더 강제 & 프로덕션 배포 하드닝 | v0.3.1 | `X-AI-Data-Processing-Consent: true`, `MEAL_AI_ENABLED` kill switch, Play 10% 단계 출시 |
 | 적응형 메뉴트리(`오늘·식단·진행·프로필`) & Health Connect 투명성 | v0.4.0 | `MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`, multiple back stack |
@@ -406,7 +406,8 @@ Splash
 | 적응형 주간 운동 계획 v2 (`헬스장`/`홈트레이닝` 모드 & 다중 휴식 요일 `restDays`) | v0.6.0 (2026-10-27) | `/v2/weekly-plan` 7개 API, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`, `restDays` 1~6일 다중 선택(대근육 우선순위 큐 라운드로빈), 내장 18종 홈트레이닝 생성기 |
 | UI/UX 전면 리뉴얼 및 브랜드 시스템 (`PROP-05`) | v0.6.1 (2026-10-28) | Modern Forest & Mint 36슬롯 + Pretendard Variable 가변 폰트, `TodayHeroCard`, 단계별 운동 가이드, 12개 UDF ViewModel |
 | PostgreSQL 18 하드 리셋 & 스마일 트레이닝 v2 정본 통합 | v0.7.0 (2026-10-29) | Azure PostgreSQL 18.4 Flexible Server 마이그레이션, Zero-Legacy Drop & Recreate 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()` PK), 스마일 트레이닝 v2 단일 규격(2초×3회, 1초 자동 시작) 통합 |
-| 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어 거버넌스 | v0.7.1 (2026-10-29) | Sentry ANR/크래시(`EUNDUNHEALTH-H`) 해결: `TokenHolder` 즉시 초기화, `ThemePreferences` DataStore 블로킹 제거, AGP 거버넌스 확립 |
+| 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어 거버넌스 | v0.7.1 (2026-10-29) | Sentry 크래시(`EUNDUNHEALTH-H`) 해결: `DatabaseModule` 마이그레이션 충돌 해소, `DefaultLocalDataWiper` `dagger.Lazy` 지연 초기화, 룰 14·15 확립 |
+| 진행·프로필 허브 비주얼 대시보드 개편 & AI 식단 `gpt-5.4-mini` 전환 | v0.7.2 (2026-10-29) | `ProgressHubScreen`/`ProfileHubScreen` 비주얼 대시보드 및 중복 메뉴 제거, 체성분 직접 입력 `0.1` 정밀도 수정, Azure AI Foundry `gpt-5.4-mini` (`100K TPM`, OpenAI Strict JSON Schema) 적용 |
 
 ### 향후 확장 후보 (Product Proposals)
 
