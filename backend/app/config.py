@@ -18,9 +18,10 @@ class Settings(BaseSettings):
     environment: str = "production"
     cors_origins: list[str] = []  # 기본 차단 — 네이티브 앱은 CORS 비적용. 웹 표면 필요 시 CORS_ORIGINS 로 명시
 
-    # Azure AI Foundry MaaS (DeepSeek)
+    # Azure AI Foundry MaaS (식단 생성 AI — OpenAI 호환 엔드포인트)
     deepseek_endpoint: str
     deepseek_key: str
+    meal_ai_model: str = "ep-eundunhealth-meal-ai"
     # Operational kill switch. User consent is enforced separately at the API boundary.
     meal_ai_enabled: bool = True
 

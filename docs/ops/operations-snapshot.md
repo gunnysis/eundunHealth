@@ -63,6 +63,7 @@
 | `SENTRY_DSN` | secretref | `sentry-dsn-backend` |
 | `DEEPSEEK_ENDPOINT` | secretref | `deepseek-endpoint` |
 | `DEEPSEEK_KEY` | secretref | `deepseek-key` |
+| MEAL_AI_MODEL | value | p-eundunhealth-meal-ai (gpt-5.4-mini, 2026-03-17, GlobalStandard capacity: 100 = 100K TPM) |
 | `MEAL_AI_ENABLED` | value | `true` (AI 식단 생성 긴급 kill switch — `'false'` 설정 시 즉시 503 차단) |
 | `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `41` (`backend/containerapp.yaml` 정의값; v0.7.0 컷오버 적용 완료) |
 | `ENVIRONMENT` | value | `production` |
@@ -415,7 +416,7 @@ Alert 룰 (총 8개 — `scripts/setup-sentry-alerts.ps1` 으로 설정, 2026-06
 | OSS ExerciseDB | `https://oss.exercisedb.dev/api/v1/` | 없음 | 부위 카탈로그 10종, 운동 ~1500개 (추천 46종 한국어 번들 `korean_exercises.json` v2 + 영문 폴백) |
 | Microsoft Entra External ID | `https://eundunhealthciam.ciamlogin.com/…` (§5-A) | MSAL 브라우저 위임(PKCE) / 백엔드 JWKS | **RS256**. `issuer`·`jwks_uri` 는 OIDC discovery 로 읽는다(조합 금지) |
 | Microsoft Graph | `https://graph.microsoft.com/v1.0` | client credentials (KV `entra-backend-client-secret`) | 계정 삭제 204 + `deletedItems` 즉시 파기 |
-| Azure AI Foundry DeepSeek-V3.2 | `https://eundunhealth-ai-foundry.services.ai.azure.com/models` (East US 2) | Key Vault `deepseek-*` | `GlobalStandard`; 앱 내 국외 처리 고지·명시 동의 + API 필수 동의 헤더(`X-AI-Data-Processing-Consent: true`) 적용, `MEAL_AI_ENABLED` 긴급 kill switch |
+| Azure AI Foundry (`gpt-5.4-mini`) | `https://hub-eundunhealth-prod.services.ai.azure.com/api/projects/proj-default` (Korea Central) | Key Vault `deepseek-*` | 배포명 `ep-eundunhealth-meal-ai` (`OpenAI` / `gpt-5.4-mini` `2026-03-17`, `GlobalStandard`, `capacity: 100` = 100K TPM / 100 RPM, Structured Outputs `json_schema`); 앱 내 국외 처리 고지·명시 동의 + API 필수 동의 헤더(`X-AI-Data-Processing-Consent: true`) 적용, `MEAL_AI_ENABLED` 긴급 kill switch |
 | Sentry | `o4510919956430848.ingest.us.sentry.io` | DSN | US org, 두 project |
 
 ---
@@ -454,7 +455,7 @@ GitHub Actions (7개 워크플로):
 | Key Vault Standard | ~0원 | secret 8 + 저빈도 read(revision 기동 시) — 거래 무료한도 내 |
 | Container Registry Basic | ~7,000원 | 10GB 한도 |
 | PostgreSQL Flexible B1ms + 32GB | ~30,000원 | |
-| Azure AI Foundry (DeepSeek-V3.2 MaaS) | 종량제 (~수백원) | 주 1회 식단 생성 기준 토큰 종량 과금 (`GlobalStandard`) |
+| Azure AI Foundry (`gpt-5.4-mini`) | 종량제 (~수백원) | 주 1회 식단 생성 기준 토큰 종량 과금 (`GlobalStandard`, 유휴 비용 $0) |
 | Azure Monitor Alerts (metric 4) | ~550-700원 | Activity Log 4개 무료 |
 | Sentry | 0원 | 무료 plan (10K events/mo) |
 | ~~Supabase~~ | — | **2026-09-02 프로젝트 삭제**(§5). 종전 0원 무료 plan |

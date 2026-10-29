@@ -88,7 +88,7 @@ fun MealPlanScreen(
             text = {
                 Text(
                     text = "맞춤형 식단 생성을 위해 성별, 키, 몸무게, 체지방률, 골격근량과 이번 주 운동일을 " +
-                        "Microsoft Azure AI Foundry(DeepSeek)에 암호화해 전송합니다. Global Standard " +
+                        "Microsoft Azure AI Foundry에 암호화해 전송합니다. Global Standard " +
                         "서비스 특성상 한국 외 Azure 리전에서 처리될 수 있습니다. 이 정보는 식단 생성 " +
                         "목적으로만 사용되며 AI 모델 학습에는 사용되지 않습니다.",
                     modifier = Modifier.verticalScroll(rememberScrollState()),

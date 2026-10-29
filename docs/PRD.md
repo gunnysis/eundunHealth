@@ -298,7 +298,7 @@
 │                     │     │  Apps             │     │                 │
 └────────┬────────────┘     └────────┬─────────┘     └─────────────────┘
          │                           │
-         ├──▶ Entra External ID      ├──▶ Azure AI Foundry (DeepSeek-V3.2)
+         ├──▶ Entra External ID      ├──▶ Azure AI Foundry (gpt-5.4-mini)
          ├──▶ ExerciseDB API         └──▶ Microsoft Graph (계정 삭제)
          ├──▶ Health Connect (운동 세션 감지)
          └──▶ Sentry (에러 모니터링)
@@ -393,7 +393,7 @@ Splash
 | 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
 | 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
 
-### v0.2.0 ~ v0.6.1에서 추가 완료 (2026-09 ~ 2026-10)
+### v0.2.0 ~ v0.7.1에서 추가 완료 (2026-09 ~ 2026-10)
 
 | 영역 | 도입 버전 | 비고 |
 |------|----------|------|
@@ -402,8 +402,11 @@ Splash
 | 추천 운동 46종 한국어 현지화 번들 (`korean_exercises.json` v2) | v0.3.1 | SHA-256 지문 대조 + 영문 폴백, 부위·장비·근육 태그 한글화 |
 | AI 식단 국외 처리 사전 동의 헤더 강제 & 프로덕션 배포 하드닝 | v0.3.1 | `X-AI-Data-Processing-Consent: true`, `MEAL_AI_ENABLED` kill switch, Play 10% 단계 출시 |
 | 적응형 메뉴트리(`오늘·식단·진행·프로필`) & Health Connect 투명성 | v0.4.0 | `MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`, multiple back stack |
-| 온디바이스 스마일 트레이닝(Smile Training v2) & 오프라인 우선 동기화 | v0.5.0 / v2 | CameraX 1.6.2 + ML Kit 얼굴 검출, 단일 표준 규격(2초×3회), `SmileTrainingDatabase` v2 + `SmileSyncWorker`, `/v2/smile-training/*` 4개 API, alembic `e8b2c4d6f1a0` |
-| 적응형 주간 운동 계획 v2 (`헬스장`/`홈트레이닝` 모드 & 다중 휴식 요일 `restDays`) | v0.6.0 (2026-10-27) | `/v2/weekly-plan` 7개 API, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`, `restDays` 1~6일 다중 선택(대근육 우선순위 큐 라운드로빈), 내장 18종 홈트레이닝 생성기, alembic `d7f4a2c91b10` |
+| 온디바이스 스마일 트레이닝(Smile Training v2) & 오프라인 우선 동기화 | v0.5.0 / v2 | CameraX 1.6.2 + ML Kit 얼굴 검출, 단일 표준 규격(2초×3회), `SmileTrainingDatabase` v2 + `SmileSyncWorker`, `/v2/smile-training/*` 4개 API, `smile_training_sessions` 테이블 |
+| 적응형 주간 운동 계획 v2 (`헬스장`/`홈트레이닝` 모드 & 다중 휴식 요일 `restDays`) | v0.6.0 (2026-10-27) | `/v2/weekly-plan` 7개 API, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`, `restDays` 1~6일 다중 선택(대근육 우선순위 큐 라운드로빈), 내장 18종 홈트레이닝 생성기 |
+| UI/UX 전면 리뉴얼 및 브랜드 시스템 (`PROP-05`) | v0.6.1 (2026-10-28) | Modern Forest & Mint 36슬롯 + Pretendard Variable 가변 폰트, `TodayHeroCard`, 단계별 운동 가이드, 12개 UDF ViewModel |
+| PostgreSQL 18 하드 리셋 & 스마일 트레이닝 v2 정본 통합 | v0.7.0 (2026-10-29) | Azure PostgreSQL 18.4 Flexible Server 마이그레이션, Zero-Legacy Drop & Recreate 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()` PK), 스마일 트레이닝 v2 단일 규격(2초×3회, 1초 자동 시작) 통합 |
+| 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어 거버넌스 | v0.7.1 (2026-10-29) | Sentry ANR/크래시(`EUNDUNHEALTH-H`) 해결: `TokenHolder` 즉시 초기화, `ThemePreferences` DataStore 블로킹 제거, AGP 거버넌스 확립 |
 
 ### 향후 확장 후보 (Product Proposals)
 

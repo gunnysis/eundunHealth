@@ -1,5 +1,48 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) Azure AI Foundry 식단 생성 AI 모델 `gpt-5.4-mini` (100K TPM) 전환 · `@docs` 전수 최신화 · PR Triage 통합 (PR #218)
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. Azure AI Foundry 식단 생성 AI 모델 최적화 및 `gpt-5.4-mini` 프로덕션 프로비저닝 완결**:
+  - **근본 원인 진단**: 기존 `ep-eundunhealth-deepseekv3` (`DeepSeek-V3.2`, `capacity: 1`) 배포가 `1 RPM / 1,000 TPM`으로 제한되어 식단 1회 생성(~2,200 토큰) 직후 재생성/동시 호출 시 즉시 `429 RateLimitError`가 발생하고 응답 시간이 15~25초 소요되던 병목 확인.
+  - **모델 확정 및 라이브 배포 (`rg-eundunhealth-prod-krc` / `hub-eundunhealth-prod`)**:
+    - [`scripts/infra/deepseek-endpoint.bicep`](scripts/infra/deepseek-endpoint.bicep)을 API 버전 `2024-10-01` 및 파라미터화 구조로 업그레이드하여 **`ep-eundunhealth-meal-ai` (`OpenAI` / `gpt-5.4-mini` / `2026-03-17` / `GlobalStandard` / `capacity: 100` = 100K TPM / 100 RPM, 유휴 비용 $0)** 배포 완료 및 구형 1-RPM `ep-eundunhealth-deepseekv3` 배포 정리 완료.
+  - **백엔드 Strict Structured Outputs (`json_schema`) 및 설정 디커플링**:
+    - [`backend/app/config.py`](backend/app/config.py) 및 [`backend/containerapp.yaml`](backend/containerapp.yaml)에 `meal_ai_model: str = "ep-eundunhealth-meal-ai"` (`MEAL_AI_MODEL`) 추가 (기존 Key Vault `deepseek-endpoint`, `deepseek-key` 시크릿 100% 재사용, 시크릿 회전 불필요).
+    - [`backend/app/services/meal_ai_client.py`](backend/app/services/meal_ai_client.py): OpenAI Native Strict JSON Schema(`json_schema`, `strict: True`) 적용으로 파싱 에러(`500 AI_PARSING_ERROR`) 원천 차단, `월요일~일요일` 7개 고유 요일 및 `workout_dates` 기반 `isRestDay` 매핑 프롬프트 정교화, 타임아웃 `30.0s` 최적화.
+    - **라이브 추론 실측 검증 통과**: `hub-eundunhealth-prod` 실제 호출 결과 **6.00초** 만에 7일 한식 식단(`월요일~일요일` 고유 요일 7개, 운동일/휴식일 매핑 정확) 생성 및 `WeeklyMealPlanResponse` 검증 100% 통과.
+  - **앱 동의 문구 및 개인정보 처리방침 동기화**:
+    - [`MealPlanScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/mealplan/MealPlanScreen.kt) 동의 다이얼로그 문구를 특정 모델 종속이 아닌 벤더 중립 `"Microsoft Azure AI Foundry"`로 개선.
+    - [`docs/store/privacy-policy.md`](docs/store/privacy-policy.md) 및 [`backend/app/legal/privacy-policy.md`](backend/app/legal/privacy-policy.md) (`bash scripts/sync-legal-docs.sh`) 동기화 완료.
+
+## 2026-10-29 (Gemini -> Claude/User) `@docs` 전수 점검/검증/검토/최신화 및 리팩토링 완결 (TRD · SPEC · PRD · Store)
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. `@docs` 전체 문서 점검·검증·검토·최신화 완수 (SSoT 실측 기반 일치화)**:
+  - **[`docs/TRD.md`](docs/TRD.md)**:
+    - 회원 탈퇴 엔드포인트 SSoT 정정: 백엔드 `app/routers/account.py`의 실제 라우트인 `DELETE /account`로 전수 정정 (기존 오기재 `DELETE /profile` 5곳 수정).
+    - Gradle 빌드 도구 실측값 동기화: `gradle-wrapper.properties` 실측 버전인 `Gradle 9.8.2`로 정합화.
+  - **[`docs/SPEC.md`](docs/SPEC.md)**:
+    - 문서 버전 **v2.0** 승격 및 최신 아키텍처(PostgreSQL 18 하드 리셋, 스마일 트레이닝 v2, Modern Forest & Mint, Pretendard Variable) 헤더 반영.
+    - 백엔드 스택 표 정합화: 폐기된 `Alembic` 제거 → `PostgreSQL 18 DDL (02_schema_create_all.sql)` + `python -m app.schema_bootstrap` 멱등 부트스트랩 반영.
+    - 백엔드 27개 API 전수 명세표 완비 (System, Profile, Weekly Plan v2, Smile Training, Meals, Badges & Goals, Account, Legal) 및 초기 v1.0 10개 엔드포인트는 `<details>` 아카이브 격리.
+    - 프로젝트 디렉토리 구조 최신화: Android(Forest & Mint, 4대 허브 탭, Room v3/v2) 및 Backend(FastAPI Python `backend/app/` 8개 APIRouter) 반영 (과거 Ktor 제거).
+    - Sentry 풀스택 분산 추적(Android `eundunhealth` ↔ Backend `eundunhealth-backend` 프로젝트 분리) 및 외부 서비스(OSS ExerciseDB 무인증, Azure AI Foundry DeepSeek-V3.2, Key Vault 8종 시크릿) 정합화.
+  - **[`docs/PRD.md`](docs/PRD.md)**:
+    - 섹션 7(구현 상태 표)에 `v0.6.1` (UI/UX 전면 개편), `v0.7.0` (PostgreSQL 18 하드 리셋 & 스마일 트레이닝 v2 통합), `v0.7.1` (콜드 스타트 핫픽스 & 5계층 심층 방어) 마일스톤 행 추가.
+    - 폐기된 Alembic 마이그레이션 리비전 해시(`e8b2c4d6f1a0`, `d7f4a2c91b10`) 서술 전수 제거 및 PostgreSQL 18 테이블 정본 서술로 정리.
+  - **[`docs/store/`](docs/store/) 스토어 공개 문서**:
+    - [`account-deletion.md`](docs/store/account-deletion.md), [`privacy-policy.md`](docs/store/privacy-policy.md) 최종 업데이트 일자 `2026-10-29` 갱신.
+- **2. 문서 무결성 및 자동화 게이트 전수 검증**:
+  - `bash scripts/check-plans-links.sh` → **OK: 끊긴 참조 0건**.
+  - `backend/.venv/Scripts/pytest.exe scripts/agents/test_doc_audit.py -q` → **36 passed in 0.08s**.
+  - `backend/.venv/Scripts/python.exe scripts/agents/doc_audit.py --collect-only` → **27개 라우트, app_version 0.7.1/42, backend_api_version 1.0.0, python 3.14 전수 일치**.
+
+**다음 할 일 (Next Steps / TODO):**
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
 ## 2026-10-29 (Gemini -> Claude/User) `v0.7.1/42` 프로덕션 배포 완료 · 배포 연동 PR Triage 거버넌스(룰 16) 수립 · 레거시/의존성 PR 9건(`#202~#214`) 일괄 정리 완료
 
 **현재까지의 작업 상태 (Current Status):**

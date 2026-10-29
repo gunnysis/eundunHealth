@@ -1,6 +1,6 @@
-import json
 import logging
 from abc import ABC, abstractmethod
+from typing import Any
 
 import openai
 import pydantic
@@ -23,10 +23,10 @@ class MealAIClient(ABC):
 
 
 class AzureMaaSMealClient(MealAIClient):
-    """Azure AI Foundry MaaS (DeepSeek-V3.2) 구현체.
+    """Azure AI Foundry (gpt-5.4-mini) 식단 생성 AI 구현체.
 
-    OpenAI 호환 규격을 사용하며, 안정적인 파싱을 위해
-    Structured Outputs(beta.parse) 대신 명시적인 JSON Mode와 수동 Pydantic 검증을 사용한다.
+    OpenAI 호환 규격과 Strict Structured Outputs(json_schema)를 사용하여
+    스키마 불일치를 원천 차단하고 Pydantic 모델로 이중 검증한다.
     """
 
     def __init__(self) -> None:
@@ -37,7 +37,7 @@ class AzureMaaSMealClient(MealAIClient):
         api_key = settings.deepseek_key if hasattr(settings, "deepseek_key") else ""
 
         if not endpoint or not api_key:
-            logger.warning("DeepSeek Endpoint/Key is not properly configured. AI client will fail on use.")
+            logger.warning("Meal AI Endpoint/Key is not properly configured. AI client will fail on use.")
 
         base_url = endpoint.rstrip("/") if endpoint else ""
         if base_url and "api/projects" in base_url and not base_url.endswith("/openai"):
@@ -49,54 +49,131 @@ class AzureMaaSMealClient(MealAIClient):
             # SDK의 429/5xx exponential backoff 한 층만 사용한다. 바깥 Tenacity와
             # 중첩하면 최대 9회까지 유료 요청이 증폭될 수 있다.
             max_retries=1,
-            timeout=60.0,
+            timeout=30.0,
         )
-        self.model_name = "ep-eundunhealth-deepseekv3"
+        self.model_name = getattr(settings, "meal_ai_model", "ep-eundunhealth-meal-ai")
+
+    @staticmethod
+    def _build_response_format() -> dict[str, Any]:
+        """OpenAI Strict Structured Outputs (json_schema) 포맷을 생성한다."""
+        return {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "weekly_meal_plan",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["weeklyPlan", "summary"],
+                    "properties": {
+                        "weeklyPlan": {
+                            "type": "array",
+                            "description": "월요일부터 일요일까지 7일간의 주간 식단 목록 (반드시 7개 고유 요일)",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["day", "isRestDay", "meals"],
+                                "properties": {
+                                    "day": {
+                                        "type": "string",
+                                        "description": "요일 (반드시 월요일~일요일 중 하나)",
+                                    },
+                                    "isRestDay": {
+                                        "type": "boolean",
+                                        "description": "휴식일 여부 (운동 스케줄이 없는 날은 true)",
+                                    },
+                                    "meals": {
+                                        "type": "array",
+                                        "description": "해당 일자의 식사 목록 (하루 2~3끼)",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": False,
+                                            "required": [
+                                                "mealType",
+                                                "menuName",
+                                                "calories",
+                                                "proteinG",
+                                                "carbsG",
+                                                "fatG",
+                                            ],
+                                            "properties": {
+                                                "mealType": {
+                                                    "type": "string",
+                                                    "description": "식사 구분 (예: 아침, 점심, 저녁)",
+                                                },
+                                                "menuName": {
+                                                    "type": "string",
+                                                    "description": "현실적인 한식 위주 식단 메뉴 이름",
+                                                },
+                                                "calories": {
+                                                    "type": "integer",
+                                                    "description": "예상 칼로리 (kcal, 0~5000 정수)",
+                                                },
+                                                "proteinG": {
+                                                    "type": "integer",
+                                                    "description": "단백질 함량 (g, 0~1000 정수)",
+                                                },
+                                                "carbsG": {
+                                                    "type": "integer",
+                                                    "description": "탄수화물 함량 (g, 0~1000 정수)",
+                                                },
+                                                "fatG": {
+                                                    "type": "integer",
+                                                    "description": "지방 함량 (g, 0~1000 정수)",
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": "참고용 주간 식단 요약 및 의료 전문가 상담 권고 안내문",
+                        },
+                    },
+                },
+            },
+        }
 
     def _build_system_prompt(self) -> str:
-        # Pydantic 모델의 JSON 스키마를 추출하여 AI가 100% 준수하도록 프롬프트에 주입한다.
-        schema_str = json.dumps(WeeklyMealPlanResponse.model_json_schema(), ensure_ascii=False)
         return (
             "당신은 일반적인 한국식 식사 아이디어를 제공하는 도우미입니다. "
             "진단이나 치료가 아닌 참고용 예시를 제공하고, 알레르기·질환·임신 등 개인의 의료 조건은 "
-            "반드시 의료 전문가와 확인하도록 요약에 안내하세요. "
-            "반드시 한식 위주의 현실적인 메뉴로 구성하고, 휴식일에는 칼로리를 약간 낮춰주세요. "
-            "응답은 반드시 아래에 제공된 JSON 스키마 규격을 100% 준수하는 유효한 JSON 객체여야 합니다.\n\n"
-            f"[JSON SCHEMA]\n{schema_str}"
+            "반드시 의료 전문가와 확인하도록 summary에 안내하세요. "
+            "반드시 한식 위주의 현실적인 메뉴로 구성하고, 휴식일(isRestDay=true)에는 칼로리를 약간 낮춰주세요. "
+            "weeklyPlan 배열은 반드시 '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일' 순서의 "
+            "서로 다른 7개 항목으로 작성하세요."
         )
 
     def _build_user_prompt(self, profile_summary: str, workout_dates: list[str]) -> str:
-        prompt = f"""
-        [사용자 프로필 및 목표]
-        {profile_summary}
-
-        [이번 주 운동 스케줄]
-        {", ".join(workout_dates) if workout_dates else "없음"}
-
-        위 정보를 바탕으로 월요일부터 일요일까지의 7일치 식단(보통 하루 2끼 구성)을 작성해주세요.
-        칼로리와 영양소는 메뉴별 대략적인 표시값으로만 제공하고 개인별 섭취 목표라고 표현하지 마세요.
-        나이, 활동량, 병력, 알레르기 정보가 없으므로 감량·증량을 위한 칼로리 처방은 하지 마세요.
-        """
-        return prompt
+        workout_str = ", ".join(workout_dates) if workout_dates else "없음"
+        return (
+            f"[사용자 프로필 및 목표]\n{profile_summary}\n\n"
+            f"[이번 주 운동 스케줄]\n{workout_str}\n\n"
+            "위 정보를 바탕으로 월요일부터 일요일까지의 7일치 식단(하루 2끼 구성)을 작성해주세요. "
+            "운동 스케줄에 해당하지 않는 요일은 isRestDay를 true로 설정하세요. "
+            "칼로리와 영양소는 메뉴별 대략적인 표시값으로만 제공하고 개인별 섭취 목표라고 표현하지 마세요. "
+            "나이, 활동량, 병력, 알레르기 정보가 없으므로 감량·증량을 위한 칼로리 처방은 하지 마세요."
+        )
 
     async def generate_meal_plan(self, profile_summary: str, workout_dates: list[str]) -> WeeklyMealPlanResponse:
-        """DeepSeek 모델을 호출하여 Pydantic 스키마 형태의 응답을 반환한다.
+        """Azure AI Foundry 모델을 호출하여 Pydantic 스키마 형태의 응답을 반환한다.
 
         OpenAI SDK가 429 및 일시적인 5xx에 bounded exponential backoff를 적용한다.
         """
         try:
             user_prompt = self._build_user_prompt(profile_summary, workout_dates)
 
-            response = await self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(  # type: ignore[call-overload]
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": self._build_system_prompt()},
                     {"role": "user", "content": user_prompt},
                 ],
-                # 강제 JSON 출력 모드 (DeepSeek 모델이 이를 지원하는 환경에서 유효)
-                response_format={"type": "json_object"},
+                response_format=self._build_response_format(),
                 temperature=0.3,
-                max_tokens=2500,
+                max_completion_tokens=2500,
             )
 
             raw_content = response.choices[0].message.content
@@ -125,7 +202,7 @@ class AzureMaaSMealClient(MealAIClient):
                 ),
             ) from e
         except Exception as e:
-            logger.exception("Unexpected error occurred while generating meal plan via DeepSeek")
+            logger.exception("Unexpected error occurred while generating meal plan via Azure AI Foundry")
             raise AppException(
                 status_code=500, code="INTERNAL_SERVER_ERROR", message="식단 생성 중 예상치 못한 오류가 발생했습니다."
             ) from e

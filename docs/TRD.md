@@ -6,7 +6,7 @@
 > **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
 > [!IMPORTANT]
-> 본 TRD는 v0.1.0 초기 설계(Ktor, Supabase Auth, Exposed, Alembic) 이후 전면 현대화된 현행 프로덕션 아키텍처(**FastAPI 0.161.0 / Python 3.14**, **Microsoft Entra External ID CIAM**, **Azure PostgreSQL 18.4 Flexible Server**, **온디바이스 스마일 트레이닝 v2**, **Azure AI Foundry DeepSeek-V3.2 MaaS**, **Sentry 풀스택 분산 추적**)를 기준으로 작성된 **기술 사양 단일 진실 공급원(SSoT)**입니다.  
+> 본 TRD는 v0.1.0 초기 설계(Ktor, Supabase Auth, Exposed, Alembic) 이후 전면 현대화된 현행 프로덕션 아키텍처(**FastAPI 0.161.0 / Python 3.14**, **Microsoft Entra External ID CIAM**, **Azure PostgreSQL 18.4 Flexible Server**, **온디바이스 스마일 트레이닝 v2**, **Azure AI Foundry gpt-5.4-mini (GlobalStandard)**, **Sentry 풀스택 분산 추적**)를 기준으로 작성된 **기술 사양 단일 진실 공급원(SSoT)**입니다.  
 > 과거 v1.0 초기 설계 기록은 각 섹션 하단의 `<details>` 아카이브 블록에 안전하게 보존되어 있습니다.
 
 ---
@@ -50,7 +50,7 @@
 ### 1.1. 전체 시스템 구성도
 
 > **최신 아키텍처 기준 (v0.7.0 / v0.7.1, 2026-10-29 반영)**:
-> 초기 v1.0 설계에서 **FastAPI (Python 3.14), Microsoft Entra External ID(CIAM), Azure PostgreSQL 18.4 Flexible Server, 온디바이스 스마일 트레이닝 v2(CameraX + ML Kit), Azure AI Foundry(DeepSeek-V3.2 MaaS), Sentry 풀스택 분산 추적**으로 전면 현대화된 엔드투엔드 토폴로지입니다.
+> 초기 v1.0 설계에서 **FastAPI (Python 3.14), Microsoft Entra External ID(CIAM), Azure PostgreSQL 18.4 Flexible Server, 온디바이스 스마일 트레이닝 v2(CameraX + ML Kit), Azure AI Foundry(gpt-5.4-mini GlobalStandard), Sentry 풀스택 분산 추적**으로 전면 현대화된 엔드투엔드 토폴로지입니다.
 
 #### [Mermaid 시스템 아키텍처 다이어그램]
 
@@ -72,7 +72,7 @@ graph TB
     subgraph External["External & Identity Services"]
         Entra["Microsoft Entra External ID (CIAM)<br/>테넌트: eundunhealthciam<br/>OIDC / RS256 JWKS 서명 검증"]
         Graph["Microsoft Graph API (v1.0)<br/>DELETE /users/{oid} (회원 탈퇴 204 No Content)<br/>+ deletedItems 즉시 영구 파기"]
-        Foundry["Azure AI Foundry (MaaS Serverless)<br/>DeepSeek-V3.2 (East US 2, GlobalStandard)<br/>AI 맞춤 주간 식단 자동 생성"]
+        Foundry["Azure AI Foundry (MaaS Serverless)<br/>gpt-5.4-mini (Korea Central, GlobalStandard)<br/>AI 맞춤 주간 식단 자동 생성"]
         ExerciseDB["OSS ExerciseDB<br/>(oss.exercisedb.dev/api/v1/)<br/>오픈소스 운동 데이터 카탈로그"]
         SentrySaaS["Sentry Cloud Platform (gunnys 조직)<br/>Android (eundunhealth) ↔ Backend (eundunhealth-backend)<br/>엔드투엔드 분산 트레이싱 & 실시간 모니터링"]
     end
@@ -177,7 +177,7 @@ graph TB
            │           │                                                        │
            │ ┌─────────▼────────┐     ┌─────────────────┐             ┌─────────▼────────┐
            │ │ Azure AI Foundry │     │ Log Analytics   │             │ Sentry SaaS      │
-           │ │ (DeepSeek-V3.2)  │     │ (workspace-     │             │ (gunnys 조직)    │
+           │ │ (gpt-5.4-mini)   │     │ (workspace-     │             │ (gunnys 조직)    │
            │ │ AI 주간 식단 생성│     │  appsDOlM)      │             │ Android / 백엔드 │
            │ └──────────────────┘     └─────────────────┘             │ 풀스택 분산 추적 │
            │                                                          └──────────────────┘
@@ -254,7 +254,7 @@ graph TB
 | **모바일 IDE** | **Android Studio** | Kotlin 2.4.21, Jetpack Compose 최적화 |
 | **백엔드 IDE / 툴체인** | **Python 3.14 (venv) + uv / pip-compile** | 해시 락(`requirements.txt`, `--require-hashes`) 엄격 검증 |
 | **테스트 디바이스** | **Samsung Galaxy Phone (Android 14 / One UI 6.1)** | Health Connect 및 실제 카메라 센서 실기기 검증 |
-| **빌드 자동화 도구** | **Gradle 9.8.1** (Android) / **pip-compile** (Backend) | Gradle Hash Verification (`gradle/verification-metadata.xml`) |
+| **빌드 자동화 도구** | **Gradle 9.8.2** (Android) / **pip-compile** (Backend) | Gradle Hash Verification (`gradle/verification-metadata.xml`) |
 | **Android 빌드 플러그인** | **AGP 9.4.1** | Kotlin 내장 툴체인, `detekt-cli` + `androidComponents` 통합 |
 | **코드 정적 분석 & 포맷터** | **Detekt 1.23.8 + Spotless 8.10.4 + ktlint 1.5.0** | 빌드 파이프라인 무결성 게이트 강제 |
 | **모니터링 / 에러 추적** | **Sentry** (Android `8.61.1` / Backend `2.73.0`) | R8 ProGuard 매핑 자동 업로드 및 풀스택 분산 추적 |
@@ -304,7 +304,7 @@ graph TB
 | **필수 검증 클레임** | 서명 유효성 + `exp` + `issuer` + `audience`(`entra_backend_client_id`) + **`scp`(`access_as_user`)** |
 | **사용자 식별자 SSoT** | **`oid` (Object ID)** claim (`sub`는 앱별 pairwise 해시라 Graph 탈퇴 시 불일치하므로 배제) |
 | **세션 보관 / 갱신** | 메모리 `TokenHolder` (`AtomicReference<String?>`) + MSAL 계정 캐시 + `MsalSilentAuth` + `TokenAuthenticator` |
-| **회원 탈퇴 (삭제)** | 앱 `DELETE /profile` → 백엔드 DB 사용자 데이터 영구 삭제 → **Microsoft Graph API `DELETE /v1.0/users/{oid}` (204)** + `deletedItems` 즉시 영구 파기 |
+| **회원 탈퇴 (삭제)** | 앱 `DELETE /account` → 백엔드 DB 사용자 데이터 영구 삭제 → **Microsoft Graph API `DELETE /v1.0/users/{oid}` (204)** + `deletedItems` 즉시 영구 파기 |
 | **고아 계정 청소** | Azure Container Apps Job `eundunhealth-reaper` (주간 cron `0 18 * * 0`, User Managed Identity) |
 
 #### 2) 엔드투엔드 인증 플로우 다이어그램 (Mermaid)
@@ -369,7 +369,7 @@ sequenceDiagram
     rect rgb(255, 240, 245)
     note over User, Graph: 4. 회원 탈퇴 및 즉시 영구 파기
     User->>App: [회원 탈퇴] 확인
-    App->>API: DELETE /profile (Bearer JWT)
+    App->>API: DELETE /account (Bearer JWT)
     API->>DB: 도메인 데이터 8개 테이블 CASCADE 삭제
     API->>Graph: DELETE /v1.0/users/{oid} (client credentials)
     Graph-->>API: 204 No Content
@@ -719,7 +719,7 @@ FastAPI Lifespan Shutdown
 | | `POST` | `/badges/{key}` | **O** | 배지 수여 (9종 정규 배지 키 화이트리스트 검증, 중복 수여 방지) |
 | **Goals** | `GET` | `/goals` | **O** | 목표 체중 및 체지방률 조회 |
 | | `PUT` | `/goals` | **O** | 목표 체중/체지방률 생성 및 갱신 |
-| **Account** | `DELETE` | `/profile` | **O** | **회원 탈퇴**: DB 도메인 데이터 즉시 CASCADE 영구 삭제 + Graph API 계정 영구 파기 (`204 No Content`) |
+| **Account** | `DELETE` | `/account` | **O** | **회원 탈퇴**: DB 도메인 데이터 즉시 CASCADE 영구 삭제 + Graph API 계정 영구 파기 (`204 No Content`) |
 | **Legal** | `GET` | `/privacy` | X | 개인정보 처리방침 공개 페이지 (Markdown → HTML 렌더링) |
 | | `GET` | `/account-deletion` | X | 구글 플레이 요구 계정 삭제 안내 페이지 |
 
@@ -931,7 +931,7 @@ erDiagram
 | `id` | `UUID` | N | `DEFAULT uuidv7()` (PK) | 고유 식별자 |
 | `user_id` | `VARCHAR(128)` | N | `length(trim(user_id)) >= 1` | 소유 사용자 식별자 |
 | `week_start_date` | `DATE` | N | **유니크 인덱스 `UNIQUE (user_id, week_start_date)`** | 주차 시작일 (주간 1개 식단 보장) |
-| `summary` | `TEXT` | N | `CHECK (length 1..1000)` | DeepSeek AI가 작성한 주간 식단 요약 코멘트 |
+| `summary` | `TEXT` | N | `CHECK (length 1..1000)` | AI가 작성한 주간 식단 요약 코멘트 |
 | `created_at` | `TIMESTAMPTZ` | N | `DEFAULT now()` | 식단 생성 일시 |
 
 #### 7) `meal_plan_items` (일별/끼니별 정규화 식단 아이템)
@@ -1024,7 +1024,7 @@ erDiagram
 > **법적 준수 기준:** 구글 플레이 데이터 보안 가이드라인 및 개인정보 보호법 준수
 
 ```text
-사용자 회원 탈퇴 확인 (앱: DELETE /profile)
+사용자 회원 탈퇴 확인 (앱: DELETE /account)
    │
    ▼ 1. 백엔드 DB 도메인 데이터 영구 삭제
 [Azure PostgreSQL 18]
@@ -1084,7 +1084,7 @@ Android 앱과 FastAPI 백엔드의 성능 트랜잭션과 에러를 독립된 �
 
 #### [빌드 사양]
 - **Compile / Target SDK:** 37 (Android 17) / **Min SDK:** 26 (Android 8.0 Oreo)
-- **빌드 도구:** Gradle 9.8.1 + AGP 9.4.1 (Kotlin 2.4.21 내장)
+- **빌드 도구:** Gradle 9.8.2 + AGP 9.4.1 (Kotlin 2.4.21 내장)
 - **자바 런타임:** Eclipse Temurin 17 (Java 17 바이트코드)
 - **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.7.1`, `VERSION_CODE=42`)
 
@@ -1289,7 +1289,7 @@ eundunHealth/                          # 루트 저장소 (Gradle & Python 하�
 | **AUTH-03** | 세션 무음 복원 (Silent Auth) | 앱 기동 시 `MsalSilentAuth.acquireTokenSilent()` 호출 → `TokenHolder` 주입 |
 | **AUTH-04** | 토큰 만료 시 자동 갱신 | OkHttp `TokenAuthenticator` (401 감지 시 직렬화 락 기반 무음 갱신 후 재전송) |
 | **AUTH-05** | 로그아웃 | MSAL Android `signOut()` + `TokenHolder.set(null)` + 로컬 세션 소멸 |
-| **AUTH-06** | 회원 탈퇴 및 영구 파기 | `DELETE /profile` (DB 도메인 데이터 즉시 CASCADE) + **Microsoft Graph API `DELETE /users/{oid}` (204 No Content)** + `deletedItems` 즉시 파기 + Android `LocalDataWiper` |
+| **AUTH-06** | 회원 탈퇴 및 영구 파기 | `DELETE /account` (DB 도메인 데이터 즉시 CASCADE) + **Microsoft Graph API `DELETE /users/{oid}` (204 No Content)** + `deletedItems` 즉시 파기 + Android `LocalDataWiper` |
 | **PROF-01** | 신체 정보 최초 입력 | `OnboardingScreen` 2단계 바디 피커 → `PUT /profile` |
 | **PROF-02** | 신체 정보 수정 | `ProfileScreen` 슬라이더/피커 → `PUT /profile` (시계열 `user_profile_history` 자동 기록) |
 | **PROF-03** | 신체 지표 입력값 범위 검증 | Pydantic v2 `ProfileRequest` (키: 50~300cm, 몸무게: 10~500kg, 체지방: 1~70%, 근육: 1~200kg) |
