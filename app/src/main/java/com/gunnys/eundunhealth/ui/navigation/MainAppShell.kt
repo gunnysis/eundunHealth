@@ -170,6 +170,7 @@ private fun MainContent(
                     viewModel.refreshDefaultWorkoutPlanMode()
                 },
                 onCycleTheme = viewModel::cycleTheme,
+                onSelectThemeMode = viewModel::setThemeMode,
                 onToggleDynamicColor = viewModel::setDynamicColorEnabled,
                 onLogout = onLogout,
                 onUpdateDefaultWorkoutPlanMode = viewModel::updateDefaultWorkoutPlanMode,

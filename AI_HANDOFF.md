@@ -1,12 +1,39 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 페이지 전면 개선·간소화 · 체성분 직접 입력 0.1 정밀도 버그 수정 · 레거시 DeepSeek 인프라 정리
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. 프로필 페이지 (`ProfileHubScreen.kt` / `ProfileHubViewModel.kt`) 불필요 요소 정리 및 시각화 대시보드 개발**:
+  - **5개 파편화 섹션(`내 정보 · 연동 · 화면 · 정보 · 계정`) → 3대 핵심 영역 + 하단 푸터로 과감히 통합·정리**:
+    - **① 내 신체 & 루틴 요약 대시보드 히어로 (`ProfileBodyHeroCard`)**: 기존에 아무 수치도 보여주지 않던 정적 행(`"신체 정보 및 휴식 요일"`)을 전면 개편하여, 성별·운동 수준 배지(`남성 · 중급 코칭`), 3열 신체 지표 그리드(`BodyMetricMiniGrid`: 신장·체중, BMI 지수 및 판정, 골격근·체지방률), 주간 루틴 & 7일 요일 원형 스탬프 바(`RestDayVisualStrip`: `주 6일 운동 · 휴식 (일)` 및 `월~일` 배지)를 한눈에 시각화.
+    - **② 운동 환경 및 기기 연동 통합 카드 (`WorkoutAndHealthIntegrationCard`)**: 따로 찢어져 있던 `기본 운동 환경`과 `Health Connect`를 단일 그룹 카드로 통합하고, Health Connect 상태 배지(`연결됨` 시맨틱 그린 / `권한 필요` / `미지원`)와 틴트 아이콘 배지(`TintedIconBadge`)를 적용.
+    - **③ 화면 스타일 통합 카드 (`AppearanceSettingsCard` + `ThemeModeSegmentedRow`)**: 기존에 원하는 테마로 바꾸기 위해 여러 번 탭해 순환해야 했던 불편함을 개선하여, **원탭 3버튼 세그먼트(`자동 · 라이트 · 다크`)**(`ProfileHubViewModel.setThemeMode`)와 Dynamic Color 스위치를 단일 카드로 결합.
+    - **④ 불필요한 `'정보'`(앱 버전 단독 카드) · `'계정'` 섹션 헤더 제거 (`AccountAndVersionFooter`)**: 화면 공간을 낭비하던 `'정보'` 섹션과 `'앱 버전'` 단독 카드를 과감히 제거하고, 깔끔한 `로그아웃` 아웃라인 버튼과 하단 버전 캡션(`은둔헬스 v0.7.1 (42)`)으로 경량화.
+- **2. 진행 페이지 (`ProgressHubScreen.kt` / `ProgressHubViewModel.kt`) 전면 개선 및 고효율 통합**:
+  - **'한눈에 보는 요약' (`VisualProgressSummaryDashboard`) 시각화·가독성 대폭 강화**:
+    - 기존의 단조로운 3열 텍스트 박스를 **상단 주간 히어로 카드(`ThisWeekVisualHeroCard`) + 하단 2열 시각 타일(`FourWeekTrendVisualTile`, `GoalProgressVisualTile`)** 계층 구조로 개편.
+    - **이번 주 히어로 카드**: 원형 프로그레스 링(`CircularProgressIndicator` + 달성률 `%`), 완료 일수(`1/2일`), 플랜 모드 배지(`헬스장`/`홈트레이닝`), 7일 미니 요일 스탬프 바(`WeeklyMiniDayStampsBar`, `월~일` 완료/미완료/휴식 아이콘) 통합.
+    - **최근 4주 추이 타일**: 4주 평균 달성률(`%`), 연속 달성 스트릭 배지(`🔥 N주`), 주간 달성률 미니 막대 그래프(`MiniWeeklySparkBars`) 및 하단 프로그레스 바 시각화.
+    - **목표까지 진행 타일**: 체중 목표 잔여량(`-2.5kg` / `달성!`), 현재 체중 → 목표 체중(`70.5kg → 68.0kg`) 및 체지방률 목표 요약 캡슐 배지 제공.
+  - **'마음 연습' (`SmileTrainingProgressCard`) 시인성 개선**:
+    - 당일 완료 여부(`오늘 완료` 시맨틱 그린 배지 vs `연속 N일` / `10초 루틴` 배지)와 원형 상태 아이콘을 적용해 직관성 강화.
+  - **'운동 기록과 목표' 중복 3개 메뉴(`통계·기록·목표`) 과감히 제거 및 단일 `챌린지 배지` 쇼케이스 카드로 간소화**:
+    - 상단 `'한눈에 보는 요약'` 대시보드(`이번 주 운동 기록` 히어로 카드 → `History`, `최근 4주 통계` 타일 → `Statistics`, `목표 관리` 타일 → `Goal`)와 기능이 중복되던 하단 `'운동 기록과 목표'`의 `통계`, `기록`, `목표` 3개 메뉴 행을 과감히 삭제.
+    - 하단은 단일 **`챌린지 배지` 컬렉션 쇼케이스 카드(`BadgeCollectionShowcaseCard`)**만 남겨 달성 진행률(`earnedBadgeCount/totalBadgeCount` 프로그레스 바), 최근 획득 배지명, 대표 배지 5개 미니 칩(`BadgeMiniChip`)을 인라인으로 바로 확인하고 탭하여 전체 배지 화면으로 이동하도록 간소화.
+  - **화면 복귀 자동 동기화**: `RefreshProgressOnResume` (`Lifecycle.Event.ON_RESUME`)을 부착하여 하위 화면(운동 기록·목표·배지·스마일 트레이닝)에서 돌아올 때 즉시 최신 요약을 갱신.
+- **2. 골격근량·체지방률 직접 입력 0.1 단위 스냅 버그 수정 (`HybridBodyMetricPicker.kt`)**:
+  - `DirectMetricInputDialog`에서 `0.1` 단위 값(예: 골격근량 `30.2kg`, 체지방률 `19.8%`)을 입력 후 '적용'을 누르면 눈금자 휠 step(`0.5`) 인덱스로 강제 반올림되어 `30.0` / `20.0`으로 덮어써지던 버그 해결 (`roundAndClampMetricValue(parsed, range, decimals)` 직접 반영 + `LaunchedEffect` 가드 추가).
+  - [`BodyMetricAnchorTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/components/BodyMetricAnchorTest.kt) 및 [`DialogAndLayoutGuardTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/DialogAndLayoutGuardTest.kt), [`ProgressHubViewModelTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubViewModelTest.kt) 단위 테스트 검증 완료.
+- **3. 레거시 DeepSeek 인프라 파일명 및 참조 정리**:
+  - [`scripts/infra/meal-ai-endpoint.bicep`](scripts/infra/meal-ai-endpoint.bicep), [`scripts/infra/deploy-meal-ai-endpoint.ps1`](scripts/infra/deploy-meal-ai-endpoint.ps1)로 리네임 및 레거시 스크래치(`backend/scratch/test_ai.py`) 삭제.
+
 ## 2026-10-29 (Gemini -> Claude/User) Azure AI Foundry 식단 생성 AI 모델 `gpt-5.4-mini` (100K TPM) 전환 · `@docs` 전수 최신화 · PR Triage 통합 (PR #218)
 
 **현재까지의 작업 상태 (Current Status):**
 - **1. Azure AI Foundry 식단 생성 AI 모델 최적화 및 `gpt-5.4-mini` 프로덕션 프로비저닝 완결**:
   - **근본 원인 진단**: 기존 `ep-eundunhealth-deepseekv3` (`DeepSeek-V3.2`, `capacity: 1`) 배포가 `1 RPM / 1,000 TPM`으로 제한되어 식단 1회 생성(~2,200 토큰) 직후 재생성/동시 호출 시 즉시 `429 RateLimitError`가 발생하고 응답 시간이 15~25초 소요되던 병목 확인.
   - **모델 확정 및 라이브 배포 (`rg-eundunhealth-prod-krc` / `hub-eundunhealth-prod`)**:
-    - [`scripts/infra/deepseek-endpoint.bicep`](scripts/infra/deepseek-endpoint.bicep)을 API 버전 `2024-10-01` 및 파라미터화 구조로 업그레이드하여 **`ep-eundunhealth-meal-ai` (`OpenAI` / `gpt-5.4-mini` / `2026-03-17` / `GlobalStandard` / `capacity: 100` = 100K TPM / 100 RPM, 유휴 비용 $0)** 배포 완료 및 구형 1-RPM `ep-eundunhealth-deepseekv3` 배포 정리 완료.
+    - [`scripts/infra/meal-ai-endpoint.bicep`](scripts/infra/meal-ai-endpoint.bicep)을 API 버전 `2024-10-01` 및 파라미터화 구조로 업그레이드하여 **`ep-eundunhealth-meal-ai` (`OpenAI` / `gpt-5.4-mini` / `2026-03-17` / `GlobalStandard` / `capacity: 100` = 100K TPM / 100 RPM, 유휴 비용 $0)** 배포 완료 및 구형 1-RPM `ep-eundunhealth-deepseekv3` 배포 정리 완료.
   - **백엔드 Strict Structured Outputs (`json_schema`) 및 설정 디커플링**:
     - [`backend/app/config.py`](backend/app/config.py) 및 [`backend/containerapp.yaml`](backend/containerapp.yaml)에 `meal_ai_model: str = "ep-eundunhealth-meal-ai"` (`MEAL_AI_MODEL`) 추가 (기존 Key Vault `deepseek-endpoint`, `deepseek-key` 시크릿 100% 재사용, 시크릿 회전 불필요).
     - [`backend/app/services/meal_ai_client.py`](backend/app/services/meal_ai_client.py): OpenAI Native Strict JSON Schema(`json_schema`, `strict: True`) 적용으로 파싱 에러(`500 AI_PARSING_ERROR`) 원천 차단, `월요일~일요일` 7개 고유 요일 및 `workout_dates` 기반 `isRestDay` 매핑 프롬프트 정교화, 타임아웃 `30.0s` 최적화.

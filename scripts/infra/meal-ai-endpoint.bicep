@@ -4,7 +4,7 @@ param accountName string = 'hub-eundunhealth-prod'
 @description('Name of the deployment endpoint')
 param deploymentName string = 'ep-eundunhealth-meal-ai'
 
-@description('Model provider format (e.g. OpenAI, DeepSeek)')
+@description('Model provider format (e.g. OpenAI)')
 param modelFormat string = 'OpenAI'
 
 @description('Model name in Azure AI Foundry catalog')

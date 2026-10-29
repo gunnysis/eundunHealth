@@ -72,6 +72,7 @@ class ProfileHubViewModelTest {
         assertFalse(viewModel.uiState.value.hasHealthPermission)
         assertFalse(viewModel.uiState.value.isHealthConnectLoading)
         assertEquals(WorkoutPlanMode.GYM, viewModel.uiState.value.defaultWorkoutPlanMode)
+        assertEquals(profile, viewModel.uiState.value.profile)
     }
 
     @Test
@@ -136,5 +137,20 @@ class ProfileHubViewModelTest {
 
         assertTrue(viewModel.uiState.value.dynamicColorEnabled)
         coVerify(exactly = 1) { themePreferences.setDynamicColorEnabled(true) }
+    }
+
+    @Test
+    fun `setThemeMode 호출 시 지정한 테마 모드로 즉시 전환하고 저장한다`() = runTest {
+        coEvery { healthRepository.isAvailable() } returns false
+
+        val viewModel = ProfileHubViewModel(healthRepository, themePreferences, userRepository)
+        advanceUntilIdle()
+        assertEquals(ThemeMode.SYSTEM, viewModel.uiState.value.themeMode)
+
+        viewModel.setThemeMode(ThemeMode.DARK)
+        advanceUntilIdle()
+
+        assertEquals(ThemeMode.DARK, viewModel.uiState.value.themeMode)
+        coVerify(exactly = 1) { themePreferences.setThemeMode(ThemeMode.DARK) }
     }
 }

@@ -4,6 +4,25 @@
 
 ---
 
+## [v0.7.2] — 2026-10-29 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 시각화 대시보드·간소화 개편 · 체성분 0.1 정밀도 직접 입력 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환
+
+> **2026-10-29 `v0.7.2` (`versionCode=43`) 프로덕션 릴리스.** 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 탭의 중복·불필요 요소를 과감히 정리하여 고밀도 시각화 대시보드로 개편하고, 골격근량·체지방률 직접 입력 다이얼로그에서 `0.1` 단위 소수점이 `0.5` 스텝으로 강제 반올림되던 버그를 해결했다. 또한 백엔드 식단 생성 AI 모델을 `gpt-5.4-mini` (`GlobalStandard`, `100K TPM / 100 RPM`, OpenAI Strict Structured Outputs)로 업그레이드하여 배포(`eundunhealth-api--0000068`)하고, 레거시 DeepSeek 인프라 스크립트 정리 및 `okhttp 5.5.1`·`coil 3.6.3` 공급망 업데이트를 완료했다.
+
+### 📊 영역 A — 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 페이지 시각화 & 간소화 개편
+- **진행 페이지 (`ProgressHubScreen`, `ProgressHubViewModel`)**:
+  - **'한눈에 보는 요약' 시각화 대시보드 (`VisualProgressSummaryDashboard`)**: 기존의 단조로운 3열 텍스트 박스를 상단 `이번 주 운동 기록` 히어로 카드(`CircularProgressIndicator` 원형 달성률 링 + 플랜 모드 배지 + `월~일` 7일 요일 스탬프 바)와 하단 2열 시각 타일(`최근 4주 통계` 미니 주간 막대 그래프·연속 달성 주 배지 + `목표 관리` 현재→목표 비교 캡슐)로 전면 개편했다.
+  - **중복 메뉴 과감히 제거 및 단일 `챌린지 배지` 쇼케이스 통합 (`BadgeCollectionShowcaseCard`)**: 상단 요약 대시보드와 진입점이 중복되던 하단 `'운동 기록과 목표'`의 `통계`·`기록`·`목표` 3개 정적 리스트 행을 제거하고, 획득 배지 진행률(`LinearProgressIndicator`), 최근 획득 배지명, 대표 배지 5종 미니 칩(`BadgeMiniChip`)을 인라인으로 보여주는 단일 컬렉션 카드로 간소화했다.
+- **프로필 페이지 (`ProfileHubScreen`, `ProfileHubViewModel`)**:
+  - **내 신체 & 루틴 요약 대시보드 히어로 (`ProfileBodyHeroCard`)**: 아무 수치도 보여주지 않던 정적 행을 대체하여, 성별·맞춤 코칭 레벨 배지, 3열 신체 지표 그리드(`신장·체중`, `BMI 지수 및 판정`, `골격근·체지방률`), 주간 운동/휴식 요일 원형 스탬프 바(`RestDayVisualStrip`)를 한눈에 가시화했다.
+  - **5개 파편화 섹션 → 통합 카드 & 원탭 3버튼 테마 세그먼트**: `기본 운동 환경`과 `Health Connect`(상태 배지 포함)를 단일 그룹 카드(`WorkoutAndHealthIntegrationCard`)로 통합하고, 여러 번 탭해 순환해야 했던 테마 설정에 **`자동 · 라이트 · 다크` 원탭 3버튼 세그먼트(`ThemeModeSegmentedRow`)**를 도입했다. 불필요한 `'정보'`(앱 버전 단독 카드)·`'계정'` 섹션 헤더는 제거하고 경량 푸터(`AccountAndVersionFooter`)로 정리했다.
+- **골격근량·체지방률 직접 입력 `0.1` 정밀도 보존 (`HybridBodyMetricPicker`)**: `DirectMetricInputDialog`에서 `0.1` 단위 값(예: `30.2kg`, `19.8%`) 입력 후 '적용' 시 눈금자 휠 step(`0.5`) 인덱스로 스냅되어 `30.0` / `20.0`으로 덮어써지던 버그를 수정하고 `BodyMetricAnchorTest`로 검증했다.
+
+### 🤖 영역 B — Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` 전환 & 인프라/공급망 정리
+- **`ep-eundunhealth-meal-ai` (`gpt-5.4-mini`, `100K TPM / 100 RPM`) 프로비저닝 및 Strict JSON Schema 적용**: 구형 1-RPM `DeepSeek-V3.2` 배포의 `429 RateLimitError` 및 지연(15~25s)을 해소하기 위해 Korea Central `hub-eundunhealth-prod`에 `gpt-5.4-mini`를 배포(응답 약 6.0s)하고 `meal_ai_client.py`에 OpenAI Native Strict Structured Outputs(`json_schema`, `strict: True`)를 적용했다(`eundunhealth-api--0000068`).
+- **레거시 인프라 스크립트 정리 & 공급망 업데이트**: `scripts/infra/meal-ai-endpoint.bicep` 및 `deploy-meal-ai-endpoint.ps1`로 정본화하고, `okhttp 5.5.1`·`coil 3.6.3` 업데이트 및 `.github/dependabot.yml` AGP 자동 번프 제외 가드를 적용했다.
+
+---
+
 ## [v0.7.1] — 2026-10-29 — 콜드 스타트 크래시 핫픽스 (`EUNDUNHEALTH-H`) · Room 지연 초기화 · 5계층 심층 방어(룰 14) · AGP 아키텍처 거버넌스(룰 15)
 
 > **2026-10-29 `v0.7.1` (`versionCode=42`) 핫픽스 릴리스.** `v0.7.0/41` 배포 직후 기기 콜드 스타트 시 `SmileTrainingDatabase` 빌더의 `MIGRATION_1_2`(`startVersion = 1`)와 `fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)` 충돌(`IllegalArgumentException: Migrations andFallbackToDestructiveMigrationFrom cannot be configured for the same version: 1`)로 발생한 100% 기동 즉시 종료 장애([`INC-2026-10-29-34`](ops/incident-log.md), Sentry `EUNDUNHEALTH-H`)를 근본 수정하고, 배포 후 장애 재발을 원천 차단하는 **5계층 심층 방어 정책(룰 14)** 과 **AGP 아키텍처·호환성·업그레이드 거버넌스(룰 15)** 를 수립·자동화했다.

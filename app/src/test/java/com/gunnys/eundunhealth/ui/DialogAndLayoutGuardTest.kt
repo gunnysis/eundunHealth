@@ -63,4 +63,44 @@ class DialogAndLayoutGuardTest {
             consentDialogSection.contains("verticalScroll(rememberScrollState())"),
         )
     }
+
+    @Test
+    fun `ProgressHubScreen 은 중복된 운동 기록과 목표 리스트를 제거하고 시각화 요약 대시보드와 단일 배지 컬렉션 카드를 사용한다`() {
+        val progressHub = resolveSourceFile("com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt").readText()
+        assertTrue(
+            "ProgressHubScreen must include VisualProgressSummaryDashboard with CircularProgressIndicator and MiniWeeklySparkBars",
+            progressHub.contains("VisualProgressSummaryDashboard") &&
+                progressHub.contains("CircularProgressIndicator") &&
+                progressHub.contains("MiniWeeklySparkBars"),
+        )
+        assertTrue(
+            "ProgressHubScreen must replace the redundant 4-row menu with a single BadgeCollectionShowcaseCard",
+            progressHub.contains("BadgeCollectionShowcaseCard") &&
+                !progressHub.contains("운동 기록과 목표") &&
+                !progressHub.contains("ListItem("),
+        )
+        assertTrue(
+            "ProgressHubScreen must refresh summary on ON_RESUME lifecycle event",
+            progressHub.contains("RefreshProgressOnResume") &&
+                progressHub.contains("Lifecycle.Event.ON_RESUME"),
+        )
+    }
+
+    @Test
+    fun `ProfileHubScreen 은 신체 루틴 히어로 대시보드와 통합 설정 카드 및 원탭 테마 세그먼트를 사용한다`() {
+        val profileHub = resolveSourceFile("com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt").readText()
+        assertTrue(
+            "ProfileHubScreen must include ProfileBodyHeroCard with BodyMetricMiniGrid and RestDayVisualStrip",
+            profileHub.contains("ProfileBodyHeroCard") &&
+                profileHub.contains("BodyMetricMiniGrid") &&
+                profileHub.contains("RestDayVisualStrip"),
+        )
+        assertTrue(
+            "ProfileHubScreen must consolidate settings into WorkoutAndHealthIntegrationCard and AppearanceSettingsCard with ThemeModeSegmentedRow",
+            profileHub.contains("WorkoutAndHealthIntegrationCard") &&
+                profileHub.contains("AppearanceSettingsCard") &&
+                profileHub.contains("ThemeModeSegmentedRow") &&
+                profileHub.contains("AccountAndVersionFooter"),
+        )
+    }
 }

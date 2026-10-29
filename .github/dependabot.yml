@@ -74,3 +74,8 @@ updates:
           - "androidx.*"
           - "org.jetbrains.kotlin*"
           - "com.google.devtools.ksp*"
+          - "com.android.*"
+    ignore:
+      # AGP 는 Linux/Windows aapt2 듀얼 해시 및 룰 15 6단계 거버넌스 검증이 필수이므로 Dependabot 자동 번프 제외
+      - dependency-name: "com.android.application"
+      - dependency-name: "com.android.tools.build:gradle"

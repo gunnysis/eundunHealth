@@ -63,7 +63,24 @@ import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.ui.util.HapticFeedbackHelper
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlin.math.pow
 import kotlin.math.roundToInt
+
+internal fun roundAndClampMetricValue(
+    raw: Float,
+    range: ClosedFloatingPointRange<Float>,
+    decimals: Int,
+): Float {
+    val factor = 10f.pow(decimals.coerceAtLeast(0))
+    val rounded = if (decimals <= 0) {
+        raw.roundToInt().toFloat()
+    } else {
+        (raw * factor).roundToInt() / factor
+    }
+    return rounded.coerceIn(range.start, range.endInclusive)
+}
+
+internal fun parseMetricDirectInput(rawInput: String): Float? = rawInput.trim().replace(',', '.').toFloatOrNull()
 
 /**
  * 3-Way 하이브리드 신체 수치 피커:
@@ -100,12 +117,7 @@ fun HybridBodyMetricPicker(
     fun updateByStepIndex(index: Int) {
         val clampedIndex = index.coerceIn(0, totalSteps)
         val raw = range.start + clampedIndex * step
-        val rounded = if (decimals == 0) {
-            raw.roundToInt().toFloat()
-        } else {
-            (raw * 10f).roundToInt() / 10f
-        }
-        onValueChange(rounded.coerceIn(range.start, range.endInclusive))
+        onValueChange(roundAndClampMetricValue(raw, range, decimals))
     }
 
     Card(
@@ -243,8 +255,7 @@ fun HybridBodyMetricPicker(
             onDismiss = { showDirectInputDialog = false },
             onConfirm = { parsed ->
                 showDirectInputDialog = false
-                val idx = ((parsed - range.start) / step).roundToInt()
-                updateByStepIndex(idx)
+                onValueChange(roundAndClampMetricValue(parsed, range, decimals))
             },
         )
     }
@@ -348,8 +359,8 @@ private fun DirectMetricInputDialog(
     onDismiss: () -> Unit,
     onConfirm: (Float) -> Unit,
 ) {
-    var input by rememberSaveable { mutableStateOf(initialText) }
-    val parsed = input.toFloatOrNull()
+    var input by rememberSaveable(initialText) { mutableStateOf(initialText) }
+    val parsed = parseMetricDirectInput(input)
     val isValid = parsed != null && parsed in range
 
     AlertDialog(
