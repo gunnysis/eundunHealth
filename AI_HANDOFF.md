@@ -1,5 +1,72 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) `v0.7.1/42` 프로덕션 배포 완료 · 배포 연동 PR Triage 거버넌스(룰 16) 수립 · 레거시/의존성 PR 9건(`#202~#214`) 일괄 정리 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. `v0.7.1` (`versionCode=42`) 프로덕션 핫픽스 배포 및 원장 동기화 완결**:
+  - **PR [#216](https://github.com/gunnysis/eundunHealth/pull/216)** (`release/v0.7.1`, 커밋 `42db341`) 모든 필수 CI 체크 통과 및 `main` 병합 완료.
+  - 태그 `v0.7.1` 푸시 → **`release.yml` (run [`40825396534`](https://github.com/gunnysis/eundunHealth/actions/runs/40825396534))** `play-release` 환경 승인 및 Google Play 프로덕션 트랙 `completed`(100%) 업로드 성공.
+  - 자동 생성된 원장 PR **#217 (`release-ledger/v0.7.1-42`)** CI 검증 후 `main` 병합(`a0588c9`, [`docs/ops/play-upload-ledger.md`](docs/ops/play-upload-ledger.md) `LAST_UPLOADED_VERSION_CODE=42` 반영 완료).
+- **2. 배포 연동 PR Triage 거버넌스 (`CLAUDE.md` 룰 16) 및 [`scripts/triage-prs.sh`](scripts/triage-prs.sh) 구축**:
+  - 오픈 PR을 5대 버킷(`[RELEASE-LEDGER]`, `[CLEAN-DIRECT]`, `[GRADLE-LOCKFILE-BATCH]`, `[PIP-HASH-BATCH]`, `[ACTIVE-WORK]`)으로 자동 분류하는 [`scripts/triage-prs.sh`](scripts/triage-prs.sh)를 신설하고 [`scripts/preflight-release.sh`](scripts/preflight-release.sh)에 `--pre-release-gate`로 연동.
+  - [`.github/dependabot.yml`](.github/dependabot.yml) 개편: `github-actions`를 단일 `ci-actions` 그룹으로, 비-AndroidX/Kotlin Gradle 마이너·패치 업데이트를 `gradle-plugins-and-libs` 그룹으로 묶어 주간 PR 파편화 및 상호 충돌 원천 방지.
+  - [`backend/requirements-dev.in`](backend/requirements-dev.in)에 `colorama==0.4.6`을 명시 고정해 Linux Dependabot 실행 시 Windows 조건부 해시가 누락되는 교차 플랫폼 함정 근본 해소.
+- **3. 레거시/의존성 오픈 PR 9건 (`#202`, `#203`, `#204`, `#206`, `#207`, `#208`, `#209`, `#210`, `#214`) 일괄 흡수 및 종결**:
+  - GitHub Actions SHA 갱신 3건(`#202` `trivy-action`, `#203` `setup-gradle`, `#204` `paths-filter`), Gradle Wrapper `9.8.2`(`#210`), Android 라이브러리/플러그인 4건(`#206` `sentry 8.61.1`, `#207` `msal 8.6.0`, `#208` `openapi-generator 7.26.0`, `#209` `spotless 8.10.4` + `app/gradle.lockfile` & `gradle/verification-metadata.xml` SHA-256 동기화), Backend Python 4건(`#214` `fastapi 0.162.0`, `starlette 1.10.0`, `pytest-asyncio 1.4.1`, `pip-tools 7.6.2`)을 단일 검증 배치로 통합.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) `docs/TRD.md` 전체 최신화 · 리팩토링 · 개선 및 디자인(v2.0 정본) 작업 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **[`docs/TRD.md`](docs/TRD.md) 전체 최신화 및 현대화 리팩토링 완수 (v1.0 레거시 탈피 -> v2.0 현행 아키텍처 정본)**:
+  - **머리말 & 메타데이터**:
+    - 문서 버전 **v2.0** 승격, Google Play 최신 프로덕션 **v0.7.0/41(`completed` 100%)** 및 핫픽스 **v0.7.1/42**, 백엔드 활성 리비전 **`eundunhealth-api--0000067` (`40595a1`)** 동기화.
+    - GitHub Alert(`> [!IMPORTANT]`) 도입으로 문서 정본 원칙 명시.
+  - **§0 아키텍처 전환 및 릴리스 히스토리**:
+    - 초기 설계(Ktor, Supabase, Exposed, Alembic) 대비 현행 프로덕션의 14개 핵심 영역 대조 비교표 및 v0.1.0~v0.7.1 릴리스 마일스톤 로그 체계화.
+  - **§1 시스템 아키텍처**:
+    - **§1.1**: 풀스택 토폴로지 Mermaid 다이어그램 + 정밀 ASCII 아키텍처 다이어그램.
+    - **§1.2**: Azure Database for PostgreSQL 18.4 Flexible Server (`healthapp`), B1ms, SQLAlchemy 2.0 Async + asyncpg 0.32.0 (Pool 3+2, `pool_pre_ping=True`, `command_timeout=30s`), Zero-Legacy Drop & Recreate 파이프라인. 구형 HikariCP/Exposed는 `<details>` 아카이브 격리.
+    - **§1.3**: Azure Container Apps (`eundunhealth-api`, min 1 / max 3 warm baseline, CPU 0.25 / RAM 0.5Gi, HTTP 프로브 3종) 및 Container Apps Job (`eundunhealth-reaper`, 주간 월 03:00 KST 고아 계정 청소 잡).
+  - **§2 기술 스택 상세**:
+    - **§2.1**: Windows 11 + WSL2 Ubuntu 하이브리드, Gradle 9.8.1, AGP 9.4.1, Sentry(Android 8.61.1 / Backend 2.73.0).
+    - **§2.2**: Kotlin 2.4.21, Compose BOM 2026.09.00, Material 3 Modern Forest & Mint (36슬롯) + 시맨틱 13토큰(`EundunExtendedColors`), Pretendard Variable 가변 폰트, DayNight 번쩍임 방지.
+    - **§2.3**: Microsoft Entra External ID (CIAM) OIDC/PKCE 위임, Mermaid 시퀀스 + ASCII 상태머신 + 4단계 백엔드 JWT 검증 (`oid`, `access_as_user`).
+    - **§2.4**: Health Connect 1.1.0 stable (`READ_EXERCISE` 단독), Samsung Health Data SDK 비도입 사유 명시.
+    - **§2.5 & §2.6**: OSS ExerciseDB, Graph API, Foundry DeepSeek-V3.2, OkHttp 5.5.0 최외곽 Sentry 인터셉터 체인, Retrofit 3.0.0.
+  - **§3 앱 아키텍처**:
+    - Clean Architecture 계층도, UDF(단일 `_uiState`, `@Immutable`, `collectAsStateWithLifecycle`, SideEffect 채널), Room DB v3 + v2, DataStore 1.3.0, Coil 3.4.0.
+    - **§3.6**: 온디바이스 스마일 트레이닝 v2 비전 AI 파이프라인 (CameraX 1.6.2 + ML Kit Face Detection 17.1.0, 단일 규격 2.0초×3회, 1.0초 자동 시작, 영상 무저장/무전송).
+  - **§4 백엔드 아키텍처**:
+    - FastAPI 0.161.0 (Python 3.14), lifespan 기동 시퀀스 (`schema_bootstrap` 멱등 부트스트랩, JWKS 사전 캐싱).
+    - **10개 도메인 27개 API 엔드포인트 전수 명세표** (Health, Compatibility, Profile, WeeklyPlan v2, Meals, SmileTraining, Badges, Goals, Account, Legal).
+    - 와일드카드 차단 CORSMiddleware, `request_id_middleware` (`X-Request-ID` 상관관계 로깅), 개인정보 Redacted 에러 핸들러 (422 키/몸무게 마스킹). 구형 Ktor 3.4.3은 아카이브 격리.
+  - **§5 데이터베이스 스키마 (PostgreSQL 18 3NF 정규화)**:
+    - **Mermaid 도메인 ERD 다이어그램** 추가.
+    - **9개 3NF 정규화 테이블 전수 명세** (`user_profiles`, `user_profile_history`, `weekly_plans`, `goals`, `badges`, `meal_plans`, `meal_plan_items`, `smile_training_sessions`, `data_reset_audits`).
+    - PostgreSQL 18 네이티브 `DEFAULT uuidv7()` PK, `ON DELETE CASCADE` 외래키, 도메인 CHECK 제약조건 11종 및 인덱스 전략 명시.
+    - 하드 리셋 및 100건 엣지케이스 검증 파이프라인 정리 (Alembic 마이그레이션 폐기).
+  - **§6 보안 아키텍처**:
+    - HTTPS 강제, R8 ProGuard keep 룰, 16KB 페이지 정렬, Entra RS256 비대칭 서명 검증, Azure Key Vault 8종 시크릿 RBAC, Graph API 회원 탈퇴(204) + `deletedItems` 즉시 영구 파기, `LocalDataWiper` 로컬 와이프.
+  - **§7 모니터링 및 관측성**:
+    - Sentry 풀스택 분산 추적 (Android `eundunhealth` ↔ Backend `eundunhealth-backend` 프로젝트 분리), Azure Log Analytics 진단 감사.
+  - **§8 빌드, 테스트 및 배포 파이프라인 (CI/CD)**:
+    - Android (Gradle 9.8.1, AGP 9.4.1, `release.yml` Google Play 프로덕션 트랙 100% CD).
+    - Backend (Python 3.14 venv, pytest 9.1.1 143+ PASS, `backend.yml` Entra OIDC 무암호 배포).
+  - **§9 프로젝트 구조 및 환경 변수**:
+    - 최신 프로젝트 디렉토리 트리 및 Android `local.properties` / Backend Key Vault 시크릿 8종 매트릭스.
+  - **§10 PRD 기능 요구사항 대비 기술 매핑 매트릭스**:
+    - AUTH, PROF, PLAN, MEAL, SMILE, TRACK, BADGE, ETC 전 도메인 최신 매핑 정합화.
+- **문서 무결성 검증 결과**:
+  - `bash scripts/check-plans-links.sh` 통과 (**끊긴 참조 0건**).
+  - `backend/.venv/Scripts/pytest.exe scripts/agents/test_doc_audit.py -q` 통과 (**36 passed in 0.08s**).
+
+**다음 할 일 (Next Steps / TODO):**
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
 ## 2026-10-29 (Gemini -> Claude/User) v0.7.0(`versionCode=41`) 업데이트 직후 앱 기동 즉시 종료(`EUNDUNHEALTH-H`) 근본 해결 · 리팩토링 · 5계층 테스트/디버깅 정책(룰 14) 및 AGP 아키텍처/호환성 정책(룰 15) 정착 완료
 
 **현재까지의 작업 상태 (Current Status):**

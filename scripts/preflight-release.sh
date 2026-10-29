@@ -84,6 +84,7 @@ done
 # 빌드(수 분) 전에 version.properties 의 versionCode 가 원장의 최고 업로드값보다 큰지 검증.
 # 원장: docs/ops/play-upload-ledger.md (업로드 성공 시마다 LAST_UPLOADED_VERSION_CODE 갱신).
 run "versionCode 가드" bash "$REPO_ROOT/scripts/check-version-monotonic.sh"
+run "오픈 PR Triage 게이트 (룰 16)" bash "$REPO_ROOT/scripts/triage-prs.sh" --pre-release-gate
 # ---------------------------------------------------------------------------------------
 
 # --- JDK 보장 (셸에 JAVA_HOME/PATH 가 없어도 빌드되도록 자가치유) -----------------------

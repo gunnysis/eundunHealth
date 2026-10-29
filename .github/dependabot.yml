@@ -36,7 +36,7 @@ updates:
     commit-message:
       prefix: "chore(docker)"
 
-  # GitHub Actions
+  # GitHub Actions — 단일 그룹으로 묶어 워크플로 파일 충돌 및 PR 파편화 방지 (룰 16)
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -46,6 +46,9 @@ updates:
     labels: [dependencies, ci]
     commit-message:
       prefix: "ci"
+    groups:
+      ci-actions:
+        patterns: ["*"]
 
   # Android root (Gradle version catalog 포함)
   - package-ecosystem: gradle
@@ -64,3 +67,10 @@ updates:
         patterns: ["androidx.compose*"]
       kotlin:
         patterns: ["org.jetbrains.kotlin*", "com.google.devtools.ksp*"]
+      gradle-plugins-and-libs:
+        applies-to: version-updates
+        update-types: [minor, patch]
+        exclude-patterns:
+          - "androidx.*"
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"

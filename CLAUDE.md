@@ -429,6 +429,15 @@ AGP 업그레이드는 단순 빌드 도구 버전 변경이 아니라 **R8 바�
    5. `./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:assembleDebug :app:assembleRelease` 전수 통과.
    6. `bash scripts/smoke-cold-start.sh app/build/outputs/apk/release/app-release.apk --require-device` 로 실제 기기/에뮬레이터 Cold Start 검증.
 
+### 룰 16 — 배포 연동 PR 정리 및 Dependabot 5-Bucket Triage 거버넌스 (Zero-Stale-PR Policy)
+본 저장소는 공급망 무결성을 위해 Gradle SHA-256 검증(`gradle/verification-metadata.xml` + `app/gradle.lockfile`)과 Python 해시 락(`backend/requirements*.txt` `--require-hashes`)을 강제한다. 이로 인해 Dependabot이 단독 생성하는 일부 PR은 부수 해시 파일 미갱신으로 자동 차단되므로, **모든 릴리스 배포 시점마다 `bash scripts/triage-prs.sh`를 실행하여 오픈 PR 큐를 함께 정리(Clean Zero 지향)**한다.
+1. **5-Bucket 자동 분류 (`bash scripts/triage-prs.sh`)**:
+   - **`[RELEASE-LEDGER]` (`release-ledger/*`)**: 직전 Play 업로드 원장 PR. 미병합 상태에서 신규 릴리스를 진행하면 `versionCode` 충돌(룰 13)이 발생하므로 **`scripts/preflight-release.sh`가 즉시 실패(`exit 1`)시켜 선병합을 강제**한다.
+   - **`[CLEAN-DIRECT]` (`github-actions`, `docker`, `gradle-wrapper`)**: 부수 락파일 충돌이 없고 CI가 `CLEAN`인 PR은 `gh pr merge <num> --squash --delete-branch`로 즉시 병합한다.
+   - **`[GRADLE-LOCKFILE-BATCH]` (`dependabot/gradle/*`)**: Dependabot은 `gradle/verification-metadata.xml`을 갱신하지 못해 단독 PR CI가 실패한다. 열려 있는 Gradle PR들의 버전 변경을 로컬 배치 브랜치에 모은 뒤 `./gradlew :app:dependencies --write-locks --write-verification-metadata sha256`을 실행해 단일 배치 PR(`Closes #<num>`)로 일괄 흡수한다.
+   - **`[PIP-HASH-BATCH]` (`dependabot/pip/*`)**: Linux 러너에서 생성된 `requirements-dev.txt`가 Windows 전용 조건부 패키지(`colorama==0.4.6` 등 — `requirements-dev.in`에 명시 고정) 해시를 누락하지 않았는지 확인 후 병합/배치 흡수한다.
+   - **`[DEFERRED / STALE]`**: 프리릴리스 또는 메이저 호환성 차단 항목은 `docs/ops/dependency-deferred.md`에 재개 조건을 기록하고 PR을 즉시 close하여 방치된 레거시 PR이 쌓이지 않게 한다.
+
 ### Destructive 명령 실행 직전 5문항 (`monitoring-and-cost.md §6.8`)
 1. 대상이 운영 리소스(RG `rg-eundunhealth-prod-krc`, `eundunhealthacr`, `healthapp` PG)인가?
 2. `--yes`/`--no-confirm` 플래그가 무엇을 묵시적으로 동의하는가?
