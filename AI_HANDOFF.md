@@ -1,5 +1,36 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) v0.7.0 (`versionCode=41`) 풀스택 운영 배포(Azure Container Apps & Google Play Production) 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **v0.7.0 (`versionCode=41`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`) 풀스택 운영 배포 완수**:
+  1. **릴리즈 사전 검증 ([`scripts/preflight-release.sh`](scripts/preflight-release.sh))**:
+     - `version.properties`(`0.7.0` / `41`), `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41` 상향, `docs/CHANGELOG.md`·`docs/PRD.md`·`README.md`·`CLAUDE.md`·`docs/ops/operations-snapshot.md` 동기화.
+     - 로컬 `scripts/preflight-release.sh` 실행 통과(Spotless·Detekt·Unit Test·서명 AAB/APK 빌드 및 Sentry ProGuard 매핑 업로드).
+     - PR #213 (`release/v0.7.0` → `main`) 생성 후 GitHub Actions 전 게이트(`Repository Gate`, `Android required checks`, `Backend required checks`, `Security scans`, `CodeQL`) 통과 및 `main` 머지(`40595a1`).
+  2. **백엔드 운영 배포 (`Backend CI/CD` · Run `40816129146`)**:
+     - `backend-production` 환경 승인 후 ACR 이미지 빌드·Trivy 스캔·푸시·`eundunhealth-api` Container App 배포 및 `eundunhealth-reaper` Job 동기화 완료.
+     - **활성 리비전**: `eundunhealth-api--0000067` (`Running`, 100% traffic)
+     - **배포 이미지**: `eundunhealthacr.azurecr.io/eundunhealth-api:40595a1` (`@sha256:80b271e1ef76519c3958aa750d35b2c67f793fa7505aec5d0894d695ca57c18f`)
+     - **라이브 엔드포인트 실측 검증**:
+       - `GET /health` → `200 OK` (`{"status":"ok"}`)
+       - `GET /health/ready` → `200 OK` (`{"status":"ready"}`, Azure PostgreSQL 18.4 `healthapp` 연동 정상)
+       - `GET /app-compatibility?platform=android&versionCode=41` → `{"minimumSupportedVersionCode":41,"updateRequired":false}`
+       - `GET /app-compatibility?platform=android&versionCode=40` → `{"minimumSupportedVersionCode":41,"updateRequired":true}`
+       - `GET /v2/smile-training/sessions`, `GET /v2/smile-training/statistics` → `401 Unauthorized` (v2 라우트 정상 등록 및 Entra 보호 확인)
+       - `GET /v1/smile-training/sessions` → `404 Not Found` (레거시 v1 완전 제거 확인)
+  3. **Android Google Play 프로덕션 배포 (`Release (Play production)` · Run `40816257901`)**:
+     - 태그 `v0.7.0` 푸시 및 `play-release` 환경 승인 후 `scripts/preflight-release.sh` 전체 게이트 통과, Google Play `production` 트랙 `completed`(100%) 업로드 성공.
+     - 자동 생성된 원장 PR #215 (`release-ledger/v0.7.0-41`, [`docs/ops/play-upload-ledger.md`](docs/ops/play-upload-ledger.md) `LAST_UPLOADED_VERSION_CODE=41`)에 본 운영 스냅샷 및 핸드오프 갱신을 통합하여 `main` 머지.
+  4. **Sentry 배포 후 모니터링 (`gunnys` 조직)**:
+     - `eundunhealth-backend` 및 `eundunhealth` 프로젝트 모두 v0.7.0 배포 이후 신규 에러 이슈 `0건` 확인.
+
+**다음 할 일 (Next Steps / TODO):**
+- 다음 릴리스 시 `versionCode >= 42` 단조 증가 규칙(룰 13) 준수.
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
 ## 2026-10-29 (Gemini -> Claude/User) 12인 역할 협의체 기반 프로젝트 전체 점검·리팩토링·개선 및 전수 검증 완료
 
 **현재까지의 작업 상태 (Current Status):**

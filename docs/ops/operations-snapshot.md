@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-10-28 — v0.6.1/40 사용자 경험(UX) 전면 개선(PROP-05 Phase 1~4: 적응형 3단 온보딩, 홈 코치 카드·요일 칩·연속 출석 배지, 플로팅 휴식 타이머·완료 요약 모달·자체 제작 운동 생성, 7/30일 차트 토글·테마 설정) 백엔드·Play 프로덕션 운영 배포 완료**
-> 작성 기준: 태그 `v0.6.1`의 **v0.6.1/40**이 release workflow run `40647597577`로 Play production `completed`(100%) 업로드됐고, 원장 PR #211이 `LAST_UPLOADED_VERSION_CODE=40`을 기록한다. 백엔드는 run `40647560099`로 revision `eundunhealth-api--0000066`(이미지 `c12f969`, digest `sha256:a8855af0803cf4e528aa2a521effffa9f7f4c65ab4d225653d6219202de068d1`)에 배포 및 reaper Job 동기화 완료됐다.
+> 작성일: 2026-05-25 / 최근 갱신: **2026-10-29 — v0.7.0/41 스마일 트레이닝 v2 하드 컷오버 · PostgreSQL 18.4 스키마 전면 리팩토링(Drop & Recreate 하드 리셋 파이프라인) · AGP 9.4.1 정식 업그레이드 백엔드·Play 프로덕션 운영 배포 완료**
+> 작성 기준: 태그 `v0.7.0`의 **v0.7.0/41**이 release workflow run `40816257901`로 Play production `completed`(100%) 업로드됐고, 원장 PR #215가 `LAST_UPLOADED_VERSION_CODE=41`을 기록한다. 백엔드는 run `40816129146`으로 revision `eundunhealth-api--0000067`(이미지 `40595a1`, digest `sha256:80b271e1ef76519c3958aa750d35b2c67f793fa7505aec5d0894d695ca57c18f`)에 배포 및 reaper Job 동기화 완료됐다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -9,9 +9,9 @@
 ## 1. 클라이언트
 
 | 항목 | 값 |
-|------|---|
+|---|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.7.0` / `41` (태그 `v0.6.1`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=40` |
+| versionName / versionCode | **`0.7.0` / `41` (태그 `v0.7.0`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=41` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.21 / 9.4.1 / 9.8.1** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** |
@@ -22,14 +22,14 @@
 | Sentry SDK | 운영 Android **8.57.0** / Gradle plugin **6.24.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (로컬 최신 = **v0.6.1/40 R8 빌드, 2026-10-28 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 v0.6.1/40 CI 빌드(`release.yml` run `40647597577`)이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
-- AAB: `app/build/outputs/bundle/release/app-release.aab` (16,465,022 bytes)
-- APK: `app/build/outputs/apk/release/app-release.apk` (11,881,889 bytes)
+산출물 경로 (로컬 최신 = **v0.7.0/41 R8 빌드, 2026-10-29 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 v0.7.0/41 CI 빌드(`release.yml` run `40816257901`)이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
+- AAB: `app/build/outputs/bundle/release/app-release.aab` (16,462,142 bytes)
+- APK: `app/build/outputs/apk/release/app-release.apk` (11,881,917 bytes)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
-> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.6.1/40**(2026-10-28 `release.yml` run `40647597577`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #211). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
-> 이력: v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=40` — 다음 릴리스 versionCode ≥ 41(룰 13 가드).
+> **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.7.0/41**(2026-10-29 `release.yml` run `40816257901`이 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #215). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
+> 이력: v0.6.1/40(2026-10-28, 원장 PR #211) ← v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=41` — 다음 릴리스 versionCode ≥ 42(룰 13 가드).
 > **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 정본은 `backend/sql/02_schema_create_all.sql`(`python -m app.schema_bootstrap`). 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
 
@@ -38,13 +38,13 @@
 ## 2. 백엔드 (Azure Container Apps)
 
 | 항목 | 값 |
-|------|---|
+|---|---|
 | Container App | `eundunhealth-api` |
 | Resource Group | `rg-eundunhealth-prod-krc` (2026-07-29 `apps` 에서 이관 — 이동 7 + 알림/AG/UAI 재생성, RBAC 8건 재부여, LA shared key 갱신, 구 RG 삭제. 상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry — 원문 페어 `2026-07-29-rg-migration-{design,plan}.md` 는 흡수 후 git rm) |
 | Region | Korea Central |
 | FQDN | `eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io` |
-| 활성 revision | `eundunhealth-api--0000066` (100% traffic, **warm — min=1**, 2026-10-28 실측) |
-| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:c12f969` (`@sha256:a8855af0803cf4e528aa2a521effffa9f7f4c65ab4d225653d6219202de068d1`, **MI pull**, app/reaper 일치 — v0.6.1 배포 run `40647560099`) |
+| 활성 revision | `eundunhealth-api--0000067` (100% traffic, **warm — min=1**, 2026-10-29 실측) |
+| 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:40595a1` (`@sha256:80b271e1ef76519c3958aa750d35b2c67f793fa7505aec5d0894d695ca57c18f`, **MI pull**, app/reaper 일치 — v0.7.0 배포 run `40816129146`) |
 | Min / Max replicas | **1 / 3** (warm baseline + http-concurrency 50 scale rule) — cold start 제거 |
 | Health probes | Startup/Liveness `/health` + Readiness `/health/ready`(DB SELECT 1) |
 | Identity | System-assigned MI (`a4784428…`) — Key Vault resolve + ACR pull |
@@ -54,7 +54,7 @@
 ### env vars
 
 | Name | 형태 | 값/참조 |
-|------|------|--------|
+|---|---|---|
 | `DATABASE_URL` | secretref | `database-url` (asyncpg URL) |
 | `ENTRA_TENANT_ID` | secretref | `entra-tenant-id` |
 | `ENTRA_SUBDOMAIN` | secretref | `entra-subdomain` |
@@ -64,7 +64,7 @@
 | `DEEPSEEK_ENDPOINT` | secretref | `deepseek-endpoint` |
 | `DEEPSEEK_KEY` | secretref | `deepseek-key` |
 | `MEAL_AI_ENABLED` | value | `true` (AI 식단 생성 긴급 kill switch — `'false'` 설정 시 즉시 503 차단) |
-| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `39` (`backend/containerapp.yaml` 정의값; v2 배포 시 적용) |
+| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `41` (`backend/containerapp.yaml` 정의값; v0.7.0 컷오버 적용 완료) |
 | `ENVIRONMENT` | value | `production` |
 | `CORS_ORIGINS` | value | `[]` (PR #123 — 와일드카드 차단; 네이티브 앱이라 웹 origin 불필요. live 검증: 임의 origin 에 `Access-Control-Allow-Origin` 미반환) |
 
