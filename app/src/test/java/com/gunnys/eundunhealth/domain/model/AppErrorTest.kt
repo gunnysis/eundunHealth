@@ -1,5 +1,7 @@
 package com.gunnys.eundunhealth.domain.model
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Protocol
 import okhttp3.Request
@@ -7,6 +9,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import retrofit2.HttpException
 import java.io.IOException
@@ -95,6 +98,20 @@ class AppErrorTest {
         val err = cause.toAppError()
         assertTrue(err is AppError.Unknown)
         assertEquals(cause, (err as AppError.Unknown).throwable)
+    }
+
+    @Test
+    fun `runSuspendCatching rethrows CancellationException and wraps regular Exception`() = runTest {
+        try {
+            runSuspendCatching { throw CancellationException("cancelled") }
+            fail("CancellationException은 삼켜지지 않고 그대로 재전파되어야 합니다")
+        } catch (e: CancellationException) {
+            assertEquals("cancelled", e.message)
+        }
+
+        val result = runSuspendCatching<String> { throw IOException("network error") }
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IOException)
     }
 
     private fun httpException(code: Int): HttpException {

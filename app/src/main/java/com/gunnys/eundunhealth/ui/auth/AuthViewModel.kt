@@ -8,6 +8,7 @@ import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.api.generated.api.AppCompatibilityApi
 import com.gunnys.eundunhealth.data.local.LocalDataWiper
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
@@ -114,16 +115,16 @@ class AuthViewModel @Inject constructor(
     }
 
     private fun checkSession() = viewModelScope.launch {
-        val resetResult = runCatching {
+        val resetError = runSuspendCatching {
             localDataWiper?.ensureV2LocalResetCompleted()
-        }
-        if (resetResult.isFailure) {
-            val err = resetResult.exceptionOrNull()!!.toReportedAppError()
+        }.exceptionOrNull()
+        if (resetError != null) {
+            val err = resetError.toReportedAppError()
             _sessionState.value = SessionState.ResetFailed(err)
             return@launch
         }
 
-        val compat = runCatching {
+        val compat = runSuspendCatching {
             appCompatibilityApi?.getAppCompatibility(
                 platform = AppCompatibilityApi.PlatformGetAppCompatibility.android,
                 versionCode = BuildConfig.VERSION_CODE,
@@ -138,7 +139,7 @@ class AuthViewModel @Inject constructor(
             return@launch
         }
 
-        runCatching {
+        runSuspendCatching {
             val userId = authRepo.restoreSession()
             if (userId != null) {
                 SessionState.Authenticated(userId, needsOnboarding = resolveNeedsOnboarding())

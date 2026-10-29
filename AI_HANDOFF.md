@@ -1,5 +1,61 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) v0.7.0(`versionCode=41`) 업데이트 직후 앱 기동 즉시 종료(`EUNDUNHEALTH-H`) 근본 해결 · 리팩토링 · 5계층 테스트/디버깅 정책(룰 14) 및 AGP 아키텍처/호환성 정책(룰 15) 정착 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. 앱 기동 즉시 종료(`EUNDUNHEALTH-H` / ID `7817803343`, 19 events / 6 users) 근본 원인 규명 및 해결**:
+  - **직접 원인 (`DatabaseModule.kt:47-49`)**: `DatabaseModule.provideSmileTrainingDatabase` 에 `.addMigrations(SmileTrainingDatabase.MIGRATION_1_2)`(`startVersion=1, endVersion=2`)와 `.fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)`(`startVersion=1`)이 동시에 지정되어 있었음. Room의 `RoomDatabase.Builder.build()` 내부 `validateMigrationsNotRequired()` 는 명시적 Migration의 시작/종료 버전과 파괴적 폴백 시작 버전이 겹치면 SQLite 파일을 열기도 전에 무조건 `IllegalArgumentException: Inconsistency detected... Start version is: 1`을 던짐.
+  - **증폭 원인 (`DefaultLocalDataWiper.kt` & `AuthViewModel.kt`)**: `MainActivity.onCreate` → `AppNavigation()` 첫 Compose 프레임에서 `hiltViewModel<AuthViewModel>()` 생성 시 `DefaultLocalDataWiper` 가 `WeeklyPlanDao` 와 `SmileSessionDao` 를 **Eager(비지연)** 주입받고 있어, `themePreferences.isV2LocalResetCompleted()` 가 이미 `true` 인 일반 기동에서도 메인 스레드 `HiltViewModelFactory.create()` 생성자 체인에서 `provideSmileTrainingDatabase().build()` 가 동기 실행되어 `AuthViewModel.checkSession()` 의 `runCatching` 방어선을 우회하고 즉시 크래시함.
+  - **해결 및 리팩토링**:
+    - [`DatabaseModule.kt`](app/src/main/java/com/gunnys/eundunhealth/di/DatabaseModule.kt): `provideSmileTrainingDatabase` 에서 중복·충돌 설정인 `.fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)` 을 제거하고 `.addMigrations(SmileTrainingDatabase.MIGRATION_1_2)` 단일 경로로 정합화.
+    - [`LocalDataWiper.kt`](app/src/main/java/com/gunnys/eundunhealth/data/local/LocalDataWiper.kt): `DefaultLocalDataWiper` 의 `weeklyPlanDao` 와 `smileSessionDao` 를 `dagger.Lazy<WeeklyPlanDao>`, `dagger.Lazy<SmileSessionDao>` 로 지연 주입하도록 리팩토링하여 일반 기동 시 메인 스레드에서 Room DB가 초기화되지 않도록 격리.
+    - [`AppError.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/model/AppError.kt) 및 전 Repository/UseCase/ViewModel(`MealPlanRepositoryImpl`, `GoalRepositoryImpl`, `BadgeRepositoryImpl`, `HealthRepositoryImpl`, `AuthRepositoryImpl`, `WorkoutRepositoryImpl`, `UserRepositoryImpl`, `CheckAndAwardBadgesUseCase`, `SyncHealthDataUseCase`, `AuthViewModel`, `OnboardingViewModel`, `ProfileViewModel`): 공용 `runSuspendCatching` 도입으로 코루틴 취소(`CancellationException`) 재전파 보장 및 `AppError.reportToSentry()` 에서 `CancellationException` 의 Sentry 오탐 전송 원천 차단.
+- **2. 재발 방지 5계층 방어 정책(룰 14) 및 AGP 아키텍처/업그레이드 거버넌스(룰 15) 설계·구현**:
+  - 신규 단위/계측 테스트 및 런타임 스모크 스크립트:
+    - [`DatabaseModuleTest.kt`](app/src/test/java/com/gunnys/eundunhealth/di/DatabaseModuleTest.kt): 실제 `DatabaseModule.provideDatabase()` 및 `provideSmileTrainingDatabase()` 호출 검증 + 동일 버전 중복 시 `IllegalArgumentException` 발생 증명 + Room schema JSON 존재 검증.
+    - [`NetworkModuleTest.kt`](app/src/test/java/com/gunnys/eundunhealth/di/NetworkModuleTest.kt): `backend`, `meals`, `exercisedb` 3개 실제 `OkHttpClient` 빌더에서 `SentryOkHttpInterceptor` 가 항상 `RetryInterceptor` 앞(바깥)에 위치하는지 고정(INC-33 `EUNDUNHEALTH-G` 재발 방지).
+    - [`DefaultLocalDataWiperTest.kt`](app/src/test/java/com/gunnys/eundunhealth/data/local/DefaultLocalDataWiperTest.kt): `isV2LocalResetCompleted() == true` 시 `Lazy<Dao>.get()` 미호출(0회) 단언 및 리셋/계정삭제 동작 검증.
+    - [`AgpBuildContractTest.kt`](app/src/test/java/com/gunnys/eundunhealth/AgpBuildContractTest.kt) & [`scripts/check-agp10-compat.sh`](scripts/check-agp10-compat.sh): AGP 안정판 버전 형식(`X.Y.Z`, alpha/beta/rc 금지), 폐기 opt-out 플래그 8종 재도입 금지, `kotlinOptions` 금지, `androidComponents` 기반 `detektDebug`, `useLegacyPackaging = false`(16KB 페이지 정렬), `lockAllConfigurations()`, `verification-metadata.xml` 내 Windows + Linux `aapt2` 해시 동시 존재 불변식 검증.
+    - [`DatabaseMigrationAndInitTest.kt`](app/src/androidTest/java/com/gunnys/eundunhealth/data/local/DatabaseMigrationAndInitTest.kt): 실제 Android SQLite 런타임에서 신규 설치(v2) 및 구버전(`v1 -> v2` `MIGRATION_1_2`) 마이그레이션·CRUD 계측 검증.
+    - [`scripts/smoke-cold-start.sh`](scripts/smoke-cold-start.sh) & [`scripts/preflight-release.sh`](scripts/preflight-release.sh): 에뮬레이터/실기기 대상 APK 설치 후 `am start -W -S` 강제 Cold Start → 5초 대기 → `pidof` 프로세스 생존 + `logcat -b crash` `FATAL EXCEPTION` 0건 검증 게이트 구축.
+  - 문서 반영: [`CLAUDE.md`](CLAUDE.md)(룰 14·룰 15 신설), [`docs/ops/incident-log.md`](docs/ops/incident-log.md)(`INC-2026-10-29-33`, `INC-2026-10-29-34` 등재).
+- **3. 전수 실측 검증 결과**:
+  - `./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:assembleDebug :app:assembleRelease` → **BUILD SUCCESSFUL** (단위 테스트 227개 통과, Detekt 0건, R8 Release APK 빌드 성공).
+  - 헤드리스 에뮬레이터(`Galaxy_S25_Ultra`, Android 16) 실측:
+    - `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gunnys.eundunhealth.data.local.DatabaseMigrationAndInitTest` → **2/2 PASS (`BUILD SUCCESSFUL`)**.
+    - `bash scripts/smoke-cold-start.sh app/build/outputs/apk/debug/app-debug.apk --require-device` → **PASS (PID 생존, `FATAL EXCEPTION` 0건)**.
+    - `bash scripts/smoke-cold-start.sh app/build/outputs/apk/release/app-release.apk --require-device` → **PASS (TotalTime 1262ms, PID 생존, `FATAL EXCEPTION` 0건)**.
+  - WSL2 Ubuntu 패리티: `check-agp10-compat.sh` · `check-plans-links.sh` · `doc_audit.py --collect-only` 전수 통과.
+
+**다음 할 일 (Next Steps / TODO):**
+- 핫픽스 릴리스(`v0.7.1`, `versionCode=42`) 배포 지시 시 `bash scripts/bump-version.sh 0.7.1` 및 `bash scripts/preflight-release.sh` 실행 후 PR/태그 배포 진행.
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) `docs/plans` 완료 작업 정리 및 레거시 페어 파일 토픽 원장(Topic Ledgers) 흡수 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **`docs/plans` 워크플로 준수 완료 작업 아카이빙 및 레거시 제거 완수**:
+  1. **완료 계획서 원장 흡수**:
+     - `2026-10-29-postgresql-schema-hard-reset-plan.md` → [`docs/plans/logs/backend.md`](docs/plans/logs/backend.md)의 `## Recent (last 90 days)` 섹션 상단으로 요약 흡수.
+     - `2026-10-29-smile-training-v2-plan.md` → [`docs/plans/logs/android.md`](docs/plans/logs/android.md)의 `## Recent (last 90 days)` 섹션 상단으로 요약 흡수.
+  2. **페어 파일 정리**:
+     - 루트의 완료된 페어 파일 2종(`2026-10-29-postgresql-schema-hard-reset-plan.md`, `2026-10-29-smile-training-v2-plan.md`) `git rm` 처리.
+  3. **참조 리다이렉트 동기화**:
+     - [`docs/SPEC.md`](docs/SPEC.md): 스마일 트레이닝 v2 설계 링크를 [`docs/plans/logs/android.md`](docs/plans/logs/android.md)(2026-10-29 entry)로 갱신.
+     - [`AI_HANDOFF.md`](AI_HANDOFF.md): 과거 릴리스/구현 내역의 페어 파일 링크에 원장 리다이렉트 병기.
+  4. **인덱스 재생성 및 링크 무결성 실측 검증**:
+     - `backend/.venv/Scripts/python.exe scripts/gen_plans_index.py` 실행 → [`docs/plans/README.md`](docs/plans/README.md) 활성 페어 0건으로 클린 갱신.
+     - `backend/.venv/Scripts/python.exe scripts/gen_plans_index.py --check` 통과 (drift 0건).
+     - `bash scripts/check-plans-links.sh` 통과 (**OK: docs/plans/ 페어 참조 링크 정상, 끊긴 참조 0건**).
+
+**다음 할 일 (Next Steps / TODO):**
+- 신규 작업 시작 시 `_templates/{design,plan}.md`를 복사하여 `docs/plans/` 루트에 페어 파일 작성.
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
 ## 2026-10-29 (Gemini -> Claude/User) v0.7.0 (`versionCode=41`) 풀스택 운영 배포(Azure Container Apps & Google Play Production) 완료
 
 **현재까지의 작업 상태 (Current Status):**
@@ -59,7 +115,7 @@
 ## 2026-10-29 (Gemini -> Claude/User) Azure Database for PostgreSQL 18 업그레이드 · 스키마 전면 리팩토링 및 하드 리셋(Drop & Recreate) 파이프라인 구축 완료
 
 **현재까지의 작업 상태 (Current Status):**
-- **Task 0 ~ Task 4 전 구간 구현 및 라이브 검증 완료 ([`docs/plans/2026-10-29-postgresql-schema-hard-reset-plan.md`](docs/plans/2026-10-29-postgresql-schema-hard-reset-plan.md))**:
+- **Task 0 ~ Task 4 전 구간 구현 및 라이브 검증 완료 ([`docs/plans/2026-10-29-postgresql-schema-hard-reset-plan.md`](docs/plans/2026-10-29-postgresql-schema-hard-reset-plan.md) → 흡수: [`docs/plans/logs/backend.md`](docs/plans/logs/backend.md))**:
   1. **Task 0 — Azure PostgreSQL 18.4 동적 파라미터 튜닝 & 로컬/CI Docker PostgreSQL 18.6 업그레이드**:
      - Azure CLI(`az postgres flexible-server show/list-skus/parameter set`)로 운영 `healthapp`(`rg-eundunhealth-prod-krc`, Korea Central 최고 지원 버전 **PostgreSQL 18.4 / minorVersion 6**, `io_method=worker`, `wal_compression=zstd`) 점검 및 무중단 동적 서버 파라미터(`isDynamicConfig=true`) 5종 적용 완료:
        - `idle_in_transaction_session_timeout = 60000` (60s)
@@ -89,7 +145,7 @@
 ## 2026-10-29 (Gemini -> Claude/User) 스마일 트레이닝 v2 전면 리팩토링 · Zero-Legacy Cutover · 4대 접속 경로(IA) 구현 및 프로젝트 문서 최신화 완료
 
 **현재까지의 작업 상태 (Current Status):**
-- **Task 1 ~ Task 6 전 구간 구현 및 검증 완료 ([`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md))**:
+- **Task 1 ~ Task 6 전 구간 구현 및 검증 완료 ([`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md) → 흡수: [`docs/plans/logs/android.md`](docs/plans/logs/android.md))**:
   1. **백엔드 스마일 트레이닝 v2 & DB 컷오버 마이그레이션 (Task 1)**:
      - [`backend/app/models/smile_training.py`](backend/app/models/smile_training.py), [`backend/app/schemas/smile_training.py`](backend/app/schemas/smile_training.py), [`backend/app/repositories/smile_training_repo.py`](backend/app/repositories/smile_training_repo.py), [`backend/app/services/smile_training_service.py`](backend/app/services/smile_training_service.py), [`backend/app/routers/smile_training.py`](backend/app/routers/smile_training.py): 구형 `/smile-training` 및 `SmileRoutine`·`SmileDifficulty`·`reflection_emoji` 레거시 전수 제거 → `/v2/smile-training/sessions` (`POST`/`GET`/`DELETE`), `/v2/smile-training/statistics` (`GET`) 4개 엔드포인트(`CamelSchema` 및 `operation_id` 보존)로 컷오버.
      - [`backend/alembic/versions/e8b2c4d6f1a0_cutover_smile_training_to_v2.py`](backend/alembic/versions/e8b2c4d6f1a0_cutover_smile_training_to_v2.py): `down_revision = "d7f4a2c91b10"`. `DELETE FROM smile_training_sessions` 후 체크 제약조건 및 3개 레거시 컬럼 드롭(`downgrade()` 왕복 지원). Docker PostgreSQL 16 (`dev:devpass@localhost:5432/eundunhealth`) 위에서 `upgrade head -> downgrade -1 -> upgrade head` 왕복 실측 통과.
@@ -167,7 +223,7 @@
 
 **현재까지의 작업 상태 (Current Status):**
 - **10인 멀티 에이전트 협의체(`[팀장, 기획, 디자이너, 실무, 책임, 개발, 구현, 유지보수, QA/QC, DevOps]`) 기반 구현 설계서 격상 및 코드베이스 25개 파일 1:1 라인 단위 팩트체크 보정 완료**:
-  - 단일 통합 구현 설계 문서: [`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md) (`status: approved`)
+  - 단일 통합 구현 설계 문서: [`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md) (`status: approved` → 흡수: [`docs/plans/logs/android.md`](docs/plans/logs/android.md))
   - 인덱스 자동 생성 및 링크 무결성 검증: [`docs/plans/README.md`](docs/plans/README.md) (`python scripts/gen_plans_index.py --check` 및 `bash scripts/check-plans-links.sh` 통과, 끊긴 참조 0건).
 - **코드베이스 정밀 감사(`§2.2 Audit-1 ~ Audit-7`)로 발견·보정한 핵심 기술 사항**:
   1. **Audit-1 (`READY` 단계 프레임 무시 버그 수정)**: 현행 `SmileTrainingViewModel.kt:343`이 `if (phase != ACTIVE) return`으로 `READY` 프레임을 전부 버리고 있던 결함을 발견 → `onFrameSignal`이 `READY`와 `ACTIVE` 모두에서 동작하도록 설계.
@@ -179,7 +235,7 @@
   7. **Audit-7 (스크립트 실제 경로 정합)**: `scripts/sync-legal-docs.sh`(`docs/store/*.md` → `backend/app/legal/*.md`) 및 `scripts/sync-openapi.sh`(`backend/openapi.json` → `./gradlew openApiGenerate`) 파이프라인 명시.
 
 **다음 할 일 (Next Steps / TODO):**
-- 사용자의 구현 착수 지시(`"구현 진행"` 또는 `"승인"`) 즉시 [`2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md)의 Task 1 ~ Task 6 순서로 코드 구현 및 레거시 전수 제거 수행.
+- 사용자의 구현 착수 지시(`"구현 진행"` 또는 `"승인"`) 즉시 [`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/logs/android.md)의 Task 1 ~ Task 6 순서로 코드 구현 및 레거시 전수 제거 수행.
 
 ---
 

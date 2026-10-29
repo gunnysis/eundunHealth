@@ -3,13 +3,14 @@ package com.gunnys.eundunhealth.domain.usecase
 import com.gunnys.eundunhealth.domain.model.Badge
 import com.gunnys.eundunhealth.domain.model.BadgeKeys
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.repository.BadgeRepository
 import javax.inject.Inject
 
 class CheckAndAwardBadgesUseCase @Inject constructor(
     private val badgeRepo: BadgeRepository,
 ) {
-    suspend operator fun invoke(plan: WeeklyPlan): Result<List<Badge>> = runCatching {
+    suspend operator fun invoke(plan: WeeklyPlan): Result<List<Badge>> = runSuspendCatching {
         val completedCount = plan.days.count { it.isCompleted }
         val totalWorkoutDays = plan.days.count { !it.isRestDay }
         val awarded = mutableListOf<Badge>()

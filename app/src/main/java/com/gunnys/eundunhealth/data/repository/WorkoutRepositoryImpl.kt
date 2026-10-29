@@ -25,6 +25,7 @@ import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.WeeklyPlanAlreadyExistsException
 import com.gunnys.eundunhealth.domain.model.WeeklyRate
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.model.toWorkoutPlanMode
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
@@ -253,14 +254,4 @@ class WorkoutRepositoryImpl @Inject constructor(
         WorkoutPlanMode.HOME -> plan
         WorkoutPlanMode.GYM -> translationProvider.localize(plan)
     }
-}
-
-/** Kotlin runCatching은 CancellationException도 실패 값으로 바꾸므로 suspend 경계에서는 취소를 명시적으로 보존한다. */
-@Suppress("TooGenericExceptionCaught") // Repository Result 계약은 취소 외 모든 작업 실패를 Result.failure로 반환한다.
-private suspend fun <T> runSuspendCatching(block: suspend () -> T): Result<T> = try {
-    Result.success(block())
-} catch (e: CancellationException) {
-    throw e
-} catch (e: Exception) {
-    Result.failure(e)
 }

@@ -106,9 +106,7 @@ class ProfileViewModel @Inject constructor(
             restDays = normalizeRestDays(restDays),
             defaultWorkoutPlanMode = existingMode,
         )
-        runCatching {
-            userRepo.saveProfile(updatedProfile).getOrThrow()
-        }
+        userRepo.saveProfile(updatedProfile)
             .onSuccess {
                 if (current is ProfileUiState.Loaded) {
                     _uiState.value = current.copy(profile = updatedProfile, isSaving = false, saveError = null)

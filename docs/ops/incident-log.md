@@ -688,6 +688,72 @@ java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Clas
 
 ---
 
+## INC-2026-10-29-33 — v0.6.1/40 HTTP 504 재시도 중 Sentry 오탐 이슈(`EUNDUNHEALTH-G`) 및 운동 가이드 종료 다이얼로그 버튼 줄바꿈 깨짐
+
+**증상**:
+1. Sentry Android 프로젝트(`gunnys/eundunhealth`)에 `SentryHttpClientException: HTTP Client Error with status code: 504`(`EUNDUNHEALTH-G`, ID `7816180647`) 이슈가 생성됨. 실제로는 `RetryInterceptor` 가 1차 504 응답 후 지수 백오프로 2차 요청을 성공시켰거나, 실패했더라도 `AppError.Server(504)` 로 분류되어 비즈니스 에러(비보고 대상)로 처리되어야 하는 건이었다.
+2. 운동 가이드 화면(`WorkoutGuideScreen`)에서 종료 확인 다이얼로그(`WorkoutGuideExitDialog`)의 버튼 텍스트가 좁은 폭에서 세로로 한 글자씩 줄바꿈되는 레이아웃 결함이 발견됨.
+
+**근본 원인**:
+1. **Sentry OkHttp 인터셉터 순서 및 기본값 함정**: Sentry Android Gradle Plugin 의 OkHttp ASM 바이트코드 계측은 `OkHttpClient.Builder` 에 명시적인 `SentryOkHttpInterceptor` 가 없으면 기본적으로 `SentryOkHttpInterceptor(captureFailedRequests = true)` 를 체인에 주입하거나, 수동 추가 시 `RetryInterceptor` 뒤에 배치될 경우 1차 시도에서 5xx 가 반환되는 즉시 `SentryHttpClientException` 을 캡처해버린다.
+2. **AlertDialog 슬롯 중첩 함정**: `AlertDialog` 의 `dismissButton` 슬롯 내부에 `Column` 으로 복수 버튼을 세로 배치하자 Material3 `AlertDialogFlowRow` 측정 경합으로 하단 버튼('완료하지 않고 나가기' 등)이 잘리는(clipping) 레이아웃 결함이 발생했다. 또한 기존 단위 테스트가 `RetryInterceptor` 단독 테스트와 ViewModel 테스트만 수행하고 `NetworkModule` 의 실제 인터셉터 순서나 Compose Dialog 슬롯 구조를 검증하지 않았다.
+
+**복구**:
+1. `NetworkModule.kt` 의 모든 `OkHttpClient.Builder`(`backend`, `meals`, `exercisedb`)에서 `SentryOkHttpInterceptor(captureFailedRequests = false)` 를 `RetryInterceptor()` **앞(바깥)**에 명시적으로 배치(PR #213).
+2. `WorkoutGuideExitDialog` 를 `dismissButton` 슬롯 중첩 없이 전체 너비 3버튼 수직 스택 + `verticalScroll` 구조로 교정하고 `DialogAndLayoutGuardTest` 및 `WorkoutGuideExitDialogTest` 계측 테스트 추가(PR #213).
+
+**재발 방지**:
+- `NetworkModuleTest` 신설 — `provideBackendOkHttpClient`, `provideMealsOkHttpClient`, `provideExerciseDbOkHttpClient` 3개 실제 빌더 결과물의 `interceptors` 리스트에서 `SentryOkHttpInterceptor` 인덱스가 항상 `RetryInterceptor` 인덱스보다 앞(`sentryIdx < retryIdx`)인지 단위 테스트로 고정.
+- `DialogAndLayoutGuardTest` 로 `AlertDialog` 의 `confirmButton`/`dismissButton` 슬롯 내부 `Column`/`Row` 중첩 금지 및 `HorizontalPager` 의 `key` 파라미터 강제.
+
+---
+
+## INC-2026-10-29-34 — v0.7.0/41 업데이트 직후 앱 실행 시 100% 즉시 종료(Startup Crash): Room `addMigrations(1->2)` 와 `fallbackToDestructiveMigrationFrom(1)` 동시 지정 충돌 (`EUNDUNHEALTH-H`)
+
+**증상**: `v0.7.0`(`versionCode=41`) 프로덕션 업데이트 후 앱 아이콘을 눌러 실행하면 스플래시 직후 첫 프레임에서 100% 자동 종료됨. Sentry(`gunnys/eundunhealth`)에 **`EUNDUNHEALTH-H`**(ID `7817803343`, 19 events / 6 users — 사용자 기기 `SM-F776N` Galaxy Z Flip6/7 및 Play Pre-launch Report 크롤러 `OnePlus8Pro`, `sdk_gphone64_arm64` 포함)로 다음 Fatal Exception 수집:
+
+```
+java.lang.IllegalArgumentException: Inconsistency detected. A Migration was supplied to addMigration() that has a start or end version equal to a start version supplied to fallbackToDestructiveMigrationFrom(). Start version is: 1
+    at androidx.room.RoomDatabase$Builder.validateMigrationsNotRequired(RoomDatabase.kt:1895)
+    at androidx.room.RoomDatabase$Builder.build(RoomDatabase.kt:1922)
+    at com.gunnys.eundunhealth.di.DatabaseModule.provideSmileTrainingDatabase(DatabaseModule.kt:49)
+    at com.gunnys.eundunhealth.DaggerEundunHealthApplication_HiltComponents_SingletonC$SingletonCImpl.smileSessionDao(DaggerEundunHealthApplication_HiltComponents_SingletonC.java:403)
+    at com.gunnys.eundunhealth.DaggerEundunHealthApplication_HiltComponents_SingletonC$SingletonCImpl$SwitchingProvider.get(DaggerEundunHealthApplication_HiltComponents_SingletonC.java:547)
+    at com.gunnys.eundunhealth.DaggerEundunHealthApplication_HiltComponents_SingletonC$ViewModelCImpl$SwitchingProvider.get(DaggerEundunHealthApplication_HiltComponents_SingletonC.java:328)
+    at dagger.hilt.android.internal.lifecycle.HiltViewModelFactory$2.createViewModel(HiltViewModelFactory.java:133)
+```
+
+**근본 원인 (3중 구조적 결함)**:
+1. **직접 원인 — Room Builder 상호배타 불변식 위반 (`DatabaseModule.kt:47-49`)**:
+   - `DatabaseModule.provideSmileTrainingDatabase` 에 `.addMigrations(SmileTrainingDatabase.MIGRATION_1_2)`(`startVersion=1, endVersion=2`)와 `.fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)`(`startVersion=1`)을 동시에 체이닝했다.
+   - Room 의 `RoomDatabase.Builder.build()` 는 SQLite 파일을 열기도 전에 `validateMigrationsNotRequired()` 를 호출하여 `migrationStartAndEndVersions`(명시적 마이그레이션의 시작·종료 버전 집합)와 `migrationsNotRequiredFrom`(파괴적 폴백 시작 버전 집합)이 겹치면 **무조건 `IllegalArgumentException` 을 던진다.**
+   - `SmileTrainingDatabase.MIGRATION_1_2` 는 이미 내부에서 `DROP TABLE IF EXISTS smile_sessions` 후 v2 테이블·인덱스를 재생성하므로 `fallbackToDestructiveMigrationFrom(1)` 자체가 불필요한 중복 설정이었다.
+2. **증폭 원인 — 기동 크리티컬 패스(Main Thread)의 Eager Room DB 생성 (`DefaultLocalDataWiper.kt` & `AuthViewModel.kt`)**:
+   - `MainActivity.onCreate` → `AppNavigation()` 첫 Compose 프레임에서 `hiltViewModel<AuthViewModel>()` 이 호출된다.
+   - `AuthViewModel` 생성자는 `DefaultLocalDataWiper` 를 주입받고, `DefaultLocalDataWiper` 는 `WeeklyPlanDao` 와 `SmileSessionDao` 를 **비지연(Eager)** 으로 주입받고 있었다.
+   - 그 결과 `themePreferences.isV2LocalResetCompleted()` 가 이미 `true` 인 일반 기동에서도, 심지어 `AuthViewModel.checkSession()` 의 `runCatching { localDataWiper?.ensureV2LocalResetCompleted() }` 블록에 진입하기도 **전에** `HiltViewModelFactory.create()`(메인 스레드 생성자 체인)에서 `provideSmileTrainingDatabase().build()` 가 동기 호출되어 `try/catch` 방어선을 우회하고 앱이 즉사했다.
+3. **프로세스 원인 — "Mock-to-Production 사각지대" (왜 테스트와 preflight 가 통과했는가)**:
+   - 모든 단위 테스트(`SmileTrainingRepositoryImplTest`, `WorkoutRepositoryImplTest`, `AuthViewModelTest`)가 DAO 나 `LocalDataWiper` 를 Fake/Mock 으로 주입하여 **`DatabaseModule.provideSmileTrainingDatabase()` 를 단 한 번도 호출하지 않았다.**
+   - `scripts/preflight-release.sh` 와 CI(`android.yml`, `release.yml`)는 `:app:releaseArtifacts` 가 *컴파일·패키징*되는지만 확인하고, 빌드된 APK 를 에뮬레이터나 실기기에서 **단 1회라도 Cold Start(`am start -W`) 해보는 런타임 스모크 단계가 없었다.**
+
+**복구**:
+1. **`DatabaseModule.provideSmileTrainingDatabase` 수정**: `.fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)` 을 제거하고 `.addMigrations(SmileTrainingDatabase.MIGRATION_1_2)` 단일 경로로 정합화.
+2. **`DefaultLocalDataWiper` 지연 주입(`dagger.Lazy`) 리팩토링**: `weeklyPlanDao: Lazy<WeeklyPlanDao>`, `smileSessionDao: Lazy<SmileSessionDao>` 로 변경하여:
+   - 일반 기동(`isV2LocalResetCompleted() == true`) 시 메인 스레드 생성자 체인에서 Room DB 빌더가 아예 호출되지 않도록 격리.
+   - 최초 리셋 또는 계정 삭제 시에만 코루틴(`suspend`) 내부의 `runSuspendCatching` 보호 아래에서 DAO 가 초기화되도록 방어선 구축.
+3. **코루틴 취소(`CancellationException`) 전파 및 Sentry 노이즈 차단 일원화 (`AppError.kt`)**:
+   - `runSuspendCatching` 을 `domain/model/AppError.kt` 공용 유틸로 승격하여 전 Repository(`MealPlanRepositoryImpl`, `GoalRepositoryImpl`, `BadgeRepositoryImpl`, `HealthRepositoryImpl`, `AuthRepositoryImpl`, `WorkoutRepositoryImpl`, `UserRepositoryImpl`)와 UseCase(`CheckAndAwardBadgesUseCase`, `SyncHealthDataUseCase`), `AuthViewModel` 에 일관 적용.
+   - `AppError.reportToSentry()` 에서 `throwable !is CancellationException` 가드를 추가하여 코루틴 취소가 Sentry `Unknown` 이슈로 오탐 보고되는 경로를 원천 차단.
+
+**재발 방지 및 테스트/디버깅 정책 정착 (5-Layer Defense Matrix — CLAUDE.md 룰 14 신설)**:
+- **Layer 1 (DI Builder 단위 테스트 가드)**: `DatabaseModuleTest` 및 `NetworkModuleTest` 신설. *"설정이 들어 있는 DI `@Provides` 빌더(`Room.databaseBuilder`, `OkHttpClient.Builder`)는 절대 Mock 뒤에 숨기지 않고 실제 Provider 메서드를 JVM 단위 테스트에서 직접 호출해 검증한다."* `RoomDatabase.Builder.build()` 는 JVM 에서 즉시 `validateMigrationsNotRequired()` 를 실행하므로 향후 마이그레이션 버전 충돌 시 `:app:testDebugUnitTest` 단계에서 1초 만에 차단된다.
+- **Layer 2 (지연 초기화 가드)**: `DefaultLocalDataWiperTest` 신설 — 기동 시 `isV2LocalResetCompleted() == true` 이면 `Lazy<Dao>.get()` 호출 횟수가 `0` 임을 단언.
+- **Layer 3 (실제 SQLite 마이그레이션 계측 테스트)**: `DatabaseMigrationAndInitTest`(`androidTest`) 신설 — 실제 Android SQLite 엔진 위에서 신규 설치(v2) 및 구버전(v1 → v2 `MIGRATION_1_2`) 업그레이드 + CRUD 동작 실증.
+- **Layer 4 (Cold-Start Runtime Smoke Gate)**: `scripts/smoke-cold-start.sh` 신설 및 `scripts/preflight-release.sh` 연동. 출시 태그 전 에뮬레이터/실기기에서 `am start -W -S` → 5초 대기 → `pidof` 생존 + `logcat -b crash` `FATAL EXCEPTION` 0건을 자동 검증.
+- **Layer 5 (배포 직후 Play Robo / Sentry 즉시 관측)**: Play 업로드 후 15~30분 내 Google Play Pre-launch Report(Robo 크롤러)가 실기기/에뮬레이터에서 Cold Start 를 수행하므로 `/verify-deploy` 로 Sentry 신규 이슈 유무를 즉시 점검.
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
@@ -700,3 +766,4 @@ java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Clas
 | 2026-06-19 (출시 재시도) | INC-28 추가 — versionCode 사전검토 누락(Play 중복 업로드 거부). play-upload-ledger.md(원장) + check-version-monotonic.sh(preflight·bump 배선) + 룰 13 정착 |
 | 2026-07-02 (public 전환 후속) | INC-29 추가 — CodeQL java-kotlin autobuild 가 clean checkout 의 release 서명 검증에서 실패. 서명 존재-조건부화 + preflight 서명 자료 fail-fast 가드 |
 | 2026-10-26 (v0.5.0 스마일 트레이닝 핫픽스) | INC-32 추가 — R8 full mode 가 ML Kit `ComponentRegistrar`(`FaceRegistrar` 등)의 기본 생성자 `<init>()` 를 제거해 `FaceDetection.getClient()` 가 NPE 로 크래시(Sentry `EUNDUNHEALTH-E`/`F`). `proguard-rules.pro` keep 규칙 + `ProguardKeepRulesTest` + ML Kit/CameraX 초기화 다중 방어선 정착 |
+| 2026-10-29 (v0.7.0 기동 크래시 핫픽스 및 5계층 방어 정책) | INC-33(`EUNDUNHEALTH-G` OkHttp 인터셉터 순서·Dialog 레이아웃) 및 INC-34(`EUNDUNHEALTH-H` Room `addMigrations`+`fallbackToDestructiveMigrationFrom` 충돌로 인한 100% 기동 크래시) 추가. `DatabaseModuleTest`·`NetworkModuleTest`·`DefaultLocalDataWiperTest`·`DatabaseMigrationAndInitTest`·`scripts/smoke-cold-start.sh` 및 CLAUDE.md 룰 14(5계층 방어 매트릭스) 정착 |

@@ -1,5 +1,6 @@
 package com.gunnys.eundunhealth.domain.model
 
+import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -86,11 +87,12 @@ private fun HttpException.parse403AppError(): AppError {
 
 /**
  * Unknown(미분류) 에러만 Sentry 로 보낸다. Network/Auth/NotFound 등 비즈니스 에러는 노이즈다.
+ * 코루틴 취소([CancellationException])는 정상 생명주기 이벤트이므로 Sentry 로 절대 전송하지 않는다.
  *
  * [toReportedAppError] 전용 — 직접 부르지 말 것(위와 같은 이유로 컨벤션 테스트가 차단).
  */
 internal fun AppError.reportToSentry() {
-    if (this is AppError.Unknown) {
+    if (this is AppError.Unknown && throwable !is CancellationException) {
         io.sentry.Sentry.captureException(throwable)
     }
 }
@@ -112,3 +114,16 @@ internal fun AppError.reportToSentry() {
  * ```
  */
 fun Throwable.toReportedAppError(): AppError = (this as? AppErrorException)?.appError ?: toAppError().also { it.reportToSentry() }
+
+/**
+ * Kotlin [runCatching] 은 [CancellationException] 도 실패 값으로 바꾸므로,
+ * `suspend` 경계에서는 구조적 동시성 취소를 명시적으로 재전파하고 그 외 작업 실패만 [Result.failure] 로 감싼다.
+ */
+@Suppress("TooGenericExceptionCaught")
+suspend fun <T> runSuspendCatching(block: suspend () -> T): Result<T> = try {
+    Result.success(block())
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    Result.failure(e)
+}
