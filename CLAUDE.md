@@ -149,7 +149,7 @@ Package: `com.gunnys.eundunhealth`
 Package: `app`
 
 - `app/main.py` — FastAPI 앱 + lifespan(DB 엔진/Sentry/DeepSeek AI 클라이언트) + 모듈 레벨 CORS(`add_middleware`는 lifespan 내부 금지) + 글로벌 exception handler.
-- `app/config.py` — pydantic-settings, `get_settings()` `@lru_cache` (`meal_ai_enabled`, `deepseek_endpoint`, `deepseek_key`, `deepseek_model`, `minimum_supported_android_version_code` 포함).
+- `app/config.py` — pydantic-settings, `get_settings()` `@lru_cache` (`meal_ai_enabled`, `deepseek_endpoint`, `deepseek_key`, `meal_ai_model`, `minimum_supported_android_version_code` 포함).
 - `app/time_utils.py` — KST(`UTC+9`) 기준 오늘 날짜(`today_kst`) 및 이번 주 월요일(`current_monday_kst`) 계산 단일 진실 공급원(SSoT).
 - `app/database.py` — `Base = DeclarativeBase`, `get_db()` UoW 패턴 (Request → `app.state.session_factory`).
 - `app/dependencies.py` — JWKS 기반 JWT 검증 (`PyJWKClient` 24h TTL 캐시, **RS256**, audience = Entra 백엔드 client_id) + `require_supported_android_client`(`Eundun-Client-Version-Code` 헤더 검증). ES256/`authenticated` 는 Supabase 시절 값이다 — 2026-09 Entra 전환으로 바뀌었다.

@@ -6,7 +6,7 @@
 - **1. Azure AI Foundry 식단 생성 AI 모델 최적화 및 `gpt-5.4-mini` 프로덕션 프로비저닝 완결**:
   - **근본 원인 진단**: 기존 `ep-eundunhealth-deepseekv3` (`DeepSeek-V3.2`, `capacity: 1`) 배포가 `1 RPM / 1,000 TPM`으로 제한되어 식단 1회 생성(~2,200 토큰) 직후 재생성/동시 호출 시 즉시 `429 RateLimitError`가 발생하고 응답 시간이 15~25초 소요되던 병목 확인.
   - **모델 확정 및 라이브 배포 (`rg-eundunhealth-prod-krc` / `hub-eundunhealth-prod`)**:
-    - [`scripts/infra/deepseek-endpoint.bicep`](scripts/infra/deepseek-endpoint.bicep)을 API 버전 `2024-10-01` 및 파라미터화 구조로 업그레이드하여 **`ep-eundunhealth-meal-ai` (`OpenAI` / `gpt-5.4-mini` / `2026-03-17` / `GlobalStandard` / `capacity: 100` = 100K TPM / 100 RPM, 유휴 비용 $0)** 배포 완료 및 구형 1-RPM `ep-eundunhealth-deepseekv3` 배포 정리 완료.
+    - [`scripts/infra/meal-ai-endpoint.bicep`](scripts/infra/meal-ai-endpoint.bicep)을 API 버전 `2024-10-01` 및 파라미터화 구조로 업그레이드하여 **`ep-eundunhealth-meal-ai` (`OpenAI` / `gpt-5.4-mini` / `2026-03-17` / `GlobalStandard` / `capacity: 100` = 100K TPM / 100 RPM, 유휴 비용 $0)** 배포 완료 및 구형 1-RPM `ep-eundunhealth-deepseekv3` 배포 정리 완료.
   - **백엔드 Strict Structured Outputs (`json_schema`) 및 설정 디커플링**:
     - [`backend/app/config.py`](backend/app/config.py) 및 [`backend/containerapp.yaml`](backend/containerapp.yaml)에 `meal_ai_model: str = "ep-eundunhealth-meal-ai"` (`MEAL_AI_MODEL`) 추가 (기존 Key Vault `deepseek-endpoint`, `deepseek-key` 시크릿 100% 재사용, 시크릿 회전 불필요).
     - [`backend/app/services/meal_ai_client.py`](backend/app/services/meal_ai_client.py): OpenAI Native Strict JSON Schema(`json_schema`, `strict: True`) 적용으로 파싱 에러(`500 AI_PARSING_ERROR`) 원천 차단, `월요일~일요일` 7개 고유 요일 및 `workout_dates` 기반 `isRestDay` 매핑 프롬프트 정교화, 타임아웃 `30.0s` 최적화.
