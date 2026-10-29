@@ -18,15 +18,16 @@ class SmileTrainingSession(Base):
 
     __tablename__ = "smile_training_sessions"
 
-    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid7)
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False)
     duration_sec: Mapped[int] = mapped_column(Integer, nullable=False)
     completed_reps: Mapped[int] = mapped_column(Integer, nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     __table_args__ = (
-        CheckConstraint("duration_sec >= 0", name="ck_smile_sessions_duration_sec_nonneg"),
-        CheckConstraint("completed_reps >= 1", name="ck_smile_sessions_completed_reps_pos"),
+        CheckConstraint("length(trim(user_id)) >= 1", name="user_id_nonempty"),
+        CheckConstraint("duration_sec >= 0 AND duration_sec <= 1800", name="duration_sec_range"),
+        CheckConstraint("completed_reps >= 1 AND completed_reps <= 5", name="completed_reps_range"),
         Index("ix_smile_training_sessions_user_occurred", "user_id", occurred_at.desc()),
     )

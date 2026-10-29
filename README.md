@@ -88,12 +88,12 @@
 | 프레임워크 | FastAPI 0.161.0 + uvicorn 0.54.0 | hash lock 공통 설치 |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.1.6 async + asyncpg 0.32.0 | `Mapped[T]` 패턴 |
-| 마이그레이션 | Alembic 1.20.1 (head: `e8b2c4d6f1a0`) | async 엔진 연동 |
+| 스키마 파이프라인 | Drop & Recreate 전용 (`02_schema_create_all.sql`) | PostgreSQL 18 `DEFAULT uuidv7()` + `app.schema_bootstrap` 멱등 기동 + `hard_reset_db.py` / `seed_edge_cases.py`(100건 시딩·11개 제약 검증) |
 | HTTP 코어 | starlette 1.9.0 | |
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | AI 클라이언트 | openai 3.37.0 (`AsyncOpenAI`) | Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 |
 | 모니터링 | Sentry SDK 2.73.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 140/140 PASS, coverage 94%+ (sysmon core) |
+| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 143/143 PASS, coverage 94%+ (sysmon core) |
 
 ### 인프라
 
@@ -102,7 +102,7 @@
 | Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000066`) |
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret **8개** |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU, 주간 `acr purge` 스케줄 Task 2개) |
-| Database | Azure PostgreSQL Flexible Server `healthapp` (B1ms, 32GB) |
+| Database | Azure PostgreSQL Flexible Server `healthapp` (PostgreSQL 18.4, B1ms, 32GB; 로컬/CI `postgres:18-alpine` `18.6`) |
 | Auth | Microsoft Entra External ID 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미지원) |
 | AI 모델 | Azure AI Foundry `eundunhealth-ai-foundry` (East US 2, `DeepSeek-V3.2` `GlobalStandard` MaaS) |
 | 운동 데이터 소스 | OSS ExerciseDB (`oss.exercisedb.dev`, 무인증 + 로컬 한국어 번역 번들 46종) + 앱 내장 홈트레이닝 18종 카탈로그 |
@@ -143,7 +143,7 @@ app/schemas/          # Pydantic CamelSchema (alias_generator=to_camel)
 app/repositories/     # DB 접근 추상화
 app/services/         # 비즈니스 로직 (account / statistics / goal / meal_plan / meal_ai_client / smile_training ...)
 app/routers/          # 얇은 라우터, Service 위임
-alembic/versions/     # async 엔진 연동 마이그레이션 (head: e8b2c4d6f1a0)
+sql/                  # 정규 Drop & Recreate DDL (01_cleanup_drop_all.sql, 02_schema_create_all.sql) + app/schema_bootstrap.py
 ```
 
 ### API 엔드포인트 (27 개 — JWT 필요 22 + 공개 5)
@@ -189,8 +189,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: e8b2c4d6f1
 ├── app/                      # Android 앱 (Kotlin / Compose)
 ├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
-│   ├── alembic/              # DB 마이그레이션 (head: e8b2c4d6f1a0)
-│   ├── tests/                # pytest (140 PASS, coverage 94%+)
+│   ├── sql/                  # PostgreSQL 18 Drop & Recreate 정규 DDL (01_cleanup / 02_schema)
+│   ├── tests/                # pytest (143 PASS, coverage 94%+)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
@@ -199,7 +199,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: e8b2c4d6f1
 │   ├── store/                # Play Store 호스팅 대상 (개인정보 처리방침·계정 삭제 안내)
 │   ├── plans/                # design + plan 페어 / 토픽 ledger
 │   └── ops/                  # 운영 스냅샷·배포 전 체크리스트·런북·인시던트
-├── scripts/                  # 자동화 (preflight / agp10-compat / verify_containerapp_deployment / alembic / openapi-sync / hooks)
+├── scripts/                  # 자동화 (preflight / agp10-compat / verify_containerapp_deployment / openapi-sync / hooks)
 ├── config/                   # Detekt 설정·baseline
 ├── gradle/libs.versions.toml # Android 버전 카탈로그
 ├── .github/workflows/        # 7 workflows (android / backend / backend-rollback / release / warm-baseline-check / doc-audit / docs-plans-index)
@@ -220,7 +220,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: e8b2c4d6f1
 | Android Studio | Hedgehog 이상 권장 | 빌드 / 디바이스 디버깅 |
 | Android SDK | API 37 | Target SDK |
 | Python | 3.14 | Backend |
-| Docker Desktop | latest | Backend 로컬 실행 + Alembic autogenerate |
+| Docker Desktop | latest | Backend 로컬 실행 (PostgreSQL 18) + 스키마 하드 리셋 검증 |
 | Git | 2.40+ | hooks (`core.hooksPath`) |
 | (선택) Azure CLI | latest | 운영 / 시크릿 관리 |
 | (선택) gh CLI | latest | PR / 워크플로 |
@@ -292,15 +292,16 @@ cd backend
 .venv/Scripts/pip-audit -r requirements.txt --strict
 ```
 
-### 5) Alembic 마이그레이션
+### 5) DB 스키마 부트스트랩 및 하드 리셋 파이프라인 (Drop & Recreate)
 
 ```bash
 cd backend
-.venv/Scripts/alembic upgrade head
+.venv/Scripts/python.exe -m app.schema_bootstrap
+.venv/Scripts/python.exe scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints
 ```
 
 > [!WARNING]
-> 새 마이그레이션 작성은 반드시 `bash scripts/alembic-autogen.sh "..."` 사용. SQLite 위에서 autogenerate 하면 UUID↔NUMERIC 거짓 양성이 들어가 운영 cast 에러로 직결됩니다 ([CLAUDE.md 룰 3](CLAUDE.md), INC-07).
+> 스키마 변경은 점진적 `ALTER TABLE` 없이 `backend/sql/02_schema_create_all.sql` 과 `backend/app/models/*.py` 를 1:1 정합하게 갱신합니다 (`pytest tests/test_v2_reset.py` 가 드리프트 차단, [CLAUDE.md 룰 3](CLAUDE.md)).
 
 ### 6) OpenAPI 스펙 동기화 (라우터·스키마 변경 시 필수)
 
@@ -358,11 +359,11 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 |---|----|------|
 | 1 | ACR 정리는 `untag` 만 — `delete --image` 는 공유 manifest 까지 삭제 | INC-01 |
 | 2 | 릴리스 산출물은 `releaseArtifacts` 또는 `preflight-release.sh` 하나로 | INC-04 |
-| 3 | Alembic autogenerate 는 PostgreSQL 컨테이너 위에서만 (`alembic-autogen.sh`) | INC-07 |
+| 3 | DB 스키마는 `02_schema_create_all.sql` ↔ ORM 1:1 정합 및 PostgreSQL 18 위에서 검증 | INC-07 |
 | 4 | `lifespan` 안에서 `app.add_middleware()` 호출 금지 — 모듈 레벨 등록 | INC-03 |
 | 5 | Auth 제공자/테넌트는 실사용자 확보 후 절대 교체 금지 | INC-14 |
 | 6 | `backend.yml` 의 새 `secretref` 는 시크릿 set + 가드 step + 스냅샷 동시 갱신 | INC-18 |
-| 7 | 스키마 변경 PR 은 같은 PR 에서 entrypoint(`alembic upgrade head`) 검증 포함 | INC-2026-05-27-01 |
+| 7 | 스키마 변경 PR 은 같은 PR 에서 entrypoint(`python -m app.schema_bootstrap`) 검증 포함 | INC-2026-05-27-01 |
 | 8 | Auth/UI 실패 표시는 inline + persistent + a11y liveRegion + Sentry breadcrumb | INC-2026-05-26-01 |
 | 9 | Design doc 의 baseline / 추정값은 측정 후 결정 | PR #68 |
 | 10 | Subagent reviewer 의 측정 결과는 controller 가 직접 fact-check | PR #68 |

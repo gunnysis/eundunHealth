@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -125,7 +126,10 @@ fun SmileTrainingScreen(
             onPauseExercise = { viewModel.pauseActiveExercise() },
             onLifecycleStopped = viewModel::onCameraLifecycleStopped,
             onPermissionRevoked = {
-                viewModel.onCameraPermissionResult(isGranted = false, shouldShowRationale = true)
+                val activity = context.findActivity()
+                val shouldShowRationale = activity != null &&
+                    ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
+                viewModel.onCameraPermissionResult(isGranted = false, shouldShowRationale = shouldShowRationale)
             },
             onCameraError = viewModel::onCameraError,
             onCloseClick = handleExitRequest,
@@ -226,7 +230,12 @@ private fun SmileConfirmDialogs(
         AlertDialog(
             onDismissRequest = viewModel::dismissExitConfirmDialog,
             title = { Text("연습을 중단할까요?") },
-            text = { Text("지금 나가면 현재 진행 중인 반복 횟수는 저장되지 않습니다.") },
+            text = {
+                Text(
+                    text = "지금 나가면 현재 진행 중인 반복 횟수는 저장되지 않습니다.",
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = viewModel::confirmAbortActiveSession) {
                     Text("중단하기")
@@ -244,7 +253,12 @@ private fun SmileConfirmDialogs(
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteAllHistoryDialog,
             title = { Text("모든 스마일 기록 삭제") },
-            text = { Text("기기와 서버에 저장된 모든 스마일 트레이닝 기록이 영구적으로 삭제됩니다.") },
+            text = {
+                Text(
+                    text = "기기와 서버에 저장된 모든 스마일 트레이닝 기록이 영구적으로 삭제됩니다.",
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = viewModel::confirmDeleteAllHistory) {
                     Text("삭제", color = MaterialTheme.colorScheme.error)
@@ -532,7 +546,7 @@ private fun SmileStartActionCard(
             Button(
                 onClick = onStartClick,
                 enabled = hasCameraHardware,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 shape = RoundedCornerShape(16.dp),
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
@@ -839,7 +853,7 @@ private fun CompletedContent(
         Spacer(Modifier.height(28.dp))
         Button(
             onClick = onDoneClick,
-            modifier = Modifier.fillMaxWidth().height(54.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
             Text("완료하고 돌아가기", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -847,7 +861,7 @@ private fun CompletedContent(
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = onPracticeAgainClick,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
             Text("한 번 더 연습하기")
@@ -895,7 +909,7 @@ internal fun formatDurationKorean(seconds: Int): String {
     }
 }
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null

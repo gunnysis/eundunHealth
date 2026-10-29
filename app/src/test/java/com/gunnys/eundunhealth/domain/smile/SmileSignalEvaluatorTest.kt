@@ -113,6 +113,8 @@ class SmileSignalEvaluatorTest {
         // 1 brief dip at t=1600ms -> window still >= 75% satisfied, hold progress does not reset
         val dip = evaluator.onFrame(signal(t = 1600L, smile = 0.10f))
         assertFalse(dip.justCompletedRep)
+        assertTrue(dip.isInSmileState)
+        assertEquals("좋아요, 미소를 그대로 유지해보세요", dip.guideMessage)
 
         // Next frames reach >= 2000ms total held duration -> completes rep 1!
         evaluator.onFrame(signal(t = 1900L, smile = 0.80f))

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -65,6 +66,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -72,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -106,12 +109,25 @@ internal fun SmileCameraStage(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnFrameSignal by rememberUpdatedState(onFrameSignal)
     val currentOnLifecycleStopped by rememberUpdatedState(onLifecycleStopped)
     val currentOnPermissionRevoked by rememberUpdatedState(onPermissionRevoked)
     val currentOnCameraError by rememberUpdatedState(onCameraError)
     var surfaceRequest by remember { mutableStateOf<SurfaceRequest?>(null) }
+
+    DisposableEffect(view, context) {
+        val window = context.findActivity()?.window
+        val controller = if (window != null) WindowCompat.getInsetsController(window, view) else null
+        val prevLightStatusBars = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = false
+        onDispose {
+            if (prevLightStatusBars != null) {
+                controller.isAppearanceLightStatusBars = prevLightStatusBars
+            }
+        }
+    }
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
@@ -176,7 +192,9 @@ internal fun SmileCameraStage(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             surfaceRequest = null
-            runCatching { cameraProviderFuture.get().unbindAll() }
+            if (cameraProviderFuture.isDone) {
+                runCatching { cameraProviderFuture.get().unbindAll() }
+            }
             analyzer.close()
             analysisExecutor.shutdown()
         }
@@ -548,7 +566,7 @@ private fun ActiveHoldProgressSection(
     ) {
         OutlinedButton(
             onClick = onPauseExercise,
-            modifier = Modifier.weight(1f).height(44.dp),
+            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
             border = BorderStroke(1.dp, Color(0x66FFFFFF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
         ) {
@@ -557,7 +575,7 @@ private fun ActiveHoldProgressSection(
         }
         TextButton(
             onClick = onStopExercise,
-            modifier = Modifier.height(44.dp),
+            modifier = Modifier.heightIn(min = 48.dp),
             colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFB0BEC5)),
         ) {
             Text("연습 중단", style = MaterialTheme.typography.labelLarge)
@@ -580,7 +598,7 @@ private fun ReadyStartButton(
     }
     Button(
         onClick = onStartExercise,
-        modifier = Modifier.fillMaxWidth().height(52.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = ProgressEndColor,
             contentColor = Color(0xFF062112),

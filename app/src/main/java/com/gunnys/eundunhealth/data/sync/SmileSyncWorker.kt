@@ -53,7 +53,7 @@ class SmileSyncWorker @AssistedInject constructor(
         fun enqueueUnique(workManager: WorkManager) {
             workManager.enqueueUniqueWork(
                 UNIQUE_WORK_NAME,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 buildRequest(),
             )
         }

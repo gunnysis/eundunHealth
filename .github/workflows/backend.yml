@@ -63,10 +63,10 @@ jobs:
           python -m pip install --require-hashes -r requirements-dev.txt
 
       - name: Lint (ruff)
-        run: ruff check app/ tests/
+        run: ruff check app/ tests/ scripts/
 
       - name: Format check (ruff)
-        run: ruff format --check app/ tests/
+        run: ruff format --check app/ tests/ scripts/
 
       - name: Type check (mypy strict)
         run: mypy app/
@@ -158,6 +158,13 @@ jobs:
           done
           echo "::error::/health did not return 200 within 60s"
           exit 1
+
+      - name: Verify /health/ready 200, entrypoint bootstrap log & PostgreSQL 18 Hard Reset + 100-row Seeder
+        run: |
+          READY=$(curl -s -m 5 -o /dev/null -w "%{http_code}" http://localhost:8080/health/ready || echo "000")
+          [ "$READY" = "200" ] || { echo "::error::/health/ready returned $READY"; exit 1; }
+          docker compose logs api | grep -F "Ensuring database schema exists (python -m app.schema_bootstrap)"
+          docker compose exec -T api python scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints
 
       - name: Dump api logs on failure
         if: failure()

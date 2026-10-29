@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import get_settings  # noqa: E402
+from app.database import build_engine_kwargs  # noqa: E402
 from app.services.account_service import AccountService  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -35,7 +36,10 @@ logger = logging.getLogger("reap_orphans")
 async def main() -> None:
     """엔진/세션을 만들어 reap_orphaned_data 를 실행하고 결과를 로깅한다."""
     settings = get_settings()
-    engine = create_async_engine(settings.database_url)
+    engine = create_async_engine(
+        settings.database_url,
+        **build_engine_kwargs(settings.database_url, pool_size=1, max_overflow=1),
+    )
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     try:
         async with session_factory() as session:

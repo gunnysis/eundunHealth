@@ -35,8 +35,8 @@ git diff backend/openapi.json    # router 변경분 확인
 ```
 같은 PR 에 `backend/openapi.json` 커밋 — `backend.yml` drift detection step 이 미커밋 시 fast-fail.
 
-### 1.7 Alembic (스키마 변경 시만)
-- `bash scripts/alembic-autogen.sh "<message>"` (룰 3, INC-07 방지).
+### 1.7 DB 스키마 (스키마 변경 시만 — Drop & Recreate 전용)
+- `backend/sql/02_schema_create_all.sql` 과 `backend/app/models/<domain>.py` 를 1:1 정합하게 갱신 (`pytest tests/test_v2_reset.py` 가드리프트 차단).
 - 같은 PR 에 entrypoint 검증 + `docs/ops/operations-snapshot.md` head 갱신 (룰 7).
 
 ### 1.8 검증

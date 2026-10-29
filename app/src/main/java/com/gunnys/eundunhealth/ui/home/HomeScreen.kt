@@ -58,7 +58,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -72,9 +71,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -313,11 +314,12 @@ private fun SmileQuickActionChip(
         modifier = Modifier
             .padding(end = 12.dp)
             .heightIn(min = 36.dp)
-            .semantics {
-                contentDescription = if (isCompletedToday) {
-                    "스마일 트레이닝 오늘 완료됨, 열기"
-                } else {
-                    "스마일 트레이닝 바로가기"
+            .clearAndSetSemantics {
+                role = Role.Button
+                contentDescription = when {
+                    isCompletedToday -> "스마일 트레이닝 오늘 완료됨, 열기"
+                    currentStreakDays > 0 -> "스마일 트레이닝 ${currentStreakDays}일 연속 달성 중, 바로가기"
+                    else -> "스마일 트레이닝 바로가기"
                 }
             },
     ) {
@@ -404,7 +406,7 @@ private fun SmileTrainingContextualCard(
                 IconButton(onClick = onDismissToday) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "오늘 하루 닫기",
+                        contentDescription = "스마일 워밍업 추천 오늘 하루 닫기",
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
@@ -414,13 +416,6 @@ private fun SmileTrainingContextualCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(
-                    onClick = onDismissToday,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Text("오늘 하루 닫기")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = onStartSmile,
                     modifier = Modifier.heightIn(min = 48.dp),

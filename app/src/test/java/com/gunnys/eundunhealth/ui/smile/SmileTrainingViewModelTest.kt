@@ -242,6 +242,52 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
+    fun `back request during paused READY session shows exit confirm dialog instead of discarding progress`() = runTest {
+        val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        advanceUntilIdle()
+
+        vm.beginActiveExercise(nowElapsedMs = 0L)
+        completeOneStandardRep(vm, startTimeMs = 0L)
+        assertEquals(1, vm.uiState.value.currentRep)
+
+        vm.pauseActiveExercise()
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+        assertTrue(vm.uiState.value.isPaused)
+
+        val shouldPop = vm.onBackOrExitRequested()
+        assertFalse(shouldPop)
+        assertTrue(vm.uiState.value.showExitConfirmDialog)
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+        assertEquals(1, vm.uiState.value.currentRep)
+    }
+
+    @Test
+    fun `paused interval is excluded from final sessionDurationSec`() = runTest {
+        val fakeRepo = FakeSmileTrainingRepository()
+        val vm = createViewModel(repository = fakeRepo, moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        advanceUntilIdle()
+
+        vm.beginActiveExercise(nowElapsedMs = 0L)
+        // Rep 1 takes ~2.1s (0ms -> 2100ms)
+        completeOneStandardRep(vm, startTimeMs = 0L)
+        vm.pauseActiveExercise()
+
+        // User stays paused for 10 minutes (600,000ms), then resumes at 600,000ms
+        vm.beginActiveExercise(nowElapsedMs = 600_000L)
+        completeOneStandardRep(vm, startTimeMs = 600_000L)
+        advanceTimeBy(SmileTrainingViewModel.REP_REST_DELAY_MS + 100L)
+        completeOneStandardRep(vm, startTimeMs = 604_000L)
+        advanceUntilIdle()
+
+        assertEquals(SmileSessionPhase.COMPLETED, vm.uiState.value.phase)
+        // Active time was ~2.1s + ~6.1s = ~8s, NOT 606s!
+        assertTrue(
+            "Expected active duration under 20s, got ${vm.uiState.value.sessionDurationSec}",
+            vm.uiState.value.sessionDurationSec in 6..15,
+        )
+    }
+
+    @Test
     fun `formatDurationKorean formats seconds and minutes accurately`() {
         assertEquals("0초", formatDurationKorean(0))
         assertEquals("45초", formatDurationKorean(45))

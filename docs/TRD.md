@@ -24,7 +24,7 @@
 | Backend 언어/프레임워크 | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.161.0 (Python 3.14)** + uvicorn 0.54.0 |
 | Backend API 버전 | (미정) | **`1.0.0`** (`backend/app/__init__.py:__version__` → OpenAPI `info.version`, 앱과 독립 — PR #102) |
 | ORM | Exposed 0.61.0 | **SQLAlchemy 2.1.6 async + asyncpg 0.32.0** |
-| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (140 PASS, cov 94%+ / coverage core `sysmon`) |
+| Backend 테스트 | Ktor Test Host + kotlin-test-junit | **pytest 9.1.1 + pytest-asyncio + httpx ASGITransport** (143 PASS, cov 94%+ / coverage core `sysmon`) |
 | DB 연결 환경변수 | `AZURE_DB_URL` (JDBC) | **`DATABASE_URL`** (`postgresql+asyncpg://...`) |
 | 운동 API & 현지화 | RapidAPI ExerciseDB (영문) | **OSS** `oss.exercisedb.dev` (인증 불필요) + 추천 운동 46종 한국어 번들(`korean_exercises.json` v2) + **홈트레이닝 내장 18종 무장비 카탈로그**(`HomeWeeklyPlanGenerator`, `local:home:<slug>:v2.0`) |
 | 주간 운동 계획 API 계약 | `/weekly-plan` (v1, 덮어쓰기 upsert) | **`/v2/weekly-plan`** (7개 라우트: `planMode = gym \| home` 필수, 동일 주 중복 생성 시 `409 weekly_plan_exists`, 손상 계획 `DELETE /v2/weekly-plan` 204, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`) |
@@ -42,7 +42,7 @@
 | Health Connect | 1.1.0-alpha 추정 | **1.1.0 stable** (2025-10-08 출시, v0.1.5 #53 에서 rc01→stable 승격) |
 | Backend HTTP 프레임워크 (starlette) | (FastAPI 트랜시티브) | **starlette 1.9.0** |
 | versionCode / versionName | (미정) | **Play 운영 및 저장소 최신 40 / 0.6.1** (`LAST_UPLOADED_VERSION_CODE=40`) — SSoT 루트 `version.properties`, 업로드 원장 `docs/ops/play-upload-ledger.md` |
-| Alembic head | (미정) | `e8b2c4d6f1a0` (`cutover_smile_training_to_v2`; 직전 `d7f4a2c91b10` `v2_weekly_plan_mode_and_reset_audit` ← `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스) |
+| DB 엔진 & 스키마 파이프라인 | (미정) | **PostgreSQL 18.4 (`healthapp` Flexible Server) / Docker `postgres:18-alpine` (18.6)** · **Drop & Recreate 전용 스키마 파이프라인** (`backend/sql/01_cleanup_drop_all.sql` → `02_schema_create_all.sql`, PostgreSQL 18 네이티브 `DEFAULT uuidv7()`, `app.schema_bootstrap` 멱등 기동, `hard_reset_db.py` + `seed_edge_cases.py` 100건 시딩·11개 제약 조건 검증; 점진적 `ALTER TABLE`/Alembic 폐기) |
 | Auth Failed UX | (미정) | **Inline `AuthErrorBanner`** (v0.1.6 SignupScreen private, **v0.1.7 promote to `ui/components/` + LoginScreen + ForgotPasswordScreen 통합**) — Snackbar 단독 사용 금지 (CLAUDE.md 룰 8) |
 | 디버깅 reproducibility | (미정) | `BuildConfig.MOCK_AUTH_ERROR` debug-only flag (v0.1.6) — `./gradlew :app:assembleDebug -PMOCK_AUTH_ERROR=ratelimit` |
 

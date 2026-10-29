@@ -44,6 +44,7 @@ class ProfileRepository:
         else:
             profile = UserProfile(user_id=user_id, **data)
             self.db.add(profile)
+        await self.db.flush()
         return profile
 
     async def update_default_workout_plan_mode(self, user_id: str, mode: str | None) -> UserProfile | None:

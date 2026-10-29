@@ -211,6 +211,8 @@ class HomeViewModel @Inject constructor(
                     newlyCompletedDates = emptyList(),
                 )
             }
+            val today = LocalDate.now(KST_ZONE)
+            val smileDismissed = runCatching { themePreferences.isSmileShortcutDismissed(today) }.getOrDefault(false)
             val live = _uiState.value
             if (live !is HomeUiState.Success) return@launch
             _uiState.value = live.copy(
@@ -219,6 +221,8 @@ class HomeViewModel @Inject constructor(
                 hasHealthPermission = sync.hasPermission,
                 completedCount = sync.plan.days.count { !it.isRestDay && it.isCompleted },
                 totalWorkoutDays = sync.plan.days.count { !it.isRestDay },
+                today = today,
+                isSmileShortcutDismissedToday = smileDismissed,
             )
             sync.newlyCompletedDates.forEach { date ->
                 workoutRepo.updateDayCompletion(sync.plan.id, date, true, manual = false)

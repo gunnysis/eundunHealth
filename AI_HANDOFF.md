@@ -1,5 +1,60 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) 12인 역할 협의체 기반 프로젝트 전체 점검·리팩토링·개선 및 전수 검증 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **오늘 수행된 스마일 트레이닝 v2 컷오버 + PostgreSQL 18 하드 리셋 파이프라인 구축을 기준으로, 12개 역할(`[디자이너, 기획, 실무, 책임, 개발, 구현, 유지보수, QA/QC, DevOps, DBA, 팀장, CTO]`) 관점의 전사 감사 및 근본 원인 리팩토링 완수**:
+  1. **DBA / Backend / SQLAlchemy 2.0 / PostgreSQL 18 정합성 리팩토링**:
+     - **정본 DDL ([`backend/sql/02_schema_create_all.sql`](backend/sql/02_schema_create_all.sql)) ↔ SQLAlchemy `Base.metadata` 1:1 패리티 달성**:
+       - `smile_training_sessions`의 체크 제약 조건 명칭을 `POSTGRES_NAMING_CONVENTION`과 1:1 일치하도록 `ck_smile_training_sessions_duration_sec_range`, `ck_smile_training_sessions_completed_reps_range`로 통일.
+       - 8개 도메인 ORM 모델(`user_profile.py`, `user_profile_history.py`, `weekly_plan.py`, `goal.py`, `badge.py`, `meal_plan.py`, `smile_training.py`) 전수에서 SQLAlchemy 2.0 공식 방언 중립 `from sqlalchemy import Uuid` (`Uuid(as_uuid=True)`) 및 Python 3.14 표준 라이브러리 `default=uuid.uuid7`로 통일하여 PostgreSQL 네이티브 `UUID`와 SQLite `CHAR(32)` 양쪽에서 타입 강제 변환 버그를 원천 차단.
+       - [`backend/app/database.py`](backend/app/database.py): PostgreSQL 대상 `Base.metadata.create_all` 직후 8개 도메인 테이블 PK에 `ALTER TABLE ... ALTER COLUMN id SET DEFAULT uuidv7()`를 자동 부여하는 `_set_pg_uuidv7_server_defaults` 이벤트 리스너 추가 + Azure PostgreSQL Flexible Server `Standard_B1ms` 연결 한도에 맞춘 `build_engine_kwargs(database_url)`(`pool_size=3, max_overflow=2, pool_pre_ping=True, pool_recycle=1800, pool_timeout=30, connect_args={"command_timeout": 30}`) 도입 및 [`backend/app/main.py`](backend/app/main.py), [`backend/scripts/reap_orphaned_accounts.py`](backend/scripts/reap_orphaned_accounts.py) 적용.
+       - [`backend/app/schema_bootstrap.py`](backend/app/schema_bootstrap.py): `pg_advisory_xact_lock` 획득 전 `SET LOCAL lock_timeout = '15s'` 설정 및 `os.environ.get("DATABASE_URL")` 우선 참조 보강.
+       - [`backend/scripts/hard_reset_db.py`](backend/scripts/hard_reset_db.py): 인라인 SQL 주석(`--`)이 포함된 구문도 누락 없이 실행되도록 `_strip_sql_line_comment` 파서 개선 및 `--seed-edge-cases` 사용 시 `--verify-constraints` 자동 활성화.
+       - [`backend/tests/test_v2_reset.py`](backend/tests/test_v2_reset.py): `test_canonical_sql_matches_orm_metadata_1_to_1`(정본 SQL과 ORM 메타데이터의 테이블·컬럼·PK·FK·Unique·Check·Index 이름 1:1 대조), `test_split_sql_statements_handles_inline_comments`, `test_build_engine_kwargs_for_postgresql_and_sqlite` 추가 (**백엔드 테스트 146 passed**).
+  2. **DevOps / CI·CD / 문서 감사 자동화 리팩토링**:
+     - [`.github/workflows/backend.yml`](.github/workflows/backend.yml): `ruff check` 및 `ruff format --check` 대상에 `scripts/` 포함, `runtime-smoke` 잡에서 `/health/ready` 200 검증·엔트리포인트 부트스트랩 로그 검증·PostgreSQL 18 대상 `hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints` 라이브 실행 검증 추가.
+     - [`backend/entrypoint.sh`](backend/entrypoint.sh), [`.claude/commands/naming-audit.md`](.claude/commands/naming-audit.md), [`.claude/commands/verify-deploy.md`](.claude/commands/verify-deploy.md), [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md), [`scripts/prompts/api-endpoint.md`](scripts/prompts/api-endpoint.md)에서 잔존하던 구형 Alembic 참조를 전수 제거하고 신규 `schema_bootstrap` / `hard_reset_db.py` 절차로 갱신.
+  3. **Android (UX/UI · 접근성 · 아키텍처 · 오프라인 동기화 · 룰 8 & 룰 11) 리팩토링**:
+     - [`ThemePreferences.kt`](app/src/main/java/com/gunnys/eundunhealth/data/preferences/ThemePreferences.kt): `markV2LocalResetCompleted()` 실행 시 사용자 테마(`themeKey`)와 Dynamic Color(`dynamicColorKey`) 설정은 보존하도록 개선.
+     - [`SmileSyncWorker.kt`](app/src/main/java/com/gunnys/eundunhealth/data/sync/SmileSyncWorker.kt) & [`SmileTrainingRepositoryImpl.kt`](app/src/main/java/com/gunnys/eundunhealth/data/repository/SmileTrainingRepositoryImpl.kt): `ExistingWorkPolicy.APPEND_OR_REPLACE` 적용(선행 워커 실행 중 추가된 신규 세션 누락 방지), 단일 워커 패스에서 최대 10배치 반복 드레인, `deleteAllSessions()` 시 `cancelUniqueWork` 선행 호출, 기기 시계 오차(미래 타임스탬프) 필터링(`.filter { !it.isAfter(todayKst) }`).
+     - [`SmileSignalEvaluator.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/smile/SmileSignalEvaluator.kt): 슬라이딩 윈도우(75%)가 유지되는 1프레임 노이즈(`BelowThreshold`) 동안 안내 문구(`guideMessage`)와 TalkBack `liveRegion`이 깜빡이지 않도록 고정.
+     - [`SmileTrainingViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingViewModel.kt) & [`MlKitFaceModuleInstaller.kt`](app/src/main/java/com/gunnys/eundunhealth/data/smile/MlKitFaceModuleInstaller.kt): `SmileTrainingSideEffect` 및 `MlKitModuleState` 전 서브타입 `@Immutable` 명시(룰 11), `modelPrepareJob` 취소 가드, 일시정지 구간(`pauseActiveExercise` ~ `beginActiveExercise`)을 실제 운동 시간(`sessionDurationSec`)에서 제외, `onCameraError` 시 `.reportToSentry()` 연동(룰 8), 일시정지된 `READY` 상태에서 뒤로가기 시 종료 확인 다이얼로그 표시.
+     - [`SmileCameraStage.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt) & [`SmileTrainingScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingScreen.kt): `onDispose` 내 `cameraProviderFuture.isDone` 가드로 메인 스레드 블로킹 방지, 어두운 카메라 HUD 진입 시 상태바 밝은 아이콘(`isAppearanceLightStatusBars = false`) 자동 전환 및 복원, `onPermissionRevoked` 시 동적 `shouldShowRequestPermissionRationale` 계산, 다이얼로그 본문 `verticalScroll` 및 버튼 `.heightIn(min = 48.dp+)` 적용(200% 대형 글꼴 대응).
+     - [`WorkoutGuideScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt), [`HomeScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt), [`HomeViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeViewModel.kt): 운동 가이드 완료 화면에서 시스템 뒤로가기 시 `onWorkoutCompleted()` 누락 해결, 홈 상단 `SmileQuickActionChip` `clearAndSetSemantics(role = Role.Button)` 및 연속 달성일 음성 안내 보강, `SmileTrainingContextualCard` 내 중복 `'오늘 하루 닫기'` 버튼 제거, `refreshHealthConnectStatus()` 시 자정 경과(`today`, `isSmileShortcutDismissedToday`) 동시 갱신.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) Azure Database for PostgreSQL 18 업그레이드 · 스키마 전면 리팩토링 및 하드 리셋(Drop & Recreate) 파이프라인 구축 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **Task 0 ~ Task 4 전 구간 구현 및 라이브 검증 완료 ([`docs/plans/2026-10-29-postgresql-schema-hard-reset-plan.md`](docs/plans/2026-10-29-postgresql-schema-hard-reset-plan.md))**:
+  1. **Task 0 — Azure PostgreSQL 18.4 동적 파라미터 튜닝 & 로컬/CI Docker PostgreSQL 18.6 업그레이드**:
+     - Azure CLI(`az postgres flexible-server show/list-skus/parameter set`)로 운영 `healthapp`(`rg-eundunhealth-prod-krc`, Korea Central 최고 지원 버전 **PostgreSQL 18.4 / minorVersion 6**, `io_method=worker`, `wal_compression=zstd`) 점검 및 무중단 동적 서버 파라미터(`isDynamicConfig=true`) 5종 적용 완료:
+       - `idle_in_transaction_session_timeout = 60000` (60s)
+       - `azure.extensions = PG_STAT_STATEMENTS`
+       - `pg_stat_statements.track = top`
+       - `track_io_timing = on`
+       - `log_min_duration_statement = 1000` (1s)
+     - [`backend/docker-compose.yml`](backend/docker-compose.yml): `postgres:16-alpine` → **`postgres:18-alpine@sha256:3b0ef735388b2cb097fc29b8bb421d86d57d0ddbe7aa1fbd6493e06d65028503` (`18.6-alpine3.24`)** 업그레이드 및 PG 18 공식 이미지 볼륨 경로(`pgdata:/var/lib/postgresql`) 적용.
+  2. **Task 1 — Cleanup SQL 스크립트 ([`backend/sql/01_cleanup_drop_all.sql`](backend/sql/01_cleanup_drop_all.sql))**:
+     - Azure PostgreSQL Flexible Server의 `azure_pg_admin` 소유 `public` 스키마 및 관리형 확장(`deptype = 'e'`)을 100% 보존하면서 모든 사용자 뷰·테이블·시퀀스·인덱스·타입을 `DROP ... CASCADE`로 제거하고 잔존 객체 `0건`을 검증하는 SQL 작성.
+  3. **Task 2 — 정규화 DDL ([`backend/sql/02_schema_create_all.sql`](backend/sql/02_schema_create_all.sql)), SQLAlchemy 2.0 ORM 모델 재작성, [`backend/app/schema_bootstrap.py`](backend/app/schema_bootstrap.py), [`backend/scripts/hard_reset_db.py`](backend/scripts/hard_reset_db.py)**:
+     - 8개 도메인 테이블에 PostgreSQL 18 네이티브 `DEFAULT uuidv7()` UUID PK를 일관 적용(`data_reset_audits`는 `reset_id VARCHAR(128)` PK)하고, `user_profile_history(user_id) -> user_profiles(user_id)` 및 `meal_plan_items(plan_id) -> meal_plans(id)`에 `ON DELETE CASCADE` FK 강제, 중복 B-tree 인덱스 전량 제거, 엄격한 도메인 `CHECK` 제약 적용.
+     - [`backend/app/database.py`](backend/app/database.py)(`POSTGRES_NAMING_CONVENTION`, SQLite `PRAGMA foreign_keys=ON`) 및 `backend/app/models/*.py` 8개 파일 전면 재작성.
+     - 컨테이너 기동 시 비파괴적 멱등 부트스트랩(`python -m app.schema_bootstrap`)과 수동 파괴적 하드 리셋 CLI(`python scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS`)를 엄격히 분리.
+  4. **Task 3 — 100건 엣지 케이스 Seeder ([`backend/scripts/seed_edge_cases.py`](backend/scripts/seed_edge_cases.py)) 및 통합 테스트 ([`backend/tests/test_v2_reset.py`](backend/tests/test_v2_reset.py))**:
+     - 정확히 **100건(`15+15+15+10+15+5+10+14+1 = 100 rows`)**의 엣지 케이스 더미 데이터 자동 삽입 및 `SAVEPOINT` 기반 **11개 음수 제약 위반(`ForeignKeyViolation`, `UniqueViolation`, `CheckViolation`) & `ON DELETE CASCADE` 연쇄 삭제**를 PostgreSQL 18.6 라이브 컨테이너와 SQLite 양쪽에서 실증 완료.
+  5. **Task 4 — 레거시 제거 및 프로젝트 문서 동기화**:
+     - `backend/alembic/**`(10개 리비전 포함), `backend/alembic.ini`, `scripts/alembic-autogen.sh`, `backend/scripts/reset_v2_user_data.py` 완전 삭제 및 `alembic` 의존성 제거 후 `requirements*.txt` 해시 락 재컴파일 완료.
+     - [`backend/entrypoint.sh`](backend/entrypoint.sh), [`backend/Dockerfile`](backend/Dockerfile), [`scripts/agents/doc_audit.py`](scripts/agents/doc_audit.py), [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md), [`CLAUDE.md`](CLAUDE.md), [`README.md`](README.md), [`docs/TRD.md`](docs/TRD.md) 최신화 완료.
+
+**다음 할 일 (Next Steps / TODO):**
+- 운영 Azure PostgreSQL 18.4(`healthapp`)에 대해 **1단계(`hard-reset-v2-pg18-verify-20261029 --seed-edge-cases --verify-constraints`: `total_rows: 100`, `verified_constraints_count: 11`)** 및 **2단계(`hard-reset-v2-pg18-prod-20261029`: 프로덕션 클린 9개 테이블 재생성 + 임시 방화벽 즉시 제거 + 운영 API `/health`·`/health/ready` 200 OK 확인)**까지 모두 실측 완료됨.
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
 ## 2026-10-29 (Gemini -> Claude/User) 스마일 트레이닝 v2 전면 리팩토링 · Zero-Legacy Cutover · 4대 접속 경로(IA) 구현 및 프로젝트 문서 최신화 완료
 
 **현재까지의 작업 상태 (Current Status):**

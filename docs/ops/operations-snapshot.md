@@ -30,7 +30,7 @@
 
 > **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.6.1/40**(2026-10-28 `release.yml` run `40647597577`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #211). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
 > 이력: v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=40` — 다음 릴리스 versionCode ≥ 41(룰 13 가드).
-> **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 변경은 alembic 마이그레이션만. 백엔드는 자동 배포로 운영(앱과 독립).
+> **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 정본은 `backend/sql/02_schema_create_all.sql`(`python -m app.schema_bootstrap`). 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
 
 ---
@@ -136,7 +136,7 @@ az containerapp job secret set -n eundunhealth-reaper -g rg-eundunhealth-prod-kr
 |------|---|
 | Job | `eundunhealth-reaper` (RG `rg-eundunhealth-prod-krc`, env `eundunhealth-env`) |
 | 트리거 / 스케줄 | Schedule cron `0 18 * * 0` (UTC) = **매주 월 03:00 KST** |
-| 커맨드 | `python scripts/reap_orphaned_accounts.py` (ENTRYPOINT 우회 → alembic 미실행) |
+| 커맨드 | `python scripts/reap_orphaned_accounts.py` (ENTRYPOINT 우회 → `schema_bootstrap` 미실행) |
 | 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:<SHA>` — **앱과 동일하게 CI 가 매 배포 동기화**(`backend.yml` 의 `Sync reaper Job`, 불변식 검사로 불일치 시 배포 실패). 예전엔 `setup-reaper-job.sh` 수동 실행에만 의존해 7주간 어긋나 있었다 |
 | 리소스 | 0.25 vCPU / 0.5Gi, replica-timeout 1800, retry 1 |
 | Identity | **User-assigned MI** `id-eundunhealth-reaper` — AcrPull(ACR) + Key Vault Secrets User(KV) |
@@ -202,7 +202,9 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | Region | Korea Central |
 | Database | `postgres` |
 | User | `gunny` |
-| Alembic head | **`e8b2c4d6f1a0`** (`cutover_smile_training_to_v2` — `smile_training_sessions` v2 단일 스펙 컷오버 초기화 및 구형 루틴·난이도·기분 점수 컬럼 제거; 직전 `d7f4a2c91b10` `v2_weekly_plan_mode_and_reset_audit` ← `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스 ← `c849579de6c4` `rest_day` server_default 일관화) |
+| Engine Version | **PostgreSQL 18.4** (`version=18`, `minorVersion=6`, Korea Central 최고 지원 버전; 로컬·CI Docker `postgres:18-alpine` `18.6`) |
+| Dynamic Parameters | `idle_in_transaction_session_timeout=60000` (60s), `azure.extensions=PG_STAT_STATEMENTS`, `pg_stat_statements.track=top`, `track_io_timing=on`, `log_min_duration_statement=1000` (1s), `io_method=worker`, `wal_compression=zstd` |
+| Schema Pipeline | **Drop & Recreate 전용 (`02_schema_create_all.sql`)** — 점진적 `ALTER TABLE` / Alembic Up·Down 폐기. 클린업 `backend/sql/01_cleanup_drop_all.sql` + 정규 DDL `backend/sql/02_schema_create_all.sql` (PostgreSQL 18 `DEFAULT uuidv7()`) + 기동 멱등 보장 `python -m app.schema_bootstrap` + 하드 리셋 CLI `backend/scripts/hard_reset_db.py` + 100건 엣지 케이스 시더 `backend/scripts/seed_edge_cases.py` |
 | Firewall | **`allow-azure-services`(`0.0.0.0–0.0.0.0`) 1개뿐** — 이것이 유일하게 동작하는 규칙이다. ↓ 아래 주의 |
 | 관리자 암호 | **2026-09-02 회전됨** (10자 → 32자). 설계·절차: `docs/plans/2026-09-02-db-credential-rotation-{design,plan}.md` → `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수 |
 
@@ -228,7 +230,7 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 > **회전 이력**
 > — **2026-09-02**: 로컬 백업 아카이브 두 벌의 `.env` 에 당시 유효한 자격증명이 평문으로 있었다(sha256 대조 확인). `.env` 삭제 + 암호 회전. git 노출은 0(두 아카이브 모두 저장소 밖, 저장소 이력에 `.env` 커밋 없음). 다운타임 0 — 옛 복제본이 기존 연결 풀로 계속 응답하는 사이 새 복제본이 교체됐다.
 
-### 테이블 목록 (총 9개 테이블 = 앱 데이터 8개 + 감사 1개 + `alembic_version`)
+### 테이블 목록 (총 9개 정규 테이블 = 앱 데이터 8개 + 감사 1개, `alembic_version` 제거됨)
 
 | 테이블 | 비고 |
 |--------|------|
@@ -240,8 +242,8 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | `meal_plans` | AI 주간 식단 메타 (`718783053fcd`, v0.3.0) |
 | `meal_plan_items` | AI 주간 식단 끼니별 항목 (`718783053fcd`, v0.3.0) |
 | `smile_training_sessions` | 스마일 트레이닝 v2 세션 요약 (`a3869f575d6a` 생성 → `e8b2c4d6f1a0` v2 단일 스펙 컷오버) |
-| `data_reset_audits` | v2 전환 1회 데이터 초기화 감사 이력 (`d7f4a2c91b10`) |
-| `alembic_version` | 1 (`e8b2c4d6f1a0` head 마커) |
+
+| `data_reset_audits` | 하드 리셋 및 데이터 초기화 감사 이력 (`reset_id` PK, 2026-10-29 운영 `healthapp` 하드 리셋 `hard-reset-v2-pg18-prod-20261029` 완료) |
 
 > 운영 중 외부 접근이 필요할 때는 임시 firewall rule 추가 후 즉시 제거:
 > ```bash
@@ -438,7 +440,7 @@ GitHub Actions (7개 워크플로):
 - **`scripts/check-agp10-compat.sh`** — AGP 10 호환성 가드 (금지 속성·레거시 플러그인·`kotlinOptions` 차단)
 - **`scripts/verify_containerapp_deployment.py`** — Container App 및 Reaper Job 배포 사후 불변 조건 검증기
 - **`scripts/bump-version.sh`** — 앱 버전 bump (versionName + versionCode +1 + semver/단조 가드 + 문서 동기화, `--dry-run`). 정책: `docs/conventions/versioning.md`
-- **`scripts/alembic-autogen.sh`** — postgres:16-alpine 컨테이너에 autogen 실행 (INC-07 차단)
+- **`backend/scripts/hard_reset_db.py` & `seed_edge_cases.py`** — PostgreSQL 18 Drop & Recreate 하드 리셋 파이프라인 및 100건 엣지 케이스 시더 + 11개 제약 조건 검증기
 - **`scripts/register-azure-credentials.ps1`** — SP 생성/패치 + AcrPush role + GitHub secret 등록. **2026-07-03 이후 = OIDC 장애 시 긴급 폴백·SP 역할 관리 전용** (상시 `AZURE_CREDENTIALS` secret 은 제거됨)
 - **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11)
 

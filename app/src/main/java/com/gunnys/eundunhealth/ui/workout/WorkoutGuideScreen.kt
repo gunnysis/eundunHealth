@@ -115,8 +115,17 @@ fun WorkoutGuideScreen(
         }
     }
 
-    BackHandler(enabled = uiState is WorkoutGuideUiState.InProgress) {
-        showExitDialog = true
+    BackHandler(
+        enabled = uiState is WorkoutGuideUiState.InProgress || uiState is WorkoutGuideUiState.CompletedSummary,
+    ) {
+        when (uiState) {
+            is WorkoutGuideUiState.InProgress -> showExitDialog = true
+            is WorkoutGuideUiState.CompletedSummary -> {
+                onWorkoutCompleted()
+                onBack()
+            }
+            else -> Unit
+        }
     }
 
     if (showExitDialog && uiState is WorkoutGuideUiState.InProgress) {

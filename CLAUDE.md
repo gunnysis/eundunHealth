@@ -54,9 +54,9 @@ docker compose down -v                # 정리
 .venv/Scripts/bandit -r app -ll
 .venv/Scripts/pip-audit -r requirements.txt --strict   # ignore-vuln 사용 금지 (CI와 동일 — backend.yml 주석 참조)
 
-# Alembic 마이그레이션 (현재 head: e8b2c4d6f1a0)
-.venv/Scripts/alembic upgrade head
-.venv/Scripts/alembic revision --autogenerate -m "..."
+# DB 스키마 부트스트랩 및 하드 리셋 파이프라인 (Drop & Recreate 전용, PostgreSQL 18)
+.venv/Scripts/python.exe -m app.schema_bootstrap
+.venv/Scripts/python.exe scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints
 
 # OpenAPI 스펙 동기화 — 라우터/스키마 변경 시 필수
 # backend/openapi.json이 Android openapi-generator(:app:openApiGenerate)의 입력이자
@@ -154,12 +154,12 @@ Package: `app`
 - `app/database.py` — `Base = DeclarativeBase`, `get_db()` UoW 패턴 (Request → `app.state.session_factory`).
 - `app/dependencies.py` — JWKS 기반 JWT 검증 (`PyJWKClient` 24h TTL 캐시, **RS256**, audience = Entra 백엔드 client_id) + `require_supported_android_client`(`Eundun-Client-Version-Code` 헤더 검증). ES256/`authenticated` 는 Supabase 시절 값이다 — 2026-09 Entra 전환으로 바뀌었다.
 - `app/exceptions.py` — `AppException`/`NotFoundException`/`ConflictException`/`BadRequestException`/`ForbiddenException`/`ServiceUnavailableException`/`BadGatewayException`.
-- `app/models/` — SQLAlchemy 2.0 `Mapped[T] = mapped_column(...)` (Postgres UUID). `user_profile.py`(`gender`, `rest_days`, `default_workout_plan_mode` 포함), `weekly_plan.py`(`plan_mode` 포함), `badge.py`, `profile_history.py`, `goal.py`, `meal_plan.py`(`MealPlan`, `MealPlanItem`), `smile_training.py`(`SmileTrainingSession`), `data_reset_audit.py`(`DataResetAudit`).
+- `app/models/` — SQLAlchemy 2.0 `Mapped[T] = mapped_column(...)` (Postgres UUID `uuidv7()`). `user_profile.py`(`gender`, `rest_days`, `default_workout_plan_mode` 포함), `weekly_plan.py`(`plan_mode` 포함), `badge.py`, `user_profile_history.py`, `goal.py`, `meal_plan.py`(`MealPlan`, `MealPlanItem`), `smile_training.py`(`SmileTrainingSession`), `data_reset_audit.py`(`DataResetAudit`).
 - `app/schemas/` — Pydantic `CamelSchema` (alias_generator=to_camel, populate_by_name=True). v0.3에 `goal.py`, `statistics.py`, v0.3.0에 `meal_plan.py`, v0.5.0에 `smile_training.py`, v2에 `app_compatibility.py` 추가.
 - `app/repositories/` — DB 접근 추상화. `profile_history_repo`, `goal_repo` (v0.3), `meal_plan_repo` (v0.3.0), `smile_training_repo` (v0.5.0).
 - `app/services/` — 비즈니스 로직. `account_service`가 Microsoft Graph 로 Entra 사용자 삭제(204) + `deletedItems` 즉시 파기. `statistics_service` (v0.2), `goal_service` (v0.3), `meal_plan_service` + `meal_ai_client` (v0.3.0, Azure AI Foundry `DeepSeek-V3.2`), `smile_training_service` (v0.5.0).
 - `app/routers/` — 얇은 라우터, Service 위임. v0.3 `goal.py`, v0.3.0 `meal_plan.py` (`/meals` prefix), v2 `smile_training.py` (`/v2/smile-training` prefix), v2 `app_compatibility.py` (`/app-compatibility`) 및 `weekly_plan.py` (`/v2/weekly-plan`).
-- **alembic/** — async 엔진 연동. **head: `e8b2c4d6f1a0` (`cutover_smile_training_to_v2`; 직전 `d7f4a2c91b10` `v2_weekly_plan_mode_and_reset_audit` ← `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)**.
+- **`sql/` & `app/schema_bootstrap.py`** — PostgreSQL 18 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql` → `02_schema_create_all.sql`, `DEFAULT uuidv7()`), 컨테이너 기동 멱등 부트스트랩(`python -m app.schema_bootstrap`), 하드 리셋 CLI(`scripts/hard_reset_db.py`) 및 100건 엣지 케이스 시더(`scripts/seed_edge_cases.py`). 점진적 `ALTER TABLE`/Alembic 은 폐기됨.
 
 **API Endpoints (총 27 = JWT 필요 22 + 공개 5. 공개 라우트 `/health`·`/health/ready`·`/app-compatibility`·`/privacy`·`/account-deletion`. 뒤 둘은 `docs/store/*.md` 를 `app/legal/` 로 동기화(sync-legal-docs.sh)해 md→HTML 렌더 — Play 등록 URL이며 `include_in_schema=False` 라 openapi.json[Android 생성기 입력]에서 제외된다[죽은 클라이언트 메서드 방지]. `/.well-known/assetlinks.json`·`/auth/confirm` 은 2026-09 Entra 전환으로 **삭제**됐다 — 검증을 브라우저 안에서 처리해 App Links 경로가 불필요):**
 ```
@@ -214,19 +214,19 @@ DELETE /account
 - pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
-- **Python 3.14**, FastAPI 0.161.0, Starlette 1.9.0, Uvicorn 0.54.0, SQLAlchemy 2.1.6 async + asyncpg 0.32.0, Alembic 1.20.1
+- **Python 3.14**, FastAPI 0.161.0, Starlette 1.9.0, Uvicorn 0.54.0, SQLAlchemy 2.1.6 async + asyncpg 0.32.0 (PostgreSQL 18 네이티브 `DEFAULT uuidv7()` + Drop & Recreate 전용 스키마 파이프라인)
 - **API version `1.0.0`** — `backend/app/__init__.py:__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
 - **pydantic-settings 2.16.1**, **PyJWT[crypto] 2.15.1** (JWKS), **httpx 0.28.1**, **markdown 3.11.2**, **openai 3.37.0**
 - **Sentry SDK 2.73.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy 2.4.0 strict, ruff 0.17.2 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.1.1 — 140/140 PASS**. `requirements.in`/`requirements-dev.in`을 원본으로 하고 생성된 hash lock을 CI/Docker에서 `--require-hashes`로 설치한다.
-- Alembic head `e8b2c4d6f1a0` (`cutover_smile_training_to_v2`; 직전 `d7f4a2c91b10` `v2_weekly_plan_mode_and_reset_audit` ← `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스)
+- mypy 2.4.0 strict, ruff 0.17.2 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.1.1 — 143/143 PASS**. `requirements.in`/`requirements-dev.in`을 원본으로 하고 생성된 hash lock을 CI/Docker에서 `--require-hashes`로 설치한다.
+- 정규 DB 스키마 SSoT: `backend/sql/02_schema_create_all.sql` (`01_cleanup_drop_all.sql` + `app/schema_bootstrap.py` + `scripts/hard_reset_db.py` + `scripts/seed_edge_cases.py` 100건 시더·11개 제약 조건 검증, 점진적 `ALTER TABLE`/Alembic 폐기)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure
 - **Container App** `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포. Active revision: `eundunhealth-api--0000065`, image `a0b6701`)
 - **Key Vault** `kv-eundunhealth` (RG `rg-eundunhealth-prod-krc`, Standard, **Azure RBAC**, 90d soft-delete + purge protection) — 백엔드 secret **8개**(KV 참조, 직접값 아님: `database-url`, `entra-tenant-id`, `entra-subdomain`, `entra-backend-client-id`, `entra-backend-client-secret`, `sentry-dsn-backend`, `deepseek-endpoint`, `deepseek-key`). Container App **system MI** = Secrets User(KV) + AcrPull(ACR), CI SP = Secrets User(KV). audit → Log Analytics `workspace-appsDOlM` (`kv-audit` 진단설정 — **2026-09-02 에 실제로 생성**했다)
 - **ACR** `eundunhealthacr` (Basic SKU — [retention 정책은 Premium 전용](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus). 정기 정리는 **`acr purge` 스케줄 ACR Task 2개**가 담당: `purge-eundunhealth-api`[일 01:00 UTC, 태그 `--ago 30d --keep 10`] + `purge-eundunhealth-api-untagged`[01:30, dangling 스윕]. 2026-09-01 도입 — 태그 56→14·매니페스트 68→13·용량 2.21→0.60 GiB. `redeploy.sh` 의 timestamp 5개 보존은 로컬 수동 경로 전용)
-- **Azure PostgreSQL** Flexible Server `healthapp` (B1ms, 32GB, Korea Central). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
+- **Azure PostgreSQL** Flexible Server `healthapp` (PostgreSQL 18.4, B1ms, 32GB, Korea Central; 로컬/CI Docker `postgres:18-alpine` `18.6`). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
 - **Microsoft Entra External ID** 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미지원). 상세: `docs/ops/operations-snapshot.md` §5-A
 - **Azure AI Foundry** (`eundunhealth-ai-foundry`, East US 2) — `DeepSeek-V3.2` GlobalStandard MaaS 배포 (AI 식단 생성용)
 - **Sentry**: Android `eundunhealth`, Backend `eundunhealth-backend` (각 별도 project)
@@ -266,12 +266,12 @@ bash scripts/preflight-release.sh      # 모든 게이트 + AAB + APK + Sentry �
 ```
 **Sentry 매핑 게이트**: `-PsentryRelease=true`(preflight 가 자동 설정) 가 있어야만 ProGuard 매핑 UUID 생성 + Sentry 업로드. 없으면 로컬 release 빌드가 결정적 + 업로드 없음 (build.gradle.kts `sentry` 블록). **출시 산출물은 반드시 preflight 또는 플래그 경로로 빌드** — 안 그러면 production crash deobfuscation 불가.
 
-### 룰 3 — Alembic autogenerate은 PostgreSQL 컨테이너 사용 (INC-07)
+### 룰 3 — DB 스키마는 PostgreSQL 18 컨테이너 위에서 Drop & Recreate + 1:1 정합성 검증 (INC-07 계승)
 `pytest`가 띄우는 SQLite로 autogenerate를 돌리면 UUID↔NUMERIC 거짓 양성이 마이그레이션 파일에 박혀 프로덕션에서 cast 에러 발생. **항상**:
 ```bash
-bash scripts/alembic-autogen.sh "add user_settings table"
+python scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints
 ```
-이 스크립트가 `docker compose up -d db`로 PG 16을 띄우고 그 위에 autogen을 수행. 끝나면 컨테이너 자동 정리(`-k`로 유지 가능).
+`docker compose up -d db`로 PostgreSQL 18을 띄우고 `01_cleanup_drop_all.sql` → `02_schema_create_all.sql` → 100건 시더·11개 제약 조건 검증을 수행하며, `pytest tests/test_v2_reset.py`가 SQL DDL과 SQLAlchemy `Base.metadata`의 1:1 정합성을 검증한다.
 
 ### 룰 4 — `lifespan` 안에서 `app.add_middleware()` 호출 금지 (INC-03)
 starlette 0.49+ 부터 lifespan startup에서 middleware 추가하면 `RuntimeError: Cannot add middleware after application started`. CORS 등은 **모듈 레벨**에서 등록. `backend.yml`의 `runtime-smoke` job이 docker compose로 이 회귀를 PR 단계에서 차단.
@@ -290,12 +290,12 @@ Auth 제공자 또는 그 테넌트/프로젝트를 교체하면 user_id namespa
 세 가지 중 하나라도 빠지면 main 머지 후 첫 deploy job에서 `ContainerAppSecretRefNotFound`로 실패한다. PR template Backend 섹션 체크리스트 + `monitoring-and-cost.md §6.6` 참조.
 
 ### 룰 7 — 스키마 변경 PR 은 같은 PR 에서 entrypoint 검증 포함 (INC-2026-05-27-01)
-`backend/alembic/versions/` 에 새 파일을 추가하면 반드시 같은 PR 에서:
-1. `bash scripts/alembic-autogen.sh "..."` 로 PG 컨테이너 위에서 작성 (룰 3 — SQLite false positive 방지). 수동 작성도 동일하게 `docker compose up -d db` 위에서 검증.
-2. 로컬 `cd backend && docker compose up -d --build` → `docker compose logs api` 에 `[entrypoint] ... alembic upgrade head` 라인 + `/health` 200 둘 다 확인. 같은 PR 의 `backend.yml runtime-smoke` job 이 CI 가드.
-3. `docs/ops/operations-snapshot.md` Alembic head 값을 새 revision hash 로 교체.
+`backend/sql/02_schema_create_all.sql` 또는 `backend/app/models/` 를 수정하면 반드시 같은 PR 에서:
+1. `pytest tests/test_v2_reset.py` 로 SQL DDL ↔ ORM 메타데이터 1:1 정합성 검증 (룰 3). `docker compose up -d db` 위에서 `hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints` 검증.
+2. 로컬 `cd backend && docker compose up -d --build` → `docker compose logs api` 에 `[entrypoint] ... Ensuring database schema exists (python -m app.schema_bootstrap)` 라인 + `/health` 및 `/health/ready` 200 확인. 같은 PR 의 `backend.yml runtime-smoke` job 이 CI 가드.
+3. `docs/ops/operations-snapshot.md` §4 테이블/스키마 내역 동기화.
 
-자동 적용 경로 (수동 작업 0): main 머지 → `backend.yml` deploy job → 새 image 의 `backend/entrypoint.sh` 가 `alembic upgrade head` 실행 → Container Apps startup probe (`/health`) 통과 시 traffic 전환. Alembic `alembic_version` row lock 이 다중 인스턴스 race 안전성 보장.
+자동 적용 경로 (수동 작업 0): main 머지 → `backend.yml` deploy job → 새 image 의 `backend/entrypoint.sh` 가 `python -m app.schema_bootstrap` 실행(`pg_advisory_xact_lock` 직렬화) → Container Apps startup probe (`/health`) 통과 시 traffic 전환.
 
 **예외**: 5분 이상 데이터 백필 마이그레이션은 Container Apps startup probe timeout 으로 entrypoint 가 실패할 수 있음 → Container Apps Jobs 패턴으로 분리 검토 (`docs/plans/logs/backend.md` 의 schema-drift entry §9 잔여 리스크).
 
@@ -478,7 +478,7 @@ versionCode 는 저장소 로컬 +1(`bump-version.sh`) 만으로는 안전하지
 - `scripts/update-upload-ledger.sh` — Play 업로드 성공 직후 원장 PR용 변경 생성 (`release.yml` 이 호출). `LAST_UPLOADED_VERSION_CODE` 치환 + 업로드 이력 표 행 삽입. 수동 업로드 폴백도 별도 PR로 반영한다.
 - `scripts/verify_containerapp_deployment.py` — Container App 배포 사후 불변 조건 검증(`--expected-image`, `--check-job`, `--expected-job-image`: active revision running/traffic 100%, min/max replicas `1..3`, 3종 probe + 공개 라우트 5종(`/health`, `/health/ready`, `/app-compatibility`, `/privacy`, `/account-deletion`), 8개 KV secret + 4개 plain env(`MEAL_AI_ENABLED`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE`, `ENVIRONMENT`, `CORS_ORIGINS`), Reaper Job 이미지 태그 동기화). `backend.yml` 및 `backend-rollback.yml` 에 배선.
 - `scripts/verify-exercise-translations.ps1` — ExerciseDB 추천 운동 46종 한국어 번역 JSON(`app/src/main/assets/korean_exercises.json`) 스키마·지문 무결성 검증 스크립트.
-- `scripts/alembic-autogen.sh` — postgres:16-alpine 컨테이너 기반 autogenerate (INC-07 방지)
+- `backend/scripts/hard_reset_db.py` & `backend/scripts/seed_edge_cases.py` — PostgreSQL 18 Drop & Recreate 하드 리셋 파이프라인 및 100건 엣지 케이스 시더·11개 제약 조건 검증기 (`backend/sql/01_cleanup_drop_all.sql` → `02_schema_create_all.sql`)
 - `scripts/sync-openapi.sh` — FastAPI 스펙을 `backend/openapi.json`으로 추출. 라우터/스키마 변경 시 필수 실행 + 같은 PR에 커밋. backend.yml의 drift detection step이 미커밋을 fast-fail로 차단.
 - `scripts/sync-legal-docs.sh` — 법적 고지 SSoT `docs/store/*.md` → `backend/app/legal/` 동기화 (Docker 빌드 컨텍스트 안으로). 백엔드가 이 사본을 md→HTML 렌더해 `/privacy`·`/account-deletion` 서빙 (Play 등록 URL). 정책 변경 시 SSoT 편집 → 스크립트 실행 → 같은 커밋 포함. drift 가드: `backend/tests/test_legal.py`.
 - `scripts/gen-plans-index.sh` (+ `gen_plans_index.py`) — `docs/plans/*.md` frontmatter 기반 `docs/plans/README.md` 자동 생성. **root-only scan** (`glob`, not `rglob`) — 하위 디렉토리(`_staging/`, `logs/` 등) 무시. status: `proposed`/`approved`/`in-progress`/`holding`/`deferred`/`shipped`/`superseded`/`abandoned`. active 섹션은 status 그룹별 하위 섹션 (진행 중/대기/보류) 렌더링. `docs/plans/_staging/` 은 gitignored scratch 폴더. pre-commit hook 자동 호출 + 별도 CI workflow (`docs-plans-index.yml`) 가 drift 차단. **D5**: missing frontmatter 는 silent skip (점진 도입 + 다중 PR coordination 안전), malformed 만 fail.

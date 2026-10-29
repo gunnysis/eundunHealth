@@ -232,28 +232,10 @@ class SmileSignalEvaluator(
             )
         }
 
-        // 다른 얼굴 trackingId 로 바뀌면 진행 중이던 홀드 게이지를 초기화
-        if (signal.trackingId != null && lastTrackingId != null && signal.trackingId != lastTrackingId) {
-            clearActiveHold()
-        }
-        if (signal.trackingId != null) {
-            lastTrackingId = signal.trackingId
-        }
-
-        val smoothedSmile = signal.smileProbability?.let { raw ->
-            val clamped = raw.coerceIn(0f, 1f)
-            val next = smoothedSmileProbability?.let { prev ->
-                emaAlpha * clamped + (1f - emaAlpha) * prev
-            } ?: clamped
-            smoothedSmileProbability = next
-            next
-        }
-
+        updateTrackingId(signal.trackingId)
+        val smoothedSmile = computeSmoothedSmile(signal.smileProbability)
         val verdict = rule.evaluate(signal, currentlySmiling, smoothedSmile)
-        val deltaMs = lastFrameTimestampMs?.let { prev ->
-            (signal.timestampElapsedMs - prev).coerceIn(0L, MAX_FRAME_DELTA_MS)
-        } ?: 0L
-        lastFrameTimestampMs = signal.timestampElapsedMs
+        val deltaMs = computeFrameDeltaMs(signal.timestampElapsedMs)
 
         return when (verdict) {
             is FrameVerdict.Unmeasurable -> {
@@ -264,47 +246,97 @@ class SmileSignalEvaluator(
                     justCompletedRep = false,
                 )
             }
-            is FrameVerdict.BelowThreshold -> {
-                recordMeasurableVerdict(signal.timestampElapsedMs, isSatisfied = false)
-                if (!isWindowSatisfied()) {
-                    currentlySmiling = false
-                    accumulatedHoldMs = (accumulatedHoldMs - deltaMs * DECAY_MULTIPLIER).coerceAtLeast(0L)
-                }
-                buildSnapshot(
-                    isFaceAligned = true,
-                    guideMessage = verdict.userGuide,
-                    justCompletedRep = false,
-                )
-            }
-            FrameVerdict.Satisfied -> {
-                recordMeasurableVerdict(signal.timestampElapsedMs, isSatisfied = true)
-                currentlySmiling = true
-                if (isWindowSatisfied()) {
-                    accumulatedHoldMs += deltaMs
-                }
-                if (accumulatedHoldMs >= rule.targetHoldDurationMs) {
-                    completedReps += 1
-                    clearActiveHold()
-                    val finishedAll = completedReps >= targetReps
-                    val msg = if (finishedAll) {
-                        "모든 연습을 마쳤어요!"
-                    } else {
-                        "좋아요! 잠시 숨을 고르고 다음 반복을 이어가요"
-                    }
-                    buildSnapshot(
-                        isFaceAligned = true,
-                        guideMessage = msg,
-                        justCompletedRep = true,
-                    )
-                } else {
-                    buildSnapshot(
-                        isFaceAligned = true,
-                        guideMessage = "좋아요, 미소를 그대로 유지해보세요",
-                        justCompletedRep = false,
-                    )
-                }
-            }
+            is FrameVerdict.BelowThreshold -> handleBelowThresholdVerdict(
+                verdict = verdict,
+                timestampElapsedMs = signal.timestampElapsedMs,
+                deltaMs = deltaMs,
+            )
+            FrameVerdict.Satisfied -> handleSatisfiedVerdict(
+                timestampElapsedMs = signal.timestampElapsedMs,
+                deltaMs = deltaMs,
+            )
         }
+    }
+
+    private fun updateTrackingId(trackingId: Int?) {
+        // 다른 얼굴 trackingId 로 바뀌면 진행 중이던 홀드 게이지를 초기화
+        if (trackingId != null && lastTrackingId != null && trackingId != lastTrackingId) {
+            clearActiveHold()
+        }
+        if (trackingId != null) {
+            lastTrackingId = trackingId
+        }
+    }
+
+    private fun computeSmoothedSmile(rawProbability: Float?): Float? = rawProbability?.let { raw ->
+        val clamped = raw.coerceIn(0f, 1f)
+        val next = smoothedSmileProbability?.let { prev ->
+            emaAlpha * clamped + (1f - emaAlpha) * prev
+        } ?: clamped
+        smoothedSmileProbability = next
+        next
+    }
+
+    private fun computeFrameDeltaMs(timestampElapsedMs: Long): Long {
+        val deltaMs = lastFrameTimestampMs?.let { prev ->
+            (timestampElapsedMs - prev).coerceIn(0L, MAX_FRAME_DELTA_MS)
+        } ?: 0L
+        lastFrameTimestampMs = timestampElapsedMs
+        return deltaMs
+    }
+
+    private fun handleBelowThresholdVerdict(
+        verdict: FrameVerdict.BelowThreshold,
+        timestampElapsedMs: Long,
+        deltaMs: Long,
+    ): SmileEvaluatorSnapshot {
+        recordMeasurableVerdict(timestampElapsedMs, isSatisfied = false)
+        val windowStillSatisfied = isWindowSatisfied()
+        if (!windowStillSatisfied) {
+            currentlySmiling = false
+            accumulatedHoldMs = (accumulatedHoldMs - deltaMs * DECAY_MULTIPLIER).coerceAtLeast(0L)
+        }
+        val guideMessage = if (windowStillSatisfied && currentlySmiling) {
+            "좋아요, 미소를 그대로 유지해보세요"
+        } else {
+            verdict.userGuide
+        }
+        return buildSnapshot(
+            isFaceAligned = true,
+            guideMessage = guideMessage,
+            justCompletedRep = false,
+        )
+    }
+
+    private fun handleSatisfiedVerdict(
+        timestampElapsedMs: Long,
+        deltaMs: Long,
+    ): SmileEvaluatorSnapshot {
+        recordMeasurableVerdict(timestampElapsedMs, isSatisfied = true)
+        currentlySmiling = true
+        if (isWindowSatisfied()) {
+            accumulatedHoldMs += deltaMs
+        }
+        if (accumulatedHoldMs >= rule.targetHoldDurationMs) {
+            completedReps += 1
+            clearActiveHold()
+            val finishedAll = completedReps >= targetReps
+            val msg = if (finishedAll) {
+                "모든 연습을 마쳤어요!"
+            } else {
+                "좋아요! 잠시 숨을 고르고 다음 반복을 이어가요"
+            }
+            return buildSnapshot(
+                isFaceAligned = true,
+                guideMessage = msg,
+                justCompletedRep = true,
+            )
+        }
+        return buildSnapshot(
+            isFaceAligned = true,
+            guideMessage = "좋아요, 미소를 그대로 유지해보세요",
+            justCompletedRep = false,
+        )
     }
 
     private fun recordMeasurableVerdict(timestampMs: Long, isSatisfied: Boolean) {

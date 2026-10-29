@@ -96,7 +96,11 @@ class ThemePreferences @Inject constructor(
     @Suppress("RedundantSuspendModifier")
     suspend fun markV2LocalResetCompleted() {
         context.dataStore.edit { prefs ->
+            val savedTheme = prefs[themeKey]
+            val savedDynamicColor = prefs[dynamicColorKey]
             prefs.clear()
+            savedTheme?.let { prefs[themeKey] = it }
+            savedDynamicColor?.let { prefs[dynamicColorKey] = it }
             prefs[v2ResetCompletedKey] = true
         }
     }

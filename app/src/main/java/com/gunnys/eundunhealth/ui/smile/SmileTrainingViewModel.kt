@@ -51,14 +51,19 @@ enum class SmileSessionPhase {
 
 @Immutable
 sealed interface SmileTrainingSideEffect {
+    @Immutable
     data object RequestCameraPermission : SmileTrainingSideEffect
 
+    @Immutable
     data object OpenAppSettings : SmileTrainingSideEffect
 
+    @Immutable
     data object TriggerRepSuccessHaptic : SmileTrainingSideEffect
 
+    @Immutable
     data class AnnounceAccessibility(val message: String) : SmileTrainingSideEffect
 
+    @Immutable
     data class ShowSnackbar(val message: String) : SmileTrainingSideEffect
 }
 
@@ -101,8 +106,11 @@ class SmileTrainingViewModel @Inject constructor(
     val sideEffect = _sideEffect.receiveAsFlow()
 
     private var evaluator: SmileSignalEvaluator = SmileSignalEvaluator()
-    private var activeSessionStartedMs: Long? = null
+    private var accumulatedActiveMs: Long = 0L
+    private var activeSegmentStartedMs: Long? = null
+    private var lastActiveFrameMs: Long? = null
     private var repTransitionJob: Job? = null
+    private var modelPrepareJob: Job? = null
     private var hasSavedCurrentSession: Boolean = false
 
     init {
@@ -146,10 +154,14 @@ class SmileTrainingViewModel @Inject constructor(
     fun onCameraPermissionResult(isGranted: Boolean, shouldShowRationale: Boolean) {
         if (isGranted) {
             prepareModelAndProceed()
-        } else if (shouldShowRationale) {
-            _uiState.update { it.copy(phase = SmileSessionPhase.PERMISSION_RATIONALE) }
         } else {
-            _uiState.update { it.copy(phase = SmileSessionPhase.PERMISSION_BLOCKED) }
+            modelPrepareJob?.cancel()
+            repTransitionJob?.cancel()
+            if (shouldShowRationale) {
+                _uiState.update { it.copy(phase = SmileSessionPhase.PERMISSION_RATIONALE) }
+            } else {
+                _uiState.update { it.copy(phase = SmileSessionPhase.PERMISSION_BLOCKED) }
+            }
         }
     }
 
@@ -159,7 +171,8 @@ class SmileTrainingViewModel @Inject constructor(
 
     @Suppress("TooGenericExceptionCaught")
     fun prepareModelAndProceed() {
-        viewModelScope.launch {
+        modelPrepareJob?.cancel()
+        modelPrepareJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     phase = SmileSessionPhase.MODEL_PREPARING,
@@ -170,7 +183,9 @@ class SmileTrainingViewModel @Inject constructor(
             }
             val result = try {
                 moduleManager.ensureModuleAvailable { installing ->
-                    _uiState.update { it.copy(modelDownloadPercent = installing.progressPercent) }
+                    if (_uiState.value.phase == SmileSessionPhase.MODEL_PREPARING) {
+                        _uiState.update { it.copy(modelDownloadPercent = installing.progressPercent) }
+                    }
                 }
             } catch (ce: CancellationException) {
                 throw ce
@@ -179,6 +194,9 @@ class SmileTrainingViewModel @Inject constructor(
                 MlKitModuleState.Unavailable(
                     "얼굴 인식 모듈을 준비하지 못했습니다. 네트워크와 Google Play 서비스를 확인한 뒤 다시 시도해주세요.",
                 )
+            }
+            if (_uiState.value.phase != SmileSessionPhase.MODEL_PREPARING) {
+                return@launch
             }
             when (result) {
                 MlKitModuleState.Available -> moveToReadyPhase()
@@ -204,7 +222,9 @@ class SmileTrainingViewModel @Inject constructor(
 
     private fun moveToReadyPhase() {
         evaluator = SmileSignalEvaluator(targetReps = _uiState.value.targetReps)
-        activeSessionStartedMs = null
+        accumulatedActiveMs = 0L
+        activeSegmentStartedMs = null
+        lastActiveFrameMs = null
         hasSavedCurrentSession = false
         _uiState.update {
             it.copy(
@@ -227,14 +247,15 @@ class SmileTrainingViewModel @Inject constructor(
         val isResumingPausedSession = state.isPaused || state.currentRep > 0
         if (!isResumingPausedSession) {
             evaluator = SmileSignalEvaluator(targetReps = state.targetReps)
-            activeSessionStartedMs = nowElapsedMs
+            accumulatedActiveMs = 0L
+            activeSegmentStartedMs = nowElapsedMs
+            lastActiveFrameMs = nowElapsedMs
             hasSavedCurrentSession = false
         } else {
             evaluator.clearActiveHold()
             evaluator.resetReadyAlignment()
-            if (activeSessionStartedMs == null && nowElapsedMs != null) {
-                activeSessionStartedMs = nowElapsedMs
-            }
+            activeSegmentStartedMs = nowElapsedMs
+            lastActiveFrameMs = nowElapsedMs
         }
         _uiState.update {
             it.copy(
@@ -266,6 +287,13 @@ class SmileTrainingViewModel @Inject constructor(
         if (currentPhase != SmileSessionPhase.ACTIVE && currentPhase != SmileSessionPhase.REP_SUCCESS) {
             return
         }
+        val segStart = activeSegmentStartedMs
+        val segEnd = lastActiveFrameMs
+        if (segStart != null && segEnd != null && segEnd >= segStart) {
+            accumulatedActiveMs += (segEnd - segStart)
+        }
+        activeSegmentStartedMs = null
+        lastActiveFrameMs = null
         repTransitionJob?.cancel()
         evaluator.clearActiveHold()
         evaluator.resetReadyAlignment()
@@ -291,9 +319,12 @@ class SmileTrainingViewModel @Inject constructor(
     }
 
     fun onCameraError(message: String) {
+        modelPrepareJob?.cancel()
         repTransitionJob?.cancel()
         evaluator.reset()
-        activeSessionStartedMs = null
+        accumulatedActiveMs = 0L
+        activeSegmentStartedMs = null
+        lastActiveFrameMs = null
         hasSavedCurrentSession = false
         Sentry.addBreadcrumb(
             Breadcrumb().apply {
@@ -301,6 +332,12 @@ class SmileTrainingViewModel @Inject constructor(
                 level = SentryLevel.WARNING
                 this.message = message
             },
+        )
+        val cause = IllegalStateException(message)
+        cause.toReportedAppError()
+        val appErr = AppError.Unknown(
+            throwable = cause,
+            userMessage = message,
         )
         _uiState.update { current ->
             current.copy(
@@ -314,7 +351,7 @@ class SmileTrainingViewModel @Inject constructor(
                 isInSmileState = false,
                 isFaceAligned = false,
                 showExitConfirmDialog = false,
-                error = AppError.Unknown(throwable = IllegalStateException(message), userMessage = message),
+                error = appErr,
             )
         }
     }
@@ -350,10 +387,11 @@ class SmileTrainingViewModel @Inject constructor(
     }
 
     private fun handleActiveFrame(signal: FrameSignal) {
-        val currentStart = activeSessionStartedMs
+        val currentStart = activeSegmentStartedMs
         if (currentStart == null || signal.timestampElapsedMs < currentStart) {
-            activeSessionStartedMs = signal.timestampElapsedMs
+            activeSegmentStartedMs = signal.timestampElapsedMs
         }
+        lastActiveFrameMs = signal.timestampElapsedMs
 
         val snapshot = evaluator.onFrame(signal)
         _uiState.update { current ->
@@ -371,9 +409,15 @@ class SmileTrainingViewModel @Inject constructor(
         if (snapshot.justCompletedRep) {
             _sideEffect.trySend(SmileTrainingSideEffect.TriggerRepSuccessHaptic)
             if (snapshot.isSessionCompleted) {
-                val elapsedSec = activeSessionStartedMs?.let { started ->
-                    ((signal.timestampElapsedMs - started).coerceAtLeast(1000L) / 1000.0).roundToInt()
-                } ?: ((snapshot.targetHoldDurationMs * snapshot.targetReps) / 1000L).toInt().coerceAtLeast(1)
+                val currentSegmentMs = activeSegmentStartedMs?.let { started ->
+                    (signal.timestampElapsedMs - started).coerceAtLeast(0L)
+                } ?: 0L
+                val totalActiveMs = accumulatedActiveMs + currentSegmentMs
+                val elapsedSec = if (totalActiveMs > 0L) {
+                    (totalActiveMs.coerceAtLeast(1000L) / 1000.0).roundToInt()
+                } else {
+                    ((snapshot.targetHoldDurationMs * snapshot.targetReps) / 1000L).toInt().coerceAtLeast(1)
+                }
 
                 val safeDurationSec = elapsedSec.coerceAtLeast(1)
                 val safeCompletedReps = snapshot.currentRep.coerceAtLeast(1)
@@ -503,15 +547,22 @@ class SmileTrainingViewModel @Inject constructor(
     }
 
     fun onBackOrExitRequested(): Boolean {
-        val currentPhase = _uiState.value.phase
-        return when (currentPhase) {
+        val state = _uiState.value
+        return when (state.phase) {
             SmileSessionPhase.ACTIVE,
             SmileSessionPhase.REP_SUCCESS,
             -> {
                 _uiState.update { it.copy(showExitConfirmDialog = true) }
                 false
             }
-            SmileSessionPhase.READY,
+            SmileSessionPhase.READY -> {
+                if (state.isPaused || state.currentRep > 0) {
+                    _uiState.update { it.copy(showExitConfirmDialog = true) }
+                } else {
+                    resetToIntro()
+                }
+                false
+            }
             SmileSessionPhase.PERMISSION_RATIONALE,
             SmileSessionPhase.PERMISSION_BLOCKED,
             SmileSessionPhase.MODEL_PREPARING,
@@ -530,14 +581,18 @@ class SmileTrainingViewModel @Inject constructor(
     }
 
     fun confirmAbortActiveSession() {
+        modelPrepareJob?.cancel()
         repTransitionJob?.cancel()
         resetToIntro()
     }
 
     fun resetToIntro() {
+        modelPrepareJob?.cancel()
         repTransitionJob?.cancel()
         evaluator.reset()
-        activeSessionStartedMs = null
+        accumulatedActiveMs = 0L
+        activeSegmentStartedMs = null
+        lastActiveFrameMs = null
         hasSavedCurrentSession = false
         _uiState.update { current ->
             current.copy(
