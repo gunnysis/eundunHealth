@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - id: filter
-        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         with:
           filters: |
             android:
@@ -57,7 +57,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
       - name: Create stub local.properties
         run: |
           cat > local.properties <<'EOF'
