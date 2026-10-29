@@ -114,6 +114,11 @@ private fun MainContent(
                     homeViewModel.loadPlan()
                 }
             }
+            LaunchedEffect(healthPermissionsRevision) {
+                if (healthPermissionsRevision > 0) {
+                    homeViewModel.refreshHealthConnectStatus()
+                }
+            }
             HomeScreen(
                 onExerciseClick = { exerciseId ->
                     navController.navigate(Screen.WorkoutDetail.createRoute(exerciseId))
@@ -191,6 +196,7 @@ private fun MainContent(
                         ?.savedStateHandle
                         ?.set(KEY_REFRESH_HOME, true)
                 },
+                onNavigateToSmileTraining = onNavigateToSmileTraining,
             )
         }
         composable(Screen.Badges.route) { BadgeScreen(onBack = { navController.popBackStack() }) }

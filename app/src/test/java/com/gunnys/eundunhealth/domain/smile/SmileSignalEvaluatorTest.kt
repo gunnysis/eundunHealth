@@ -1,7 +1,5 @@
 package com.gunnys.eundunhealth.domain.smile
 
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -11,7 +9,7 @@ class SmileSignalEvaluatorTest {
 
     @Test
     fun `unmeasurable reasons are prioritized in order of face count, size, yaw, roll`() {
-        val rule = SmileRoutineRule(SmileRoutineType.GENTLE, SmileDifficultyLevel.STANDARD)
+        val rule = SmileStandardRule()
 
         val noFace = rule.evaluate(signal(faceCount = 0), currentlySmiling = false)
         assertEquals(FrameVerdict.Unmeasurable(UnmeasurableReason.NO_FACE), noFace)
@@ -31,21 +29,21 @@ class SmileSignalEvaluatorTest {
 
     @Test
     fun `hysteresis keeps smile state between exit and enter thresholds`() {
-        val rule = SmileRoutineRule(SmileRoutineType.GENTLE, SmileDifficultyLevel.STANDARD)
-        // GENTLE + STANDARD: enter=0.60, exit=0.50
-        val belowEnterWhenIdle = rule.evaluate(signal(smile = 0.55f), currentlySmiling = false)
+        val rule = SmileStandardRule()
+        // v2 standard: enter=0.55, exit=0.45
+        val belowEnterWhenIdle = rule.evaluate(signal(smile = 0.50f), currentlySmiling = false)
         assertTrue(belowEnterWhenIdle is FrameVerdict.BelowThreshold)
 
-        val keptWhenAlreadySmiling = rule.evaluate(signal(smile = 0.55f), currentlySmiling = true)
+        val keptWhenAlreadySmiling = rule.evaluate(signal(smile = 0.50f), currentlySmiling = true)
         assertEquals(FrameVerdict.Satisfied, keptWhenAlreadySmiling)
 
-        val droppedBelowExit = rule.evaluate(signal(smile = 0.45f), currentlySmiling = true)
+        val droppedBelowExit = rule.evaluate(signal(smile = 0.40f), currentlySmiling = true)
         assertTrue(droppedBelowExit is FrameVerdict.BelowThreshold)
     }
 
     @Test
-    fun `SMILE_AND_FRONT routine requires both eyes open`() {
-        val rule = SmileRoutineRule(SmileRoutineType.SMILE_AND_FRONT, SmileDifficultyLevel.STANDARD)
+    fun `standard rule requires both eyes open`() {
+        val rule = SmileStandardRule()
 
         val eyesNull = rule.evaluate(
             signal(smile = 0.80f, leftEye = null, rightEye = 0.90f),
@@ -54,7 +52,7 @@ class SmileSignalEvaluatorTest {
         assertEquals(FrameVerdict.Unmeasurable(UnmeasurableReason.EYES_NOT_VISIBLE), eyesNull)
 
         val oneEyeClosed = rule.evaluate(
-            signal(smile = 0.80f, leftEye = 0.30f, rightEye = 0.90f),
+            signal(smile = 0.80f, leftEye = 0.20f, rightEye = 0.90f),
             currentlySmiling = false,
         )
         assertTrue(oneEyeClosed is FrameVerdict.BelowThreshold)
@@ -67,32 +65,60 @@ class SmileSignalEvaluatorTest {
     }
 
     @Test
-    fun `completes rep when monotonic hold duration reaches target and tolerates single noisy frame`() {
-        // GENTLE + COMFORTABLE: base 1500ms * 0.8 = 1200ms
-        val rule = SmileRoutineRule(SmileRoutineType.GENTLE, SmileDifficultyLevel.COMFORTABLE)
-        assertEquals(1200L, rule.targetHoldDurationMs)
+    fun `evaluateReadyFrame triggers shouldAutoStart after 1000ms continuous alignment when allowAutoStart is true`() {
+        val evaluator = SmileSignalEvaluator()
 
-        val evaluator = SmileSignalEvaluator(rule = rule, targetReps = 2)
+        val r0 = evaluator.evaluateReadyFrame(signal(t = 0L), allowAutoStart = true)
+        assertTrue(r0.isFaceAligned)
+        assertEquals(0f, r0.alignmentProgress, 0.001f)
+        assertFalse(r0.shouldAutoStart)
+
+        val r1 = evaluator.evaluateReadyFrame(signal(t = 300L), allowAutoStart = true)
+        assertEquals(0.30f, r1.alignmentProgress, 0.001f)
+        assertFalse(r1.shouldAutoStart)
+
+        val r2 = evaluator.evaluateReadyFrame(signal(t = 650L), allowAutoStart = true)
+        assertEquals(0.65f, r2.alignmentProgress, 0.001f)
+        assertFalse(r2.shouldAutoStart)
+
+        val r3 = evaluator.evaluateReadyFrame(signal(t = 1000L), allowAutoStart = true)
+        assertEquals(1.0f, r3.alignmentProgress, 0.001f)
+        assertTrue(r3.shouldAutoStart)
+
+        // When allowAutoStart is false (paused state), alignment is reported but shouldAutoStart stays false
+        evaluator.resetReadyAlignment()
+        evaluator.evaluateReadyFrame(signal(t = 2000L), allowAutoStart = false)
+        val paused = evaluator.evaluateReadyFrame(signal(t = 3200L), allowAutoStart = false)
+        assertTrue(paused.isFaceAligned)
+        assertFalse(paused.shouldAutoStart)
+    }
+
+    @Test
+    fun `completes rep when monotonic hold duration reaches 2000ms and tolerates single noisy frame via EMA and window`() {
+        val evaluator = SmileSignalEvaluator(targetReps = 2)
 
         // Frame 0 at t=0ms
-        val s0 = evaluator.onFrame(signal(t = 0L, smile = 0.70f))
+        val s0 = evaluator.onFrame(signal(t = 0L, smile = 0.75f))
         assertEquals(0, s0.currentRep)
         assertEquals(0L, s0.heldDurationMs)
 
-        // 3 good frames: t=300, 600, 900 -> 900ms held
-        evaluator.onFrame(signal(t = 300L, smile = 0.70f))
-        evaluator.onFrame(signal(t = 600L, smile = 0.70f))
-        val s3 = evaluator.onFrame(signal(t = 900L, smile = 0.70f))
-        assertEquals(900L, s3.heldDurationMs)
+        // Hold for 1500ms (t=300, 600, 900, 1200, 1500)
+        evaluator.onFrame(signal(t = 300L, smile = 0.75f))
+        evaluator.onFrame(signal(t = 600L, smile = 0.75f))
+        evaluator.onFrame(signal(t = 900L, smile = 0.75f))
+        evaluator.onFrame(signal(t = 1200L, smile = 0.75f))
+        val s5 = evaluator.onFrame(signal(t = 1500L, smile = 0.75f))
+        assertEquals(1500L, s5.heldDurationMs)
 
-        // 1 brief dip below exit threshold at t=1000ms (4 of 5 frames in 1000ms window = 80% >= 75%)
-        // Window is still satisfied, so accumulatedHoldMs does NOT reset to 0!
-        val dip = evaluator.onFrame(signal(t = 1000L, smile = 0.30f))
-        assertEquals(900L, dip.heldDurationMs)
+        // 1 brief dip at t=1600ms -> window still >= 75% satisfied, hold progress does not reset
+        val dip = evaluator.onFrame(signal(t = 1600L, smile = 0.10f))
         assertFalse(dip.justCompletedRep)
+        assertTrue(dip.isInSmileState)
+        assertEquals("좋아요, 미소를 그대로 유지해보세요", dip.guideMessage)
 
-        // Next good frame at t=1300ms (+300ms -> 1200ms >= 1200ms target) -> completes rep 1!
-        val rep1 = evaluator.onFrame(signal(t = 1300L, smile = 0.70f))
+        // Next frames reach >= 2000ms total held duration -> completes rep 1!
+        evaluator.onFrame(signal(t = 1900L, smile = 0.80f))
+        val rep1 = evaluator.onFrame(signal(t = 2200L, smile = 0.80f))
         assertTrue(rep1.justCompletedRep)
         assertEquals(1, rep1.currentRep)
         assertFalse(rep1.isSessionCompleted)
@@ -100,8 +126,7 @@ class SmileSignalEvaluatorTest {
 
     @Test
     fun `trackingId switch clears active hold progress to prevent cross-person carry-over`() {
-        val rule = SmileRoutineRule(SmileRoutineType.GENTLE, SmileDifficultyLevel.STANDARD)
-        val evaluator = SmileSignalEvaluator(rule = rule, targetReps = 1)
+        val evaluator = SmileSignalEvaluator(targetReps = 1)
 
         evaluator.onFrame(signal(t = 0L, smile = 0.80f, trackingId = 10))
         val held = evaluator.onFrame(signal(t = 300L, smile = 0.80f, trackingId = 10))
@@ -109,7 +134,6 @@ class SmileSignalEvaluatorTest {
 
         // Different person (trackingId = 20) enters frame at t=600L
         val switched = evaluator.onFrame(signal(t = 600L, smile = 0.80f, trackingId = 20))
-        // Previous 300ms was cleared before evaluating the new person's frame
         assertEquals(0L, switched.heldDurationMs)
         val nextForNewPerson = evaluator.onFrame(signal(t = 900L, smile = 0.80f, trackingId = 20))
         assertEquals(300L, nextForNewPerson.heldDurationMs)

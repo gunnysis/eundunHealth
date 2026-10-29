@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app import __version__
 from app.config import get_settings
+from app.database import build_engine_kwargs
 from app.exceptions import AppException
 from app.routers import (
     account,
@@ -69,7 +70,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # DB 엔진 + 세션팩토리 1회 생성 → app.state에 저장
     # pool_pre_ping: idle 후 PG/방화벽이 끊은 연결을 checkout 시 SELECT 1 로 사전 검증해
     # warm baseline 인스턴스의 첫 요청이 "connection closed" 500 으로 떨어지는 것을 방지한다.
-    engine = create_async_engine(settings.database_url, pool_size=3, max_overflow=0, pool_pre_ping=True)
+    engine = create_async_engine(settings.database_url, **build_engine_kwargs(settings.database_url))
     app.state.session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     if settings.sentry_dsn:

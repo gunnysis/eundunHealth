@@ -1,14 +1,12 @@
 #!/bin/sh
 set -e
 
-# Azure 공식 경고: min-replicas=0 + max=1 이어도 fail/update 시 중복 인스턴스 가능.
-# Alembic은 자체 동시 실행 lock을 제공하지 않으므로 env.py가 PostgreSQL transaction advisory lock으로
-# migration 실행을 직렬화한다.
-# 이미 head 면 no-op (~1s). 새 revision 있으면 적용.
-echo "[entrypoint] $(date -u +%FT%TZ) alembic upgrade head"
-alembic upgrade head
+# 다중 복제본(min=1, max=3) 동시 기동 시에도 PostgreSQL transaction advisory lock으로
+# 직렬화되는 비파괴적 멱등 스키마 부트스트랩(Base.metadata.create_all)을 수행한다.
+# 전체 스키마 초기화(Drop & Recreate)는 오직 scripts/hard_reset_db.py 로만 실행한다.
+echo "[entrypoint] $(date -u +%FT%TZ) Ensuring database schema exists (python -m app.schema_bootstrap)"
+python -m app.schema_bootstrap
 
 # Docker 공식 권장: exec 로 PID 1 교체 → SIGTERM 이 uvicorn 에 직접 전달 → graceful shutdown.
-# (Postgres / Rails 공식 이미지의 표준 패턴)
 echo "[entrypoint] $(date -u +%FT%TZ) starting: $*"
 exec "$@"

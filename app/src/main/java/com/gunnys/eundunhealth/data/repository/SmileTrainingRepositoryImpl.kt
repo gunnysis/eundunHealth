@@ -2,15 +2,11 @@ package com.gunnys.eundunhealth.data.repository
 
 import androidx.work.WorkManager
 import com.gunnys.eundunhealth.api.generated.api.SmileTrainingApi
-import com.gunnys.eundunhealth.api.generated.model.SmileDifficulty
-import com.gunnys.eundunhealth.api.generated.model.SmileRoutine
 import com.gunnys.eundunhealth.api.generated.model.SmileTrainingSessionRequest
 import com.gunnys.eundunhealth.api.generated.model.SmileTrainingSessionResponse
 import com.gunnys.eundunhealth.data.local.dao.SmileSessionDao
 import com.gunnys.eundunhealth.data.local.entity.SmileSessionEntity
 import com.gunnys.eundunhealth.data.sync.SmileSyncWorker
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
 import com.gunnys.eundunhealth.domain.model.SmileSessionRecord
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.SmileSyncStatus
@@ -66,11 +62,8 @@ class SmileTrainingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun saveCompletedSession(
-        routine: SmileRoutineType,
-        difficulty: SmileDifficultyLevel,
         durationSec: Int,
         completedReps: Int,
-        reflectionEmoji: Int?,
         occurredAtEpochMs: Long,
     ): Result<SmileSessionRecord> = runCatching {
         val userId = authRepository.getCurrentUserId() ?: error("로그인이 필요합니다.")
@@ -78,11 +71,8 @@ class SmileTrainingRepositoryImpl @Inject constructor(
         val entity = SmileSessionEntity(
             id = sessionId,
             userId = userId,
-            routine = routine.name,
-            difficulty = difficulty.name,
             durationSec = durationSec.coerceIn(0, MAX_DURATION_SEC),
             completedReps = completedReps.coerceIn(1, MAX_COMPLETED_REPS),
-            reflectionEmoji = reflectionEmoji?.coerceIn(1, 5),
             occurredAtUtc = occurredAtEpochMs,
             syncStatus = SmileSyncStatus.PENDING.name,
             syncedAtUtc = null,
@@ -95,13 +85,30 @@ class SmileTrainingRepositoryImpl @Inject constructor(
 
     override suspend fun syncPendingSessions(maxBatchSize: Int): SyncBatchOutcome {
         val userId = authRepository.getCurrentUserId() ?: return SyncBatchOutcome.SKIPPED_NO_USER
-        val pendingList = smileSessionDao.getOldestPendingByUser(userId, limit = maxBatchSize)
-        if (pendingList.isEmpty()) return SyncBatchOutcome.ALL_SYNCED
+        val batchSize = maxBatchSize.coerceIn(1, MAX_BATCH_SIZE)
+        var finalOutcome = SyncBatchOutcome.ALL_SYNCED
+        var batchesProcessed = 0
+        var shouldContinue = true
+        while (batchesProcessed < MAX_SYNC_BATCHES && shouldContinue) {
+            val pendingList = smileSessionDao.getOldestPendingByUser(userId, limit = batchSize)
+            if (pendingList.isEmpty()) {
+                shouldContinue = false
+            } else {
+                finalOutcome = syncSingleBatch(pendingList, userId)
+                batchesProcessed += 1
+                shouldContinue = finalOutcome == SyncBatchOutcome.ALL_SYNCED && pendingList.size >= batchSize
+            }
+        }
+        return finalOutcome
+    }
 
+    private suspend fun syncSingleBatch(
+        pendingList: List<SmileSessionEntity>,
+        userId: String,
+    ): SyncBatchOutcome {
         var needsRetry = false
         for (entity in pendingList) {
-            val outcome = syncSingleSession(entity, userId)
-            when (outcome) {
+            when (syncSingleSession(entity, userId)) {
                 SingleSyncResult.SYNCED, SingleSyncResult.BLOCKED -> Unit
                 SingleSyncResult.AUTH_REQUIRED -> return SyncBatchOutcome.AUTH_REQUIRED
                 SingleSyncResult.RETRY -> needsRetry = true
@@ -143,6 +150,7 @@ class SmileTrainingRepositoryImpl @Inject constructor(
 
     override suspend fun deleteAllSessions(): Result<Unit> = runCatching {
         val userId = authRepository.getCurrentUserId() ?: error("로그인이 필요합니다.")
+        workManager.cancelUniqueWork(SmileSyncWorker.UNIQUE_WORK_NAME)
         val response = smileTrainingApi.deleteAllSmileTrainingSessions()
         if (!response.isSuccessful) {
             throw HttpException(response)
@@ -157,12 +165,8 @@ class SmileTrainingRepositoryImpl @Inject constructor(
     ): SingleSyncResult {
         val request = SmileTrainingSessionRequest(
             id = UUID.fromString(entity.id),
-            routine = runCatching { SmileRoutine.valueOf(entity.routine) }.getOrDefault(SmileRoutine.GENTLE),
-            difficulty = runCatching { SmileDifficulty.valueOf(entity.difficulty) }
-                .getOrDefault(SmileDifficulty.STANDARD),
             durationSec = entity.durationSec,
             completedReps = entity.completedReps,
-            reflectionEmoji = entity.reflectionEmoji,
             occurredAt = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochMilli(entity.occurredAtUtc)),
         )
 
@@ -213,6 +217,8 @@ class SmileTrainingRepositoryImpl @Inject constructor(
         private val KST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
         private const val MAX_DURATION_SEC = 1800
         private const val MAX_COMPLETED_REPS = 5
+        private const val MAX_BATCH_SIZE = 50
+        private const val MAX_SYNC_BATCHES = 10
         private const val REMOTE_HYDRATE_LIMIT = 50
         private const val HTTP_BAD_REQUEST = 400
         private const val HTTP_UNAUTHORIZED = 401
@@ -231,11 +237,8 @@ class SmileTrainingRepositoryImpl @Inject constructor(
             return SmileSessionEntity(
                 id = item.id,
                 userId = userId,
-                routine = item.routine.name,
-                difficulty = item.difficulty.name,
                 durationSec = item.durationSec.coerceIn(0, MAX_DURATION_SEC),
                 completedReps = item.completedReps.coerceIn(1, MAX_COMPLETED_REPS),
-                reflectionEmoji = item.reflectionEmoji?.coerceIn(1, 5),
                 occurredAtUtc = occurredEpochMs,
                 syncStatus = SmileSyncStatus.SYNCED.name,
                 syncedAtUtc = syncedAtUtc,
@@ -264,6 +267,7 @@ class SmileTrainingRepositoryImpl @Inject constructor(
 
             val distinctDatesDesc = entities
                 .map { Instant.ofEpochMilli(it.occurredAtUtc).atZone(KST_ZONE).toLocalDate() }
+                .filter { !it.isAfter(todayKst) }
                 .distinct()
                 .sortedDescending()
 
@@ -322,12 +326,8 @@ class SmileTrainingRepositoryImpl @Inject constructor(
         private fun SmileSessionEntity.toDomain(): SmileSessionRecord = SmileSessionRecord(
             id = id,
             userId = userId,
-            routine = runCatching { SmileRoutineType.valueOf(routine) }.getOrDefault(SmileRoutineType.GENTLE),
-            difficulty = runCatching { SmileDifficultyLevel.valueOf(difficulty) }
-                .getOrDefault(SmileDifficultyLevel.STANDARD),
             durationSec = durationSec,
             completedReps = completedReps,
-            reflectionEmoji = reflectionEmoji,
             occurredAtEpochMs = occurredAtUtc,
             syncStatus = runCatching { SmileSyncStatus.valueOf(syncStatus) }.getOrDefault(SmileSyncStatus.PENDING),
         )

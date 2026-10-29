@@ -43,7 +43,9 @@ object DatabaseModule {
     @Suppress("ktlint:standard:function-signature")
     fun provideSmileTrainingDatabase(@ApplicationContext context: Context): SmileTrainingDatabase =
         Room.databaseBuilder(context, SmileTrainingDatabase::class.java, "smile_training.db")
-            // 사용자 기록의 SSOT이므로 fallbackToDestructiveMigration을 사용하지 않는다.
+            // 승인된 v2 cutover 경계에서 v1 테이블을 초기화하고 v2 스키마로 재생성한다.
+            .addMigrations(SmileTrainingDatabase.MIGRATION_1_2)
+            .fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)
             .build()
 
     @Provides

@@ -25,12 +25,11 @@
 - [ ] versionCode / versionName 업데이트 필요 없음
 - [ ] 또는 `./gradlew :app:releaseArtifacts`로 AAB + APK 동시 빌드 — versionCode 동기 확인됨 (INC-04)
 
-## 마이그레이션 (Backend 변경 시)
+## DB 스키마 (Backend 변경 시 — Drop & Recreate 전용)
 - [ ] DB 스키마 변경 없음
-- [ ] 또는 `bash scripts/alembic-autogen.sh "<message>"`로 PostgreSQL 컨테이너 기반 autogen 수행 — SQLite false positive 없음 (INC-07)
-- [ ] alembic 파일 diff 수동 검토 완료
-- [ ] `backend/alembic/versions/` 변경 시: 로컬 `cd backend && docker compose up -d --build` → `docker compose logs api` 에 `[entrypoint] ... alembic upgrade head` 라인 + `/health` 200 둘 다 확인 (CLAUDE.md 룰 7, INC-2026-05-27-01)
-- [ ] `backend/alembic/versions/` 변경 시: `docs/ops/operations-snapshot.md` Alembic head 값 갱신
+- [ ] 또는 `backend/sql/02_schema_create_all.sql` 과 `backend/app/models/*.py` 정합성 확인 (`pytest tests/test_v2_reset.py` 통과)
+- [ ] `backend/sql/` 변경 시: 로컬 `cd backend && docker compose up -d --build` → `docker compose logs api` 에 `[entrypoint] Ensuring database schema exists` 라인 + `/health` 200 둘 다 확인 (CLAUDE.md 룰 7)
+- [ ] `backend/sql/` 변경 시: `python scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints` 로 100건 시딩 및 11개 제약 조건 검증 완료
 
 ## Backend secret / env 변경 (해당 시)
 <!-- backend.yml의 --set-env-vars 또는 Container App secret을 추가/변경할 때 -->

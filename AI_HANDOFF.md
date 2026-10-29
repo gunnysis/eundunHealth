@@ -1,5 +1,242 @@
 # Multi-AI Handoff Log
 
+## 2026-10-29 (Gemini -> Claude/User) 12인 역할 협의체 기반 프로젝트 전체 점검·리팩토링·개선 및 전수 검증 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **오늘 수행된 스마일 트레이닝 v2 컷오버 + PostgreSQL 18 하드 리셋 파이프라인 구축을 기준으로, 12개 역할(`[디자이너, 기획, 실무, 책임, 개발, 구현, 유지보수, QA/QC, DevOps, DBA, 팀장, CTO]`) 관점의 전사 감사 및 근본 원인 리팩토링 완수**:
+  1. **DBA / Backend / SQLAlchemy 2.0 / PostgreSQL 18 정합성 리팩토링**:
+     - **정본 DDL ([`backend/sql/02_schema_create_all.sql`](backend/sql/02_schema_create_all.sql)) ↔ SQLAlchemy `Base.metadata` 1:1 패리티 달성**:
+       - `smile_training_sessions`의 체크 제약 조건 명칭을 `POSTGRES_NAMING_CONVENTION`과 1:1 일치하도록 `ck_smile_training_sessions_duration_sec_range`, `ck_smile_training_sessions_completed_reps_range`로 통일.
+       - 8개 도메인 ORM 모델(`user_profile.py`, `user_profile_history.py`, `weekly_plan.py`, `goal.py`, `badge.py`, `meal_plan.py`, `smile_training.py`) 전수에서 SQLAlchemy 2.0 공식 방언 중립 `from sqlalchemy import Uuid` (`Uuid(as_uuid=True)`) 및 Python 3.14 표준 라이브러리 `default=uuid.uuid7`로 통일하여 PostgreSQL 네이티브 `UUID`와 SQLite `CHAR(32)` 양쪽에서 타입 강제 변환 버그를 원천 차단.
+       - [`backend/app/database.py`](backend/app/database.py): PostgreSQL 대상 `Base.metadata.create_all` 직후 8개 도메인 테이블 PK에 `ALTER TABLE ... ALTER COLUMN id SET DEFAULT uuidv7()`를 자동 부여하는 `_set_pg_uuidv7_server_defaults` 이벤트 리스너 추가 + Azure PostgreSQL Flexible Server `Standard_B1ms` 연결 한도에 맞춘 `build_engine_kwargs(database_url)`(`pool_size=3, max_overflow=2, pool_pre_ping=True, pool_recycle=1800, pool_timeout=30, connect_args={"command_timeout": 30}`) 도입 및 [`backend/app/main.py`](backend/app/main.py), [`backend/scripts/reap_orphaned_accounts.py`](backend/scripts/reap_orphaned_accounts.py) 적용.
+       - [`backend/app/schema_bootstrap.py`](backend/app/schema_bootstrap.py): `pg_advisory_xact_lock` 획득 전 `SET LOCAL lock_timeout = '15s'` 설정 및 `os.environ.get("DATABASE_URL")` 우선 참조 보강.
+       - [`backend/scripts/hard_reset_db.py`](backend/scripts/hard_reset_db.py): 인라인 SQL 주석(`--`)이 포함된 구문도 누락 없이 실행되도록 `_strip_sql_line_comment` 파서 개선 및 `--seed-edge-cases` 사용 시 `--verify-constraints` 자동 활성화.
+       - [`backend/tests/test_v2_reset.py`](backend/tests/test_v2_reset.py): `test_canonical_sql_matches_orm_metadata_1_to_1`(정본 SQL과 ORM 메타데이터의 테이블·컬럼·PK·FK·Unique·Check·Index 이름 1:1 대조), `test_split_sql_statements_handles_inline_comments`, `test_build_engine_kwargs_for_postgresql_and_sqlite` 추가 (**백엔드 테스트 146 passed**).
+  2. **DevOps / CI·CD / 문서 감사 자동화 리팩토링**:
+     - [`.github/workflows/backend.yml`](.github/workflows/backend.yml): `ruff check` 및 `ruff format --check` 대상에 `scripts/` 포함, `runtime-smoke` 잡에서 `/health/ready` 200 검증·엔트리포인트 부트스트랩 로그 검증·PostgreSQL 18 대상 `hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints` 라이브 실행 검증 추가.
+     - [`backend/entrypoint.sh`](backend/entrypoint.sh), [`.claude/commands/naming-audit.md`](.claude/commands/naming-audit.md), [`.claude/commands/verify-deploy.md`](.claude/commands/verify-deploy.md), [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md), [`scripts/prompts/api-endpoint.md`](scripts/prompts/api-endpoint.md)에서 잔존하던 구형 Alembic 참조를 전수 제거하고 신규 `schema_bootstrap` / `hard_reset_db.py` 절차로 갱신.
+  3. **Android (UX/UI · 접근성 · 아키텍처 · 오프라인 동기화 · 룰 8 & 룰 11) 리팩토링**:
+     - [`ThemePreferences.kt`](app/src/main/java/com/gunnys/eundunhealth/data/preferences/ThemePreferences.kt): `markV2LocalResetCompleted()` 실행 시 사용자 테마(`themeKey`)와 Dynamic Color(`dynamicColorKey`) 설정은 보존하도록 개선.
+     - [`SmileSyncWorker.kt`](app/src/main/java/com/gunnys/eundunhealth/data/sync/SmileSyncWorker.kt) & [`SmileTrainingRepositoryImpl.kt`](app/src/main/java/com/gunnys/eundunhealth/data/repository/SmileTrainingRepositoryImpl.kt): `ExistingWorkPolicy.APPEND_OR_REPLACE` 적용(선행 워커 실행 중 추가된 신규 세션 누락 방지), 단일 워커 패스에서 최대 10배치 반복 드레인, `deleteAllSessions()` 시 `cancelUniqueWork` 선행 호출, 기기 시계 오차(미래 타임스탬프) 필터링(`.filter { !it.isAfter(todayKst) }`).
+     - [`SmileSignalEvaluator.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/smile/SmileSignalEvaluator.kt): 슬라이딩 윈도우(75%)가 유지되는 1프레임 노이즈(`BelowThreshold`) 동안 안내 문구(`guideMessage`)와 TalkBack `liveRegion`이 깜빡이지 않도록 고정.
+     - [`SmileTrainingViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingViewModel.kt) & [`MlKitFaceModuleInstaller.kt`](app/src/main/java/com/gunnys/eundunhealth/data/smile/MlKitFaceModuleInstaller.kt): `SmileTrainingSideEffect` 및 `MlKitModuleState` 전 서브타입 `@Immutable` 명시(룰 11), `modelPrepareJob` 취소 가드, 일시정지 구간(`pauseActiveExercise` ~ `beginActiveExercise`)을 실제 운동 시간(`sessionDurationSec`)에서 제외, `onCameraError` 시 `.reportToSentry()` 연동(룰 8), 일시정지된 `READY` 상태에서 뒤로가기 시 종료 확인 다이얼로그 표시.
+     - [`SmileCameraStage.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt) & [`SmileTrainingScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingScreen.kt): `onDispose` 내 `cameraProviderFuture.isDone` 가드로 메인 스레드 블로킹 방지, 어두운 카메라 HUD 진입 시 상태바 밝은 아이콘(`isAppearanceLightStatusBars = false`) 자동 전환 및 복원, `onPermissionRevoked` 시 동적 `shouldShowRequestPermissionRationale` 계산, 다이얼로그 본문 `verticalScroll` 및 버튼 `.heightIn(min = 48.dp+)` 적용(200% 대형 글꼴 대응).
+     - [`WorkoutGuideScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt), [`HomeScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt), [`HomeViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeViewModel.kt): 운동 가이드 완료 화면에서 시스템 뒤로가기 시 `onWorkoutCompleted()` 누락 해결, 홈 상단 `SmileQuickActionChip` `clearAndSetSemantics(role = Role.Button)` 및 연속 달성일 음성 안내 보강, `SmileTrainingContextualCard` 내 중복 `'오늘 하루 닫기'` 버튼 제거, `refreshHealthConnectStatus()` 시 자정 경과(`today`, `isSmileShortcutDismissedToday`) 동시 갱신.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) Azure Database for PostgreSQL 18 업그레이드 · 스키마 전면 리팩토링 및 하드 리셋(Drop & Recreate) 파이프라인 구축 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **Task 0 ~ Task 4 전 구간 구현 및 라이브 검증 완료 ([`docs/plans/2026-10-29-postgresql-schema-hard-reset-plan.md`](docs/plans/2026-10-29-postgresql-schema-hard-reset-plan.md))**:
+  1. **Task 0 — Azure PostgreSQL 18.4 동적 파라미터 튜닝 & 로컬/CI Docker PostgreSQL 18.6 업그레이드**:
+     - Azure CLI(`az postgres flexible-server show/list-skus/parameter set`)로 운영 `healthapp`(`rg-eundunhealth-prod-krc`, Korea Central 최고 지원 버전 **PostgreSQL 18.4 / minorVersion 6**, `io_method=worker`, `wal_compression=zstd`) 점검 및 무중단 동적 서버 파라미터(`isDynamicConfig=true`) 5종 적용 완료:
+       - `idle_in_transaction_session_timeout = 60000` (60s)
+       - `azure.extensions = PG_STAT_STATEMENTS`
+       - `pg_stat_statements.track = top`
+       - `track_io_timing = on`
+       - `log_min_duration_statement = 1000` (1s)
+     - [`backend/docker-compose.yml`](backend/docker-compose.yml): `postgres:16-alpine` → **`postgres:18-alpine@sha256:3b0ef735388b2cb097fc29b8bb421d86d57d0ddbe7aa1fbd6493e06d65028503` (`18.6-alpine3.24`)** 업그레이드 및 PG 18 공식 이미지 볼륨 경로(`pgdata:/var/lib/postgresql`) 적용.
+  2. **Task 1 — Cleanup SQL 스크립트 ([`backend/sql/01_cleanup_drop_all.sql`](backend/sql/01_cleanup_drop_all.sql))**:
+     - Azure PostgreSQL Flexible Server의 `azure_pg_admin` 소유 `public` 스키마 및 관리형 확장(`deptype = 'e'`)을 100% 보존하면서 모든 사용자 뷰·테이블·시퀀스·인덱스·타입을 `DROP ... CASCADE`로 제거하고 잔존 객체 `0건`을 검증하는 SQL 작성.
+  3. **Task 2 — 정규화 DDL ([`backend/sql/02_schema_create_all.sql`](backend/sql/02_schema_create_all.sql)), SQLAlchemy 2.0 ORM 모델 재작성, [`backend/app/schema_bootstrap.py`](backend/app/schema_bootstrap.py), [`backend/scripts/hard_reset_db.py`](backend/scripts/hard_reset_db.py)**:
+     - 8개 도메인 테이블에 PostgreSQL 18 네이티브 `DEFAULT uuidv7()` UUID PK를 일관 적용(`data_reset_audits`는 `reset_id VARCHAR(128)` PK)하고, `user_profile_history(user_id) -> user_profiles(user_id)` 및 `meal_plan_items(plan_id) -> meal_plans(id)`에 `ON DELETE CASCADE` FK 강제, 중복 B-tree 인덱스 전량 제거, 엄격한 도메인 `CHECK` 제약 적용.
+     - [`backend/app/database.py`](backend/app/database.py)(`POSTGRES_NAMING_CONVENTION`, SQLite `PRAGMA foreign_keys=ON`) 및 `backend/app/models/*.py` 8개 파일 전면 재작성.
+     - 컨테이너 기동 시 비파괴적 멱등 부트스트랩(`python -m app.schema_bootstrap`)과 수동 파괴적 하드 리셋 CLI(`python scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS`)를 엄격히 분리.
+  4. **Task 3 — 100건 엣지 케이스 Seeder ([`backend/scripts/seed_edge_cases.py`](backend/scripts/seed_edge_cases.py)) 및 통합 테스트 ([`backend/tests/test_v2_reset.py`](backend/tests/test_v2_reset.py))**:
+     - 정확히 **100건(`15+15+15+10+15+5+10+14+1 = 100 rows`)**의 엣지 케이스 더미 데이터 자동 삽입 및 `SAVEPOINT` 기반 **11개 음수 제약 위반(`ForeignKeyViolation`, `UniqueViolation`, `CheckViolation`) & `ON DELETE CASCADE` 연쇄 삭제**를 PostgreSQL 18.6 라이브 컨테이너와 SQLite 양쪽에서 실증 완료.
+  5. **Task 4 — 레거시 제거 및 프로젝트 문서 동기화**:
+     - `backend/alembic/**`(10개 리비전 포함), `backend/alembic.ini`, `scripts/alembic-autogen.sh`, `backend/scripts/reset_v2_user_data.py` 완전 삭제 및 `alembic` 의존성 제거 후 `requirements*.txt` 해시 락 재컴파일 완료.
+     - [`backend/entrypoint.sh`](backend/entrypoint.sh), [`backend/Dockerfile`](backend/Dockerfile), [`scripts/agents/doc_audit.py`](scripts/agents/doc_audit.py), [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md), [`CLAUDE.md`](CLAUDE.md), [`README.md`](README.md), [`docs/TRD.md`](docs/TRD.md) 최신화 완료.
+
+**다음 할 일 (Next Steps / TODO):**
+- 운영 Azure PostgreSQL 18.4(`healthapp`)에 대해 **1단계(`hard-reset-v2-pg18-verify-20261029 --seed-edge-cases --verify-constraints`: `total_rows: 100`, `verified_constraints_count: 11`)** 및 **2단계(`hard-reset-v2-pg18-prod-20261029`: 프로덕션 클린 9개 테이블 재생성 + 임시 방화벽 즉시 제거 + 운영 API `/health`·`/health/ready` 200 OK 확인)**까지 모두 실측 완료됨.
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) 스마일 트레이닝 v2 전면 리팩토링 · Zero-Legacy Cutover · 4대 접속 경로(IA) 구현 및 프로젝트 문서 최신화 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **Task 1 ~ Task 6 전 구간 구현 및 검증 완료 ([`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md))**:
+  1. **백엔드 스마일 트레이닝 v2 & DB 컷오버 마이그레이션 (Task 1)**:
+     - [`backend/app/models/smile_training.py`](backend/app/models/smile_training.py), [`backend/app/schemas/smile_training.py`](backend/app/schemas/smile_training.py), [`backend/app/repositories/smile_training_repo.py`](backend/app/repositories/smile_training_repo.py), [`backend/app/services/smile_training_service.py`](backend/app/services/smile_training_service.py), [`backend/app/routers/smile_training.py`](backend/app/routers/smile_training.py): 구형 `/smile-training` 및 `SmileRoutine`·`SmileDifficulty`·`reflection_emoji` 레거시 전수 제거 → `/v2/smile-training/sessions` (`POST`/`GET`/`DELETE`), `/v2/smile-training/statistics` (`GET`) 4개 엔드포인트(`CamelSchema` 및 `operation_id` 보존)로 컷오버.
+     - [`backend/alembic/versions/e8b2c4d6f1a0_cutover_smile_training_to_v2.py`](backend/alembic/versions/e8b2c4d6f1a0_cutover_smile_training_to_v2.py): `down_revision = "d7f4a2c91b10"`. `DELETE FROM smile_training_sessions` 후 체크 제약조건 및 3개 레거시 컬럼 드롭(`downgrade()` 왕복 지원). Docker PostgreSQL 16 (`dev:devpass@localhost:5432/eundunhealth`) 위에서 `upgrade head -> downgrade -1 -> upgrade head` 왕복 실측 통과.
+     - [`docs/store/privacy-policy.md`](docs/store/privacy-policy.md), [`docs/store/account-deletion.md`](docs/store/account-deletion.md), [`backend/openapi.json`](backend/openapi.json) 동기화(`sync-legal-docs.sh`, `sync-openapi.sh`, `:app:openApiGenerate`).
+  2. **Android 도메인 & `SmileSignalEvaluator` v2 (Task 2)**:
+     - [`SmileTrainingModels.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/model/SmileTrainingModels.kt), [`SmileSignalEvaluator.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/smile/SmileSignalEvaluator.kt): `SmileRoutineType`, `SmileDifficultyLevel`, `reflectionEmoji` 완전 삭제 → 단일 표준 스펙 `SmileTrainingSpec`(`2,000ms 유지 × 3회 반복`) 통합, 지수 이동 평균(`EMA alpha = 0.6f`) 스무딩, `READY` 단계 1.0초(`1,000ms`) 연속 얼굴 정렬 시 자동 시작(`evaluateReadyFrame`, `allowAutoStart = !isPaused`) 구현.
+  3. **Android Room DB v2 Cutover Reset & Repository (Task 3)**:
+     - [`SmileSessionEntity.kt`](app/src/main/java/com/gunnys/eundunhealth/data/local/entity/SmileSessionEntity.kt), [`SmileTrainingDatabase.kt`](app/src/main/java/com/gunnys/eundunhealth/data/local/SmileTrainingDatabase.kt) (`version = 2`, `MIGRATION_1_2` + `fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)`), [`DatabaseModule.kt`](app/src/main/java/com/gunnys/eundunhealth/di/DatabaseModule.kt), [`SmileTrainingRepositoryImpl.kt`](app/src/main/java/com/gunnys/eundunhealth/data/repository/SmileTrainingRepositoryImpl.kt) 및 Room KSP 스키마 [`2.json`](app/schemas/com.gunnys.eundunhealth.data.local.SmileTrainingDatabase/2.json) 생성.
+  4. **Android UI & ViewModel v2 리팩토링 (Task 4)**:
+     - [`SmileTrainingViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingViewModel.kt), [`SmileCameraStage.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [`SmileTrainingScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingScreen.kt) (1,114줄 → 606줄): 상단 안내 배너·옵션 선택기·기분 설문(`REFLECTION`) 전수 삭제, `ACTIVE -> COMPLETED` 직행 자동 저장 + 오늘 완료 시 홈 바로가기 자동 숨김(`markSmileShortcutDismissed`), 풀블리드 카메라 HUD + 하단 플로팅 글래스 시트(`Modern Forest & Mint` 토큰, `AuthErrorBanner`, `HapticFeedbackHelper`) 적용.
+  5. **4대 접속 경로(IA) 구현 (Task 5)**:
+     - [`HomeViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeViewModel.kt), [`HomeScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt): 상단바 우측 상시 `SmileQuickActionChip` (`"스마일"` / `"✓ 스마일 완료"`) + `TodayHeroCard` 하단 스마트 `SmileTrainingContextualCard`(`!state.isSmileCompletedToday && !state.isSmileShortcutDismissedToday`).
+     - [`WorkoutGuideScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt), [`MainAppShell.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/MainAppShell.kt): 운동 가이드 완료 화면에 `[마무리 10초 스마일 트레이닝 하기]` 쿨다운 브릿지 버튼 추가.
+     - [`ProgressHubViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubViewModel.kt), [`ProgressHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt): `"마음 연습 > 스마일 트레이닝"` 섹션을 3열 요약 타일 직하단 최상단으로 승격하고 실시간 연속일·완료 배지 표시.
+  6. **레거시 잔존 0건 검증(`Zero-Legacy Grep Gate`) & 프로젝트 문서 최신화 (Task 6)**:
+     - [`docs/PRD.md`](docs/PRD.md), [`docs/SPEC.md`](docs/SPEC.md), [`docs/TRD.md`](docs/TRD.md), [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md), [`CLAUDE.md`](CLAUDE.md), [`README.md`](README.md), [`docs/plans/README.md`](docs/plans/README.md) 최신화 완료.
+     - `Zero-Legacy Grep Gate` 실행 결과: **`OK: 0 legacy symbols remaining across all scanned paths.`**
+     - 백엔드: `pytest tests/ -q` (**140 passed**), `ruff check` (**0건**), `mypy app/` (**0건**), `bandit -r app -ll` (**0건**), `test_doc_audit.py` (**36 passed**).
+     - Android: `spotlessCheck`, `detektDebug` (**0건**), `testDebugUnitTest` (**212 passed**), `assembleRelease` (R8 릴리스 빌드), `check-agp10-compat.sh`, `check-plans-links.sh`, `collectAsState` 가드 모두 통과.
+
+**다음 할 일 (Next Steps / TODO):**
+- 실물 Android 기기(또는 웹캠 에뮬레이터)에서 전면 카메라 `READY` 1.0초 자동 시작 감도 및 햅틱 피드백 체감 확인 후 PR/배포 진행.
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) 프로젝트 필수 MCP 서버(Azure · Sentry · GitHub · Context7 · Sequential Thinking) 설정 및 패리티 복구 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **점검 및 근본 원인 분석 (`claude mcp list` 및 Antigravity `mcp_config.json` 대조)**:
+  1. **Antigravity (`~/.gemini/config/mcp_config.json`)**: `eundunHealth` 운영·개발에 필수적인 `azure`, `sentry`, `context7`, `sequential-thinking` 4개 서버가 누락되어 있었음.
+  2. **Claude Code (`~/.claude.json`)**:
+     - `github` (`https://api.githubcopilot.com/mcp`): 만료된 구 PAT(`ghp_t7mx...`)가 남아 있어 `HTTP 401 (✘ Failed to connect)` 발생.
+     - `sentry` (`https://mcp.sentry.dev/mcp`): 브라우저 OAuth 세션 만료로 `! Needs authentication` 상태였으며, 호스트에는 유효한 `SENTRY_AUTH_TOKEN`(길이 71자, `gunnys` 조직 `eundunhealth`·`eundunhealth-backend` 접근 가능)이 있었으나 `@sentry/mcp-server`가 요구하는 `SENTRY_ACCESS_TOKEN` 환경변수가 미설정 상태였음.
+     - `.claude.json` 내부 `projects` 객체에 대소문자만 다른 중복 키(`c:/programming/apps/eundunHealth`)가 존재해 PowerShell `ConvertFrom-Json` 파싱 시 에러가 발생했고, 본 프로젝트에 불필요한 `wikidocs` 프로젝트 스코프 MCP가 남아 있었음.
+  3. **슬래시 명령 ([`.claude/commands/verify-deploy.md`](.claude/commands/verify-deploy.md))**: `mcp__sentry__search_issues` 호출 가이드를 실제 Sentry 조직 슬러그(`gunnys`, [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md) §6 정합) 대신 `eundunhealth`로 잘못 기재하고 있었음.
+- **적용 및 해결 내역**:
+  1. **Windows 사용자 환경변수 설정 (`setx` 미사용 원칙 준수)**: `[Environment]::SetEnvironmentVariable('SENTRY_ACCESS_TOKEN', ..., 'User')`로 `SENTRY_ACCESS_TOKEN` 영구 등록.
+  2. **Antigravity (`~/.gemini/config/mcp_config.json`)**: 기존 5종에 더해 `azure`(`@azure/mcp@latest server start`, `AZURE_TENANT_ID=f11653ca-c627-4753-ae79-ad0d9689dbc8`), `sentry`(`@sentry/mcp-server@latest --organization-slug=gunnys`), `context7`(`https://mcp.context7.com/mcp`), `sequential-thinking`(`@modelcontextprotocol/server-sequential-thinking`) 총 9종 구성 완료.
+  3. **Claude Code (`~/.claude.json`)**: `github` 헤더를 유효한 최신 PAT(`HTTP 200` 검증)로 교체, `sentry`를 `@sentry/mcp-server@latest --organization-slug=gunnys` stdio 방식으로 전환(OAuth 만료 재발 원천 차단), 대소문자 중복 프로젝트 키 및 불필요한 `wikidocs` 엔트리 정리.
+  4. **저장소 파일 보강**: [`.claude/commands/verify-deploy.md`](.claude/commands/verify-deploy.md)의 `organizationSlug`를 `gunnys`로 정정하고, [`.gitignore`](.gitignore)에 `.mcp.json` 및 `.agents/mcp_config.json`을 추가해 public 저장소에 로컬 MCP 자격증명이 커밋되지 않도록 차단.
+- **실측 검증 결과**:
+  - `claude mcp list` → `context7` (`✔ Connected`), `github` (`✔ Connected`), `sentry` (`✔ Connected`), `azure` (`✔ Connected`), `sequential-thinking` (`✔ Connected`) 전수 연결 확인.
+  - `@sentry/mcp-server` `find_projects(organizationSlug="gunnys")` → `eundunhealth`, `eundunhealth-backend` 정상 조회 확인.
+  - `Get-Content ~/.claude.json -Raw | ConvertFrom-Json` 및 `Get-Content ~/.gemini/config/mcp_config.json -Raw | ConvertFrom-Json` 무오류 파싱 확인.
+  - `C:\programming\windows-dev-setup\pwsh-doctor.ps1` → **`PASS 86 / WARN 0 / FAIL 0`** 통과.
+
+**다음 할 일 (Next Steps / TODO):**
+- Antigravity IDE / CLI에서 새 세션 시작(또는 MCP Servers 새로고침) 시 추가된 `azure`, `sentry`, `context7`, `sequential-thinking` 도구가 즉시 로드됨.
+
+---
+
+## 2026-10-29 (Claude -> Gemini/User) AGP 9.3.2 → 9.4.1 정식 업그레이드 (플러그인 해석 시 Dependency Verification 실패 근본 해결)
+
+**현재까지의 작업 상태 (Current Status):**
+- **원인**: 09:26 Android Studio(AGP Upgrade Assistant 추정)가 `gradle/libs.versions.toml`의 `agp`를 `9.3.2 → 9.4.1`로 변경 → `com.android.application.gradle.plugin-9.4.1.pom` 등 신규 아티팩트의 SHA-256이 `verification-metadata.xml`·`app/gradle.lockfile`에 없어 플러그인 해석 단계에서 차단. 사용자가 원복 대신 **정식 업그레이드**를 선택.
+- **호환성 팩트체크**: AGP 9.4.x 최소 Gradle 9.6.0 / JDK 17 / 최대 API 37 (developer.android.com) → 현재 Gradle 9.8.1·targetSdk 37 충족.
+- **변경**:
+  - `.\gradlew.bat --write-verification-metadata sha256 --write-locks :app:dependencies :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:compileDebugAndroidTestKotlin` → `gradle/verification-metadata.xml`(+AGP 9.4.1/tools 32.4.1 계열 등), `app/gradle.lockfile` 재생성. 기존 9.3.2 항목은 Gradle 동작상 잔존(무해, 추후 정리 가능).
+  - Windows 생성 시 누락되는 **`aapt2-9.4.1-15978811-linux.jar` / `-osx.jar`** SHA-256을 Google Maven 원본 다운로드로 산출해 수동 등록(동일 방법으로 산출한 windows 해시가 Gradle 생성값과 일치함을 대조).
+  - 문서: `CLAUDE.md`(L112, L199), `README.md`, `docs/TRD.md` AGP 9.4.1로 갱신. `docs/ops/operations-snapshot.md`는 **운영 배포본(v0.6.1/40)이 AGP 9.3.2로 빌드되었으므로 의도적으로 미변경** — 다음 릴리스 배포 시 갱신.
+- **검증**: Windows 엄격 검증 빌드(spotless/detekt/unit/assembleDebug/assembleRelease R8), Linux Docker(`eclipse-temurin:17-jdk`, 엄격 검증) `:app:dependencies` + `:app:processDebugResources :app:compileDebugKotlin` BUILD SUCCESSFUL, AGP10 가드 통과.
+- **AGP 9.3.2 레거시 정리(후속, Gemini)**:
+  - `app/gradle.lockfile`: `--write-locks`는 이번 빌드에서 해석되지 않은 구성의 lock 상태를 보존하므로, AGP 9.4.1에서 사라진 `unified-test-platform-*` 12개 구성(UTP `32.3.2`, grpc/netty/`com.google.testing.platform` 등)이 잔존했음. lockfile 삭제 후 `:app:dependencies --write-locks`로 재생성 → GAV 111개 제거, 신규 GAV 0(버전 변경 없음). AGP 9.4.1 UTP는 `unified-test-platform-gradle-work-action`(32.4.1) 1개만 사용.
+  - `gradle/verification-metadata.xml`: 빈 components로 from-scratch 재생성본과 대조해 **272개 component 제거**(9.3.2/32.3.2/`aapt2 9.3.2-15703166` 계열 + 이들만 끌어오던 전이 의존성·parent POM). 잔여 9.3.2/32.3.2 = 0. 재생성본에 없지만 유지한 9개(jackson 모듈 BOM, `legacy-support-core-ui`, groovy 3.0.22, compose `ui-backhandler-android-debug`, `gradle:gradle:9.8.1` 등)는 9.3.2와 무관해 보존.
+  - 검증: Windows 엄격 검증(`--rerun-tasks` spotless/detekt/unit/assembleDebug/assembleRelease/bundleRelease/compileDebugAndroidTestKotlin/:app:dependencies) BUILD SUCCESSFUL, Linux Docker 엄격 검증, AGP10 가드.
+
+**다음 할 일 (Next Steps / TODO):**
+- Android Studio `Sync Project with Gradle Files` 재확인 → 커밋/PR(CI `android.yml`에서 최종 Linux 패리티 확인).
+- 미추적 파일 `docs/plans/2026-10-29-smile-training-v2-*.md`는 본 작업과 무관(타 세션/사용자 작업) — 건드리지 않음.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) 스마일 트레이닝 v2 리팩토링 · 레거시 전면 제거(Zero-Legacy Cutover) · 접속 경로(IA) 구현 설계서 격상 및 코드베이스 1:1 팩트체크 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **10인 멀티 에이전트 협의체(`[팀장, 기획, 디자이너, 실무, 책임, 개발, 구현, 유지보수, QA/QC, DevOps]`) 기반 구현 설계서 격상 및 코드베이스 25개 파일 1:1 라인 단위 팩트체크 보정 완료**:
+  - 단일 통합 구현 설계 문서: [`docs/plans/2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md) (`status: approved`)
+  - 인덱스 자동 생성 및 링크 무결성 검증: [`docs/plans/README.md`](docs/plans/README.md) (`python scripts/gen_plans_index.py --check` 및 `bash scripts/check-plans-links.sh` 통과, 끊긴 참조 0건).
+- **코드베이스 정밀 감사(`§2.2 Audit-1 ~ Audit-7`)로 발견·보정한 핵심 기술 사항**:
+  1. **Audit-1 (`READY` 단계 프레임 무시 버그 수정)**: 현행 `SmileTrainingViewModel.kt:343`이 `if (phase != ACTIVE) return`으로 `READY` 프레임을 전부 버리고 있던 결함을 발견 → `onFrameSignal`이 `READY`와 `ACTIVE` 모두에서 동작하도록 설계.
+  2. **Audit-2 (일시정지 `isPaused` 재진입 무한 루프 방지)**: `pauseActiveExercise()`가 `phase = READY`를 재사용하므로, `SmileTrainingUiState`에 `isPaused: Boolean = false`를 추가해 최초 진입(`!isPaused`)에서만 1.0초 자동 시작이 작동하고 일시정지 상태에서는 수동 `[이어서 시작하기]` 탭을 기다리도록 격리.
+  3. **Audit-3 (정확한 도메인 vs OpenAPI 심볼 매칭)**: 도메인 모델(`SmileRoutineType`, `SmileDifficultyLevel`, `SmileSummaryStats`, `SmileSyncStatus`, `observeSummaryStats()`)과 OpenAPI 생성 모델(`SmileRoutine`, `SmileDifficulty`)을 모두 정확히 반영하고 `Zero-Legacy Grep Gate` 차단 목록에 4종 모두 등록.
+  4. **Audit-4 (Room `SmileSessionEntity` 인덱스 및 컬럼 정합성)**: 오프라인 워커(`SmileSyncWorker`)와 다중 계정 격리에 필수적인 `userId`, `occurredAtUtc`, `syncStatus`, `syncedAtUtc`, `lastSyncErrorCode`와 복합 인덱스 2개는 유지하고 `routine`, `difficulty`, `reflectionEmoji` 3개 컬럼만 제거(`MIGRATION_1_2` + `fallbackToDestructiveMigrationFrom(1)` 이중 가드).
+  5. **Audit-5 (PostgreSQL `ck_smile_sessions_reflection_emoji_range` 제약조건 및 Alembic `d7f4a2c91b10`)**: `DELETE FROM smile_training_sessions` 후 `drop_constraint("ck_smile_sessions_reflection_emoji_range")` 선행 및 `downgrade()` 시 `server_default` 지정으로 왕복 마이그레이션 무결성 확보.
+  6. **Audit-6 (FastAPI `CamelSchema` 및 4개 `operation_id` 보존)**: `/v2/smile-training` 라우터의 4개 엔드포인트(`recordSmileTrainingSession`, `listSmileTrainingSessions`, `getSmileTrainingStatistics`, `deleteAllSmileTrainingSessions`) `operation_id`와 `CamelSchema` 상속을 유지하여 `NetworkModule.kt` 변경 없이 OpenAPI 클라이언트 재생성 호환성 확보.
+  7. **Audit-7 (스크립트 실제 경로 정합)**: `scripts/sync-legal-docs.sh`(`docs/store/*.md` → `backend/app/legal/*.md`) 및 `scripts/sync-openapi.sh`(`backend/openapi.json` → `./gradlew openApiGenerate`) 파이프라인 명시.
+
+**다음 할 일 (Next Steps / TODO):**
+- 사용자의 구현 착수 지시(`"구현 진행"` 또는 `"승인"`) 즉시 [`2026-10-29-smile-training-v2-plan.md`](docs/plans/2026-10-29-smile-training-v2-plan.md)의 Task 1 ~ Task 6 순서로 코드 구현 및 레거시 전수 제거 수행.
+
+---
+
+## 2026-10-29 (Gemini -> Claude/User) Android Studio 소스 다운로드 시 Dependency Verification 실패(196개 sources.jar 및 gradle-9.8.1-src.zip) 근본 해결
+
+**현재까지의 작업 상태 (Current Status):**
+- **문제 증상 및 원인 분석**:
+  - Android Studio(IDE)에서 프로젝트 동기화(Sync) 및 라이브러리/Gradle 스크립트 코드 탐색 및 디버깅을 지원하기 위해 `:app:detachedConfiguration*`을 통해 의존성들의 `*-sources.jar`, `*-javadoc.jar` 및 Gradle 자체 소스 배포판 `gradle-9.8.1-src.zip`(`gradle:gradle:9.8.1`)을 다운로드하려고 시도함.
+  - Gradle Dependency Verification (`gradle/verification-metadata.xml`)에 소스/문서 아티팩트에 대한 신뢰(`trusted-artifacts`) 규칙 및 Gradle distribution source 항목이 누락되어 있어, 체크섬이 없는 196개의 `*-sources.jar` 및 `gradle-9.8.1-src.zip` 다운로드 시 Gradle verification이 차단됨.
+- **근본 원인 해결 ([`gradle/verification-metadata.xml`](gradle/verification-metadata.xml))**:
+  1. **소스 및 Javadoc, Gradle 배포판 아티팩트 자동 신뢰 규칙 추가**:
+     - Gradle 공식 권장 사항(`https://docs.gradle.org/9.8.1/userguide/dependency_verification.html#sec:troubleshooting-verification`)에 따라 `<configuration>` 블록 내에 `<trusted-artifacts>`를 선언하여 `.*-javadoc[.]jar`, `.*-sources[.]jar`, `.*-src[.]zip` 및 `^gradle$` 그룹 아티팩트를 자동 신뢰하도록 추가:
+       ```xml
+       <trusted-artifacts>
+          <trust file=".*-javadoc[.]jar" regex="true"/>
+          <trust file=".*-sources[.]jar" regex="true"/>
+          <trust file=".*-src[.]zip" regex="true"/>
+          <trust group="^gradle$" regex="true" reason="Gradle distribution artifacts"/>
+       </trusted-artifacts>
+       ```
+  2. **Gradle 9.8.1 공식 소스 ZIP SHA-256 체크섬 직접 등록 (이중 방어)**:
+     - `gradle:gradle:9.8.1`의 공식 배포 아티팩트 `gradle-9.8.1-src.zip`의 SHA-256 체크섬(`6c5598a3253d0a61a39b27363aef32780cf235dc07ad50bafb30c7c0f309c49c`)을 `<components>` 블록에 명시적으로 등록함.
+  3. **공급망 보안 무결성 보존**:
+     - 컴파일/런타임에 실행되는 모든 핵심 바이너리(AAR, JAR, POM, MODULE 등)의 SHA-256 검증 및 공급망 무결성은 100% 온전히 유지하면서, IDE 탐색용 소스/문서/Gradle 배포판 아카이브 다운로드만 안전하게 허용함.
+- **실측 검증 결과**:
+  - 실제 에러 대상 아티팩트(`FastInfoset-1.2.16-sources.jar`, `JavaEWAH-1.2.3-sources.jar`, `checker-qual-3.43.0-sources.jar`)에 대한 detached configuration 소스 아티팩트 해소(Resolution) 테스트 성공 (`BUILD SUCCESSFUL`).
+  - `gradle-9.8.1-src.zip` 공식 SHA-256 대조 및 캐시 무결성 검증 완료.
+  - `.\gradlew.bat :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleDebug` → **BUILD SUCCESSFUL in 8s** (단위 테스트 215개 전수 통과, Detekt 0건, 디버그 APK 빌드 성공).
+  - `wsl -d Ubuntu -- bash -lc "cd /mnt/c/programming/apps/eundunHealth && bash scripts/check-agp10-compat.sh"` → **OK: AGP 10 호환성 가드 통과**.
+
+**다음 할 일 (Next Steps / TODO):**
+- Android Studio에서 `Sync Project with Gradle Files` 재실행하여 에러 없이 정상 동기화되는지 확인.
+
+---
+
+## 2026-10-28 (Gemini -> Claude/User) Health Connect '연동' 무반응 근본 해결 + 운동 가이드 종료 다이얼로그('완료하지 않고 나가기') 잘림 및 UI/UX 전수 점검·수정 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. 'Health Connect로 운동 달성을 자동 추적' [연동] 버튼 무반응 현상 근본 원인 해결**:
+  - **원인 1 (연동 허용 직후 홈 화면 상태 미갱신)**: `MainActivity.healthPermissionLauncher` 콜백이 `healthPermissionsRevision++`만 증가시키고, `MainAppShell.kt`에서 `ProfileHub` 라우트에만 `LaunchedEffect(healthPermissionsRevision)`을 연결하고 `Screen.Home.route`에는 연결하지 않아 홈 화면 `HealthConnectPromptCard`가 권한 허용 직후에도 그대로 남아 무반응처럼 보이던 버그 확인.
+  - **원인 2 (Android 14+ / Health Connect 2회 거부 시 시스템 다이얼로그 무음 차단)**: Android 공식 문서 및 `androidx.health.connect:connect-client:1.1.0` 바이트코드(`HealthPermissionsRequestModuleContract`, `HealthPermissionsRequestAppContract`, `HealthConnectClient`) 대조 결과, 권한 요청을 2회 거부/취소하면 OS가 시스템 다이얼로그를 띄우지 않고 즉시 빈 `Set`을 반환함.
+  - **원인 3 (Android 11+ 패키지 가시성)**: `AndroidManifest.xml`의 `<queries>`에 `<package android:name="com.google.android.apps.healthdata" />`가 누락되어 Android 13 이하 기기에서 Health Connect APK 패키지 조회·인텐트 해석이 차단될 수 있었음.
+  - **해결**:
+    - [`MainAppShell.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/MainAppShell.kt), [`HomeScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt), [`HomeViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeViewModel.kt): `HomeViewModel.refreshHealthConnectStatus()` 추가(권한 새로고침 시 `syncHealthConnectWorkouts(plan)`까지 즉시 수행) + `MainAppShell`의 `Screen.Home.route`에서 `LaunchedEffect(healthPermissionsRevision)` 연결 + `HomeScreen` `ON_RESUME` 라이프사이클 옵저버(`RefreshHealthConnectOnResume`) 연결.
+    - [`MainActivity.kt`](app/src/main/java/com/gunnys/eundunhealth/MainActivity.kt): 권한 요청이 다이얼로그 표시 없이 즉시 반환(`<350ms`)되거나 Android 14+에서 영구 잠금(`!shouldShowRequestPermissionRationale`)된 경우 공식 `HealthConnectClient.getHealthConnectManageDataIntent(this)`(폴백 `ACTION_HEALTH_CONNECT_SETTINGS`)로 Health Connect 관리 화면을 즉시 열도록 구현.
+    - [`AndroidManifest.xml`](app/src/main/AndroidManifest.xml): `<queries>`에 `<package android:name="com.google.android.apps.healthdata" />` 추가.
+- **2. '운동을 중단하시겠어요?' 다이얼로그 하단 '완료하지 않고 나가기' 잘림(Clipping) 해결 및 오늘 작업분(v0.6.1) UI/UX 전수 점검·리팩토링**:
+  - **근본 원인 (`WorkoutGuideExitDialog`)**: Material 3 `AlertDialog` 내부의 `AlertDialogFlowRow`는 `dismissButton`과 `confirmButton`을 2버튼 가로 행으로 배치하도록 설계되어 있는데, 기존 코드는 `dismissButton` 슬롯 안에 `Column`으로 2개의 긴 한국어 `TextButton`(`"오늘 운동 완료 처리하고 나가기"`, `"완료하지 않고 나가기"`)을 중첩하고 `confirmButton`에 `Button("계속 운동하기")`을 별도 배치하여 가로·세로 측정 경합으로 하단 버튼이 잘리는 현상이 발생함.
+  - **해결 및 전수 UI 보강**:
+    - [`WorkoutGuideScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt): `WorkoutGuideExitDialog`에서 `dismissButton` 슬롯 중첩을 제거하고, 단일 `confirmButton` 슬롯 내부에 `Modifier.fillMaxWidth()` 수직 `Column`으로 3개 액션(`Button("계속 운동하기")` → `FilledTonalButton("오늘 운동 완료 처리하고 나가기")` → `TextButton("완료하지 않고 나가기")`, 모두 `heightIn(min = 48.dp)`)을 배치 + 본문 `verticalScroll` 및 `WorkoutGuideCompletedContent` `verticalScroll` 추가.
+    - [`ProfileHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt), [`MealPlanScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/mealplan/MealPlanScreen.kt): `DefaultWorkoutPlanModeDialog`(라디오 3종) 및 AI 식단 데이터 처리 동의 `AlertDialog` 본문에 `verticalScroll(rememberScrollState())` 추가하여 소형 화면·200% 대형 글꼴 잘림 원천 차단.
+    - [`OnboardingScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/onboarding/OnboardingScreen.kt): Step 2 하단 2열 CTA 행의 우측 주 버튼 문구를 `"첫 주 계획 시작하기"`(`weight(1.8f)`, `TextAlign.Center`)로 정돈하여 360dp 소형 기기에서 2줄 줄바꿈·잘림 방지.
+    - [`ProgressHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt): 3열 요약 타일(`SummaryMetricTile`)의 값 타이포그래피를 `titleMedium` 및 `padding(horizontal = 6.dp)`로 조정하여 `"-12.5kg"` 등 7자 문자열에서 단위(`kg`)만 다음 줄로 쪼개지는 현상 방지.
+    - [`HealthConnectCards.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/components/HealthConnectCards.kt): `연동`·`설치` `TextButton`에 `Modifier.heightIn(min = 48.dp)` 적용하여 WCAG 최소 터치 타겟 보장.
+- **3. 재발 방지 테스트 및 전체 검증 결과**:
+  - 신규/보강 테스트: [`DialogAndLayoutGuardTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/DialogAndLayoutGuardTest.kt), [`WorkoutGuideExitDialogTest.kt`](app/src/androidTest/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideExitDialogTest.kt), [`HomeViewModelTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ui/home/HomeViewModelTest.kt), [`ManifestHealthConnectRationaleTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ManifestHealthConnectRationaleTest.kt).
+  - `.\gradlew.bat spotlessApply :app:spotlessCheck :app:detektDebug :app:compileDebugAndroidTestKotlin :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --console=plain` → **BUILD SUCCESSFUL** (단위 테스트 **215개 전수 통과**, Detekt 0건, R8 릴리스 빌드 및 `lintVitalRelease` 통과).
+  - `wsl -d Ubuntu -- bash -lc "cd /mnt/c/programming/apps/eundunHealth && bash scripts/check-agp10-compat.sh"` → **OK: AGP 10 호환성 가드 통과**.
+
+**다음 할 일 (Next Steps / TODO):**
+- 변경사항 커밋 및 차기 핫픽스 릴리스 배포 여부 확인.
+
+---
+
+## 2026-10-28 (Gemini -> Claude/User) Sentry 이슈 7816180647 (`EUNDUNHEALTH-G`, HTTP 504) 점검·디버깅 및 근본 원인 해결 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **Sentry 이슈 `7816180647` (`EUNDUNHEALTH-G`) 실측 분석 완료**:
+  - 발생 시각: `2026-10-28T07:57:11.845Z` (`16:57:11 KST`), 릴리스 `com.gunnys.eundunhealth@0.6.1+40` (`count=1`, `userCount=1`).
+  - 발생 기기: Google Play Console **Pre-launch Report (자동 사전 출시 테스트 / Robo 크롤러)** 가상 기기 (`OnePlus8Pro`, `QKR1.191246.002`, 커널 `android-build@apa28.mtv.corp.google.com`, `country_code: US`).
+  - 네트워크·서버 대조 결과:
+    1. `07:55:56.882Z` (서버 UTC `07:55:58.142Z`): 앱 최초 기동 시 `GET /app-compatibility?platform=android&versionCode=40` `200 OK` 성공.
+    2. 이후 약 74.5초간 크롤러가 MSAL 브라우저 로그인 화면 진입·취소(`user_cancelled`)를 2회 반복한 뒤 `07:57:11.312Z`에 `MainActivity`를 재생성하며 다시 `GET /app-compatibility` 호출.
+    3. **1차 시도 (`07:57:11.386Z ~ 07:57:11.796Z`)**: 유휴 상태였던 커넥션 재사용 중 `unexpected end of stream` 및 중간 게이트웨이 `HTTP 504` 발생(Azure Container Apps `eundunhealth-api--0000066` 컨테이너 로그에는 `504` 없음).
+    4. **2차 시도 (`RetryInterceptor` 500ms 백오프 재시도 → 서버 UTC `07:57:14.376Z`)**: `eundunhealth-api--0000066`에서 `GET /app-compatibility?platform=android&versionCode=40` **`200 OK` 정상 처리 완료**.
+- **근본 원인 해결 ([`NetworkModule.kt`](app/src/main/java/com/gunnys/eundunhealth/di/NetworkModule.kt), [`RetryInterceptorTest.kt`](app/src/test/java/com/gunnys/eundunhealth/data/remote/interceptor/RetryInterceptorTest.kt))**:
+  1. **인터셉터 순서 교정 (`SentryOkHttpInterceptor`를 `RetryInterceptor` 앞/바깥으로 이동)**: 기존에는 `RetryInterceptor`가 바깥(`#1`), `SentryOkHttpInterceptor`가 안쪽(`#3`)에 있어 1차 시도가 `504`로 실패하는 순간 `RetryInterceptor`가 재시도(`200 OK`)하기도 전에 `SentryOkHttpEvent`가 조기 종료(`isEventFinished = true`)되며 `SentryHttpClientException`을 발송하고 2차 성공 응답을 무시하던 구조적 버그를 해결.
+  2. **`captureFailedRequests = false` 명시 및 `provideExerciseDbOkHttpClient` 방어**: `SentryOkHttpInterceptor(captureFailedRequests = false)`를 `backendOkHttpBuilder`와 `provideExerciseDbOkHttpClient` 모두 최외곽에 명시 배치하여, Sentry Gradle Plugin ASM(`RealCall.getResponseWithInterceptorChain$okhttp`)이 기본 `SentryOkHttpInterceptor(captureFailedRequests = true)`를 `RetryInterceptor` 뒤에 자동 주입하는 현상까지 원천 차단([`AppError.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/model/AppError.kt) 정책과 정합; HTTP 스팬·브레드크럼은 그대로 유지).
+  3. **검증 완료**: `.\gradlew.bat spotlessApply :app:testDebugUnitTest --tests "com.gunnys.eundunhealth.data.remote.interceptor.RetryInterceptorTest" :app:detektDebug spotlessCheck` → **BUILD SUCCESSFUL** (신규 회귀 테스트 2건 포함 통과).
+
+**다음 할 일 (Next Steps / TODO):**
+- 변경사항 커밋/PR 반영 및 Sentry 이슈 `7816180647` (`EUNDUNHEALTH-G`) Resolve 처리 여부 확인.
+
+**주의사항 및 컨텍스트 (Context & Constraints):**
+- `git stash` 목록에 사용자 작업분(`autostash`)이 존재하므로 임의로 `stash drop/pop` 금지.
+
+---
+
 ## 2026-10-28 (Gemini -> Claude/User) PROP-05 UI/UX 개선 통합 설계서 Phase 1~4 구현 + 2차 심층 리팩토링 + v0.6.1 (versionCode=40) 운영 배포 완료
 
 **현재까지의 작업 상태 (Current Status):**

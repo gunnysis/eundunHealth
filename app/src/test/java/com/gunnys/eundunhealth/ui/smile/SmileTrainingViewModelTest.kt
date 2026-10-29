@@ -1,15 +1,16 @@
 package com.gunnys.eundunhealth.ui.smile
 
+import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.data.smile.MlKitFaceModuleManager
 import com.gunnys.eundunhealth.data.smile.MlKitModuleState
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
 import com.gunnys.eundunhealth.domain.model.SmileSessionRecord
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.SmileSyncStatus
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.SyncBatchOutcome
 import com.gunnys.eundunhealth.domain.smile.FrameSignal
+import io.mockk.coVerify
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +34,12 @@ import org.junit.Test
 class SmileTrainingViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
+    private val themePreferences: ThemePreferences = mockk(relaxed = true)
+
+    private fun createViewModel(
+        repository: SmileTrainingRepository = FakeSmileTrainingRepository(),
+        moduleManager: MlKitFaceModuleManager = FakeModuleManager(),
+    ) = SmileTrainingViewModel(repository, moduleManager, themePreferences)
 
     @Before
     fun setup() {
@@ -46,7 +53,7 @@ class SmileTrainingViewModelTest {
 
     @Test
     fun `start without camera permission transitions to PERMISSION_RATIONALE`() = runTest {
-        val vm = SmileTrainingViewModel(FakeSmileTrainingRepository(), FakeModuleManager())
+        val vm = createViewModel()
         advanceUntilIdle()
 
         vm.onStartClicked(hasCameraPermission = false)
@@ -58,7 +65,7 @@ class SmileTrainingViewModelTest {
 
     @Test
     fun `start with permission checks ML Kit module and transitions to READY`() = runTest {
-        val vm = SmileTrainingViewModel(FakeSmileTrainingRepository(), FakeModuleManager(MlKitModuleState.Available))
+        val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
         advanceUntilIdle()
 
         vm.onStartClicked(hasCameraPermission = true)
@@ -83,7 +90,7 @@ class SmileTrainingViewModelTest {
             }
         }
 
-        val vm = SmileTrainingViewModel(FakeSmileTrainingRepository(), flakyModuleManager)
+        val vm = createViewModel(moduleManager = flakyModuleManager)
         advanceUntilIdle()
 
         vm.onStartClicked(hasCameraPermission = true)
@@ -102,99 +109,112 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
-    fun `full active session flow completes reps, saves reflection, and reaches COMPLETED`() = runTest {
-        val fakeRepo = FakeSmileTrainingRepository()
-        val vm = SmileTrainingViewModel(fakeRepo, FakeModuleManager(MlKitModuleState.Available))
+    fun `READY phase automatically starts ACTIVE after 1000ms face alignment unless paused`() = runTest {
+        val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
         advanceUntilIdle()
 
-        vm.selectRoutine(SmileRoutineType.GENTLE)
-        vm.selectDifficulty(SmileDifficultyLevel.COMFORTABLE) // 1200ms target hold
-        vm.selectTargetReps(2)
+        vm.onStartClicked(hasCameraPermission = true)
+        advanceUntilIdle()
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+        assertFalse(vm.uiState.value.isPaused)
+
+        vm.onFrameSignal(goodSignal(t = 0L))
+        vm.onFrameSignal(goodSignal(t = 350L))
+        vm.onFrameSignal(goodSignal(t = 700L))
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+
+        vm.onFrameSignal(goodSignal(t = 1050L))
+        assertEquals(SmileSessionPhase.ACTIVE, vm.uiState.value.phase)
+
+        // When user pauses, isPaused = true and auto-start must NOT trigger even after >1000ms alignment
+        vm.pauseActiveExercise()
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+        assertTrue(vm.uiState.value.isPaused)
+
+        vm.onFrameSignal(goodSignal(t = 2000L))
+        vm.onFrameSignal(goodSignal(t = 2350L))
+        vm.onFrameSignal(goodSignal(t = 2700L))
+        vm.onFrameSignal(goodSignal(t = 3050L))
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+    }
+
+    @Test
+    fun `full active session flow completes 3 reps and automatically saves and transitions to COMPLETED`() = runTest {
+        val fakeRepo = FakeSmileTrainingRepository()
+        val vm = createViewModel(repository = fakeRepo, moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        advanceUntilIdle()
+
         vm.onStartClicked(hasCameraPermission = true)
         advanceUntilIdle()
 
         vm.beginActiveExercise()
         assertEquals(SmileSessionPhase.ACTIVE, vm.uiState.value.phase)
 
-        // Complete rep 1 (1000 -> 1300 -> 1600 -> 1900 -> 2200ms)
-        vm.onFrameSignal(goodSignal(t = 1000L))
-        vm.onFrameSignal(goodSignal(t = 1300L))
-        vm.onFrameSignal(goodSignal(t = 1600L))
-        vm.onFrameSignal(goodSignal(t = 1900L))
-        vm.onFrameSignal(goodSignal(t = 2200L))
-
+        // Complete rep 1 (2000ms target hold: 1000 -> 1350 -> 1700 -> 2050 -> 2400 -> 2750 -> 3000ms)
+        completeOneStandardRep(vm, startTimeMs = 1000L)
         assertEquals(SmileSessionPhase.REP_SUCCESS, vm.uiState.value.phase)
         assertEquals(1, vm.uiState.value.currentRep)
 
-        // Advance past REP_REST_DELAY_MS
         advanceTimeBy(SmileTrainingViewModel.REP_REST_DELAY_MS + 100L)
         assertEquals(SmileSessionPhase.ACTIVE, vm.uiState.value.phase)
 
-        // Complete rep 2 (3500 -> 3800 -> 4100 -> 4400 -> 4700ms)
-        vm.onFrameSignal(goodSignal(t = 3500L))
-        vm.onFrameSignal(goodSignal(t = 3800L))
-        vm.onFrameSignal(goodSignal(t = 4100L))
-        vm.onFrameSignal(goodSignal(t = 4400L))
-        vm.onFrameSignal(goodSignal(t = 4700L))
-
-        assertEquals(SmileSessionPhase.REFLECTION, vm.uiState.value.phase)
+        // Complete rep 2
+        completeOneStandardRep(vm, startTimeMs = 5000L)
+        assertEquals(SmileSessionPhase.REP_SUCCESS, vm.uiState.value.phase)
         assertEquals(2, vm.uiState.value.currentRep)
-        // Monotonic elapsed time: 4700ms - 1000ms = 3700ms -> rounds to 4 sec
-        assertEquals(4, vm.uiState.value.sessionDurationSec)
 
-        vm.selectReflectionEmoji(5)
-        vm.finishAndSaveSession(skipReflection = false)
+        advanceTimeBy(SmileTrainingViewModel.REP_REST_DELAY_MS + 100L)
+        assertEquals(SmileSessionPhase.ACTIVE, vm.uiState.value.phase)
+
+        // Complete rep 3 -> directly transitions to COMPLETED and saves session without REFLECTION phase
+        completeOneStandardRep(vm, startTimeMs = 9000L)
         advanceUntilIdle()
 
         assertEquals(SmileSessionPhase.COMPLETED, vm.uiState.value.phase)
+        assertEquals(3, vm.uiState.value.currentRep)
         val saved = fakeRepo.observeSessions().first()
         assertEquals(1, saved.size)
-        assertEquals(5, saved.first().reflectionEmoji)
-        assertEquals(2, saved.first().completedReps)
-        assertEquals(4, saved.first().durationSec)
+        assertEquals(3, saved.first().completedReps)
+        assertTrue(saved.first().durationSec >= 1)
+        coVerify(exactly = 1) { themePreferences.markSmileShortcutDismissed(any()) }
     }
 
     @Test
     fun `pause or lifecycle ON_STOP during ACTIVE preserves completed reps and resumes cleanly`() = runTest {
-        val vm = SmileTrainingViewModel(FakeSmileTrainingRepository(), FakeModuleManager(MlKitModuleState.Available))
+        val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
         advanceUntilIdle()
 
-        vm.selectRoutine(SmileRoutineType.GENTLE)
-        vm.selectDifficulty(SmileDifficultyLevel.COMFORTABLE) // 1200ms target hold
-        vm.selectTargetReps(2)
         vm.beginActiveExercise(nowElapsedMs = 0L)
 
         // Complete rep 1
-        vm.onFrameSignal(goodSignal(t = 0L))
-        vm.onFrameSignal(goodSignal(t = 300L))
-        vm.onFrameSignal(goodSignal(t = 600L))
-        vm.onFrameSignal(goodSignal(t = 900L))
-        vm.onFrameSignal(goodSignal(t = 1200L))
+        completeOneStandardRep(vm, startTimeMs = 0L)
         assertEquals(1, vm.uiState.value.currentRep)
 
-        // Lifecycle ON_STOP fires during REP_SUCCESS -> transitions to READY while keeping currentRep = 1
+        // Lifecycle ON_STOP fires during REP_SUCCESS -> transitions to READY (isPaused=true) while keeping currentRep = 1
         vm.onCameraLifecycleStopped()
         assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+        assertTrue(vm.uiState.value.isPaused)
         assertEquals(1, vm.uiState.value.currentRep)
 
-        // User taps resume -> stays at currentRep = 1 and completes rep 2
+        // User taps resume -> stays at currentRep = 1 and completes rep 2 and rep 3
         vm.beginActiveExercise(nowElapsedMs = 5000L)
         assertEquals(SmileSessionPhase.ACTIVE, vm.uiState.value.phase)
         assertEquals(1, vm.uiState.value.currentRep)
 
-        vm.onFrameSignal(goodSignal(t = 5000L))
-        vm.onFrameSignal(goodSignal(t = 5300L))
-        vm.onFrameSignal(goodSignal(t = 5600L))
-        vm.onFrameSignal(goodSignal(t = 5900L))
-        vm.onFrameSignal(goodSignal(t = 6200L))
-
-        assertEquals(SmileSessionPhase.REFLECTION, vm.uiState.value.phase)
+        completeOneStandardRep(vm, startTimeMs = 5000L)
         assertEquals(2, vm.uiState.value.currentRep)
+        advanceTimeBy(SmileTrainingViewModel.REP_REST_DELAY_MS + 100L)
+
+        completeOneStandardRep(vm, startTimeMs = 9000L)
+        advanceUntilIdle()
+
+        assertEquals(SmileSessionPhase.COMPLETED, vm.uiState.value.phase)
+        assertEquals(3, vm.uiState.value.currentRep)
     }
 
     @Test
     fun `onCameraError transitions back to INTRO with inline AppError`() = runTest {
-        val vm = SmileTrainingViewModel(FakeSmileTrainingRepository(), FakeModuleManager(MlKitModuleState.Available))
+        val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
         advanceUntilIdle()
 
         vm.beginActiveExercise(nowElapsedMs = 0L)
@@ -207,7 +227,7 @@ class SmileTrainingViewModelTest {
 
     @Test
     fun `back request during ACTIVE shows exit confirm dialog instead of immediately popping`() = runTest {
-        val vm = SmileTrainingViewModel(FakeSmileTrainingRepository(), FakeModuleManager())
+        val vm = createViewModel()
         advanceUntilIdle()
 
         vm.beginActiveExercise(nowElapsedMs = 0L)
@@ -222,11 +242,64 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
+    fun `back request during paused READY session shows exit confirm dialog instead of discarding progress`() = runTest {
+        val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        advanceUntilIdle()
+
+        vm.beginActiveExercise(nowElapsedMs = 0L)
+        completeOneStandardRep(vm, startTimeMs = 0L)
+        assertEquals(1, vm.uiState.value.currentRep)
+
+        vm.pauseActiveExercise()
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+        assertTrue(vm.uiState.value.isPaused)
+
+        val shouldPop = vm.onBackOrExitRequested()
+        assertFalse(shouldPop)
+        assertTrue(vm.uiState.value.showExitConfirmDialog)
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+        assertEquals(1, vm.uiState.value.currentRep)
+    }
+
+    @Test
+    fun `paused interval is excluded from final sessionDurationSec`() = runTest {
+        val fakeRepo = FakeSmileTrainingRepository()
+        val vm = createViewModel(repository = fakeRepo, moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        advanceUntilIdle()
+
+        vm.beginActiveExercise(nowElapsedMs = 0L)
+        // Rep 1 takes ~2.1s (0ms -> 2100ms)
+        completeOneStandardRep(vm, startTimeMs = 0L)
+        vm.pauseActiveExercise()
+
+        // User stays paused for 10 minutes (600,000ms), then resumes at 600,000ms
+        vm.beginActiveExercise(nowElapsedMs = 600_000L)
+        completeOneStandardRep(vm, startTimeMs = 600_000L)
+        advanceTimeBy(SmileTrainingViewModel.REP_REST_DELAY_MS + 100L)
+        completeOneStandardRep(vm, startTimeMs = 604_000L)
+        advanceUntilIdle()
+
+        assertEquals(SmileSessionPhase.COMPLETED, vm.uiState.value.phase)
+        // Active time was ~2.1s + ~6.1s = ~8s, NOT 606s!
+        assertTrue(
+            "Expected active duration under 20s, got ${vm.uiState.value.sessionDurationSec}",
+            vm.uiState.value.sessionDurationSec in 6..15,
+        )
+    }
+
+    @Test
     fun `formatDurationKorean formats seconds and minutes accurately`() {
         assertEquals("0초", formatDurationKorean(0))
         assertEquals("45초", formatDurationKorean(45))
         assertEquals("2분", formatDurationKorean(120))
         assertEquals("2분 45초", formatDurationKorean(165))
+    }
+
+    private fun completeOneStandardRep(vm: SmileTrainingViewModel, startTimeMs: Long) {
+        // 2000ms hold in 300ms steps (7 intervals = 2100ms >= 2000ms)
+        for (step in 0..7) {
+            vm.onFrameSignal(goodSignal(t = startTimeMs + step * 300L))
+        }
     }
 
     private fun goodSignal(t: Long) = FrameSignal(
@@ -258,21 +331,15 @@ class SmileTrainingViewModelTest {
         override fun observeSummaryStats(): Flow<SmileSummaryStats> = statsFlow
 
         override suspend fun saveCompletedSession(
-            routine: SmileRoutineType,
-            difficulty: SmileDifficultyLevel,
             durationSec: Int,
             completedReps: Int,
-            reflectionEmoji: Int?,
             occurredAtEpochMs: Long,
         ): Result<SmileSessionRecord> {
             val record = SmileSessionRecord(
                 id = "session-${sessionsFlow.value.size + 1}",
                 userId = "user-1",
-                routine = routine,
-                difficulty = difficulty,
                 durationSec = durationSec,
                 completedReps = completedReps,
-                reflectionEmoji = reflectionEmoji,
                 occurredAtEpochMs = occurredAtEpochMs,
                 syncStatus = SmileSyncStatus.PENDING,
             )

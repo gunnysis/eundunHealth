@@ -4,6 +4,28 @@
 
 ---
 
+## [v0.7.0] — 2026-10-29 — 스마일 트레이닝 v2 전면 리팩토링(Zero-Legacy) · PostgreSQL 18 스키마 하드 리셋 파이프라인 · AGP 9.4.1 정식 업그레이드
+
+> **2026-10-29 `v0.7.0` (`versionCode=41`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`) 풀스택 릴리스.** 온디바이스 스마일 트레이닝 v2 단일 규격(`2.0초 유지 × 3회 반복` · `READY` 1.0초 얼굴 정렬 자동 시작 · 4대 접속 경로 IA) 컷오버와 Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, Alembic 전수 제거)을 통합하고, 운영 DB 하드 리셋(`hard-reset-v2-pg18-prod-20261029`)을 완료했다.
+
+### 😊 영역 A — 스마일 트레이닝 v2 전면 리팩토링 · Zero-Legacy Cutover · 4대 접속 경로(IA)
+- **단일 표준 스펙(`SmileTrainingSpec`: `2,000ms 유지 × 3회 반복`) 및 Zero-Legacy 전환**: 루틴(`SmileRoutineType`)·난이도(`SmileDifficultyLevel`)·종료 후 감정 설문(`reflectionEmoji`) 옵션을 백엔드·OpenAPI·Android 전 계층에서 완전 제거하고, `ACTIVE -> COMPLETED` 직행 자동 저장·동기화 및 지수 이동 평균(`EMA alpha = 0.6f`) 스무딩을 적용했다.
+- **`READY` 단계 1.0초 연속 정렬 자동 시작 & 풀블리드 카메라 HUD**: 얼굴이 타원 가이드에 `1,000ms` 연속 정렬되면 버튼 탭 없이 햅틱 피드백과 함께 자동 시작(`isPaused` 상태 격리)되며, 일시정지 구간을 실제 운동 시간(`sessionDurationSec`)에서 제외하고 상단 고정 배너를 제거한 풀블리드 카메라 뷰파인더 + 하단 플로팅 글래스 시트(`Modern Forest & Mint`)로 개편했다.
+- **4대 접속 경로(IA) 통합**: ① 오늘 탭 상단바 상시 `SmileQuickActionChip`(`✓ 스마일 완료` / 연속 달성일 배지) ② 오늘 탭 `TodayHeroCard` 하단 상황 인지형 `SmileTrainingContextualCard` ③ 단계별 운동 가이드 완료 화면(`[마무리 10초 스마일 트레이닝 하기]` 쿨다운 브릿지) ④ 기록 허브 최상단 `"마음 연습 > 스마일 트레이닝"` 카드로 진입성을 대폭 강화했다.
+- **v2 API & Room DB v2 Cutover**: 백엔드 `/v2/smile-training/sessions` (`POST`/`GET`/`DELETE`) 및 `/v2/smile-training/statistics` (`GET`) 4개 엔드포인트, Room `SmileTrainingDatabase` v2(`MIGRATION_1_2` + `fallbackToDestructiveMigrationFrom(1)`), `ExistingWorkPolicy.APPEND_OR_REPLACE` 기반 다중 배치 오프라인 동기화를 적용했다.
+
+### 🗄️ 영역 B — Azure PostgreSQL 18 업그레이드 & Drop & Recreate 스키마 하드 리셋 파이프라인
+- **PostgreSQL 18.4(운영 `healthapp`) 동적 튜닝 & 로컬/CI `postgres:18-alpine`(`18.6`) 업그레이드**: 운영 서버에 무중단 동적 파라미터 5종(`idle_in_transaction_session_timeout=60000`, `azure.extensions=PG_STAT_STATEMENTS`, `pg_stat_statements.track=top`, `track_io_timing=on`, `log_min_duration_statement=1000`)을 적용하고 `Standard_B1ms` 연결 한도에 맞춘 `build_engine_kwargs`(`pool_size=3, max_overflow=2, pool_pre_ping=True, pool_recycle=1800`)를 도입했다.
+- **정본 DDL(`02_schema_create_all.sql`) ↔ SQLAlchemy 2.0 ORM 1:1 패리티**: 8개 도메인 테이블 PK에 PostgreSQL 18 네이티브 `DEFAULT uuidv7()` 및 Python 3.14 `uuid.uuid7`을 일관 적용하고, `ON DELETE CASCADE` 외래키(`user_profile_history`, `meal_plan_items`), 엄격한 도메인 `CHECK` 제약, 중복 인덱스 제거를 완성했다. 레거시 Alembic 마이그레이션 파일·의존성은 전수 제거했다.
+- **하드 리셋 CLI(`hard_reset_db.py`) · 기동 멱등 부트스트랩(`app.schema_bootstrap`) · 100건 엣지 케이스 Seeder(`seed_edge_cases.py`)**: 9개 테이블 합계 정확히 **100건(`15+15+15+10+15+5+10+14+1 = 100 rows`)**의 극단값·NULL·유니코드 엣지 케이스 데이터와 `SAVEPOINT` 기반 **11개 음수 제약 위반/연쇄 삭제 검증**을 로컬·CI·운영(`healthapp`)에서 모두 실증했다.
+
+### 🛠️ 영역 C — 빌드·네트워크·UI 안정성 개선
+- **AGP 9.4.1 정식 업그레이드**: `agp = "9.4.1"` 승격, Linux/macOS `aapt2-9.4.1-15978811` SHA-256 등록, `gradle/verification-metadata.xml`(구 9.3.2 아티팩트 272개 정리 + IDE `sources.jar`/`src.zip` trusted-artifacts 추가) 및 `app/gradle.lockfile` 정합화를 완료했다.
+- **Health Connect & 네트워크 & 다이얼로그 개선**: Health Connect 권한 허용 직후 홈 화면 즉시 동기화(`refreshHealthConnectStatus`) 및 Android 14+ 권한 잠금 시 관리 화면 인텐트 폴백, 운동 가이드 종료 다이얼로그 3버튼 수직 레이아웃(잘림 해결) 및 시스템 뒤로가기 완료 콜백 누락 수정, `SentryOkHttpInterceptor(captureFailedRequests = false)` 최외곽 배치로 재시도 성공 시 5xx 오탐 전송을 차단했다.
+- **검증**: Android `spotlessCheck`·`check-agp10-compat.sh`·`detektDebug`(0건)·단위 테스트 **222건**·`releaseArtifacts`(R8 full mode), Backend `ruff`·`mypy`·`pytest` **146건**·`pip-audit`·`bandit` 전수 통과.
+
+---
+
 ## [v0.6.1] — 2026-10-28 — UI/UX 전면 개선 (`PROP-05` Phase 1~4) · M3 포레스트 민트 & Pretendard · Today Hero & 운동 가이드 모드 · 공급망 강화
 
 > **2026-10-28 Play production 업로드 성공 (`versionCode=40`, 태그 `v0.6.1`, `release.yml` run `40647597577`) 및 백엔드 배포 완료 (`eundunhealth-api--0000066`, `backend.yml` run `40647560099`, 이미지 `c12f969`).** Android 클라이언트 UI/UX 전면 개편(`PROP-05` Phase 1~4)과 빌드·공급망 하드닝을 통합하고 프로덕션 배포를 완료했다(원장 PR #211, `LAST_UPLOADED_VERSION_CODE=40`).

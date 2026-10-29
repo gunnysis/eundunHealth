@@ -14,10 +14,13 @@
         android:name="android.hardware.camera.front"
         android:required="false" />
 
-    <!-- Android 11+(API 30) package visibility: HC 미설치 안내 카드의 Play Store(market://) 딥링크가
-         resolve 되도록 스토어 패키지를 명시. 미선언 시 ActivityNotFoundException → web fallback 으로만 동작. -->
+    <!-- Android 11+(API 30) package visibility:
+         - com.android.vending: HC 미설치 안내 카드의 Play Store(market://) 딥링크 resolve
+         - com.google.android.apps.healthdata: Android ≤13(API 28~33)에서 HealthConnectClient.getSdkStatus() 및
+           getHealthConnectManageDataIntent()가 Health Connect APK(package/service/activity)를 조회·라우팅하도록 보장 -->
     <queries>
         <package android:name="com.android.vending" />
+        <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
     <application

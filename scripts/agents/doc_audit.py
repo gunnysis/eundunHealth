@@ -250,8 +250,13 @@ def collect_facts(repo_root: Path) -> dict[str, Any]:
     api_ver = parse_backend_api_version(_read(repo_root / "backend" / "app" / "__init__.py"))
 
     versions_dir = repo_root / "backend" / "alembic" / "versions"
-    pairs = [parse_revision_pair(_read(p)) for p in sorted(versions_dir.glob("*.py"))]
-    alembic = compute_alembic_head(pairs)
+    py_files = sorted(versions_dir.glob("*.py")) if versions_dir.is_dir() else []
+    if py_files:
+        pairs = [parse_revision_pair(_read(p)) for p in py_files]
+        alembic = compute_alembic_head(pairs)
+    else:
+        canonical_sql = repo_root / "backend" / "sql" / "02_schema_create_all.sql"
+        alembic = compute_alembic_head([("02_schema_create_all.sql", None)] if canonical_sql.is_file() else [])
 
     cors = parse_cors_default(_read(repo_root / "backend" / "app" / "config.py"))
 
@@ -360,7 +365,7 @@ def build_prompt(facts: dict[str, Any], doc_copies: list[str]) -> str:
 - app_version (versionName/versionCode): README 배지·operations-snapshot §1·PRD·CLAUDE.md 의
   *현재* 서술이 일치해야 한다. CHANGELOG/이력 entry 는 제외.
 - backend_api_version: 앱 버전과 **독립**(현재 1.0.0). 혼동 서술 주의.
-- alembic.head: CLAUDE.md·operations-snapshot 의 "Alembic head" 서술과 일치해야 한다.
+- alembic.head: 현재 `02_schema_create_all.sql`(Drop & Recreate 전용 스키마 SSoT, 구형 Alembic 폐기)과 CLAUDE.md·operations-snapshot 의 스키마 서술이 일치해야 한다.
 - cors_origins_default: 현재 `[]`(차단). 과거 `["*"]` 잔재 서술이 있으면 stale(보안 민감).
 - api_routes.total: CLAUDE.md 의 엔드포인트 개수 주석(예: "14개")과 의미상 정합한지. 공개 라우트
   (/health, /health/ready, /.well-known/assetlinks.json, /auth/confirm)는 별도 카운트일 수 있으니

@@ -30,12 +30,14 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -87,6 +89,7 @@ import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 fun WorkoutGuideScreen(
     onBack: () -> Unit,
     onWorkoutCompleted: () -> Unit = {},
+    onNavigateToSmileTraining: () -> Unit = {},
     viewModel: WorkoutGuideViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -112,8 +115,17 @@ fun WorkoutGuideScreen(
         }
     }
 
-    BackHandler(enabled = uiState is WorkoutGuideUiState.InProgress) {
-        showExitDialog = true
+    BackHandler(
+        enabled = uiState is WorkoutGuideUiState.InProgress || uiState is WorkoutGuideUiState.CompletedSummary,
+    ) {
+        when (uiState) {
+            is WorkoutGuideUiState.InProgress -> showExitDialog = true
+            is WorkoutGuideUiState.CompletedSummary -> {
+                onWorkoutCompleted()
+                onBack()
+            }
+            else -> Unit
+        }
     }
 
     if (showExitDialog && uiState is WorkoutGuideUiState.InProgress) {
@@ -199,6 +211,11 @@ fun WorkoutGuideScreen(
                     onFinish = {
                         onWorkoutCompleted()
                         onBack()
+                    },
+                    onStartSmileCooldown = {
+                        onWorkoutCompleted()
+                        onBack()
+                        onNavigateToSmileTraining()
                     },
                     modifier = Modifier.padding(padding),
                 )
@@ -495,11 +512,13 @@ private fun GuideTagChip(text: String) {
 private fun WorkoutGuideCompletedContent(
     exerciseCount: Int,
     onFinish: () -> Unit,
+    onStartSmileCooldown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -534,11 +553,26 @@ private fun WorkoutGuideCompletedContent(
         ) {
             Text("오늘 탭으로 돌아가기")
         }
+        Spacer(modifier = Modifier.height(12.dp))
+        FilledTonalButton(
+            onClick = onStartSmileCooldown,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.SentimentSatisfiedAlt,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("마무리 10초 스마일 트레이닝 하기")
+        }
     }
 }
 
 @Composable
-private fun WorkoutGuideExitDialog(
+internal fun WorkoutGuideExitDialog(
     onDismiss: () -> Unit,
     onExitWithoutCompleting: () -> Unit,
     onCompleteAndExit: () -> Unit,
@@ -547,20 +581,52 @@ private fun WorkoutGuideExitDialog(
         onDismissRequest = onDismiss,
         title = { Text("운동을 중단하시겠어요?") },
         text = {
-            Text("지금 나가면 완료 표시 없이 종료하거나, 오늘 운동을 완료 처리하고 나갈 수 있습니다.")
+            Text(
+                text = "지금 나가면 완료 표시 없이 종료하거나, 오늘 운동을 완료 처리하고 나갈 수 있습니다.",
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
         },
+        // 3개 이상의 긴 한국어 액션이 있는 다이얼로그에서 dismissButton 슬롯에 Column을 중첩하면
+        // AlertDialogFlowRow 내부 가로·세로 측정 경합으로 하단 버튼('완료하지 않고 나가기')이 잘린다.
+        // 단일 confirmButton 슬롯 안에 전체 너비(fillMaxWidth) 수직 스택으로 배치해
+        // 모든 화면 폭·글꼴 크기(200%)에서 잘림 없이 시각적 우선순위를 명확히 표현한다.
         confirmButton = {
-            Button(onClick = onDismiss) {
-                Text("계속 운동하기")
-            }
-        },
-        dismissButton = {
-            Column(horizontalAlignment = Alignment.End) {
-                TextButton(onClick = onCompleteAndExit) {
-                    Text("오늘 운동 완료 처리하고 나가기")
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        text = "계속 운동하기",
+                        textAlign = TextAlign.Center,
+                    )
                 }
-                TextButton(onClick = onExitWithoutCompleting) {
-                    Text("완료하지 않고 나가기")
+                FilledTonalButton(
+                    onClick = onCompleteAndExit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        text = "오늘 운동 완료 처리하고 나가기",
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                TextButton(
+                    onClick = onExitWithoutCompleting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        text = "완료하지 않고 나가기",
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
         },

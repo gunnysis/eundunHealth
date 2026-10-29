@@ -2,14 +2,10 @@ package com.gunnys.eundunhealth.data.repository
 
 import androidx.work.WorkManager
 import com.gunnys.eundunhealth.api.generated.api.SmileTrainingApi
-import com.gunnys.eundunhealth.api.generated.model.SmileDifficulty
-import com.gunnys.eundunhealth.api.generated.model.SmileRoutine
 import com.gunnys.eundunhealth.api.generated.model.SmileTrainingSessionResponse
 import com.gunnys.eundunhealth.api.generated.model.SmileTrainingSessionsPageResponse
 import com.gunnys.eundunhealth.data.local.dao.SmileSessionDao
 import com.gunnys.eundunhealth.data.local.entity.SmileSessionEntity
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
 import com.gunnys.eundunhealth.domain.model.SmileSyncStatus
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.SyncBatchOutcome
@@ -59,6 +55,67 @@ class SmileTrainingRepositoryImplTest {
     }
 
     @Test
+    fun `computeSummaryStats ignores future timestamps caused by clock skew`() {
+        val today = LocalDate.of(2026, 10, 26)
+        val entities = listOf(
+            // Future timestamp (Oct 28) from clock skew + yesterday (Oct 25)
+            entityAtKst(2026, 10, 28, 12, 0, durationSec = 20, status = SmileSyncStatus.SYNCED),
+            entityAtKst(2026, 10, 25, 18, 0, durationSec = 30, status = SmileSyncStatus.SYNCED),
+        )
+
+        val stats = SmileTrainingRepositoryImpl.computeSummaryStats(entities, today)
+
+        assertEquals(2, stats.totalSessions)
+        assertEquals(1, stats.currentStreakDays)
+        assertEquals(1, stats.longestStreakDays)
+    }
+
+    @Test
+    fun `syncPendingSessions drains multiple batches in a single pass and deleteAllSessions cancels worker`() = runTest {
+        val dao = InMemorySmileSessionDao()
+        val api = mockk<SmileTrainingApi>()
+        val authRepo = mockk<AuthRepository>()
+        val workManager = mockk<WorkManager>(relaxed = true)
+
+        coEvery { authRepo.getCurrentUserId() } returns "user-1"
+        coEvery { api.recordSmileTrainingSession(any()) } answers {
+            val req = firstArg<com.gunnys.eundunhealth.api.generated.model.SmileTrainingSessionRequest>()
+            Response.success(
+                201,
+                SmileTrainingSessionResponse(
+                    id = req.id.toString(),
+                    durationSec = req.durationSec,
+                    completedReps = req.completedReps,
+                    occurredAt = req.occurredAt,
+                    createdAt = req.occurredAt,
+                ),
+            )
+        }
+        coEvery { api.deleteAllSmileTrainingSessions() } returns Response.success(
+            200,
+            com.gunnys.eundunhealth.api.generated.model.SmileTrainingDeleteResponse(
+                status = "deleted",
+                deletedCount = 5,
+            ),
+        )
+
+        val repo = SmileTrainingRepositoryImpl(dao, api, authRepo, workManager)
+        repeat(5) {
+            repo.saveCompletedSession(durationSec = 20, completedReps = 3).getOrThrow()
+        }
+
+        // Sync with maxBatchSize = 2 -> should loop through all 3 batches (2 + 2 + 1 = 5)
+        val outcome = repo.syncPendingSessions(maxBatchSize = 2)
+        assertEquals(SyncBatchOutcome.ALL_SYNCED, outcome)
+        val synced = repo.observeSessions().first()
+        assertTrue(synced.all { it.syncStatus == SmileSyncStatus.SYNCED })
+
+        repo.deleteAllSessions().getOrThrow()
+        coVerify { workManager.cancelUniqueWork(com.gunnys.eundunhealth.data.sync.SmileSyncWorker.UNIQUE_WORK_NAME) }
+        assertTrue(repo.observeSessions().first().isEmpty())
+    }
+
+    @Test
     fun `syncPendingSessions classifies 201 as SYNCED, 422 as BLOCKED, and IOException as RETRY_NEEDED`() = runTest {
         val dao = InMemorySmileSessionDao()
         val api = mockk<SmileTrainingApi>()
@@ -70,19 +127,13 @@ class SmileTrainingRepositoryImplTest {
         val repo = SmileTrainingRepositoryImpl(dao, api, authRepo, workManager)
 
         val saved1 = repo.saveCompletedSession(
-            routine = SmileRoutineType.GENTLE,
-            difficulty = SmileDifficultyLevel.STANDARD,
             durationSec = 30,
             completedReps = 3,
-            reflectionEmoji = 4,
         ).getOrThrow()
 
         val saved2 = repo.saveCompletedSession(
-            routine = SmileRoutineType.SUSTAINED,
-            difficulty = SmileDifficultyLevel.CHALLENGE,
             durationSec = 45,
             completedReps = 3,
-            reflectionEmoji = null,
         ).getOrThrow()
 
         // First session succeeds (201), second session gets 422 Unprocessable Entity -> marked BLOCKED
@@ -92,11 +143,8 @@ class SmileTrainingRepositoryImplTest {
             201,
             SmileTrainingSessionResponse(
                 id = saved1.id,
-                routine = SmileRoutine.GENTLE,
-                difficulty = SmileDifficulty.STANDARD,
                 durationSec = 30,
                 completedReps = 3,
-                reflectionEmoji = 4,
                 occurredAt = "2026-10-26T00:00:00Z",
                 createdAt = "2026-10-26T00:00:00Z",
             ),
@@ -143,11 +191,8 @@ class SmileTrainingRepositoryImplTest {
                 items = listOf(
                     SmileTrainingSessionResponse(
                         id = "11111111-2222-3333-4444-555555555555",
-                        routine = SmileRoutine.SMILE_AND_FRONT,
-                        difficulty = SmileDifficulty.CHALLENGE,
                         durationSec = 55,
-                        completedReps = 4,
-                        reflectionEmoji = 5,
+                        completedReps = 3,
                         occurredAt = "2026-10-25T10:00:00Z",
                         createdAt = "2026-10-25T10:00:01Z",
                     ),
@@ -165,7 +210,8 @@ class SmileTrainingRepositoryImplTest {
         assertEquals(1, records.size)
         assertEquals("11111111-2222-3333-4444-555555555555", records.first().id)
         assertEquals(SmileSyncStatus.SYNCED, records.first().syncStatus)
-        assertEquals(SmileRoutineType.SMILE_AND_FRONT, records.first().routine)
+        assertEquals(55, records.first().durationSec)
+        assertEquals(3, records.first().completedReps)
 
         // Second call when local DB is already populated -> skips network call and returns 0
         val secondInserted = repo.refreshRemoteHistoryIfEmpty().getOrThrow()
@@ -188,11 +234,8 @@ class SmileTrainingRepositoryImplTest {
         return SmileSessionEntity(
             id = "id-$year-$month-$day-$hour-$minute",
             userId = "user-1",
-            routine = SmileRoutineType.GENTLE.name,
-            difficulty = SmileDifficultyLevel.STANDARD.name,
             durationSec = durationSec,
             completedReps = 3,
-            reflectionEmoji = 5,
             occurredAtUtc = epochMs,
             syncStatus = status.name,
         )

@@ -21,6 +21,7 @@ import javax.xml.parsers.DocumentBuilderFactory
  * minSdk=26 이므로 두 경로 모두 필요:
  *  - Android 14+  : action `android.intent.action.VIEW_PERMISSION_USAGE` + category `android.intent.category.HEALTH_PERMISSIONS`
  *  - Android ≤13  : action `androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE`
+ *  - Android 11~13: `<queries><package android:name="com.google.android.apps.healthdata" /></queries>`
  *
  * 단위테스트(Robolectric 불요) — 소스 매니페스트와 Rationale 액티비티를 직접 검사한다.
  */
@@ -56,6 +57,14 @@ class ManifestHealthConnectRationaleTest {
         return (0 until nodes.length)
             .map { (nodes.item(it) as Element).getAttribute("android:name") }
             .filter { it.startsWith("android.permission.health.") }
+            .toSet()
+    }
+
+    private fun parseQueriedPackages(): Set<String> {
+        val doc = parseManifestDoc()
+        val queriesNodes = doc.getElementsByTagName("queries")
+        return (0 until queriesNodes.length)
+            .flatMap { i -> (queriesNodes.item(i) as Element).childElementValues("package") }
             .toSet()
     }
 
@@ -109,6 +118,16 @@ class ManifestHealthConnectRationaleTest {
             "Google Play 최소 권한 정책에 따라 Health Connect 권한은 READ_EXERCISE 단독이어야 합니다.",
             setOf("android.permission.health.READ_EXERCISE"),
             healthPermissions,
+        )
+    }
+
+    @Test
+    fun `manifest declares Health Connect package visibility in queries for Android 11 to 13`() {
+        val queriedPackages = parseQueriedPackages()
+        assertTrue(
+            "Android 11~13(API 30~33) 패키지 가시성 정책 하에서 HealthConnectClient 가 " +
+                "com.google.android.apps.healthdata 를 조회하려면 <queries>에 선언되어야 합니다.",
+            "com.google.android.apps.healthdata" in queriedPackages,
         )
     }
 

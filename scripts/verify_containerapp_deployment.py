@@ -137,7 +137,7 @@ def verify_endpoints(fqdn: str) -> None:
     base_url = f"https://{fqdn}"
     probe(f"{base_url}/health", "ok")
     probe(f"{base_url}/health/ready", "ready")
-    probe(f"{base_url}/app-compatibility?platform=android&versionCode=39")
+    probe(f"{base_url}/app-compatibility?platform=android&versionCode=41")
     probe(f"{base_url}/privacy")
     probe(f"{base_url}/account-deletion")
 

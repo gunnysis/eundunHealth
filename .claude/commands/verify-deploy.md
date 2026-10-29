@@ -1,5 +1,5 @@
 ---
-description: Phase 5 운영 검증을 MCP 로 자동 수행 (alembic head + 스키마 컬럼 + Sentry 신규 issue)
+description: Phase 5 운영 검증을 MCP 로 자동 수행 (스키마 부트스트랩 + 스키마 컬럼 + Sentry 신규 issue)
 allowed-tools: mcp__azure__containerapps, mcp__azure__postgres, mcp__sentry__search_issues, mcp__sentry__search_events, mcp__sentry__analyze_issue_with_seer, Read, Glob, Grep, Edit
 argument-hint: <inc-id> [--columns user_profiles.rest_day,user_profiles.foo] [--since 24h]
 ---
@@ -14,12 +14,12 @@ INC `$ARGUMENTS` 에 대한 Phase 5 운영 검증을 수행합니다.
 
 ## 검증 단계 (모두 시도, stop-on-failure 아님)
 
-### 1. Alembic head 확인 (운영 Container App)
+### 1. 스키마 부트스트랩 확인 (운영 Container App)
 `mcp__azure__containerapps` 의 exec 기능으로 다음 실행:
 - subscription: 런타임 조회 — `mcp__azure__subscription_list` 의 단일 구독 (또는 `az account show --query id -o tsv`). 구독 GUID 는 repo 에 커밋하지 않는다(public repo 정찰면 축소).
 - resourceGroup: `rg-eundunhealth-prod-krc`
 - containerAppName: `eundunhealth-api`
-- command: `alembic current`
+- command: `python -m app.schema_bootstrap`
 
 기대: output 에 12자 hex hash + ` (head)` 표시. 실패면 Container App 재배포 미완 / DB 연결 실패.
 
@@ -37,7 +37,7 @@ WHERE (table_name, column_name) IN ( {{columns_tuple}} );
 
 ### 3. Sentry 신규 issue 확인
 `mcp__sentry__search_issues` 호출:
-- organizationSlug: `eundunhealth`
+- organizationSlug: `gunnys`
 - projectSlug: `eundunhealth-backend`
 - query 키워드 union: `["rest_day", "UndefinedColumn", "ProgrammingError", "$ARGUMENTS의 첫 토큰"]`
 - statsPeriod: `--since` 값 (default `24h`)
@@ -48,7 +48,7 @@ WHERE (table_name, column_name) IN ( {{columns_tuple}} );
 ```
 | Check | Result | Detail |
 |---|---|---|
-| alembic head | ✓ / ✗ | `<hash> (head)` 또는 에러 |
+| schema_bootstrap | ✓ / ✗ | `Schema bootstrap complete (tables=9)` 또는 에러 |
 | <table.col> | ✓ / ✗ | <type>, NULL/NOT NULL, default <default> |
 | Sentry <since> | ✓ / ✗ | 0 new issues / <count> issues + links |
 ```
@@ -63,6 +63,6 @@ Edit tool 로 제안 (자동 commit 하지 않음 — 사용자가 검토 후 �
 
 ## 실패 시 troubleshooting hint
 각 ✗ 항목마다 다음 액션 제안:
-- alembic head 불일치 → `az containerapp logs show --tail 100 | Select-String "alembic"` 로 entrypoint 로그 확인
+- 스키마 부트스트랩 실패 → `az containerapp logs show --tail 100 | Select-String "schema_bootstrap"` 로 entrypoint 로그 확인
 - 컬럼 누락 → 마이그레이션 PR 머지 + Container App 재시작 (`az containerapp restart`) 확인
 - Sentry 신규 issue → issue permalink 열어서 stack trace 확인, 필요 시 `mcp__sentry__analyze_issue_with_seer` 추가 실행

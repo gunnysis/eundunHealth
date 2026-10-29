@@ -21,10 +21,13 @@ import kotlin.coroutines.resume
 
 @Immutable
 sealed interface MlKitModuleState {
+    @Immutable
     data object Available : MlKitModuleState
 
+    @Immutable
     data class Installing(val progressPercent: Int? = null) : MlKitModuleState
 
+    @Immutable
     data class Unavailable(val reason: String) : MlKitModuleState
 }
 

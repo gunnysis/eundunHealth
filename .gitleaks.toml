@@ -4,8 +4,9 @@ title = "eundunHealth Gitleaks Config"
 useDefault = true
 
 [allowlist]
-description = "Ignore OpenAPI generated Kotlin interface names that match generic-api-key entropy"
+description = "Ignore OpenAPI generated Kotlin interface names and domain badge_key literals that match generic-api-key entropy"
 regexTarget = "match"
 regexes = [
   '''WeeklyPlanV2Api''',
+  '''badge_key\s*=''',
 ]

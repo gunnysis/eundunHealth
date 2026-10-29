@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -41,7 +42,12 @@ internal fun HealthConnectPromptCard(onRequest: () -> Unit) {
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodySmall,
             )
-            TextButton(onClick = onRequest) { Text("연동") }
+            TextButton(
+                onClick = onRequest,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text("연동")
+            }
         }
     }
 }
@@ -66,7 +72,12 @@ internal fun HealthConnectUnavailableCard() {
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodySmall,
             )
-            TextButton(onClick = { openHealthConnectListing(context) }) { Text("설치") }
+            TextButton(
+                onClick = { openHealthConnectListing(context) },
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text("설치")
+            }
         }
     }
 }

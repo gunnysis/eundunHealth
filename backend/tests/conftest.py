@@ -69,7 +69,7 @@ async def client(db_engine):
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
-        headers={"Eundun-Client-Version-Code": "39"},
+        headers={"Eundun-Client-Version-Code": "41"},
     ) as ac:
         yield ac
     app.dependency_overrides.clear()

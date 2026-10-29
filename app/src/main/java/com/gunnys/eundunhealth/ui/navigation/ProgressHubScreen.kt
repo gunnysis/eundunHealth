@@ -51,6 +51,15 @@ fun ProgressHubScreen(
     viewModel: ProgressHubViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val smileStats = uiState.smileStats
+    val smileSummaryText = when {
+        smileStats.isCompletedToday ->
+            "오늘 연습 완료 · 연속 ${smileStats.currentStreakDays}일째 (누적 ${smileStats.totalSessions}회)"
+        smileStats.currentStreakDays > 0 ->
+            "연속 ${smileStats.currentStreakDays}일 진행 중 · 오늘 10초 미소 연습을 이어가세요"
+        else ->
+            "2초 미소 × 3회 반복 온디바이스 표정 근육 및 마음 연습"
+    }
 
     Scaffold(topBar = { TopAppBar(title = { Text("진행") }) }) { padding ->
         Column(
@@ -76,6 +85,20 @@ fun ProgressHubScreen(
 
             Spacer(Modifier.height(4.dp))
             Text(
+                text = "마음 연습",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() },
+            )
+            ProgressRow(
+                icon = Icons.Default.SentimentSatisfiedAlt,
+                title = "스마일 트레이닝",
+                summary = smileSummaryText,
+                onClick = onSmileTrainingClick,
+            )
+
+            Spacer(Modifier.height(4.dp))
+            Text(
                 text = "운동 기록과 목표",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
@@ -85,20 +108,6 @@ fun ProgressHubScreen(
             ProgressRow(Icons.Default.History, "기록", "지난 운동 계획과 완료 기록을 봅니다", onHistoryClick)
             ProgressRow(Icons.Default.Flag, "목표", "체중 및 체지방률 목표를 관리합니다", onGoalClick)
             ProgressRow(Icons.Default.EmojiEvents, "배지", "달성한 배지를 확인합니다", onBadgesClick)
-
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "마음 연습",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.semantics { heading() },
-            )
-            ProgressRow(
-                icon = Icons.Default.SentimentSatisfiedAlt,
-                title = "스마일 트레이닝",
-                summary = "온디바이스 미소 피드백으로 표정 근육과 마음 연습을 합니다",
-                onClick = onSmileTrainingClick,
-            )
         }
     }
 }
@@ -163,7 +172,7 @@ private fun SummaryMetricTile(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 10.dp, vertical = 14.dp),
+                .padding(horizontal = 6.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -176,7 +185,7 @@ private fun SummaryMetricTile(
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 textAlign = TextAlign.Center,

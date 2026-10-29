@@ -25,22 +25,16 @@ class SmileTrainingRepository:
         *,
         session_id: uuid.UUID,
         user_id: str,
-        routine: str,
-        difficulty: str,
         duration_sec: int,
         completed_reps: int,
-        reflection_emoji: int | None,
         occurred_at: datetime,
     ) -> SmileTrainingSession:
-        """신규 스마일 트레이닝 세션 삽입 후 flush."""
+        """신규 스마일 트레이닝 v2 세션 삽입 후 flush."""
         entity = SmileTrainingSession(
             id=session_id,
             user_id=user_id,
-            routine=routine,
-            difficulty=difficulty,
             duration_sec=duration_sec,
             completed_reps=completed_reps,
-            reflection_emoji=reflection_emoji,
             occurred_at=occurred_at,
         )
         self.db.add(entity)

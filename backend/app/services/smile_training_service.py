@@ -12,8 +12,6 @@ from app.exceptions import BadRequestException, ConflictException
 from app.models.smile_training import SmileTrainingSession
 from app.repositories.smile_training_repo import SmileTrainingRepository
 from app.schemas.smile_training import (
-    SmileDifficulty,
-    SmileRoutine,
     SmileTrainingSessionRequest,
     SmileTrainingSessionResponse,
     SmileTrainingSessionsPageResponse,
@@ -45,7 +43,7 @@ def _decode_cursor(cursor: str) -> tuple[datetime.datetime, uuid.UUID]:
 
 
 class SmileTrainingService:
-    """스마일 트레이닝 세션의 멱등 저장, 커서 페이징 조회, KST 연속일 통계 및 전체 삭제를 담당한다."""
+    """스마일 트레이닝 v2 세션의 멱등 저장, 커서 페이징 조회, KST 연속일 통계 및 전체 삭제를 담당한다."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -73,11 +71,8 @@ class SmileTrainingService:
                 created = await self.repo.create(
                     session_id=req.id,
                     user_id=user_id,
-                    routine=req.routine.value,
-                    difficulty=req.difficulty.value,
                     duration_sec=req.duration_sec,
                     completed_reps=req.completed_reps,
-                    reflection_emoji=req.reflection_emoji,
                     occurred_at=req.occurred_at,
                 )
         except IntegrityError as exc:
@@ -167,11 +162,8 @@ class SmileTrainingService:
         req_utc = normalize_utc(req.occurred_at)
         # 마이크로초 정밀도 차이를 감안해 1초 미만의 동일 타임스탬프와 필드 전체 일치를 확인
         same_payload = (
-            existing.routine == req.routine.value
-            and existing.difficulty == req.difficulty.value
-            and existing.duration_sec == req.duration_sec
+            existing.duration_sec == req.duration_sec
             and existing.completed_reps == req.completed_reps
-            and existing.reflection_emoji == req.reflection_emoji
             and abs((existing_utc - req_utc).total_seconds()) < 1.0
         )
         if not same_payload:
@@ -218,11 +210,8 @@ class SmileTrainingService:
         created_utc = normalize_utc(entity.created_at) if entity.created_at else occurred_utc
         return SmileTrainingSessionResponse(
             id=str(entity.id),
-            routine=SmileRoutine(entity.routine),
-            difficulty=SmileDifficulty(entity.difficulty),
             duration_sec=entity.duration_sec,
             completed_reps=entity.completed_reps,
-            reflection_emoji=entity.reflection_emoji,
             occurred_at=occurred_utc.isoformat(),
             created_at=created_utc.isoformat(),
         )

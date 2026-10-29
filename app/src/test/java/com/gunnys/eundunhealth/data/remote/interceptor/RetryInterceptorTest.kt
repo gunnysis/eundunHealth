@@ -1,17 +1,27 @@
 package com.gunnys.eundunhealth.data.remote.interceptor
 
+import com.gunnys.eundunhealth.data.auth.MsalClientProvider
+import com.gunnys.eundunhealth.di.NetworkModule
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
+import io.sentry.Breadcrumb
+import io.sentry.Hint
+import io.sentry.IScopes
+import io.sentry.okhttp.SentryOkHttpInterceptor
 import okhttp3.Interceptor
+import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicReference
 
 class RetryInterceptorTest {
 
@@ -19,8 +29,8 @@ class RetryInterceptorTest {
 
     private val postRequest = Request.Builder().url("http://localhost/test").post("".toRequestBody(null)).build()
 
-    private fun response(code: Int): Response = Response.Builder()
-        .request(request)
+    private fun response(code: Int, req: Request = request): Response = Response.Builder()
+        .request(req)
         .protocol(Protocol.HTTP_1_1)
         .code(code)
         .message(if (code in 500..599) "Server Error" else "OK")
@@ -98,5 +108,53 @@ class RetryInterceptorTest {
 
         assertEquals(500, result.code)
         verify(exactly = 1) { chain.proceed(postRequest) }
+    }
+
+    @Test
+    fun `NetworkModule 의 모든 OkHttpClient 는 SentryOkHttpInterceptor 를 RetryInterceptor 앞에 배치한다`() {
+        val tokenHolder = AtomicReference<String?>(null)
+        val msalProvider = mockk<MsalClientProvider>(relaxed = true)
+
+        val clients = listOf(
+            NetworkModule.provideBackendOkHttpClient(tokenHolder, msalProvider),
+            NetworkModule.provideMealsOkHttpClient(tokenHolder, msalProvider),
+            NetworkModule.provideExerciseDbOkHttpClient(),
+        )
+
+        clients.forEach { client ->
+            val sentryIndex = client.interceptors.indexOfFirst { it is SentryOkHttpInterceptor }
+            val retryIndex = client.interceptors.indexOfFirst { it is RetryInterceptor }
+            assertTrue("SentryOkHttpInterceptor must be registered", sentryIndex >= 0)
+            assertTrue("RetryInterceptor must be registered", retryIndex >= 0)
+            assertTrue(
+                "SentryOkHttpInterceptor($sentryIndex) must precede RetryInterceptor($retryIndex)",
+                sentryIndex < retryIndex,
+            )
+        }
+    }
+
+    @Test
+    fun `SentryOkHttpInterceptor 가 RetryInterceptor 바깥에 있으면 504 후 200 복구 시 200 브레드크럼만 남기고 에러 이벤트를 보내지 않는다`() {
+        val scopes = mockk<IScopes>(relaxed = true)
+        val breadcrumbSlot = slot<Breadcrumb>()
+        var attempts = 0
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(SentryOkHttpInterceptor(scopes, captureFailedRequests = false))
+            .addInterceptor(RetryInterceptor(maxRetries = 3, initialDelayMs = 0L))
+            .addInterceptor { chain ->
+                attempts++
+                val code = if (attempts == 1) 504 else 200
+                response(code, chain.request())
+            }
+            .build()
+
+        val result = client.newCall(request).execute()
+
+        assertEquals(200, result.code)
+        assertEquals(2, attempts)
+        verify(exactly = 1) { scopes.addBreadcrumb(capture(breadcrumbSlot), any<Hint>()) }
+        assertEquals(200, breadcrumbSlot.captured.getData("status_code"))
+        verify(exactly = 0) { scopes.captureEvent(any(), any<Hint>()) }
     }
 }

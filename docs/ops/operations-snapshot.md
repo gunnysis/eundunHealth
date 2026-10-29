@@ -11,9 +11,9 @@
 | 항목 | 값 |
 |------|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.6.1` / `40` (태그 `v0.6.1`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=40` |
+| versionName / versionCode | **`0.7.0` / `41` (태그 `v0.6.1`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=40` |
 | Min SDK / Target SDK | 26 / 37 |
-| Kotlin / AGP / Gradle | **2.4.21 / 9.3.2 / 9.8.1** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
+| Kotlin / AGP / Gradle | **2.4.21 / 9.4.1 / 9.8.1** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** |
 | 차트 | Vico 3.3.1 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
@@ -30,7 +30,7 @@
 
 > **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.6.1/40**(2026-10-28 `release.yml` run `40647597577`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #211). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
 > 이력: v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=40` — 다음 릴리스 versionCode ≥ 41(룰 13 가드).
-> **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 변경은 alembic 마이그레이션만. 백엔드는 자동 배포로 운영(앱과 독립).
+> **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 정본은 `backend/sql/02_schema_create_all.sql`(`python -m app.schema_bootstrap`). 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
 
 ---
@@ -136,7 +136,7 @@ az containerapp job secret set -n eundunhealth-reaper -g rg-eundunhealth-prod-kr
 |------|---|
 | Job | `eundunhealth-reaper` (RG `rg-eundunhealth-prod-krc`, env `eundunhealth-env`) |
 | 트리거 / 스케줄 | Schedule cron `0 18 * * 0` (UTC) = **매주 월 03:00 KST** |
-| 커맨드 | `python scripts/reap_orphaned_accounts.py` (ENTRYPOINT 우회 → alembic 미실행) |
+| 커맨드 | `python scripts/reap_orphaned_accounts.py` (ENTRYPOINT 우회 → `schema_bootstrap` 미실행) |
 | 이미지 | `eundunhealthacr.azurecr.io/eundunhealth-api:<SHA>` — **앱과 동일하게 CI 가 매 배포 동기화**(`backend.yml` 의 `Sync reaper Job`, 불변식 검사로 불일치 시 배포 실패). 예전엔 `setup-reaper-job.sh` 수동 실행에만 의존해 7주간 어긋나 있었다 |
 | 리소스 | 0.25 vCPU / 0.5Gi, replica-timeout 1800, retry 1 |
 | Identity | **User-assigned MI** `id-eundunhealth-reaper` — AcrPull(ACR) + Key Vault Secrets User(KV) |
@@ -202,7 +202,9 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | Region | Korea Central |
 | Database | `postgres` |
 | User | `gunny` |
-| Alembic head | **`d7f4a2c91b10`** (`v2_weekly_plan_mode_and_reset_audit` — `weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode`, `data_reset_audits` 추가; 직전 `a3869f575d6a` `create_smile_training_sessions` ← `0dda67f1638a` `add_gender_to_user_profile` ← `718783053fcd` `add_meal_plans_and_meal_plan_items` ← `b78b256c2b20` `user_profile_history (user_id, recorded_at)` 복합 인덱스 ← `c849579de6c4` `rest_day` server_default 일관화) |
+| Engine Version | **PostgreSQL 18.4** (`version=18`, `minorVersion=6`, Korea Central 최고 지원 버전; 로컬·CI Docker `postgres:18-alpine` `18.6`) |
+| Dynamic Parameters | `idle_in_transaction_session_timeout=60000` (60s), `azure.extensions=PG_STAT_STATEMENTS`, `pg_stat_statements.track=top`, `track_io_timing=on`, `log_min_duration_statement=1000` (1s), `io_method=worker`, `wal_compression=zstd` |
+| Schema Pipeline | **Drop & Recreate 전용 (`02_schema_create_all.sql`)** — 점진적 `ALTER TABLE` / Alembic Up·Down 폐기. 클린업 `backend/sql/01_cleanup_drop_all.sql` + 정규 DDL `backend/sql/02_schema_create_all.sql` (PostgreSQL 18 `DEFAULT uuidv7()`) + 기동 멱등 보장 `python -m app.schema_bootstrap` + 하드 리셋 CLI `backend/scripts/hard_reset_db.py` + 100건 엣지 케이스 시더 `backend/scripts/seed_edge_cases.py` |
 | Firewall | **`allow-azure-services`(`0.0.0.0–0.0.0.0`) 1개뿐** — 이것이 유일하게 동작하는 규칙이다. ↓ 아래 주의 |
 | 관리자 암호 | **2026-09-02 회전됨** (10자 → 32자). 설계·절차: `docs/plans/2026-09-02-db-credential-rotation-{design,plan}.md` → `docs/plans/logs/process-infra.md` 2026-09-02 entry 로 흡수 |
 
@@ -228,7 +230,7 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 > **회전 이력**
 > — **2026-09-02**: 로컬 백업 아카이브 두 벌의 `.env` 에 당시 유효한 자격증명이 평문으로 있었다(sha256 대조 확인). `.env` 삭제 + 암호 회전. git 노출은 0(두 아카이브 모두 저장소 밖, 저장소 이력에 `.env` 커밋 없음). 다운타임 0 — 옛 복제본이 기존 연결 풀로 계속 응답하는 사이 새 복제본이 교체됐다.
 
-### 테이블 목록 (총 9개 테이블 = 앱 데이터 8개 + 감사 1개 + `alembic_version`)
+### 테이블 목록 (총 9개 정규 테이블 = 앱 데이터 8개 + 감사 1개, `alembic_version` 제거됨)
 
 | 테이블 | 비고 |
 |--------|------|
@@ -239,9 +241,9 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | `goals` | 체중·체지방 목표 (v0.3) |
 | `meal_plans` | AI 주간 식단 메타 (`718783053fcd`, v0.3.0) |
 | `meal_plan_items` | AI 주간 식단 끼니별 항목 (`718783053fcd`, v0.3.0) |
-| `smile_training_sessions` | 스마일 트레이닝 세션 요약 및 회고 (`a3869f575d6a`, v0.5.0) |
-| `data_reset_audits` | v2 전환 1회 데이터 초기화 감사 이력 (`d7f4a2c91b10`) |
-| `alembic_version` | 1 (`d7f4a2c91b10` head 마커) |
+| `smile_training_sessions` | 스마일 트레이닝 v2 세션 요약 (`a3869f575d6a` 생성 → `e8b2c4d6f1a0` v2 단일 스펙 컷오버) |
+
+| `data_reset_audits` | 하드 리셋 및 데이터 초기화 감사 이력 (`reset_id` PK, 2026-10-29 운영 `healthapp` 하드 리셋 `hard-reset-v2-pg18-prod-20261029` 완료) |
 
 > 운영 중 외부 접근이 필요할 때는 임시 firewall rule 추가 후 즉시 제거:
 > ```bash
@@ -438,7 +440,7 @@ GitHub Actions (7개 워크플로):
 - **`scripts/check-agp10-compat.sh`** — AGP 10 호환성 가드 (금지 속성·레거시 플러그인·`kotlinOptions` 차단)
 - **`scripts/verify_containerapp_deployment.py`** — Container App 및 Reaper Job 배포 사후 불변 조건 검증기
 - **`scripts/bump-version.sh`** — 앱 버전 bump (versionName + versionCode +1 + semver/단조 가드 + 문서 동기화, `--dry-run`). 정책: `docs/conventions/versioning.md`
-- **`scripts/alembic-autogen.sh`** — postgres:16-alpine 컨테이너에 autogen 실행 (INC-07 차단)
+- **`backend/scripts/hard_reset_db.py` & `seed_edge_cases.py`** — PostgreSQL 18 Drop & Recreate 하드 리셋 파이프라인 및 100건 엣지 케이스 시더 + 11개 제약 조건 검증기
 - **`scripts/register-azure-credentials.ps1`** — SP 생성/패치 + AcrPush role + GitHub secret 등록. **2026-07-03 이후 = OIDC 장애 시 긴급 폴백·SP 역할 관리 전용** (상시 `AZURE_CREDENTIALS` secret 은 제거됨)
 - **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11)
 
@@ -607,5 +609,7 @@ Claude Code MCP 서버 4종 운영 활용:
 | 2026-10-15 | **ExerciseDB 한국어 현지화 + AGP 10 대비 빌드 현대화 (PR #178·#181·#186)**. ① 추천 운동 46종 한국어 번들(`app/src/main/assets/korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백, `ExerciseTranslationProvider`) + 운동 상세 부위/장비/근육 태그 한국어화 + 검증 스크립트 `scripts/verify-exercise-translations.ps1` ② `gradle.properties` 레거시 플래그 제거 · `org.jetbrains.kotlin.android` 및 레거시 Detekt Android 플러그인 제거 → `detekt-cli` + `androidComponents` 커스텀 태스크 전환 · `scripts/check-agp10-compat.sh` CI 가드 추가 |
 | 2026-10-16 | **v0.3.1/36 — 프로덕션 배포 하드닝 & Play 10% 단계 출시 LIVE (PR #188·#191)**. ① AI 식단 생성 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`, 누락 시 400) + `MEAL_AI_ENABLED` kill switch + 법적 고지(`privacy-policy.md`, `account-deletion.md`) 정합화 ② `backend.yml` 수동 배포 `deploy=true` 게이트 + `backend-production` 환경 승인 게이트 + `scripts/verify_containerapp_deployment.py` 사후 불변 조건 검증 + `backend-rollback.yml` 롤백 워크플로 신설 ③ 백엔드 배포(run `38837975170`) → 활성 revision **`eundunhealth-api--0000062`**(이미지 `2610d18`, reaper Job 동기화) ④ 태그 `v0.3.1` `release.yml`(run `38838518612`) → Play 프로덕션 **10% 단계 출시(`status: inProgress`, `userFraction: 0.1`)** 업로드 성공 + 원장 자동 커밋 `1a19eb7`(`LAST_UPLOADED_VERSION_CODE=36`). backend pytest **119/119** · android @Test **151/151** |
 | 2026-10-17 | **v0.4.0/37 — 메뉴트리 아키텍처 개편 & Play 프로덕션 출시 완료**. 태그 `v0.4.0` `release.yml`(run `39026967924`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `48f57c7`(`LAST_UPLOADED_VERSION_CODE=37`) |
-| 2026-10-26 | **v0.5.0/38 — 온디바이스 스마일 트레이닝(Smile Training) 출시 & 백엔드/스토어 동시 배포 완료**. ① 온디바이스 CameraX 1.6.2 + ML Kit 얼굴 검출(`play-services-mlkit-face-detection:17.1.0`) 미소 근육 운동 + 오프라인 우선 Room(`smile_training.db`) & WorkManager 동기화 + 원격 이력 자동 복원(`refreshRemoteHistoryIfEmpty`) + 계정 삭제 로컬 와이퍼(`LocalDataWiper`) ② 백엔드 `smile_training_sessions` 테이블(alembic **`a3869f575d6a`**) + `/smile-training/sessions`·`/smile-training/statistics` 4개 엔드포인트 + 법적 고지(`privacy-policy.md`, `account-deletion.md`) 온디바이스 카메라 무저장·무전송 명시 ③ 백엔드 배포(run `40274391632`) → 활성 revision **`eundunhealth-api--0000063`**(이미지 `869407a`, reaper Job 동기화, 프로브 4종 200 검증) ④ 태그 `v0.5.0` `release.yml`(run `40274395812`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `cbd155f`(`LAST_UPLOADED_VERSION_CODE=38`). backend pytest **126/126** · android @Test **165/165** |
+| 2026-10-26 | **v0.5.0/38 — 온디바이스 스마일 트레이닝(Smile Training) 출시 & 백엔드/스토어 동시 배포 완료**. ① 온디바이스 CameraX 1.6.2 + ML Kit 얼굴 검출(`play-services-mlkit-face-detection:17.1.0`) 미소 근육 운동 + 오프라인 우선 Room(`smile_training.db`) & WorkManager 동기화 + 원격 이력 자동 복원(`refreshRemoteHistoryIfEmpty`) + 계정 삭제 로컬 와이퍼(`LocalDataWiper`) ② 백엔드 `smile_training_sessions` 테이블(alembic **`a3869f575d6a`**, 이후 v2 `e8b2c4d6f1a0`) + `/v2/smile-training/sessions`·`/v2/smile-training/statistics` 4개 엔드포인트 + 법적 고지(`privacy-policy.md`, `account-deletion.md`) 온디바이스 카메라 무저장·무전송 명시 ③ 백엔드 배포(run `40274391632`) → 활성 revision **`eundunhealth-api--0000063`**(이미지 `869407a`, reaper Job 동기화, 프로브 4종 200 검증) ④ 태그 `v0.5.0` `release.yml`(run `40274395812`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `cbd155f`(`LAST_UPLOADED_VERSION_CODE=38`). backend pytest **126/126** · android @Test **165/165** |
 | 2026-10-27 | **v0.6.0/39 — 적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 자유 다중 지정(`restDays`, Zero-Legacy) 풀스택 구현 및 운영 컷오버(C1~C3) 완료**. ① 백엔드: alembic **`d7f4a2c91b10`**(`weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode`, `user_profiles.rest_days` `INTEGER[]` + 체크 제약, `data_reset_audits` 테이블) · `/v2/weekly-plan` 7개 API(동일 주 중복 생성 시 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · `PUT /v2/profile/default-workout-plan-mode` · `GET /app-compatibility` 및 `Eundun-Client-Version-Code` 가드(`PUT /profile` 포함, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`) · `app/time_utils.py` KST(`UTC+9`) SSoT 일원화 · `backend/scripts/reset_v2_user_data.py` ② Android: `EundunDatabase` v3 · 내장 18종 무장비 홈트레이닝 생성기(`HomeWeeklyPlanGenerator`, `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위) & 대근육 우선순위 큐 라운드로빈 배치 · `UserProfile.kt` 도메인 상수/정규화(`normalizeRestDays`) SSoT · `RestDaysSelector` M3 다중 휴식 요일 선택기 및 `ProfileSummaryCard`/`ProfileScreen` UX 고도화 · `WorkoutDetailScreen` 무장비 텍스트 가이드(`HomeExerciseGuideCard`) · `HistoryViewModel.refresh()` 풀투리프레시 수정 ③ **운영 배포(C1→C2→C3)**: C1 운영 DB 마이그레이션(`d7f4a2c91b10`) 및 v2 사용자 데이터 초기화(`resetId=v2-cutover-20261027`) 완료 → C2 백엔드 배포(run `40469877206`) 활성 revision **`eundunhealth-api--0000065`**(이미지 `a0b6701`, reaper Job 동기화, 프로브 5종 200 검증) → C3 태그 `v0.6.0` `release.yml`(run `40469947190`) Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 자동 커밋 `f9eeefc`(`LAST_UPLOADED_VERSION_CODE=39`). backend pytest **140/140** · android @Test **186/186** |
+| 2026-10-29 | **스마일 트레이닝 v2 전면 리팩토링 · Zero-Legacy Cutover · 4대 접속 경로(IA) 구현 완료**. ① 단일 표준 스펙(`SmileTrainingSpec`: `2.0초 유지 × 3회 반복`) 단일화 및 종료 후 감정 설문 제거(`ACTIVE -> COMPLETED` 자동 저장·동기화), `READY` 1.0초 정렬 시 자동 시작(`isPaused` 격리), 상단 안내 배너 제거 및 풀블리드 카메라 HUD + 하단 플로팅 글래스 시트(`SmileTrainingScreen` 1,114줄 → 606줄) ② Room `SmileTrainingDatabase` v2(`MIGRATION_1_2`) & 백엔드 `/v2/smile-training/sessions`·`/v2/smile-training/statistics` 4개 엔드포인트 · 법적 고지(`privacy-policy.md`, `account-deletion.md`) 및 `openapi.json` 동기화 ③ 4대 접속 경로(오늘 상단 `SmileQuickActionChip`, 오늘 스마트 `SmileTrainingContextualCard`, 운동 가이드 완료 쿨다운 브릿지, 기록 허브 상단 승격 및 실시간 통계 연동). backend pytest **140/140** · android @Test **212/212** |
+| 2026-10-29 | **v0.7.0/41 — PostgreSQL 18 스키마 하드 리셋(Drop & Recreate) 파이프라인 구축 · 운영 `healthapp` 하드 리셋 실증 · AGP 9.4.1 정식 업그레이드 및 전사 리팩토링**. ① 운영 Azure PostgreSQL 18.4(`healthapp`) 무중단 동적 파라미터 5종 튜닝 및 로컬/CI Docker `postgres:18-alpine`(`18.6`) 업그레이드 ② Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql` PostgreSQL 18 `DEFAULT uuidv7()`), 기동 멱등 부트스트랩(`python -m app.schema_bootstrap`), 하드 리셋 CLI(`hard_reset_db.py`), 100건 엣지 케이스 Seeder(`seed_edge_cases.py`), 11개 제약 위반/연쇄 삭제 검증 스위트(`test_v2_reset.py`) 구축 및 레거시 Alembic 전수 제거 ③ 운영 `healthapp` 하드 리셋(`hard-reset-v2-pg18-prod-20261029`) 및 `/health`·`/health/ready` 200 검증 완료 ④ AGP 9.4.1 업그레이드, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41` 상향, Android/Backend 전사 엣지 케이스 리팩토링 완료. backend pytest **146/146** · android @Test **222/222** |

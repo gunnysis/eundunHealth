@@ -2,72 +2,21 @@ package com.gunnys.eundunhealth.domain.model
 
 import androidx.compose.runtime.Immutable
 
-enum class SmileRoutineType(
-    val displayName: String,
-    val subtitle: String,
-    val baseHoldDurationMs: Long,
-    val baseEnterSmileThreshold: Float,
-    val baseExitSmileThreshold: Float,
-    val requiresEyesOpen: Boolean,
-) {
-    GENTLE(
-        displayName = "가벼운 미소",
-        subtitle = "입꼬리를 살짝 올리고 1.5초 유지해요",
-        baseHoldDurationMs = 1500L,
-        baseEnterSmileThreshold = 0.60f,
-        baseExitSmileThreshold = 0.50f,
-        requiresEyesOpen = false,
-    ),
-    SUSTAINED(
-        displayName = "미소 유지",
-        subtitle = "분명한 미소를 3초간 편안하게 유지해요",
-        baseHoldDurationMs = 3000L,
-        baseEnterSmileThreshold = 0.75f,
-        baseExitSmileThreshold = 0.65f,
-        requiresEyesOpen = false,
-    ),
-    SMILE_AND_FRONT(
-        displayName = "정면 바라보며 미소",
-        subtitle = "카메라를 정면으로 보며 2초간 미소 지어요",
-        baseHoldDurationMs = 2000L,
-        baseEnterSmileThreshold = 0.60f,
-        baseExitSmileThreshold = 0.50f,
-        requiresEyesOpen = true,
-    ),
-}
-
-enum class SmileDifficultyLevel(
-    val displayName: String,
-    val description: String,
-    val smileThresholdDelta: Float,
-    val holdMultiplier: Float,
-    val maxYawDeg: Float,
-    val maxRollDeg: Float,
-) {
-    COMFORTABLE(
-        displayName = "편안",
-        description = "낮은 기준과 짧은 유지 시간",
-        smileThresholdDelta = -0.10f,
-        holdMultiplier = 0.80f,
-        maxYawDeg = 15f,
-        maxRollDeg = 12f,
-    ),
-    STANDARD(
-        displayName = "기본",
-        description = "권장 기준과 기본 유지 시간",
-        smileThresholdDelta = 0.0f,
-        holdMultiplier = 1.0f,
-        maxYawDeg = 15f,
-        maxRollDeg = 12f,
-    ),
-    CHALLENGE(
-        displayName = "도전",
-        description = "1.5배 유지 시간과 더 곧은 정면 자세",
-        smileThresholdDelta = 0.0f,
-        holdMultiplier = 1.50f,
-        maxYawDeg = 10f,
-        maxRollDeg = 10f,
-    ),
+/**
+ * 스마일 트레이닝 v2 단일 표준 규격.
+ * v1의 (루틴 × 난이도 × 목표 반복 횟수) 3중 설정을 완전 폐기하고 단일 표준 스펙(2초 유지 × 3회 반복)으로 고정한다.
+ */
+object SmileTrainingSpec {
+    const val HOLD_DURATION_MS: Long = 2_000L
+    const val TARGET_REPS: Int = 3
+    const val ENTER_SMILE_THRESHOLD: Float = 0.55f
+    const val EXIT_SMILE_THRESHOLD: Float = 0.45f
+    const val MIN_EYE_OPEN_PROBABILITY: Float = 0.35f
+    const val MAX_YAW_DEG: Float = 15f
+    const val MAX_ROLL_DEG: Float = 12f
+    const val MIN_FACE_WIDTH_RATIO: Float = 0.22f
+    const val READY_AUTO_START_HOLD_MS: Long = 1_000L
+    const val EMA_SMOOTHING_ALPHA: Float = 0.6f
 }
 
 enum class SmileSyncStatus {
@@ -80,11 +29,8 @@ enum class SmileSyncStatus {
 data class SmileSessionRecord(
     val id: String,
     val userId: String,
-    val routine: SmileRoutineType,
-    val difficulty: SmileDifficultyLevel,
     val durationSec: Int,
     val completedReps: Int,
-    val reflectionEmoji: Int?,
     val occurredAtEpochMs: Long,
     val syncStatus: SmileSyncStatus,
 )

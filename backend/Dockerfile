@@ -16,7 +16,7 @@ COPY requirements.txt .
 # msgpack 은 `pip/_vendor/` 안에 있어 우리가 버전을 올릴 수단이 없다(pip 최신도 동일 사본).
 # 즉 pip 가 이미지에 남아 있는 한 이 지적은 매 스캔 재현된다.
 #
-# 런타임은 이 셋 중 무엇도 쓰지 않는다 — entrypoint.sh 는 `alembic upgrade head` 후
+# 런타임은 이 셋 중 무엇도 쓰지 않는다 — entrypoint.sh 는 `python -m app.schema_bootstrap` 후
 # uvicorn 을 exec 할 뿐이다. 설치 도구를 빼는 것이 우회가 아니라 정석이며(공급망 표면 축소),
 # 부수적으로 이미지도 작아진다.
 #
@@ -37,6 +37,6 @@ USER appuser
 EXPOSE 8080
 
 # Docker JSONArgsRecommended — exec form 필수 (signal forwarding).
-# entrypoint.sh 가 `alembic upgrade head` 후 `exec "$@"` 로 PID 1 교체 → SIGTERM 이 uvicorn 에 직접 도달.
+# entrypoint.sh 가 `python -m app.schema_bootstrap` 후 `exec "$@"` 로 PID 1 교체 → SIGTERM 이 uvicorn 에 직접 도달.
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

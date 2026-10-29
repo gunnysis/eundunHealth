@@ -14,7 +14,7 @@ from app.schemas.smile_training import (
 )
 from app.services.smile_training_service import SmileTrainingService
 
-router = APIRouter(prefix="/smile-training", tags=["smile-training"])
+router = APIRouter(prefix="/v2/smile-training", tags=["smile-training"])
 
 
 @router.post(

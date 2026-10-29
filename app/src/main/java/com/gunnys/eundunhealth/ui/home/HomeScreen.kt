@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -57,11 +58,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -70,14 +71,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.DayPlan
@@ -118,6 +124,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pullState = rememberPullToRefreshState()
     val snackbarHostState = remember { SnackbarHostState() }
+    RefreshHealthConnectOnResume(onRefresh = viewModel::refreshHealthConnectStatus)
 
     ObserveAsEvents(viewModel.sideEffect) { effect ->
         when (effect) {
@@ -140,6 +147,14 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text("오늘의 운동") },
+                actions = {
+                    val successState = uiState as? HomeUiState.Success
+                    SmileQuickActionChip(
+                        isCompletedToday = successState?.isSmileCompletedToday == true,
+                        currentStreakDays = successState?.smileCurrentStreakDays ?: 0,
+                        onClick = onNavigateToSmileTraining,
+                    )
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -201,8 +216,7 @@ fun HomeScreen(
                     val todayPlan = remember(state.plan.days, state.today) {
                         state.plan.days.find { it.date == state.today }
                     }
-                    val showSmileCard = !state.isSmileShortcutDismissedToday &&
-                        (todayPlan == null || todayPlan.isRestDay || todayPlan.isCompleted)
+                    val showSmileCard = !state.isSmileCompletedToday && !state.isSmileShortcutDismissedToday
 
                     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
                         state.toggleError?.let { err ->
@@ -227,6 +241,7 @@ fun HomeScreen(
                         if (showSmileCard) {
                             item {
                                 SmileTrainingContextualCard(
+                                    todayPlan = todayPlan,
                                     onStartSmile = onNavigateToSmileTraining,
                                     onDismissToday = viewModel::dismissSmileShortcutToday,
                                 )
@@ -270,10 +285,92 @@ fun HomeScreen(
 }
 
 @Composable
+private fun SmileQuickActionChip(
+    isCompletedToday: Boolean,
+    currentStreakDays: Int,
+    onClick: () -> Unit,
+) {
+    val label = when {
+        isCompletedToday -> "✓ 스마일 완료"
+        currentStreakDays > 0 -> "스마일 · ${currentStreakDays}일"
+        else -> "스마일"
+    }
+    val containerColor = if (isCompletedToday) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    }
+    val contentColor = if (isCompletedToday) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier
+            .padding(end = 12.dp)
+            .heightIn(min = 36.dp)
+            .clearAndSetSemantics {
+                role = Role.Button
+                contentDescription = when {
+                    isCompletedToday -> "스마일 트레이닝 오늘 완료됨, 열기"
+                    currentStreakDays > 0 -> "스마일 트레이닝 ${currentStreakDays}일 연속 달성 중, 바로가기"
+                    else -> "스마일 트레이닝 바로가기"
+                }
+            },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = if (isCompletedToday) Icons.Default.CheckCircle else Icons.Default.SentimentSatisfiedAlt,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RefreshHealthConnectOnResume(onRefresh: () -> Unit) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, onRefresh) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                onRefresh()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+}
+
+@Composable
 private fun SmileTrainingContextualCard(
+    todayPlan: DayPlan?,
     onStartSmile: () -> Unit,
     onDismissToday: () -> Unit,
 ) {
+    val (headline, subtitle) = when {
+        todayPlan == null || todayPlan.isRestDay ->
+            "휴식일엔 가벼운 10초 미소 훈련 어떠세요?" to "2초 미소 × 3회 반복으로 표정 근육과 기분을 가볍게 깨워보세요"
+        todayPlan.isCompleted ->
+            "오운완! 가벼운 10초 미소 훈련으로 마무리해 볼까요?" to "온디바이스 안면 근육 운동으로 오늘 루틴을 상쾌하게 완성해요"
+        else ->
+            "운동 전 가벼운 10초 미소 워밍업 어떠세요?" to "2초 미소 × 3회 반복으로 긴장을 풀고 기분 좋게 시작해 보세요"
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -294,14 +391,14 @@ private fun SmileTrainingContextualCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "가벼운 미소 훈련으로 마무리해 볼까요?",
+                        text = headline,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "온디바이스 안면 근육 운동으로 기분까지 상쾌하게",
+                        text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
                     )
@@ -309,7 +406,7 @@ private fun SmileTrainingContextualCard(
                 IconButton(onClick = onDismissToday) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "오늘 하루 닫기",
+                        contentDescription = "스마일 워밍업 추천 오늘 하루 닫기",
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
@@ -319,12 +416,11 @@ private fun SmileTrainingContextualCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onDismissToday) {
-                    Text("오늘 하루 닫기")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = onStartSmile) {
-                    Text("미소 훈련 시작")
+                Button(
+                    onClick = onStartSmile,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text("10초 스마일 시작")
                 }
             }
         }

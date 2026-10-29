@@ -6,8 +6,8 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.6.1-blue)
-![versionCode](https://img.shields.io/badge/versionCode-40-blue)
+![versionName](https://img.shields.io/badge/versionName-0.7.0-blue)
+![versionCode](https://img.shields.io/badge/versionCode-41-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB)
@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원 또는 홈트레이닝 실천자, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **v0.6.1 (versionCode 40) Play 프로덕션(`completed` 100%, run `40647597577`, 원장 `LAST_UPLOADED_VERSION_CODE=40`) 및 Azure 백엔드(`eundunhealth-api--0000066` / image `c12f969`, run `40647560099`, Alembic head `d7f4a2c91b10`) 운영 배포 완료 (2026-10-28)**. PROP-05 Phase 1~4 UI/UX 전면 개선(M3 포레스트 민트 36슬롯 + 시맨틱 13토큰, Pretendard Variable 타이포그래피, Today Hero & 단계별 운동 가이드 모드, 3중 하이브리드 바디 피커 & 2단계 온보딩, 진행·식단·내 정보 허브 고도화), 패키지 업데이트, hash/Gradle lock, 컨테이너 digest 고정, Repository Gate 및 릴리스 원장 PR 흐름이 포함된다.
+- **현재 단계** — **v0.7.0 (versionCode 41, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`, 2026-10-29)**. 스마일 트레이닝 v2 전면 리팩토링(`2.0초 유지 × 3회 반복` 단일 표준 스펙, `READY` 1.0초 자동 시작, 풀블리드 카메라 HUD, 4대 접속 경로 IA, `/v2/smile-training/*` 컷오버, Room DB v2), Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, 운영 DB 하드 리셋 `hard-reset-v2-pg18-prod-20261029`), AGP 9.4.1 정식 업그레이드, Health Connect 연동 및 운동 가이드 UX 개선이 포함된다(직전 프로덕션: v0.6.1 / versionCode 40, `LAST_UPLOADED_VERSION_CODE=40`).
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -49,7 +49,7 @@
 
 - **적응형 주간 운동 계획 v2 (`헬스장` / `홈트레이닝`) & 다중 휴식 요일(`restDays`)** — 매주 첫 진입 시 `헬스장`(OSS ExerciseDB + 추천 운동 46종 한국어 번들 `korean_exercises.json` v2) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위 지원)을 선택해 계획을 생성하거나, 프로필의 `기본 운동 환경` 설정으로 주간 자동 생성. 주 1~6일 원하는 휴식 요일(`restDays`)을 자유롭게 지정하고 대근육 우선순위 큐로 운동을 균형 배치
 - **AI 맞춤 주간 식단** (v0.3.0 / v0.3.1) — 신체 지표·목표·주간 운동량을 바탕으로 Azure AI Foundry `DeepSeek-V3.2` 모델이 7일×4끼 맞춤 식단과 영양소(칼로리·탄단지)를 생성 (국외 이전 사전 고지 및 `X-AI-Data-Processing-Consent: true` 명시적 동의 기반)
-- **온디바이스 스마일 트레이닝** (v0.5.0) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(루틴 3종 × 난이도 3단계 × 1~5회 반복)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db`) 및 `WorkManager`로 세션 요약·연속일을 서버와 동기화
+- **온디바이스 스마일 트레이닝 v2** (v0.5.0 / v2) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(단일 표준 스펙 `SmileTrainingSpec`: `2.0초 유지 × 3회 반복`, `READY` 1.0초 자동 시작, 종료 후 감정 설문 제거 및 자동 완료)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db` v2) 및 `WorkManager`로 세션 요약·연속일을 서버(`/v2/smile-training/*`)와 동기화
 - **Health Connect 연동** — 운동 세션 자동 감지 및 완료 추적
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
 - **목표 설정 및 진행 시각화** (v0.3) — 체중 / 체지방률 목표 + 프로필 변화 이력 차트
@@ -66,12 +66,12 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Kotlin 2.4.21, Java 17 | KSP 2.3.12 |
-| 빌드 | Gradle 9.8.1, AGP 9.3.2 | Min SDK 26 / Target SDK 37, dependency locking + SHA-256 verification |
+| 빌드 | Gradle 9.8.1, AGP 9.4.1 | Min SDK 26 / Target SDK 37, dependency locking + SHA-256 verification |
 | UI | Jetpack Compose (BOM 2026.09.00) | Material 3 |
 | DI | Hilt 2.60.1 | 4개 모듈 (`NetworkModule`, `DatabaseModule`, `RepositoryModule`, `CoroutineModule`) |
 | 비동기 | kotlinx-coroutines + Flow | |
 | 네트워크 | Retrofit 3.0.0 + OkHttp 5.5.0 + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 + `Eundun-Client-Version-Code` 헤더 |
-| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v1, KSP 스키마 export) |
+| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v2, KSP 스키마 export) |
 | 카메라 & 온디바이스 비전 | CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0 | Google Play services unbundled (`ModuleInstallClient`) |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
 | Auth | MSAL Android 8.4.2 | RS256 JWT · `oid` claim |
@@ -88,12 +88,12 @@
 | 프레임워크 | FastAPI 0.161.0 + uvicorn 0.54.0 | hash lock 공통 설치 |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.1.6 async + asyncpg 0.32.0 | `Mapped[T]` 패턴 |
-| 마이그레이션 | Alembic 1.20.1 (head: `d7f4a2c91b10`) | async 엔진 연동 |
+| 스키마 파이프라인 | Drop & Recreate 전용 (`02_schema_create_all.sql`) | PostgreSQL 18 `DEFAULT uuidv7()` + `app.schema_bootstrap` 멱등 기동 + `hard_reset_db.py` / `seed_edge_cases.py`(100건 시딩·11개 제약 검증) |
 | HTTP 코어 | starlette 1.9.0 | |
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | AI 클라이언트 | openai 3.37.0 (`AsyncOpenAI`) | Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 |
 | 모니터링 | Sentry SDK 2.73.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 140/140 PASS, coverage 94%+ (sysmon core) |
+| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 143/143 PASS, coverage 94%+ (sysmon core) |
 
 ### 인프라
 
@@ -102,7 +102,7 @@
 | Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000066`) |
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret **8개** |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU, 주간 `acr purge` 스케줄 Task 2개) |
-| Database | Azure PostgreSQL Flexible Server `healthapp` (B1ms, 32GB) |
+| Database | Azure PostgreSQL Flexible Server `healthapp` (PostgreSQL 18.4, B1ms, 32GB; 로컬/CI `postgres:18-alpine` `18.6`) |
 | Auth | Microsoft Entra External ID 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미지원) |
 | AI 모델 | Azure AI Foundry `eundunhealth-ai-foundry` (East US 2, `DeepSeek-V3.2` `GlobalStandard` MaaS) |
 | 운동 데이터 소스 | OSS ExerciseDB (`oss.exercisedb.dev`, 무인증 + 로컬 한국어 번역 번들 46종) + 앱 내장 홈트레이닝 18종 카탈로그 |
@@ -143,7 +143,7 @@ app/schemas/          # Pydantic CamelSchema (alias_generator=to_camel)
 app/repositories/     # DB 접근 추상화
 app/services/         # 비즈니스 로직 (account / statistics / goal / meal_plan / meal_ai_client / smile_training ...)
 app/routers/          # 얇은 라우터, Service 위임
-alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b10)
+sql/                  # 정규 Drop & Recreate DDL (01_cleanup_drop_all.sql, 02_schema_create_all.sql) + app/schema_bootstrap.py
 ```
 
 ### API 엔드포인트 (27 개 — JWT 필요 22 + 공개 5)
@@ -176,8 +176,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b
 | `GET` / `PUT` | `/goals` | v0.3 |
 | `POST` | `/meals/generate` | v0.3.0 / v0.3.1 AI 주간 식단 생성 (`X-AI-Data-Processing-Consent: true` 필수) |
 | `GET` | `/meals/current` | v0.3.0 현재 주간 식단 조회 |
-| `POST` / `GET` / `DELETE` | `/smile-training/sessions` | v0.5.0 스마일 트레이닝 세션 멱등 기록 · 커서 조회 · 전체 삭제 |
-| `GET` | `/smile-training/statistics` | v0.5.0 KST 기준 연속일 및 누적 통계 조회 |
+| `POST` / `GET` / `DELETE` | `/v2/smile-training/sessions` | v2 스마일 트레이닝 세션 멱등 기록 · 커서 조회 · 전체 삭제 |
+| `GET` | `/v2/smile-training/statistics` | v2 KST 기준 연속일 및 누적 통계 조회 |
 | `DELETE` | `/account` | Microsoft Graph 연동 (삭제 204 + `deletedItems` 즉시 파기) |
 
 ---
@@ -189,8 +189,8 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b
 ├── app/                      # Android 앱 (Kotlin / Compose)
 ├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
-│   ├── alembic/              # DB 마이그레이션 (head: d7f4a2c91b10)
-│   ├── tests/                # pytest (140 PASS, coverage 94%+)
+│   ├── sql/                  # PostgreSQL 18 Drop & Recreate 정규 DDL (01_cleanup / 02_schema)
+│   ├── tests/                # pytest (143 PASS, coverage 94%+)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
@@ -199,7 +199,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b
 │   ├── store/                # Play Store 호스팅 대상 (개인정보 처리방침·계정 삭제 안내)
 │   ├── plans/                # design + plan 페어 / 토픽 ledger
 │   └── ops/                  # 운영 스냅샷·배포 전 체크리스트·런북·인시던트
-├── scripts/                  # 자동화 (preflight / agp10-compat / verify_containerapp_deployment / alembic / openapi-sync / hooks)
+├── scripts/                  # 자동화 (preflight / agp10-compat / verify_containerapp_deployment / openapi-sync / hooks)
 ├── config/                   # Detekt 설정·baseline
 ├── gradle/libs.versions.toml # Android 버전 카탈로그
 ├── .github/workflows/        # 7 workflows (android / backend / backend-rollback / release / warm-baseline-check / doc-audit / docs-plans-index)
@@ -220,7 +220,7 @@ alembic/versions/     # async 엔진 연동 마이그레이션 (head: d7f4a2c91b
 | Android Studio | Hedgehog 이상 권장 | 빌드 / 디바이스 디버깅 |
 | Android SDK | API 37 | Target SDK |
 | Python | 3.14 | Backend |
-| Docker Desktop | latest | Backend 로컬 실행 + Alembic autogenerate |
+| Docker Desktop | latest | Backend 로컬 실행 (PostgreSQL 18) + 스키마 하드 리셋 검증 |
 | Git | 2.40+ | hooks (`core.hooksPath`) |
 | (선택) Azure CLI | latest | 운영 / 시크릿 관리 |
 | (선택) gh CLI | latest | PR / 워크플로 |
@@ -292,15 +292,16 @@ cd backend
 .venv/Scripts/pip-audit -r requirements.txt --strict
 ```
 
-### 5) Alembic 마이그레이션
+### 5) DB 스키마 부트스트랩 및 하드 리셋 파이프라인 (Drop & Recreate)
 
 ```bash
 cd backend
-.venv/Scripts/alembic upgrade head
+.venv/Scripts/python.exe -m app.schema_bootstrap
+.venv/Scripts/python.exe scripts/hard_reset_db.py --confirmation DROP_AND_RECREATE_ALL_SCHEMAS --seed-edge-cases --verify-constraints
 ```
 
 > [!WARNING]
-> 새 마이그레이션 작성은 반드시 `bash scripts/alembic-autogen.sh "..."` 사용. SQLite 위에서 autogenerate 하면 UUID↔NUMERIC 거짓 양성이 들어가 운영 cast 에러로 직결됩니다 ([CLAUDE.md 룰 3](CLAUDE.md), INC-07).
+> 스키마 변경은 점진적 `ALTER TABLE` 없이 `backend/sql/02_schema_create_all.sql` 과 `backend/app/models/*.py` 를 1:1 정합하게 갱신합니다 (`pytest tests/test_v2_reset.py` 가 드리프트 차단, [CLAUDE.md 룰 3](CLAUDE.md)).
 
 ### 6) OpenAPI 스펙 동기화 (라우터·스키마 변경 시 필수)
 
@@ -358,11 +359,11 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 |---|----|------|
 | 1 | ACR 정리는 `untag` 만 — `delete --image` 는 공유 manifest 까지 삭제 | INC-01 |
 | 2 | 릴리스 산출물은 `releaseArtifacts` 또는 `preflight-release.sh` 하나로 | INC-04 |
-| 3 | Alembic autogenerate 는 PostgreSQL 컨테이너 위에서만 (`alembic-autogen.sh`) | INC-07 |
+| 3 | DB 스키마는 `02_schema_create_all.sql` ↔ ORM 1:1 정합 및 PostgreSQL 18 위에서 검증 | INC-07 |
 | 4 | `lifespan` 안에서 `app.add_middleware()` 호출 금지 — 모듈 레벨 등록 | INC-03 |
 | 5 | Auth 제공자/테넌트는 실사용자 확보 후 절대 교체 금지 | INC-14 |
 | 6 | `backend.yml` 의 새 `secretref` 는 시크릿 set + 가드 step + 스냅샷 동시 갱신 | INC-18 |
-| 7 | 스키마 변경 PR 은 같은 PR 에서 entrypoint(`alembic upgrade head`) 검증 포함 | INC-2026-05-27-01 |
+| 7 | 스키마 변경 PR 은 같은 PR 에서 entrypoint(`python -m app.schema_bootstrap`) 검증 포함 | INC-2026-05-27-01 |
 | 8 | Auth/UI 실패 표시는 inline + persistent + a11y liveRegion + Sentry breadcrumb | INC-2026-05-26-01 |
 | 9 | Design doc 의 baseline / 추정값은 측정 후 결정 | PR #68 |
 | 10 | Subagent reviewer 의 측정 결과는 controller 가 직접 fact-check | PR #68 |

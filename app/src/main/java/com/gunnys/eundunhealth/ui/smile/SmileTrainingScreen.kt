@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.SystemClock
 import android.provider.Settings
-import android.view.HapticFeedbackConstants
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,18 +16,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,23 +35,20 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -71,7 +65,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -82,20 +75,17 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.gunnys.eundunhealth.domain.model.AppError
-import com.gunnys.eundunhealth.domain.model.SmileDifficultyLevel
-import com.gunnys.eundunhealth.domain.model.SmileRoutineType
 import com.gunnys.eundunhealth.domain.model.SmileSessionRecord
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.SmileSyncStatus
-import com.gunnys.eundunhealth.domain.smile.SmileRoutineRule
+import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
+import com.gunnys.eundunhealth.ui.theme.EundunTheme
+import com.gunnys.eundunhealth.ui.util.HapticFeedbackHelper
 import com.gunnys.eundunhealth.ui.util.ObserveAsEvents
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-private val TargetRepChoices = listOf(1, 2, 3, 4, 5)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,7 +126,10 @@ fun SmileTrainingScreen(
             onPauseExercise = { viewModel.pauseActiveExercise() },
             onLifecycleStopped = viewModel::onCameraLifecycleStopped,
             onPermissionRevoked = {
-                viewModel.onCameraPermissionResult(isGranted = false, shouldShowRationale = true)
+                val activity = context.findActivity()
+                val shouldShowRationale = activity != null &&
+                    ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
+                viewModel.onCameraPermissionResult(isGranted = false, shouldShowRationale = shouldShowRationale)
             },
             onCameraError = viewModel::onCameraError,
             onCloseClick = handleExitRequest,
@@ -201,7 +194,7 @@ private fun SmileSideEffectsHandler(
                 runCatching { context.startActivity(intent) }
             }
             SmileTrainingSideEffect.TriggerRepSuccessHaptic -> {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                HapticFeedbackHelper.performConfirm(view)
             }
             is SmileTrainingSideEffect.AnnounceAccessibility -> {
                 @Suppress("DEPRECATION")
@@ -237,7 +230,12 @@ private fun SmileConfirmDialogs(
         AlertDialog(
             onDismissRequest = viewModel::dismissExitConfirmDialog,
             title = { Text("연습을 중단할까요?") },
-            text = { Text("지금 나가면 현재 진행 중인 반복 횟수는 저장되지 않습니다.") },
+            text = {
+                Text(
+                    text = "지금 나가면 현재 진행 중인 반복 횟수는 저장되지 않습니다.",
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = viewModel::confirmAbortActiveSession) {
                     Text("중단하기")
@@ -255,7 +253,12 @@ private fun SmileConfirmDialogs(
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteAllHistoryDialog,
             title = { Text("모든 스마일 기록 삭제") },
-            text = { Text("기기와 서버에 저장된 모든 스마일 트레이닝 기록이 영구적으로 삭제됩니다.") },
+            text = {
+                Text(
+                    text = "기기와 서버에 저장된 모든 스마일 트레이닝 기록이 영구적으로 삭제됩니다.",
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = viewModel::confirmDeleteAllHistory) {
                     Text("삭제", color = MaterialTheme.colorScheme.error)
@@ -286,9 +289,6 @@ private fun SmileNonCameraPhaseContent(
         SmileSessionPhase.INTRO -> SmileIntroContent(
             uiState = uiState,
             hasCameraHardware = hasCameraHardware,
-            onSelectRoutine = viewModel::selectRoutine,
-            onSelectDifficulty = viewModel::selectDifficulty,
-            onSelectTargetReps = viewModel::selectTargetReps,
             onStartClick = {
                 val granted = ContextCompat.checkSelfPermission(
                     context,
@@ -298,7 +298,6 @@ private fun SmileNonCameraPhaseContent(
             },
             onRetryBlockedSync = viewModel::retryBlockedSync,
             onDeleteAllClick = viewModel::requestDeleteAllHistory,
-            onDismissError = viewModel::clearError,
         )
         SmileSessionPhase.PERMISSION_RATIONALE -> PermissionRationaleContent(
             onAllowClick = viewModel::onConfirmPermissionRationale,
@@ -317,14 +316,9 @@ private fun SmileNonCameraPhaseContent(
             onRetryClick = viewModel::prepareModelAndProceed,
             onBackClick = viewModel::resetToIntro,
         )
-        SmileSessionPhase.REFLECTION -> ReflectionContent(
-            uiState = uiState,
-            onSelectEmoji = viewModel::selectReflectionEmoji,
-            onSaveClick = { viewModel.finishAndSaveSession(skipReflection = false) },
-            onSkipClick = { viewModel.finishAndSaveSession(skipReflection = true) },
-        )
         SmileSessionPhase.COMPLETED -> CompletedContent(
             uiState = uiState,
+            onRetrySaveClick = viewModel::retrySaveCompletedSession,
             onPracticeAgainClick = viewModel::resetToIntro,
             onDoneClick = onDoneClick,
         )
@@ -339,13 +333,9 @@ private fun SmileNonCameraPhaseContent(
 private fun SmileIntroContent(
     uiState: SmileTrainingUiState,
     hasCameraHardware: Boolean,
-    onSelectRoutine: (SmileRoutineType) -> Unit,
-    onSelectDifficulty: (SmileDifficultyLevel) -> Unit,
-    onSelectTargetReps: (Int) -> Unit,
     onStartClick: () -> Unit,
     onRetryBlockedSync: () -> Unit,
     onDeleteAllClick: () -> Unit,
-    onDismissError: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -355,43 +345,18 @@ private fun SmileIntroContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         uiState.error?.let { err ->
-            InlineErrorBanner(error = err, onDismiss = onDismissError)
+            AuthErrorBanner(error = err, screen = "smile_intro")
         }
 
-        PrivacyNoticeCard()
-
-        SummaryStatsCard(
+        SummaryHeroCard(
             stats = uiState.summaryStats,
             onRetryBlockedSync = onRetryBlockedSync,
         )
 
-        RoutineSelectionSection(
-            selectedRoutine = uiState.selectedRoutine,
-            selectedDifficulty = uiState.selectedDifficulty,
-            onSelectRoutine = onSelectRoutine,
+        SmileStartActionCard(
+            hasCameraHardware = hasCameraHardware,
+            onStartClick = onStartClick,
         )
-
-        DifficultyAndRepsSection(
-            selectedDifficulty = uiState.selectedDifficulty,
-            targetReps = uiState.targetReps,
-            targetHoldDurationMs = uiState.targetHoldDurationMs,
-            onSelectDifficulty = onSelectDifficulty,
-            onSelectTargetReps = onSelectTargetReps,
-        )
-
-        Button(
-            onClick = onStartClick,
-            enabled = hasCameraHardware,
-            modifier = Modifier.fillMaxWidth().height(54.dp),
-        ) {
-            Icon(Icons.Default.SentimentSatisfiedAlt, contentDescription = null)
-            val buttonLabel = if (hasCameraHardware) {
-                " 스마일 트레이닝 시작하기"
-            } else {
-                " 이 기기에서 카메라를 사용할 수 없습니다"
-            }
-            Text(buttonLabel, style = MaterialTheme.typography.titleMedium)
-        }
 
         if (uiState.recentSessions.isNotEmpty()) {
             RecentSessionsSection(
@@ -404,261 +369,86 @@ private fun SmileIntroContent(
 }
 
 @Composable
-private fun RoutineSelectionSection(
-    selectedRoutine: SmileRoutineType,
-    selectedDifficulty: SmileDifficultyLevel,
-    onSelectRoutine: (SmileRoutineType) -> Unit,
-) {
-    Text(
-        text = "루틴 선택",
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.semantics { heading() },
-    )
-    SmileRoutineType.entries.forEach { routine ->
-        val selected = selectedRoutine == routine
-        val effectiveHoldMs = remember(routine, selectedDifficulty) {
-            SmileRoutineRule(routine, selectedDifficulty).targetHoldDurationMs
-        }
-        val holdSecText = String.format(Locale.US, "%.1f초 유지", effectiveHoldMs / 1000f)
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .selectable(
-                    selected = selected,
-                    role = Role.RadioButton,
-                    onClick = { onSelectRoutine(routine) },
-                ),
-            colors = CardDefaults.cardColors(
-                containerColor = if (selected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-            ),
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                RadioButton(selected = selected, onClick = null)
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = routine.displayName,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            RoutineMetaBadge(text = holdSecText)
-                            if (routine.requiresEyesOpen) {
-                                RoutineMetaBadge(text = "눈 뜨기 포함")
-                            }
-                        }
-                    }
-                    Text(
-                        text = routine.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RoutineMetaBadge(text: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = RoundedCornerShape(8.dp),
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-        )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun DifficultyAndRepsSection(
-    selectedDifficulty: SmileDifficultyLevel,
-    targetReps: Int,
-    targetHoldDurationMs: Long,
-    onSelectDifficulty: (SmileDifficultyLevel) -> Unit,
-    onSelectTargetReps: (Int) -> Unit,
-) {
-    Text(
-        text = "난이도 및 반복 횟수",
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.semantics { heading() },
-    )
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        SmileDifficultyLevel.entries.forEach { level ->
-            FilterChip(
-                selected = selectedDifficulty == level,
-                onClick = { onSelectDifficulty(level) },
-                label = { Text("${level.displayName} (${level.description})") },
-            )
-        }
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "목표 반복 횟수",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                val totalHoldSec = String.format(
-                    Locale.US,
-                    "%.1f",
-                    (targetHoldDurationMs * targetReps) / 1000f,
-                )
-                Text(
-                    text = "총 미소 유지 시간 약 ${totalHoldSec}초",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TargetRepChoices.forEach { reps ->
-                    val selected = targetReps == reps
-                    OutlinedButton(
-                        onClick = { onSelectTargetReps(reps) },
-                        modifier = Modifier.weight(1f).height(40.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = if (selected) {
-                            ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        } else {
-                            ButtonDefaults.outlinedButtonColors()
-                        },
-                    ) {
-                        Text(
-                            text = "${reps}회",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PrivacyNoticeCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        ),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Column {
-                Text(
-                    text = "온디바이스 프라이버시 보호",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-                Text(
-                    text = "카메라 영상은 기기 내부에서만 실시간 미소 신호 측정에 사용되며, 사진이나 영상은 어디에도 저장·전송되지 않습니다.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryStatsCard(
+private fun SummaryHeroCard(
     stats: SmileSummaryStats,
     onRetryBlockedSync: () -> Unit,
 ) {
+    val containerColor = if (stats.isCompletedToday) {
+        EundunTheme.extendedColors.successContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
+    val contentColor = if (stats.isCompletedToday) {
+        EundunTheme.extendedColors.onSuccessContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = if (stats.isCompletedToday) "오늘 마음 연습 완료" else "오늘 첫 미소를 시작해보세요",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "연속 ${stats.currentStreakDays}일 (최장 ${stats.longestStreakDays}일)",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "누적 ${stats.totalSessions}회 완료 · 총 ${formatDurationKorean(stats.totalDurationSec)} 연습",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (stats.pendingSyncCount > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = if (stats.isCompletedToday) {
+                            Icons.Default.CheckCircle
+                        } else {
+                            Icons.Default.SentimentSatisfiedAlt
+                        },
+                        contentDescription = null,
+                        tint = if (stats.isCompletedToday) {
+                            EundunTheme.extendedColors.success
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                    )
                     Text(
-                        text = "동기화 대기 ${stats.pendingSyncCount}건",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = if (stats.isCompletedToday) {
+                            "오늘의 미소 연습 완료!"
+                        } else {
+                            "오늘 첫 미소로 표정 근육을 깨워보세요"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor,
                     )
                 }
             }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                SmileMetricItem(
+                    label = "연속 달성",
+                    value = "${stats.currentStreakDays}일",
+                    subValue = "최장 ${stats.longestStreakDays}일",
+                )
+                SmileMetricItem(
+                    label = "누적 완료",
+                    value = "${stats.totalSessions}회",
+                    subValue = if (stats.pendingSyncCount > 0) "대기 ${stats.pendingSyncCount}건" else "동기화 완료",
+                )
+                SmileMetricItem(
+                    label = "누적 시간",
+                    value = formatDurationKorean(stats.totalDurationSec),
+                    subValue = "표준 2초×3회",
+                )
+            }
+
             if (stats.blockedSyncCount > 0) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -675,6 +465,102 @@ private fun SummaryStatsCard(
                         Text(" 다시 동기화")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmileMetricItem(
+    label: String,
+    value: String,
+    subValue: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = subValue,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun SmileStartActionCard(
+    hasCameraHardware: Boolean,
+    onStartClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "오늘의 스마일 코스",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text(
+                        text = "2초 유지 × 3회",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
+
+            Text(
+                text = "화면을 편안하게 바라보며 입꼬리를 올려 2초씩 3번 유지합니다. 얼굴이 가이드에 맞춰지면 1초 후 자동으로 시작됩니다.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Button(
+                onClick = onStartClick,
+                enabled = hasCameraHardware,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                val buttonLabel = if (hasCameraHardware) {
+                    "스마일 트레이닝 시작하기"
+                } else {
+                    "이 기기에서 카메라를 사용할 수 없습니다"
+                }
+                Text(
+                    text = buttonLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
@@ -699,6 +585,7 @@ private fun RecentSessionsSection(
             Text(
                 text = "최근 연습 기록",
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.semantics { heading() },
             )
             TextButton(onClick = onDeleteAllClick, enabled = !isDeleting) {
@@ -709,22 +596,25 @@ private fun RecentSessionsSection(
         sessions.forEach { record ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                ),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "${record.routine.displayName} · ${record.difficulty.displayName} (${record.completedReps}회)",
+                            text = "${record.completedReps}회 완료 · ${formatDurationKorean(record.durationSec)}",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.SemiBold,
                         )
                         val dateText = formatter.format(Instant.ofEpochMilli(record.occurredAtEpochMs))
                         Text(
-                            text = "$dateText · ${formatDurationKorean(record.durationSec)}",
+                            text = dateText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -912,92 +802,10 @@ private fun ModelUnavailableContent(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ReflectionContent(
-    uiState: SmileTrainingUiState,
-    onSelectEmoji: (Int?) -> Unit,
-    onSaveClick: () -> Unit,
-    onSkipClick: () -> Unit,
-) {
-    val moodOptions = remember {
-        listOf(
-            1 to "어색해요",
-            2 to "차분해요",
-            3 to "괜찮아요",
-            4 to "산뜻해요",
-            5 to "따뜻해요",
-        )
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        uiState.error?.let { err ->
-            InlineErrorBanner(error = err, onDismiss = null)
-            Spacer(Modifier.height(16.dp))
-        }
-
-        Icon(
-            imageVector = Icons.Default.CheckCircle,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = "${uiState.targetReps}회 미소 연습을 마쳤어요!",
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.semantics { heading() },
-        )
-        Spacer(Modifier.height(12.dp))
-        SessionOutcomeSummaryBanner(uiState = uiState)
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = "지금 기분이 어떤가요? (선택 사항)",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(16.dp))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            moodOptions.forEach { (score, label) ->
-                FilterChip(
-                    selected = uiState.selectedReflectionEmoji == score,
-                    onClick = {
-                        val next = if (uiState.selectedReflectionEmoji == score) null else score
-                        onSelectEmoji(next)
-                    },
-                    label = { Text("$score · $label") },
-                )
-            }
-        }
-        Spacer(Modifier.height(28.dp))
-        Button(
-            onClick = onSaveClick,
-            enabled = !uiState.isSavingSession,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
-            Text(if (uiState.isSavingSession) "저장 중..." else "기록 저장하기")
-        }
-        Spacer(Modifier.height(8.dp))
-        TextButton(
-            onClick = onSkipClick,
-            enabled = !uiState.isSavingSession,
-        ) {
-            Text("기분 선택 건너뛰고 저장")
-        }
-    }
-}
-
 @Composable
 private fun CompletedContent(
     uiState: SmileTrainingUiState,
+    onRetrySaveClick: () -> Unit,
     onPracticeAgainClick: () -> Unit,
     onDoneClick: () -> Unit,
 ) {
@@ -1006,22 +814,36 @@ private fun CompletedContent(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        uiState.error?.let { err ->
+            AuthErrorBanner(error = err, screen = "smile_completed")
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onRetrySaveClick,
+                enabled = !uiState.isSavingSession,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("기록 다시 저장하기")
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+
         Icon(
-            imageVector = Icons.Default.SentimentSatisfiedAlt,
+            imageVector = Icons.Default.CheckCircle,
             contentDescription = null,
             modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.primary,
+            tint = EundunTheme.extendedColors.success,
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "오늘의 스마일 트레이닝 완료",
+            text = "오늘의 스마일 트레이닝 완료!",
             style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             modifier = Modifier.semantics { heading() },
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "연속 ${uiState.summaryStats.currentStreakDays}일째 마음 연습을 이어가고 있어요.",
+            text = "연속 ${uiState.summaryStats.currentStreakDays.coerceAtLeast(1)}일째 마음 연습을 이어가고 있어요.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1029,11 +851,19 @@ private fun CompletedContent(
         Spacer(Modifier.height(16.dp))
         SessionOutcomeSummaryBanner(uiState = uiState)
         Spacer(Modifier.height(28.dp))
-        Button(onClick = onDoneClick, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            Text("완료")
+        Button(
+            onClick = onDoneClick,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Text("완료하고 돌아가기", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onPracticeAgainClick, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = onPracticeAgainClick,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            shape = RoundedCornerShape(16.dp),
+        ) {
             Text("한 번 더 연습하기")
         }
     }
@@ -1043,55 +873,27 @@ private fun CompletedContent(
 private fun SessionOutcomeSummaryBanner(uiState: SmileTrainingUiState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "${uiState.selectedRoutine.displayName} · ${uiState.selectedDifficulty.displayName}",
+                text = "표준 스마일 코스 (2초 유지)",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
             )
             Text(
                 text = "${uiState.targetReps}회 완료 · ${formatDurationKorean(uiState.sessionDurationSec)}",
                 style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
             )
-        }
-    }
-}
-
-@Composable
-private fun InlineErrorBanner(
-    error: AppError,
-    onDismiss: (() -> Unit)?,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = error.userMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { liveRegion = LiveRegionMode.Polite },
-            )
-            if (onDismiss != null) {
-                TextButton(onClick = onDismiss) {
-                    Text("확인", color = MaterialTheme.colorScheme.onErrorContainer)
-                }
-            }
         }
     }
 }
@@ -1107,7 +909,7 @@ internal fun formatDurationKorean(seconds: Int): String {
     }
 }
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null

@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.5 (2026-10-28 — v0.6.1 UI/UX 전면 개선 PROP-05 Phase 1~4 및 공급망 강화 프로덕션 출시 반영)
-**제품 버전:** `0.6.1` (versionCode `40`, 태그 `v0.6.1` — Play 프로덕션 `completed` 100% 출시 완료). 운영 증거는 `release.yml` run `40647597577`, 원장 PR #211(`LAST_UPLOADED_VERSION_CODE=40`), backend run `40647560099`, revision `eundunhealth-api--0000066`(image `c12f969`, Alembic head `d7f4a2c91b10`)이다.
+**문서 버전:** v3.7 (2026-10-29 — v0.7.0 스마일 트레이닝 v2 단일 표준 규격 컷오버 · 4대 진입 경로 통합 · PostgreSQL 18 스키마 하드 리셋 반영)
+**제품 버전:** v0.7.0 (versionCode 41) — 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `minimumSupportedVersionCode = 41`. 직전 프로덕션은 `0.6.1` (versionCode `40`, `release.yml` run `40647597577`, 원장 PR #211 `LAST_UPLOADED_VERSION_CODE=40`, backend run `40647560099` revision `eundunhealth-api--0000066`).
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -172,18 +172,18 @@
 - 결과는 참고용 비의료 정보이며 알레르기·질환이 있는 사용자는 전문가 확인 안내를 받는다.
 - `MEAL_AI_ENABLED`는 운영 중 즉시 생성을 중단할 수 있는 kill switch다.
 
-### 2.9. 온디바이스 스마일 트레이닝 (v0.5.0)
+### 2.9. 온디바이스 스마일 트레이닝 v2 (v0.5.0 / v2)
 
 ```
-진행 허브 → 마음 연습 카드 [스마일 트레이닝 시작하기]
-  → 루트 모달(SmileTrainingScreen) 진입 (루틴 3종 · 난이도 3단계 · 목표 1~5회 선택)
+진입 경로 4종 (오늘 탭 상단 퀵 칩 / 스마트 코칭 카드 / 운동 가이드 완료 화면 / 진행 탭 최상단)
+  → 루트 모달(SmileTrainingScreen) 진입 (옵션 선택 없는 단일 표준 규격: 2초 미소 유지 × 3회 반복)
   → 카메라 권한 확인 및 Google Play 서비스 ML Kit 얼굴 검출 모듈 준비
-  → 전면 카메라 미러 뷰파인더 + 실시간 미소 유지 코칭 (사진·영상 저장/전송 없음)
-  → 목표 반복 달성 → 감정 회고(이모지 5종, 선택) → 로컬 Room 저장 & WorkManager 서버 동기화
+  → 전면 카메라 미러 뷰파인더 + 1.0초 얼굴 정렬 시 자동 시작 + 실시간 미소 유지 코칭 (사진·영상 저장/전송 없음)
+  → 3회 반복 달성 → 설문 없이 즉시 축하 화면(COMPLETED) 전환 및 로컬 Room 저장 & WorkManager 서버 동기화
 ```
 
 - 카메라 프레임·얼굴 랜드마크·확률값은 기기 메모리 안에서만 일시 처리 후 즉시 폐기(`imageProxy.close()`)하며 어디에도 저장·전송하지 않는다.
-- 서버에는 세션 요약(`routine`, `difficulty`, `durationSec`, `completedReps`, `reflectionEmoji`, `occurredAt`)만 멱등 업로드(`POST /smile-training/sessions`)하여 기기 변경 시 복원 및 KST 기준 연속일 통계를 제공한다.
+- 서버에는 세션 요약(`durationSec`, `completedReps`, `occurredAt`)만 멱등 업로드(`POST /v2/smile-training/sessions`)하여 기기 변경 시 복원 및 KST 기준 연속일 통계를 제공한다.
 
 ---
 
@@ -250,14 +250,14 @@
 | MEAL-04 | 같은 주 재생성 시 기존 식단을 원자적으로 교체 | P1 |
 | MEAL-05 | 계정 삭제 시 저장 식단 전체 삭제 | P0 |
 
-### 3.7. 스마일 트레이닝
+### 3.7. 스마일 트레이닝 v2
 
 | ID | 요구사항 | 우선순위 |
 |----|---------|---------|
-| SMILE-01 | 온디바이스 전면 카메라 + ML Kit 얼굴 검출 기반 실시간 미소 연습 (루틴 3종 × 난이도 3단계) | P0 |
+| SMILE-01 | 온디바이스 전면 카메라 + ML Kit 얼굴 검출 기반 실시간 미소 연습 (단일 표준 규격: 2초 유지 × 3회 반복, 1.0초 정렬 자동 시작) | P0 |
 | SMILE-02 | 사진·영상·원시 프레임·생체 템플릿 무저장·무전송 보장 | P0 |
-| SMILE-03 | 오프라인 우선 Room DB 저장 및 WorkManager 멱등 백그라운드 동기화 | P0 |
-| SMILE-04 | KST 기준 당일 완료 여부 및 연속일(Streak) 통계 계산·원격 이력 복원 | P1 |
+| SMILE-03 | 오프라인 우선 Room DB v2 저장 및 WorkManager 멱등 백그라운드 동기화(`/v2/smile-training/*`) | P0 |
+| SMILE-04 | KST 기준 당일 완료 여부 및 연속일(Streak) 통계 계산·원격 이력 복원·4대 진입 경로 통합 | P1 |
 | SMILE-05 | 전체 기록 삭제 및 회원 탈퇴 시 로컬·서버 데이터 완전 파기 | P0 |
 
 ### 3.8. 기타
@@ -330,10 +330,10 @@
 | `PUT` | `/goals` | 목표 upsert | v0.3 |
 | `POST` | `/meals/generate` | AI 주간 식단 생성 (`X-AI-Data-Processing-Consent: true` 필수) | v0.3.0 / v0.3.1 |
 | `GET` | `/meals/current` | 현재 주간 식단 조회 | v0.3.0 |
-| `POST` | `/smile-training/sessions` | 스마일 트레이닝 세션 멱등 기록 (UUID PK) | v0.5.0 |
-| `GET` | `/smile-training/sessions` | 커서 기반 스마일 트레이닝 세션 이력 조회 | v0.5.0 |
-| `GET` | `/smile-training/statistics` | KST 기준 연속일 및 누적 통계 조회 | v0.5.0 |
-| `DELETE` | `/smile-training/sessions` | 사용자의 전체 스마일 트레이닝 세션 삭제 | v0.5.0 |
+| `POST` | `/v2/smile-training/sessions` | 스마일 트레이닝 v2 세션 멱등 기록 (UUID PK) | v0.5.0 / v2 |
+| `GET` | `/v2/smile-training/sessions` | 커서 기반 스마일 트레이닝 v2 세션 이력 조회 | v0.5.0 / v2 |
+| `GET` | `/v2/smile-training/statistics` | KST 기준 연속일 및 누적 통계 조회 | v0.5.0 / v2 |
+| `DELETE` | `/v2/smile-training/sessions` | 사용자의 전체 스마일 트레이닝 세션 삭제 | v0.5.0 / v2 |
 | `DELETE` | `/account` | 회원 탈퇴 (Entra 사용자 + 앱 DB 일괄 삭제) | v0.1 |
 
 공개 라우트 5개(`/health`·`/health/ready`·`/app-compatibility`·`/privacy`·`/account-deletion`)를 제외한 나머지 22개는 Entra JWT(**RS256** / JWKS) 검증 필요. 응답은 camelCase JSON.
@@ -341,7 +341,7 @@
 
 ---
 
-## 6. 화면 구성 (Screen Map — 총 14개 화면)
+## 6. 화면 구성 (Screen Map — 총 15개 화면)
 
 ```
 Splash
@@ -350,12 +350,15 @@ Splash
   ├─ Onboarding ──────┤
   └─ Home ◀───────────┘
        ├─ WorkoutDetail
+       ├─ WorkoutGuide
        ├─ MealPlan (v0.3.0 AI 주간 식단)
        ├─ Statistics (v0.2 통계)
        ├─ Goal (v0.3 목표)
        ├─ History
        ├─ Badge
-       └─ Profile
+       ├─ ProgressHub
+       ├─ ProfileHub / Profile
+       └─ SmileTraining (루트 모달)
 ```
 
 | 화면 | 주요 기능 |
@@ -363,17 +366,18 @@ Splash
 | Splash | 세션 확인, 로컬 v2 데이터 1회 초기화, 최소 지원 버전 확인(`UpdateRequiredScreen`) 후 자동 라우팅 |
 | AuthGate | Microsoft Entra External ID 브라우저 위임 로그인/회원가입 진입 |
 | Onboarding | 신체 정보 입력 (성별, 키, 몸무게, 골격근량, 체지방) |
-| Home | 적응형 주간 운동 환경 선택(`헬스장`/`홈트레이닝`), 주간 진행률·7일 미니 스탬프, 오늘 하이라이트(`PLAN-03`), 운동 완료 추적(HC `READ_EXERCISE`/수동) |
+| Home | 적응형 주간 운동 환경 선택(`헬스장`/`홈트레이닝`), 상단 스마일 퀵 액션 칩·스마트 코칭 카드, 주간 진행률·7일 미니 스탬프, 오늘 하이라이트(`PLAN-03`), 운동 완료 추적(HC `READ_EXERCISE`/수동) |
 | WorkoutDetail | 한국어 현지화 운동명/방법(46종 번들 + 영문 폴백 + 홈트레이닝 18종), GIF/무장비 가이드, 세트×횟수/초 |
+| WorkoutGuide | `HorizontalPager` 단계별 운동 가이드 모드 및 운동 완료 요약·마무리 10초 스마일 트레이닝 브릿지 (v0.6.1 / v2) |
 | MealPlan | AI 맞춤 주간 식단 조회 및 국외 처리 명시 동의 후 자동 생성 (v0.3.0/v0.3.1) |
 | Statistics | 12주 완료율 막대 차트 + 현재/최장 스트릭 (v0.2) |
 | Goal | 체중·체지방 목표 설정 및 신체 변화 추이 차트 (v0.3) |
 | History | 과거 주간 운동 기록 (운동 환경 배지 포함) |
 | Badge | 배지 목록 9종 (획득/미획득) |
 | Profile | 신체 정보·성별·휴식일 편집, 로그아웃, 회원 탈퇴 |
-| ProgressHub | 진행 탭 허브 — 통계·기록·목표·배지 및 마음 연습(스마일 트레이닝) 진입 (v0.4.0/v0.5.0) |
+| ProgressHub | 진행 탭 허브 — 요약 타일 바로 아래 마음 연습(스마일 트레이닝 실시간 달성/연속일 표시) 및 통계·기록·목표·배지 진입 (v0.4.0 / v2) |
 | ProfileHub | 프로필 탭 허브 — 신체 정보 요약·기본 운동 환경 설정·Health Connect 상태·테마·계정 관리 (v0.4.0/v2) |
-| SmileTraining | 온디바이스 카메라 스마일 트레이닝 루트 모달 — 루틴/난이도 선택·미소 코칭·회고·동기화 관리 (v0.5.0) |
+| SmileTraining | 온디바이스 카메라 스마일 트레이닝 v2 루트 모달 — 단일 표준 규격(2초×3회)·자동 시작 미소 코칭·즉시 저장 및 동기화 관리 (v0.5.0 / v2) |
 
 ---
 
@@ -389,7 +393,7 @@ Splash
 | 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
 | 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
 
-### v0.2.0 ~ v0.6.0에서 추가 완료 (2026-09 ~ 2026-10)
+### v0.2.0 ~ v0.6.1에서 추가 완료 (2026-09 ~ 2026-10)
 
 | 영역 | 도입 버전 | 비고 |
 |------|----------|------|
@@ -398,7 +402,7 @@ Splash
 | 추천 운동 46종 한국어 현지화 번들 (`korean_exercises.json` v2) | v0.3.1 | SHA-256 지문 대조 + 영문 폴백, 부위·장비·근육 태그 한글화 |
 | AI 식단 국외 처리 사전 동의 헤더 강제 & 프로덕션 배포 하드닝 | v0.3.1 | `X-AI-Data-Processing-Consent: true`, `MEAL_AI_ENABLED` kill switch, Play 10% 단계 출시 |
 | 적응형 메뉴트리(`오늘·식단·진행·프로필`) & Health Connect 투명성 | v0.4.0 | `MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`, multiple back stack |
-| 온디바이스 스마일 트레이닝(Smile Training) & 오프라인 우선 동기화 | v0.5.0 | CameraX 1.6.2 + ML Kit 얼굴 검출, `SmileTrainingDatabase` + `SmileSyncWorker`, `/smile-training/*` 4개 API |
+| 온디바이스 스마일 트레이닝(Smile Training v2) & 오프라인 우선 동기화 | v0.5.0 / v2 | CameraX 1.6.2 + ML Kit 얼굴 검출, 단일 표준 규격(2초×3회), `SmileTrainingDatabase` v2 + `SmileSyncWorker`, `/v2/smile-training/*` 4개 API, alembic `e8b2c4d6f1a0` |
 | 적응형 주간 운동 계획 v2 (`헬스장`/`홈트레이닝` 모드 & 다중 휴식 요일 `restDays`) | v0.6.0 (2026-10-27) | `/v2/weekly-plan` 7개 API, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`, `restDays` 1~6일 다중 선택(대근육 우선순위 큐 라운드로빈), 내장 18종 홈트레이닝 생성기, alembic `d7f4a2c91b10` |
 
 ### 향후 확장 후보 (Product Proposals)

@@ -10,11 +10,11 @@ argument-hint: [--update-doc] (audit 결과로 design doc §3 갱신 patch 제�
 
 ### 1. Python PEP 257 violation 측정 (config-driven)
 ```bash
-cd backend && .venv/Scripts/ruff.exe check --statistics app/ tests/ alembic/
+cd backend && .venv/Scripts/ruff.exe check --statistics app/ tests/ scripts/
 ```
 기대: `All checks passed!` (본 PR 머지 후 baseline). 잔존 시 카테고리별 list + 파일 경로 보고.
 
-**주의**: `--select D` 단독 사용 금지 — pyproject 의 글로벌 `ignore` (D100/D104/D107/D203/D213) 와 per-file-ignore (schemas/models D101, main.py D 전체, alembic D/UP/I) 를 override 해서 false 위반이 카운트됨 (PR #68 Task 2 lesson). 항상 config-driven 측정.
+**주의**: `--select D` 단독 사용 금지 — pyproject 의 글로벌 `ignore` (D100/D104/D107/D203/D213) 와 per-file-ignore (schemas/models D101, main.py D 전체) 를 override 해서 false 위반이 카운트됨 (PR #68 Task 2 lesson). 항상 config-driven 측정.
 
 ### 2. Python PEP 8 naming (N) 측정 (config-driven)
 ```bash
