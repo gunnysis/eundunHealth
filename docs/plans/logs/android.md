@@ -4,6 +4,17 @@
 
 ## Recent (last 90 days)
 
+### 2026-10-29 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 버그 수정 및 운영 출시 (v0.7.2/43, commit `bfb9ee8`)
+
+- **Commit**: `bfb9ee8` (PR #221 squash merge; Play 프로덕션 업로드 run `40847386065` / 원장 PR #223 `a89447a` `LAST_UPLOADED_VERSION_CODE=43`, 백엔드 활성 리비전 `eundunhealth-api--0000068`)
+- **Why**: ① 진행 탭(`ProgressHubScreen`)의 '한눈에 보는 요약' 3열 텍스트 타일과 하단 '운동 기록과 목표'의 `통계·기록·목표` 3행 메뉴가 중복되어 정보 밀도와 시각적 가독성이 떨어졌고, ② 프로필 탭(`ProfileHubScreen`)의 '신체 정보 및 휴식 요일' 행이 실제 신체 수치를 전혀 보여주지 않으며 5개 섹션(`내 정보·연동·화면·정보·계정`)으로 파편화되어 있었으며, ③ 골격근량·체지방률 직접 입력 다이얼로그에서 `0.1` 단위 소수점을 입력해도 눈금자 휠 `step = 0.5f`로 강제 스냅되던 정밀도 손실 버그가 존재했다.
+- **What**:
+  - **진행 허브(`ProgressHubScreen` / `ProgressHubViewModel`) 개편**: `VisualProgressSummaryDashboard`(`ThisWeekVisualHeroCard` 원형 프로그레스 링·플랜 모드 배지·7일 요일 미니 스탬프 바·운동 기록 열기 칩 + `FourWeekTrendVisualTile` 4주 미니 스파크바·연속 스트릭 배지 + `GoalProgressVisualTile` 체중·체지방 목표 진행 타일) 도입, 중복 3행 메뉴(`통계·기록·목표`) 과감히 제거 및 단일 `BadgeCollectionShowcaseCard`(진행률 바 + 대표 배지 5종 `BadgeMiniChip` 프리뷰)로 통합, `RefreshProgressOnResume` 자동 동기화 추가.
+  - **프로필 허브(`ProfileHubScreen` / `ProfileHubViewModel`) 개편**: `ProfileBodyHeroCard`(`BodyMetricMiniGrid` 키·체중·BMI 및 판정·골격근량·체지방률 + `RestDayVisualStrip` 7일 원형 요일 스탬프), `WorkoutAndHealthIntegrationCard` 통합, `AppearanceSettingsCard` 인라인 1-Tap 3단 테마 세그먼트(`ThemeModeSegmentedRow`, `setThemeMode`), `AccountAndVersionFooter` 경량 푸터로 통합.
+  - **체성분 직접 입력 `0.1` 정밀도 수정 & 공급망 업데이트**: `HybridBodyMetricPicker`의 골격근량·체지방률 `step = 0.1f` 정렬 및 `DirectMetricInputDialog` `roundAndClampMetricValue` 직접 적용(`BodyMetricAnchorTest`), `okhttp 5.5.1`·`coil 3.6.3` 업그레이드 및 `.github/dependabot.yml` AGP 자동 번프 제외 가드 추가.
+- **Outcome**: Spotless/Detekt(0건)/AGP 10 가드/단위 테스트 242/242 PASS, R8 서명 릴리스 빌드 및 Google Play 프로덕션(`completed` 100%, run `40847386065`, 원장 PR #223) 출시 완료.
+- **Files touched**: `app/src/main/java/com/gunnys/eundunhealth/ui/navigation/{ProgressHubScreen,ProgressHubViewModel,MainAppShell}.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/profile/{ProfileHubScreen,ProfileHubViewModel}.kt`, `app/src/main/java/com/gunnys/eundunhealth/ui/components/HybridBodyMetricPicker.kt`, `app/src/test/java/com/gunnys/eundunhealth/ui/**`, `gradle/libs.versions.toml`, `.github/dependabot.yml`
+
 ### 2026-10-29 — 콜드 스타트 기동 크래시(`EUNDUNHEALTH-H`) 핫픽스 · Room 지연 초기화 · 5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) (v0.7.1/42)
 
 - **Why**: `v0.7.0/41` 배포 후 기기 업데이트 시 콜드 스타트 과정에서 `AuthViewModel -> DefaultLocalDataWiper -> DatabaseModule.provideSmileTrainingDatabase`가 호출될 때, `Room.databaseBuilder`에 `MIGRATION_1_2`(`startVersion = 1`)와 `fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)`이 동시에 등록되어 `RoomDatabase.Builder.validateMigrationsNotRequired()`가 `IllegalArgumentException`을 던지며 앱이 100% 자동 종료됐다(`INC-2026-10-29-34`, Sentry `EUNDUNHEALTH-H`). 또한 단위 테스트가 DAO를 Mock으로 대체하여 실제 Hilt `@Provides` 빌더 조합을 호출하지 않던 테스트 사각지대를 근본 해소해야 했다.

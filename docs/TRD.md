@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
-> **문서 버전:** v2.0 (현행 아키텍처 정본, 2026-10-29 최신화)  
-> **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.0/41 (`completed` 100%)** (핫픽스 **v0.7.1/42**), 백엔드 활성 리비전 **`eundunhealth-api--0000067` (`40595a1`)**  
+> **문서 버전:** v2.1 (현행 아키텍처 정본, 2026-10-29 최신화)  
+> **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.2/43 (`completed` 100%, 원장 PR #223)**, 백엔드 활성 리비전 **`eundunhealth-api--0000068` (`db8b4f8`)**  
 > **패키지 명:** `com.gunnys.eundunhealth`  
 > **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -15,7 +15,7 @@
 
 ### 0.1. 핵심 아키텍처 전환 요약
 
-| 영역 | 초기 설계 (TRD v1.0) | 현행 아키텍처 (v0.7.1 & 스마일 트레이닝 v2) | 전환 사유 및 기술 이점 |
+| 영역 | 초기 설계 (TRD v1.0) | 현행 아키텍처 (v0.7.2 & 스마일 트레이닝 v2) | 전환 사유 및 기술 이점 |
 | :--- | :--- | :--- | :--- |
 | **Backend 런타임** | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.161.0 (Python 3.14)** + uvicorn 0.54.0 | 비동기 고성능 처리, Pydantic v2 선언적 검증, AI SDK 통합 용이성 |
 | **Backend API 버전** | (미정) | **`1.0.0`** (앱 버전과 분리된 독립 SSoT) | 모바일 클라이언트와 백엔드 배포 라이프사이클 디커플링 |
@@ -24,7 +24,7 @@
 | **스키마 라이프사이클** | 점진적 Alembic 마이그레이션 | **Drop & Recreate 전용 하드 리셋 파이프라인** | 레거시 마이그레이션 부채 0(Zero-Legacy), 멱등 부트스트랩(`schema_bootstrap`) |
 | **인증 시스템** | Supabase Auth (ES256) | **Microsoft Entra External ID (CIAM)** | 엔터프라이즈 OIDC/PKCE 브라우저 위임, RS256 JWKS 서명 검증, `oid` SSoT |
 | **회원 탈퇴 파이프라인** | Supabase Admin API | **Microsoft Graph API `DELETE /users/{oid}`** | 204 No Content 처리 및 `deletedItems` 즉시 파기 (30일 보관 완전 우회) |
-| **AI 식단 생성** | 미포함 | **Azure AI Foundry `DeepSeek-V3.2` MaaS** | AsyncOpenAI 연동, 사용자 명시적 동의 헤더 및 킬 스위치 보장 |
+| **AI 식단 생성** | 미포함 | **Azure AI Foundry `gpt-5.4-mini` (100K TPM)** | AsyncOpenAI + Strict JSON Schema(`json_schema`), 명시적 동의 헤더 및 킬 스위치 보장 |
 | **온디바이스 비전 AI** | 미포함 | **CameraX 1.6.2 + ML Kit Face Detection 17.1.0** | 온디바이스 스마일 트레이닝 v2 (단일 규격 2s×3회, 영상 무저장/무전송) |
 | **클라이언트 UI/디자인** | Material 3 기본 테마 | **Modern Forest & Mint (36슬롯) + Pretendard** | 13 시맨틱 토큰(`EundunExtendedColors`), UDF 12 ViewModel, DayNight 깜빡임 제거 |
 | **운동 카탈로그** | RapidAPI ExerciseDB (영문) | **OSS ExerciseDB + 추천 46종 한국어 + 홈트 18종** | 한국어 번들 지문 대조, 무장비 내장 홈트 알고리즘(`HomeWeeklyPlanGenerator`) |
@@ -36,12 +36,13 @@
 
 - **v0.1.0 ~ v0.1.18 (2026-05 ~ 2026-06)**: Ktor/Supabase 기반 프로토타입 개발 및 점진적 하드닝. Google Play 최초 승인 및 2026-06-29 정식 프로덕션 출시(v0.1.18/32).
 - **v0.2.0 (2026-09-02)**: **인증 시스템 전면 전환**. Supabase Auth를 완전 영구 폐기하고 Microsoft Entra External ID(CIAM, MSAL 브라우저 위임, RS256 JWKS, Microsoft Graph 계정 삭제)로 전환.
-- **v0.3.0 ~ v0.3.1 (2026-09 ~ 2026-10)**: **AI 맞춤 식단 및 운동 한국어 현지화**. Azure AI Foundry `DeepSeek-V3.2` MaaS 연동, 추천 운동 46종 한국어 번들(`korean_exercises.json` v2) 도입.
+- **v0.3.0 ~ v0.3.1 (2026-09 ~ 2026-10)**: **AI 맞춤 식단 및 운동 한국어 현지화**. Azure AI Foundry 연동(초기 `DeepSeek-V3.2` → v0.7.2 `gpt-5.4-mini`), 추천 운동 46종 한국어 번들(`korean_exercises.json` v2) 도입.
 - **v0.4.0 (2026-10-17)**: **적응형 메뉴트리 & Health Connect 투명성**. 4대 최상위 탭(`오늘·식단·진행·프로필`, `MainAppShell`), Health Connect 1.1.0 권한 재조회 연동.
 - **v0.5.0 (2026-10-26)**: **온디바이스 스마일 트레이닝 도입**. 전면 카메라 + ML Kit 미소 코칭, Room `SmileTrainingDatabase` v2 및 WorkManager 백그라운드 동기화.
 - **v0.6.0 (2026-10-27)**: **적응형 주간 운동 계획 v2 & 다중 휴식 요일**. Gym/Home 모드 분기, 다중 휴식 요일(`rest_days` 1~6일), 내장 홈트 18종 무장비 카탈로그 엔진 도입.
 - **v0.6.1 (2026-10-28)**: **UI/UX 전면 개선 (`PROP-05`)**. Modern Forest & Mint 36슬롯 + Pretendard Variable 가변 폰트, `TodayHeroCard`, 단계별 운동 가이드, 하이브리드 바디 피커 적용.
-- **v0.7.0 / v0.7.1 (2026-10-29)**: **PostgreSQL 18 하드 리셋 & 스마일 트레이닝 v2 Zero-Legacy 컷오버**. Azure PostgreSQL 18.4 엔진 및 3NF 9개 테이블 확립, 스마일 트레이닝 단일 규격(2초×3회, 1초 자동 시작) 완전 통합.
+- **v0.7.0 / v0.7.1 (2026-10-29)**: **PostgreSQL 18 하드 리셋 & 스마일 트레이닝 v2 Zero-Legacy 컷오버 · 콜드 스타트 크래시 핫픽스**. Azure PostgreSQL 18.4 엔진 및 3NF 9개 테이블 확립, 스마일 트레이닝 단일 규격(2초×3회, 1초 자동 시작) 완전 통합, 5계층 심층 방어(룰 14)·AGP 거버넌스(룰 15) 확립.
+- **v0.7.2 (2026-10-29)**: **진행·프로필 허브 비주얼 대시보드 개편 & AI 식단 `gpt-5.4-mini` (100K TPM) 전환**. `ProgressHubScreen`/`ProfileHubScreen` 시각화 대시보드 및 중복 메뉴 제거, 체성분 직접 입력 `0.1` 정밀도 보존, `ep-eundunhealth-meal-ai` (`gpt-5.4-mini`, Strict JSON Schema) 배포(`eundunhealth-api--0000068`).
 
 ---
 
@@ -49,7 +50,7 @@
 
 ### 1.1. 전체 시스템 구성도
 
-> **최신 아키텍처 기준 (v0.7.0 / v0.7.1, 2026-10-29 반영)**:
+> **최신 아키텍처 기준 (v0.7.0 ~ v0.7.2, 2026-10-29 반영)**:
 > 초기 v1.0 설계에서 **FastAPI (Python 3.14), Microsoft Entra External ID(CIAM), Azure PostgreSQL 18.4 Flexible Server, 온디바이스 스마일 트레이닝 v2(CameraX + ML Kit), Azure AI Foundry(gpt-5.4-mini GlobalStandard), Sentry 풀스택 분산 추적**으로 전면 현대화된 엔드투엔드 토폴로지입니다.
 
 #### [Mermaid 시스템 아키텍처 다이어그램]
@@ -496,14 +497,14 @@ Samsung Health Data SDK는 **도입하지 않는다**. 갤럭시 워치/삼성�
 | OSS ExerciseDB | 추천 운동 데이터 조회 (카탈로그 46종 한국어 번들 + API 조회) | HTTPS REST | 인증 불필요 (`oss.exercisedb.dev/api/v1/`) |
 | Microsoft Entra External ID | 브라우저 위임 회원가입, 로그인, 토큰 발급/갱신 (OIDC/PKCE) | HTTPS REST (브라우저 위임) | OAuth 2.0 PKCE / RS256 JWKS |
 | Microsoft Graph API | 계정 영구 삭제 (`DELETE /v1.0/users/{oid}`) 및 영구 파기 | HTTPS REST | Client Credentials (백엔드 시크릿) |
-| Azure AI Foundry | AI 맞춤 주간 식단 자동 생성 (`DeepSeek-V3.2` MaaS Serverless) | HTTPS REST (OpenAI SDK) | Key Vault 관리 API Key (`deepseek-*`) |
+| Azure AI Foundry | AI 맞춤 주간 식단 자동 생성 (`gpt-5.4-mini` `GlobalStandard` 100K TPM) | HTTPS REST (OpenAI SDK) | Key Vault 관리 API Key (`deepseek-*`) |
 | eundunHealth Backend | 프로필, 주간 계획 v2, 스마일 트레이닝 v2, 배지, 식단 CRUD | HTTPS REST | Bearer JWT (RS256 `oid`, `access_as_user`) |
 
 ### 2.6. 네트워크 계층
 
 | 구분 | 기술 / 라이브러리 | 버전 | 설정 및 비고 |
 | :--- | :--- | :--- | :--- |
-| **HTTP 클라이언트 (앱)** | **OkHttp** | **5.5.0** | 최외곽 Sentry 트레이싱, 지수 백오프, 직렬화 토큰 갱신 |
+| **HTTP 클라이언트 (앱)** | **OkHttp** | **5.5.1** | 최외곽 Sentry 트레이싱, 지수 백오프, 직렬화 토큰 갱신 |
 | **REST 클라이언트 (앱)** | **Retrofit** | **3.0.0** | 비동기 코루틴 Suspended 인터페이스 |
 | **JSON 직렬화 (앱)** | **Gson (Retrofit Converter)** | **2.11.0** | R8 난독화 방지 DTO `@SerializedName` 및 keep 룰 적용 |
 | **HTTP 서버 (백엔드)** | **FastAPI + uvicorn** | **0.161.0 / 0.54.0** | 비동기 ASGI 서버, Python 3.14 런타임 |
@@ -709,7 +710,7 @@ FastAPI Lifespan Shutdown
 | | `DELETE` | `/v2/weekly-plan` | **O** | 손상된 계획 명시적 삭제 (`204 No Content`, 복구 지원) |
 | | `PATCH` | `/v2/weekly-plan/complete` | **O** | 일별 운동 완료 토글 (`date`, `completed`, `manual`) |
 | | `GET` | `/v2/weekly-plan/history` | **O** | 이전 주차 운동 계획 히스토리 페이지네이션 조회 |
-| **AI Meals** | `POST` | `/meals/generate` | **O** | DeepSeek-V3.2 MaaS 맞춤 주간 식단 생성 (`X-AI-Data-Processing-Consent: true` 필수) |
+| **AI Meals** | `POST` | `/meals/generate` | **O** | Azure AI Foundry `gpt-5.4-mini` 맞춤 주간 식단 생성 (`X-AI-Data-Processing-Consent: true` 필수) |
 | | `GET` | `/meals/current` | **O** | 현재 적용 중인 주간 식단 35개 슬롯 상세 조회 |
 | **Smile Training** | `POST` | `/v2/smile-training/sessions` | **O** | 완료된 온디바이스 세션 업로드 (2s×3회, 지속시간, 수행횟수) |
 | | `GET` | `/v2/smile-training/sessions` | **O** | 세션 이력 조회 |
@@ -1086,7 +1087,7 @@ Android 앱과 FastAPI 백엔드의 성능 트랜잭션과 에러를 독립된 �
 - **Compile / Target SDK:** 37 (Android 17) / **Min SDK:** 26 (Android 8.0 Oreo)
 - **빌드 도구:** Gradle 9.8.2 + AGP 9.4.1 (Kotlin 2.4.21 내장)
 - **자바 런타임:** Eclipse Temurin 17 (Java 17 바이트코드)
-- **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.7.1`, `VERSION_CODE=42`)
+- **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.7.2`, `VERSION_CODE=43`)
 
 #### [주요 CLI 명령어]
 ```bash
@@ -1252,8 +1253,8 @@ eundunHealth/                          # 루트 저장소 (Gradle & Python 하�
 | `entra-subdomain` | `ENTRA_SUBDOMAIN` | Entra 테넌트 서브도메인 (`eundunhealthciam`) |
 | `entra-backend-client-id` | `ENTRA_BACKEND_CLIENT_ID` | 백엔드 API 애플리케이션 ID (`audience` 검증용) |
 | `entra-backend-client-secret` | `ENTRA_BACKEND_CLIENT_SECRET` | Microsoft Graph API 호출용 Client Credentials 시크릿 |
-| `deepseek-endpoint` | `DEEPSEEK_ENDPOINT` | Azure AI Foundry `DeepSeek-V3.2` MaaS 엔드포인트 URL |
-| `deepseek-key` | `DEEPSEEK_KEY` | Azure AI Foundry MaaS API Key |
+| `deepseek-endpoint` | `DEEPSEEK_ENDPOINT` | Azure AI Foundry (`hub-eundunhealth-prod`) OpenAI 호환 엔드포인트 URL |
+| `deepseek-key` | `DEEPSEEK_KEY` | Azure AI Foundry API Key |
 | `sentry-dsn-backend` | `SENTRY_DSN` | Sentry 백엔드 프로젝트 DSN (`gunnys/eundunhealth-backend`) |
 
 #### 3) 백엔드 일반 구성 변수 (`containerapp.yaml` / `.env`)
@@ -1261,7 +1262,9 @@ eundunHealth/                          # 루트 저장소 (Gradle & Python 하�
 | 변수명 | 기본값 | 설명 |
 | :--- | :--- | :--- |
 | `ENVIRONMENT` | `production` | 실행 환경 구분 (`production` / `development`) |
+| `MEAL_AI_MODEL` | `ep-eundunhealth-meal-ai` | Azure AI Foundry 식단 생성 모델 배포명 (`gpt-5.4-mini`, `GlobalStandard` 100K TPM) |
 | `MEAL_AI_ENABLED` | `true` | AI 식단 생성 긴급 차단 킬 스위치 (`false` 설정 시 503 반환) |
+| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | `41` | 지원 최소 Android 클라이언트 `versionCode` |
 | `CORS_ORIGINS` | `[]` | CORS 허용 오리진 (네이티브 앱 전용이므로 빈 배열로 와일드카드 전면 차단) |
 
 <details>
@@ -1297,12 +1300,12 @@ eundunHealth/                          # 루트 저장소 (Gradle & Python 하�
 | **PLAN-01** | 적응형 주간 운동 계획 생성 | `CreateWeeklyPlanUseCase` → `POST /v2/weekly-plan` (Gym/Home 모드 필수 분기) |
 | **PLAN-02** | 요일별 운동 카드 렌더링 | `HomeScreen` `DayPlanCard` Composable (Modern Forest & Mint 디자인) |
 | **PLAN-03** | 오늘 운동 하이라이트 | `TodayHeroCard` (오늘 운동 종목, 권장 세트/반복수, 집중 하이라이트) |
-| **PLAN-04** | 운동 상세 및 가이드 모드 | `WorkoutDetailScreen` (Coil 3.4 GIF) + `WorkoutGuideScreen` (단계별 타이머 가이드) |
+| **PLAN-04** | 운동 상세 및 가이드 모드 | `WorkoutDetailScreen` (Coil 3.6.3 GIF) + `WorkoutGuideScreen` (단계별 타이머 가이드) |
 | **PLAN-05** | 듀얼 운동 카탈로그 엔진 | 헬스장: OSS ExerciseDB 46종 한국어 번들 / 홈트: 내장 무장비 18종(`HomeWeeklyPlanGenerator`) |
 | **PLAN-06** | 로컬 오프라인 캐시 | Room Database v3 (`eundunhealth.db`) `WeeklyPlanDao` |
 | **PLAN-07** | 계획 불변성 및 손상 복구 | 동일 주 중복 생성 시 `409 weekly_plan_exists` 차단 + 손상 시 `DELETE /v2/weekly-plan` (204) |
 | **PLAN-08** | 다중 휴식 요일 자유 지정 | `RestDaysSelector` M3 선택기 (1~6일 선택 가능, `user_profiles.rest_days`) |
-| **MEAL-01** | AI 맞춤 주간 식단 생성 | Azure AI Foundry `DeepSeek-V3.2` MaaS (`POST /meals/generate`, 비동기 스트림) |
+| **MEAL-01** | AI 맞춤 주간 식단 생성 | Azure AI Foundry `gpt-5.4-mini` (`POST /meals/generate`, Strict JSON Schema) |
 | **MEAL-02** | 35슬롯 정규화 식단 조회 | `GET /meals/current` → `meal_plans` & `meal_plan_items` 1:N 조인 응답 |
 | **MEAL-03** | AI 식단 생성 명시적 동의 | 클라이언트 `X-AI-Data-Processing-Consent: true` 요청 헤더 전송 강제 |
 | **MEAL-04** | 식단 생성 안전 킬 스위치 | 백엔드 `MEAL_AI_ENABLED` 환경변수로 긴급 차단 (503 응답) |

@@ -66,7 +66,7 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 - 분석 (Sentry — 충돌 진단, 성능 모니터링)
 
 **“저장/처리 위치”**: Microsoft Entra External ID (**아시아·태평양** — 한국 리전 미지원) + Azure
-PostgreSQL (Korea Central) + Azure AI Foundry DeepSeek-V3.2 (`GlobalStandard`).
+PostgreSQL (Korea Central) + Azure AI Foundry `gpt-5.4-mini` (`GlobalStandard`).
 > `GlobalStandard` 추론은 어느 Azure region에서든 처리될 수 있다([Microsoft 공식 deployment types](https://learn.microsoft.com/azure/ai-foundry/foundry-models/concepts/deployment-types)).
 > 앱은 생성 직전 데이터 항목·목적·국외 처리 가능성을 고지하고 “동의하고 생성”을 요구하며,
 > backend도 필수 동의 헤더가 없는 구버전·우회 요청을 거부한다. Console Data safety와 Health apps

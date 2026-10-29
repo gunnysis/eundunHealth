@@ -2,7 +2,7 @@
 
 > PT 트레이너 없이 헬스장이나 집에서 혼자 운동하는 사용자를 위한 Android 헬스 앱
 
-신체 정보(키·몸무게·골격근량·체지방률·성별)와 선택한 운동 환경(**`헬스장`** [OSS ExerciseDB](https://oss.exercisedb.dev) 추천 운동 46종 한국어 현지화 번들 / **`홈트레이닝`** 내장 18종 무장비 카탈로그)을 바탕으로 **적응형 주간 운동 계획**을 생성하고, **AI 맞춤 주간 식단**(Azure AI Foundry `DeepSeek-V3.2`)을 추천받으며, **온디바이스 스마일 트레이닝**(CameraX + ML Kit 얼굴 검출 미소 연습)과 **Health Connect** 연동으로 완료를 추적하고, **목표(체중·체지방)** 와 **배지**로 동기를 유지합니다.
+신체 정보(키·몸무게·골격근량·체지방률·성별)와 선택한 운동 환경(**`헬스장`** [OSS ExerciseDB](https://oss.exercisedb.dev) 추천 운동 46종 한국어 현지화 번들 / **`홈트레이닝`** 내장 18종 무장비 카탈로그)을 바탕으로 **적응형 주간 운동 계획**을 생성하고, **AI 맞춤 주간 식단**(Azure AI Foundry `gpt-5.4-mini`)을 추천받으며, **온디바이스 스마일 트레이닝**(CameraX + ML Kit 얼굴 검출 미소 연습)과 **Health Connect** 연동으로 완료를 추적하고, **목표(체중·체지방)** 와 **배지**로 동기를 유지합니다.
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원 또는 홈트레이닝 실천자, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **v0.7.0 (versionCode 41, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`, 2026-10-29)**. 스마일 트레이닝 v2 전면 리팩토링(`2.0초 유지 × 3회 반복` 단일 표준 스펙, `READY` 1.0초 자동 시작, 풀블리드 카메라 HUD, 4대 접속 경로 IA, `/v2/smile-training/*` 컷오버, Room DB v2), Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, 운영 DB 하드 리셋 `hard-reset-v2-pg18-prod-20261029`), AGP 9.4.1 정식 업그레이드, Health Connect 연동 및 운동 가이드 UX 개선이 포함된다(직전 프로덕션: v0.6.1 / versionCode 40, `LAST_UPLOADED_VERSION_CODE=40`).
+- **현재 단계** — **v0.7.2 (versionCode 43, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`, 2026-10-29)**. 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 탭 비주얼 대시보드·간소화 개편, 골격근량·체지방률 직접 입력 `0.1` 정밀도 수정, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (`GlobalStandard`, `100K TPM / 100 RPM`, OpenAI Strict JSON Schema) 전환, 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어(룰 14)·AGP 거버넌스(룰 15)·배포 연동 PR 트리아지(룰 16) 수립, 스마일 트레이닝 v2 전면 리팩토링(`2.0초 유지 × 3회 반복` 단일 표준 스펙, `READY` 1.0초 자동 시작, 풀블리드 카메라 HUD, 4대 접속 경로 IA, `/v2/smile-training/*` 컷오버, Room DB v2), Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, 운영 DB 하드 리셋 `hard-reset-v2-pg18-prod-20261029`), AGP 9.4.1 정식 업그레이드가 포함된다(프로덕션 업로드: `release.yml` run `40847386065`, 원장 PR #223 `LAST_UPLOADED_VERSION_CODE=43`, 백엔드 활성 리비전 `eundunhealth-api--0000068`).
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -48,7 +48,7 @@
 ## 주요 기능
 
 - **적응형 주간 운동 계획 v2 (`헬스장` / `홈트레이닝`) & 다중 휴식 요일(`restDays`)** — 매주 첫 진입 시 `헬스장`(OSS ExerciseDB + 추천 운동 46종 한국어 번들 `korean_exercises.json` v2) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위 지원)을 선택해 계획을 생성하거나, 프로필의 `기본 운동 환경` 설정으로 주간 자동 생성. 주 1~6일 원하는 휴식 요일(`restDays`)을 자유롭게 지정하고 대근육 우선순위 큐로 운동을 균형 배치
-- **AI 맞춤 주간 식단** (v0.3.0 / v0.3.1) — 신체 지표·목표·주간 운동량을 바탕으로 Azure AI Foundry `DeepSeek-V3.2` 모델이 7일×4끼 맞춤 식단과 영양소(칼로리·탄단지)를 생성 (국외 이전 사전 고지 및 `X-AI-Data-Processing-Consent: true` 명시적 동의 기반)
+- **AI 맞춤 주간 식단** (v0.3.0 / v0.3.1 / v0.7.2) — 신체 지표·목표·주간 운동량을 바탕으로 Azure AI Foundry `gpt-5.4-mini` (`GlobalStandard` 100K TPM) 모델이 7일×3끼 맞춤 식단과 영양소(칼로리·탄단지)를 생성 (국외 이전 사전 고지 및 `X-AI-Data-Processing-Consent: true` 명시적 동의 기반)
 - **온디바이스 스마일 트레이닝 v2** (v0.5.0 / v2) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(단일 표준 스펙 `SmileTrainingSpec`: `2.0초 유지 × 3회 반복`, `READY` 1.0초 자동 시작, 종료 후 감정 설문 제거 및 자동 완료)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db` v2) 및 `WorkManager`로 세션 요약·연속일을 서버(`/v2/smile-training/*`)와 동기화
 - **Health Connect 연동** — 운동 세션 자동 감지 및 완료 추적
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
@@ -66,19 +66,19 @@
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Kotlin 2.4.21, Java 17 | KSP 2.3.12 |
-| 빌드 | Gradle 9.8.1, AGP 9.4.1 | Min SDK 26 / Target SDK 37, dependency locking + SHA-256 verification |
+| 빌드 | Gradle 9.8.2, AGP 9.4.1 | Min SDK 26 / Target SDK 37, dependency locking + SHA-256 verification |
 | UI | Jetpack Compose (BOM 2026.09.00) | Material 3 |
 | DI | Hilt 2.60.1 | 4개 모듈 (`NetworkModule`, `DatabaseModule`, `RepositoryModule`, `CoroutineModule`) |
 | 비동기 | kotlinx-coroutines + Flow | |
-| 네트워크 | Retrofit 3.0.0 + OkHttp 5.5.0 + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 + `Eundun-Client-Version-Code` 헤더 |
+| 네트워크 | Retrofit 3.0.0 + OkHttp 5.5.1 + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 + `Eundun-Client-Version-Code` 헤더 |
 | 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v2, KSP 스키마 export) |
 | 카메라 & 온디바이스 비전 | CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0 | Google Play services unbundled (`ModuleInstallClient`) |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
-| Auth | MSAL Android 8.4.2 | RS256 JWT · `oid` claim |
+| Auth | MSAL Android 8.6.0 | RS256 JWT · `oid` claim |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | |
-| 모니터링 | Sentry Android 8.57.0 (Gradle plugin 6.24.0) | 16KB page-aligned native libs |
-| API 클라이언트 | OpenAPI Generator 7.25.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동, 8개 generated API |
-| 품질 도구 | Detekt 1.23.8 (`detekt-cli` + `androidComponents`) + Spotless 8.10.1 + ktlint 1.5.0 | pre-commit hook + `check-agp10-compat.sh` 가드 |
+| 모니터링 | Sentry Android 8.61.1 (Gradle plugin 6.24.0) | 16KB page-aligned native libs |
+| API 클라이언트 | OpenAPI Generator 7.26.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동, 8개 generated API |
+| 품질 도구 | Detekt 1.23.8 (`detekt-cli` + `androidComponents`) + Spotless 8.10.4 + ktlint 1.5.0 | pre-commit hook + `check-agp10-compat.sh` 가드 |
 
 ### Backend (`backend/`)
 
@@ -91,20 +91,20 @@
 | 스키마 파이프라인 | Drop & Recreate 전용 (`02_schema_create_all.sql`) | PostgreSQL 18 `DEFAULT uuidv7()` + `app.schema_bootstrap` 멱등 기동 + `hard_reset_db.py` / `seed_edge_cases.py`(100건 시딩·11개 제약 검증) |
 | HTTP 코어 | starlette 1.9.0 | |
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
-| AI 클라이언트 | openai 3.37.0 (`AsyncOpenAI`) | Azure AI Foundry `DeepSeek-V3.2` MaaS 연동 |
+| AI 클라이언트 | openai 3.37.0 (`AsyncOpenAI`) | Azure AI Foundry `gpt-5.4-mini` (`GlobalStandard` 100K TPM, Strict JSON Schema) 연동 |
 | 모니터링 | Sentry SDK 2.73.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 143/143 PASS, coverage 94%+ (sysmon core) |
+| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 146/146 PASS, coverage 94%+ (sysmon core) |
 
 ### 인프라
 
 | 구성 요소 | 값 |
 |-----------|---|
-| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000066`) |
+| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000068`) |
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret **8개** |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU, 주간 `acr purge` 스케줄 Task 2개) |
 | Database | Azure PostgreSQL Flexible Server `healthapp` (PostgreSQL 18.4, B1ms, 32GB; 로컬/CI `postgres:18-alpine` `18.6`) |
 | Auth | Microsoft Entra External ID 외부 테넌트 `eundunhealthciam` (Asia Pacific — 한국 리전 미지원) |
-| AI 모델 | Azure AI Foundry `eundunhealth-ai-foundry` (East US 2, `DeepSeek-V3.2` `GlobalStandard` MaaS) |
+| AI 모델 | Azure AI Foundry `hub-eundunhealth-prod` (Korea Central, `ep-eundunhealth-meal-ai` `gpt-5.4-mini` `GlobalStandard` 100K TPM) |
 | 운동 데이터 소스 | OSS ExerciseDB (`oss.exercisedb.dev`, 무인증 + 로컬 한국어 번역 번들 46종) + 앱 내장 홈트레이닝 18종 카탈로그 |
 | CI/CD | GitHub Actions 7개 워크플로 (`android.yml`, `backend.yml`, `backend-rollback.yml`, `release.yml`, `warm-baseline-check.yml`, `doc-audit.yml`, `docs-plans-index.yml`) + Dependabot |
 | 에러 추적 | Sentry (Android / Backend 별도 프로젝트) |
@@ -133,7 +133,7 @@ di/          # Hilt 모듈 4개 (NetworkModule, DatabaseModule, RepositoryModule
 ### Backend — Layered FastAPI
 
 ```
-app/main.py           # FastAPI 앱 + lifespan(DB / Sentry / DeepSeek AI client) + 모듈 레벨 CORS + 글로벌 예외 핸들러
+app/main.py           # FastAPI 앱 + lifespan(DB / Sentry / Azure AI Foundry client) + 모듈 레벨 CORS + 글로벌 예외 핸들러
 app/config.py         # pydantic-settings (@lru_cache)
 app/database.py       # DeclarativeBase + get_db() UoW (app.state.session_factory)
 app/dependencies.py   # JWKS 기반 JWT 검증 (RS256, Entra External ID) + 클라이언트 버전 가드
@@ -441,6 +441,9 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.5.0** — **온디바이스 스마일 트레이닝(Smile Training) 출시** — 전면 카메라(`CameraX` 1.6.2) + 온디바이스 `ML Kit Face Detection`(17.1.0) 미소 근육 코칭(루틴 3종 × 난이도 3단계 × 1~5회 반복) + 오프라인 우선 Room(`smile_training.db`) & `WorkManager` 동기화 + 원격 이력 자동 복원(`refreshRemoteHistoryIfEmpty`) + 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) 및 4개 API + 계정 삭제 로컬 와이퍼(`LocalDataWiper`). **2026-10-26 백엔드 배포(`0000063`) 및 Play production `completed`(100%) 업로드 성공** (run `40274395812`, 원장 `cbd155f`).
 - [x] **v0.6.0 — 적응형 주간 운동 계획 v2 & 다중 휴식 요일(`restDays`) 출시 (2026-10-27)** — `헬스장` / `홈트레이닝` 모드 선택 및 프로필 `기본 운동 환경` 자동 생성 · 주 1~6일 다중 휴식 요일(`restDays`) 및 대근육 우선순위 큐 라운드로빈 배치 · 내장 18종 무장비 홈트레이닝 카탈로그(`local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위) · `/v2/weekly-plan` 7개 엔드포인트(409 불변성 보장 및 `DELETE` 복구) · `/app-compatibility` 버전 가드(`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=39`) · alembic `d7f4a2c91b10`. **2026-10-27 백엔드 배포(`0000065`) 및 Play production `completed`(100%) 업로드 성공** (run `40469947190`, 원장 `f9eeefc`).
 - [x] **v0.6.1 — UI/UX 전면 개선(`PROP-05` Phase 1~4) & 공급망 하드닝 출시 (2026-10-28)** — M3 포레스트 민트 36슬롯 + 시맨틱 13토큰(`EundunExtendedColors`) & Pretendard Variable 타이포그래피 · DayNight 콜드 스타트 백색 점멸 제거 · `TodayHeroCard` & 단계별 운동 가이드 모드(`WorkoutGuideScreen`/`WorkoutGuideViewModel`) · 3중 하이브리드 바디 피커(`HybridBodyMetricPicker`) & 2단계 온보딩 · 진행/식단/내 정보 허브 고도화 · Gradle/Python hash lock & Repository Gate. **2026-10-28 백엔드 배포(`0000066`, run `40647560099`) 및 Play production `completed`(100%) 업로드 성공** (run `40647597577`, 원장 PR #211).
+- [x] **v0.7.0 — 스마일 트레이닝 v2 컷오버 · PostgreSQL 18 하드 리셋 파이프라인 · AGP 9.4.1 업그레이드 출시 (2026-10-29)** — 단일 표준 규격(`2.0초 유지 × 3회 반복`, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), Azure PostgreSQL 18.4(`healthapp`) / 로컬·CI `postgres:18-alpine` `18.6` 업그레이드 및 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`. **2026-10-29 백엔드 배포(`0000067`, run `40816129146`) 및 Play production `completed`(100%) 업로드 성공** (run `40816257901`, 원장 PR #215).
+- [x] **v0.7.1 — 콜드 스타트 크래시 핫픽스(`EUNDUNHEALTH-H`) · 5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) 출시 (2026-10-29)** — `SmileTrainingDatabase` 빌더 충돌 해결 및 `DefaultLocalDataWiper` `dagger.Lazy` 지연 주입, 콜드 스타트 스모크 게이트(`scripts/smoke-cold-start.sh`) 구축. **2026-10-29 Play production `completed`(100%) 업로드 성공** (run `40825396534`, 원장 PR #217).
+- [x] **v0.7.2 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드 개편 · 체성분 직접 입력 0.1 정밀도 수정 · AI 식단 `gpt-5.4-mini` (100K TPM) 전환 출시 (2026-10-29)** — 진행/프로필 허브 시각화 대시보드 및 중복 메뉴 제거, `HybridBodyMetricPicker` 0.1 정밀도 보존, `ep-eundunhealth-meal-ai`(`gpt-5.4-mini`, Strict JSON Schema) 전환, PR Triage 거버넌스(룰 16) 및 `okhttp 5.5.1`·`coil 3.6.3` 갱신. **2026-10-29 백엔드 배포(`0000068`, run `40838433732`) 및 Play production `completed`(100%) 업로드 성공** (run `40847386065`, 원장 PR #223).
 
 세부 history 는 [docs/CHANGELOG.md](docs/CHANGELOG.md) 와 [docs/plans/logs/](docs/plans/logs/) 토픽 ledger 참조.
 

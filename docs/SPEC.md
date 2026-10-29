@@ -1,11 +1,11 @@
 # eundunHealth 기능 명세서
 
-> **문서 버전:** v2.0 (현행 아키텍처 정본, 2026-10-29 최신화)  
-> **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스를 거쳐 **v0.7.0 (스마일 트레이닝 v2 및 PostgreSQL 18.4 하드 리셋)** 및 **v0.7.1 (콜드 스타트 크래시 핫픽스)** 프로덕션 배포 완료. 자세한 기술 아키텍처는 [TRD.md](./TRD.md) 참조.
+> **문서 버전:** v2.1 (현행 아키텍처 정본, 2026-10-29 최신화)  
+> **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스를 거쳐 **v0.7.0 (스마일 트레이닝 v2 및 PostgreSQL 18.4 하드 리셋)**, **v0.7.1 (콜드 스타트 크래시 핫픽스)** 및 **v0.7.2 (진행·프로필 허브 비주얼 대시보드 개편 및 AI 식단 `gpt-5.4-mini` 100K TPM 전환)** 프로덕션 배포 완료. 자세한 기술 아키텍처는 [TRD.md](./TRD.md) 참조.
 >
 > **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트 `eundunhealthciam`, 브라우저 위임). IdP는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계 기록이며** — 현행은 `AuthGateScreen` 단일화 및 Microsoft Graph API `DELETE /users/{oid}` 계정 탈퇴 파이프라인(`DELETE /account`)으로 완전 일원화되었다.
 > 
-> **AI 식단 생성 및 운동 한국어 현지화 (2026-09~10, v0.3.0~v0.3.1):** 주간 식단 자동 생성 기능은 Azure AI Foundry MaaS(`DeepSeek-V3.2`)를 통해 구현 완료되었다(v0.3.0). 프론트엔드는 `MealPlanScreen` Compose UI와 Hilt+Retrofit(전용 130s read timeout) 통신을 사용하고, 백엔드는 FastAPI에서 `AsyncOpenAI` + Tenacity 재시도·Pydantic JSON 검증·`X-AI-Data-Processing-Consent: true` 국외 이전 사전 동의 헤더 강제 및 `MEAL_AI_ENABLED` 킬스위치를 채택했다(v0.3.1). 운동 카탈로그 46종(이름·수행 방법·팁) 및 근육/부위/장비 라벨도 한국어로 전면 현지화되었다(`ExerciseLocalization`).
+> **AI 식단 생성 및 운동 한국어 현지화 (2026-09~10, v0.3.0~v0.3.1 / v0.7.2):** 주간 식단 자동 생성 기능은 Azure AI Foundry(`gpt-5.4-mini` `GlobalStandard` 100K TPM — v0.3.0 초기 `DeepSeek-V3.2`에서 v0.7.2 업그레이드)를 통해 구현되었다. 프론트엔드는 `MealPlanScreen` Compose UI와 Hilt+Retrofit(전용 130s read timeout) 통신을 사용하고, 백엔드는 FastAPI에서 `AsyncOpenAI` + OpenAI Strict JSON Schema(`json_schema`, `strict: True`)·Pydantic JSON 검증·`X-AI-Data-Processing-Consent: true` 국외 이전 사전 동의 헤더 강제 및 `MEAL_AI_ENABLED` 킬스위치를 채택했다(v0.3.1 / v0.7.2). 운동 카탈로그 46종(이름·수행 방법·팁) 및 근육/부위/장비 라벨도 한국어로 전면 현지화되었다(`ExerciseLocalization`).
 >
 > **적응형 메뉴트리 및 온디바이스 스마일 트레이닝 v2 (2026-10, v0.4.0~v0.5.0 / v0.7.0):** 로그인 후 탐색은 `오늘·식단·진행·프로필` 4개 최상위 목적지(`MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`)로 개편되었다(v0.4.0). `오늘` 탭(상단 퀵 액션 칩·스마트 코칭 카드), `운동 가이드` 완료 요약 화면, `진행` 허브 최상단에서 진입하는 **스마일 트레이닝 v2**(`SmileTrainingScreen`, v0.5.0 / v0.7.0)는 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 영상·사진을 저장하거나 전송하지 않고 기기 메모리에서만 단일 표준 규격(`2.0초 미소 유지 × 3회 반복`, 1.0초 얼굴 정렬 자동 시작)의 실시간 미소 근육 운동을 코칭하며, 오프라인 우선 Room(`SmileTrainingDatabase` v2) + `WorkManager`(`SmileSyncWorker`)와 백엔드 `smile_training_sessions` 테이블(`/v2/smile-training/*` 4개 API)로 세션 요약 및 연속일 통계를 동기화한다.
 >
@@ -24,7 +24,7 @@
 - **대상 SDK**: 37 (Android 17)
 - **백엔드**: FastAPI (Python 3.14) — 비동기 고성능 REST API
 - **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 무인증) + 앱 내 46종 한국어 현지화 사전(`ExerciseLocalization`) + 홈트레이닝 내장 18종 무장비 카탈로그(`HomeWeeklyPlanGenerator`).
-- **AI 식단**: Azure AI Foundry Serverless MaaS(`DeepSeek-V3.2`, East US 2, GlobalStandard).
+- **AI 식단**: Azure AI Foundry (`gpt-5.4-mini`, Korea Central `hub-eundunhealth-prod`, `GlobalStandard` 100K TPM).
 - **인증**: Microsoft Entra External ID(외부 테넌트 `eundunhealthciam`, Asia Pacific, JWKS RS256).
 
 ---
@@ -250,7 +250,7 @@ AGP 9.4.1 · Gradle 9.8.2 · KSP 2.0.21-1.0.28 · Sentry Gradle Plugin · Detekt
 | | `GET` | `/v2/smile-training/sessions?limit=` | **O** | 최근 스마일 트레이닝 세션 이력 조회 |
 | | `GET` | `/v2/smile-training/statistics` | **O** | 스마일 트레이닝 연속 훈련일(Streak) 및 누적 통계 |
 | | `DELETE` | `/v2/smile-training/sessions` | **O** | 스마일 트레이닝 세션 전체 이력 초기화 (`204 No Content`) |
-| **Meal Plan** | `POST` | `/meals/generate` | **O** | Azure AI Foundry `DeepSeek-V3.2` 주간 맞춤 식단 생성 (사전 동의 필수) |
+| **Meal Plan** | `POST` | `/meals/generate` | **O** | Azure AI Foundry `gpt-5.4-mini` 주간 맞춤 식단 생성 (사전 동의 필수) |
 | | `GET` | `/meals/current` | **O** | 현재 주의 AI 생성 식단 조회 |
 | **Badges & Goals** | `GET` | `/badges` | **O** | 획득 배지 목록 및 해금 일시 조회 |
 | | `POST` | `/badges/{key}` | **O** | 배지 수여 (9종 정규 배지 키 화이트리스트 검증, 중복 수여 방지) |
@@ -383,7 +383,7 @@ backend/
 | **Microsoft Entra External ID** | OIDC/PKCE 브라우저 위임 인증 | `app/src/{debug,release}/res/raw/auth_config_ciam.json` (client_id, authority) + `ENTRA_API_SCOPE` |
 | **Microsoft Graph API (v1.0)** | 회원 탈퇴 시 계정 영구 삭제 (`DELETE /users/{oid}`) | Azure Key Vault (`entra-client-id`, `entra-client-secret`, `entra-tenant-id`) |
 | **OSS ExerciseDB** | 헬스장 모드 7개 부위 운동 데이터 카탈로그 | `https://oss.exercisedb.dev/api/v1/` (무인증 오픈 API, 키 불필요) |
-| **Azure AI Foundry** | AI 맞춤 주간 식단 생성 (`DeepSeek-V3.2` MaaS) | Azure Key Vault (`deepseek-endpoint`, `deepseek-api-key`) |
+| **Azure AI Foundry** | AI 맞춤 주간 식단 생성 (`gpt-5.4-mini` `GlobalStandard` 100K TPM) | Azure Key Vault (`deepseek-endpoint`, `deepseek-key`) |
 | **Sentry.io** | 풀스택 에러 모니터링 및 APM 트레이싱 | Android: `local.properties` or CI 시크릿 / Backend: Key Vault `sentry-dsn-backend` |
 | **Azure Container Apps** | 백엔드 API 호스팅 (`rg-eundunhealth-prod-krc`) | GitHub Actions Entra OIDC 무암호 CD (`AZURE_CLIENT_ID` 등) |
 | **Azure PostgreSQL** | 비즈니스 데이터 저장소 (PostgreSQL 18.4) | Azure Key Vault (`database-url`) |
