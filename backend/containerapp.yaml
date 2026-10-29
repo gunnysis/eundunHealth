@@ -78,6 +78,8 @@ properties:
         secretRef: deepseek-endpoint
       - name: DEEPSEEK_KEY
         secretRef: deepseek-key
+      - name: MEAL_AI_MODEL
+        value: ep-eundunhealth-meal-ai
       # Operational kill switch. Consent is enforced by a required request header.
       - name: MEAL_AI_ENABLED
         value: 'true'

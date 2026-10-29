@@ -107,3 +107,34 @@ async def test_generate_meal_plan(
     regenerate = await client.post("/meals/generate", headers=consent_header)
     assert regenerate.status_code == 200
     assert call_count == 2
+
+
+def test_azure_maas_meal_client_uses_configured_model_and_strict_schema(monkeypatch: pytest.MonkeyPatch):
+    """AzureMaaSMealClient가 설정된 모델명(ep-eundunhealth-meal-ai)과 Strict JSON Schema를 사용하는지 검증한다."""
+    from app.services.meal_ai_client import AzureMaaSMealClient
+
+    monkeypatch.setattr(
+        "app.services.meal_ai_client.get_settings",
+        lambda: Settings(
+            database_url="sqlite+aiosqlite:///:memory:",
+            entra_tenant_id="test-tid",
+            entra_subdomain="test",
+            entra_backend_client_id="test-cid",
+            entra_backend_client_secret="test-secret",
+            deepseek_endpoint="https://hub-eundunhealth-prod.services.ai.azure.com/api/projects/proj-default",
+            deepseek_key="test-key",
+            meal_ai_model="ep-eundunhealth-meal-ai",
+        ),
+    )
+
+    ai_client = AzureMaaSMealClient()
+    assert ai_client.model_name == "ep-eundunhealth-meal-ai"
+    assert str(ai_client.client.base_url).endswith("/openai/v1/")
+
+    rf = ai_client._build_response_format()
+    assert rf["type"] == "json_schema"
+    assert rf["json_schema"]["name"] == "weekly_meal_plan"
+    assert rf["json_schema"]["strict"] is True
+    schema = rf["json_schema"]["schema"]
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == {"weeklyPlan", "summary"}

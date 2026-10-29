@@ -1,7 +1,7 @@
 # 운영 상태 스냅샷
 
 > 작성일: 2026-05-25 / 최근 갱신: **2026-10-29 — v0.7.1/42 콜드 스타트 크래시 핫픽스(`EUNDUNHEALTH-H` / `INC-2026-10-29-34`) · 5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) 수립 (직전 v0.7.0/41 스마일 트레이닝 v2 · PostgreSQL 18.4 하드 리셋 · AGP 9.4.1 업그레이드)**
-> 작성 기준: 태그 `v0.7.0`의 **v0.7.0/41**이 release workflow run `40816257901`로 Play production `completed`(100%) 업로드됐고, 원장 PR #215가 `LAST_UPLOADED_VERSION_CODE=41`을 기록한다. 백엔드는 run `40816129146`으로 revision `eundunhealth-api--0000067`(이미지 `40595a1`, digest `sha256:80b271e1ef76519c3958aa750d35b2c67f793fa7505aec5d0894d695ca57c18f`)에 배포 및 reaper Job 동기화 완료됐다.
+> 작성 기준: 태그 `v0.7.1`의 **v0.7.1/42**가 release workflow run `40825396534`로 Play production `completed`(100%) 업로드됐고, 원장 PR #217이 `LAST_UPLOADED_VERSION_CODE=42`를 기록한다. 백엔드는 run `40816129146`으로 revision `eundunhealth-api--0000067`(이미지 `40595a1`, digest `sha256:80b271e1ef76519c3958aa750d35b2c67f793fa7505aec5d0894d695ca57c18f`)에 배포 및 reaper Job 동기화 완료됐다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
 ---
@@ -11,15 +11,15 @@
 | 항목 | 값 |
 |---|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.7.1` / `42` (태그 `v0.7.1` 대상)** — SSoT 루트 `version.properties`; 직전 원장 `LAST_UPLOADED_VERSION_CODE=41` |
+| versionName / versionCode | **`0.7.1` / `42` (태그 `v0.7.1`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=42` |
 | Min SDK / Target SDK | 26 / 37 |
-| Kotlin / AGP / Gradle | **2.4.21 / 9.4.1 / 9.8.1** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
+| Kotlin / AGP / Gradle | **2.4.21 / 9.4.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** |
 | 차트 | Vico 3.3.1 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
-| 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.1** + ktlint 1.5.0 |
-| API client | openapi-generator **7.25.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 8개 generated client |
-| Sentry SDK | 운영 Android **8.57.0** / Gradle plugin **6.24.0** |
+| 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.4** + ktlint 1.5.0 |
+| API client | openapi-generator **7.26.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 8개 generated client |
+| Sentry SDK | 운영 Android **8.61.1** / Gradle plugin **6.24.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
 산출물 경로 (로컬 최신 = **v0.7.0/41 R8 빌드, 2026-10-29 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 v0.7.0/41 CI 빌드(`release.yml` run `40816257901`)이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
@@ -63,6 +63,7 @@
 | `SENTRY_DSN` | secretref | `sentry-dsn-backend` |
 | `DEEPSEEK_ENDPOINT` | secretref | `deepseek-endpoint` |
 | `DEEPSEEK_KEY` | secretref | `deepseek-key` |
+| MEAL_AI_MODEL | value | p-eundunhealth-meal-ai (gpt-5.4-mini, 2026-03-17, GlobalStandard capacity: 100 = 100K TPM) |
 | `MEAL_AI_ENABLED` | value | `true` (AI 식단 생성 긴급 kill switch — `'false'` 설정 시 즉시 503 차단) |
 | `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `41` (`backend/containerapp.yaml` 정의값; v0.7.0 컷오버 적용 완료) |
 | `ENVIRONMENT` | value | `production` |
@@ -415,7 +416,7 @@ Alert 룰 (총 8개 — `scripts/setup-sentry-alerts.ps1` 으로 설정, 2026-06
 | OSS ExerciseDB | `https://oss.exercisedb.dev/api/v1/` | 없음 | 부위 카탈로그 10종, 운동 ~1500개 (추천 46종 한국어 번들 `korean_exercises.json` v2 + 영문 폴백) |
 | Microsoft Entra External ID | `https://eundunhealthciam.ciamlogin.com/…` (§5-A) | MSAL 브라우저 위임(PKCE) / 백엔드 JWKS | **RS256**. `issuer`·`jwks_uri` 는 OIDC discovery 로 읽는다(조합 금지) |
 | Microsoft Graph | `https://graph.microsoft.com/v1.0` | client credentials (KV `entra-backend-client-secret`) | 계정 삭제 204 + `deletedItems` 즉시 파기 |
-| Azure AI Foundry DeepSeek-V3.2 | `https://eundunhealth-ai-foundry.services.ai.azure.com/models` (East US 2) | Key Vault `deepseek-*` | `GlobalStandard`; 앱 내 국외 처리 고지·명시 동의 + API 필수 동의 헤더(`X-AI-Data-Processing-Consent: true`) 적용, `MEAL_AI_ENABLED` 긴급 kill switch |
+| Azure AI Foundry (`gpt-5.4-mini`) | `https://hub-eundunhealth-prod.services.ai.azure.com/api/projects/proj-default` (Korea Central) | Key Vault `deepseek-*` | 배포명 `ep-eundunhealth-meal-ai` (`OpenAI` / `gpt-5.4-mini` `2026-03-17`, `GlobalStandard`, `capacity: 100` = 100K TPM / 100 RPM, Structured Outputs `json_schema`); 앱 내 국외 처리 고지·명시 동의 + API 필수 동의 헤더(`X-AI-Data-Processing-Consent: true`) 적용, `MEAL_AI_ENABLED` 긴급 kill switch |
 | Sentry | `o4510919956430848.ingest.us.sentry.io` | DSN | US org, 두 project |
 
 ---
@@ -454,7 +455,7 @@ GitHub Actions (7개 워크플로):
 | Key Vault Standard | ~0원 | secret 8 + 저빈도 read(revision 기동 시) — 거래 무료한도 내 |
 | Container Registry Basic | ~7,000원 | 10GB 한도 |
 | PostgreSQL Flexible B1ms + 32GB | ~30,000원 | |
-| Azure AI Foundry (DeepSeek-V3.2 MaaS) | 종량제 (~수백원) | 주 1회 식단 생성 기준 토큰 종량 과금 (`GlobalStandard`) |
+| Azure AI Foundry (`gpt-5.4-mini`) | 종량제 (~수백원) | 주 1회 식단 생성 기준 토큰 종량 과금 (`GlobalStandard`, 유휴 비용 $0) |
 | Azure Monitor Alerts (metric 4) | ~550-700원 | Activity Log 4개 무료 |
 | Sentry | 0원 | 무료 plan (10K events/mo) |
 | ~~Supabase~~ | — | **2026-09-02 프로젝트 삭제**(§5). 종전 0원 무료 plan |

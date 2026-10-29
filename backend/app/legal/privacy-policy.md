@@ -1,6 +1,6 @@
 # 개인정보 처리방침 — 은둔헬스
 
-**최종 업데이트:** 2026-10-27
+**최종 업데이트:** 2026-10-29
 **연락처:** qkr133456@gmail.com
 
 은둔헬스(이하 "본 앱")는 사용자의 개인정보를 다음과 같이 처리합니다.
@@ -36,7 +36,7 @@
 | 인증 정보 (이메일/세션) | Microsoft Entra External ID | 아시아·태평양 (한국 리전 미지원) |
 | 신체 정보 / 운동 기록 / 스마일 트레이닝 요약 기록 / 목표 / 배지 | Azure PostgreSQL | Korea Central |
 | 스마일 트레이닝 카메라 프레임 | 사용자 단말 기기 메모리(실시간 처리 후 즉시 폐기) | 단말 기기 내부 (서버 전송 없음) |
-| AI 식단 입력·응답 | Microsoft Azure AI Foundry DeepSeek-V3.2 (`GlobalStandard`) | 저장 데이터는 Korea geography, 추론 처리는 전 세계 Azure 리전 중 가용 위치 |
+| AI 식단 입력·응답 | Microsoft Azure AI Foundry gpt-5.4-mini (`GlobalStandard`) | 저장 데이터는 Korea geography, 추론 처리는 전 세계 Azure 리전 중 가용 위치 |
 | 진단 데이터 (충돌/성능) | Sentry | US 리전         |
 
 ### 3-1. 개인정보의 국외 이전
