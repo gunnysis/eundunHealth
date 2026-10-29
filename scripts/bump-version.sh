@@ -50,7 +50,8 @@ fi
 
 echo "versionName : ${OLD_NAME} -> ${NEW_NAME}"
 echo "versionCode : ${OLD_CODE} -> ${NEW_CODE}  (단조증가 OK, < 2,100,000,000)"
-echo "동기화 문서 : README.md, docs/PRD.md, docs/ops/operations-snapshot.md"
+echo "동기화 대상 : version.properties, backend(config.py, containerapp.yaml, docker-compose.yml),"
+echo "              scripts/verify_containerapp_deployment.py, README.md, docs/PRD.md, docs/TRD.md, docs/ops/operations-snapshot.md"
 
 # Play 단조성 가드 — 새 versionCode 가 이미 업로드된 최고값(원장)보다 큰지 검증.
 # 저장소가 Play 보다 뒤처져 NEW_CODE 가 이미 사용된 코드면 여기서 차단(INC-2026-06-19-28).
@@ -62,9 +63,26 @@ if [ "${DRY_RUN}" = "1" ]; then
   exit 0
 fi
 
-# 1) version.properties
+# 1) version.properties + 백엔드 최소 지원 버전 SSoT 동기화
 sed -i -E "s/^versionName=.*/versionName=${NEW_NAME}/" "${PROPS}"
 sed -i -E "s/^versionCode=.*/versionCode=${NEW_CODE}/" "${PROPS}"
+
+CONFIG_PY="${REPO_ROOT}/backend/app/config.py"
+if [ -f "${CONFIG_PY}" ]; then
+  sed -i -E "s/(minimum_supported_android_version_code: int = )[0-9]+/\1${NEW_CODE}/" "${CONFIG_PY}"
+fi
+CONTAINERAPP_YAML="${REPO_ROOT}/backend/containerapp.yaml"
+if [ -f "${CONTAINERAPP_YAML}" ]; then
+  sed -i -E "/name: MINIMUM_SUPPORTED_ANDROID_VERSION_CODE/{n;s/(value: ')[0-9]+(')/\1${NEW_CODE}\2/;}" "${CONTAINERAPP_YAML}"
+fi
+COMPOSE_YML="${REPO_ROOT}/backend/docker-compose.yml"
+if [ -f "${COMPOSE_YML}" ]; then
+  sed -i -E "s/(MINIMUM_SUPPORTED_ANDROID_VERSION_CODE: )[0-9]+/\1${NEW_CODE}/" "${COMPOSE_YML}"
+fi
+VERIFY_PY="${REPO_ROOT}/scripts/verify_containerapp_deployment.py"
+if [ -f "${VERIFY_PY}" ]; then
+  sed -i -E "s#(/app-compatibility\?platform=android&versionCode=)[0-9]+#\1${NEW_CODE}#" "${VERIFY_PY}"
+fi
 
 # 2) current-state 문서 동기화 — 앵커드 라인-스코프 치환(전역 blind 치환 금지).
 #    과거: `s/${OLD_NAME}/${NEW_NAME}/g` 가 산문 속 과거 버전까지 오염 + versionCode 배지(`versionCode-NN`)는
@@ -80,17 +98,23 @@ SNAP_F="${REPO_ROOT}/docs/ops/operations-snapshot.md"
 if [ -f "${SNAP_F}" ]; then
   # §1 표의 'versionName / versionCode' 행만 (라인 스코프, 첫 매치)
   sed -i -E "/versionName \/ versionCode/ s#\`[0-9][0-9.]*\` / \`[0-9]+\`#\`${NEW_NAME}\` / \`${NEW_CODE}\`#" "${SNAP_F}"
+  # §2 표의 'MINIMUM_SUPPORTED_ANDROID_VERSION_CODE' 행도 함께 동기화
+  sed -i -E "/MINIMUM_SUPPORTED_ANDROID_VERSION_CODE/ s#\| value \| \`[0-9]+\`#| value | \`${NEW_CODE}\`#" "${SNAP_F}"
 fi
 PRD_F="${REPO_ROOT}/docs/PRD.md"
 if [ -f "${PRD_F}" ]; then
   # '제품 버전:' 라인의 선두 마커만 (첫 매치 — 이후 '이전(vX)'/Play 상태 산문 보존)
   sed -i -E "/^\*\*제품 버전:\*\*/ s#v[0-9][0-9.]* \(versionCode [0-9]+\)#v${NEW_NAME} (versionCode ${NEW_CODE})#" "${PRD_F}"
 fi
+TRD_F="${REPO_ROOT}/docs/TRD.md"
+if [ -f "${TRD_F}" ]; then
+  sed -i -E "/\| \`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE\` \|/ s#\| \`[0-9]+\` \|#| \`${NEW_CODE}\` |#" "${TRD_F}"
+fi
 
 echo
 echo "완료. 다음을 수행하세요:"
 echo "  1) git diff 로 검토 — 앵커드라 변경 라인은 소수여야 정상"
-echo "     (version.properties + README 배지2 + operations-snapshot §1 + PRD 제품버전 마커)"
+echo "     (version.properties + backend 최소 지원 버전 4곳 + README/PRD/TRD/operations-snapshot)"
 echo "  2) 산문 속 '현재 버전' 추가 언급은 자동 동기화 대상 아님 → 수동 갱신:"
 echo "       - CLAUDE.md 버전 표기, operations-snapshot 헤더(작성 기준/최근 갱신) + §13 이력 행 추가"
 echo "       - PRD '문서 버전'/Play 상태 narrative, README '현재 단계'"
@@ -100,4 +124,5 @@ echo "  5) git tag v${NEW_NAME} (검토 후)"
 echo
 echo "--- 변경 라인 요약(git diff --stat) ---"
 git -C "${REPO_ROOT}" --no-pager diff --stat -- \
-  version.properties README.md docs/PRD.md docs/ops/operations-snapshot.md 2>/dev/null || true
+  version.properties backend/app/config.py backend/containerapp.yaml backend/docker-compose.yml \
+  scripts/verify_containerapp_deployment.py README.md docs/PRD.md docs/TRD.md docs/ops/operations-snapshot.md 2>/dev/null || true

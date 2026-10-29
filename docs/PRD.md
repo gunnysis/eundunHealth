@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
 **문서 버전:** v3.8 (2026-10-29 — v0.7.2 진행·프로필 허브 비주얼 대시보드 개편 & AI 식단 `gpt-5.4-mini` 전환 · v0.7.1 콜드 스타트 크래시 핫픽스 · v0.7.0 스마일 트레이닝 v2 단일 표준 규격 컷오버 · PostgreSQL 18 스키마 하드 리셋 반영)
-**제품 버전:** v0.7.2 (versionCode 43) — 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편, 체성분 직접 입력 0.1 정밀도 보존, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (100K TPM) 전환, 콜드 스타트 크래시(`EUNDUNHEALTH-H`) 핫픽스 및 5계층 심층 방어·AGP 거버넌스 적용, 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `minimumSupportedVersionCode = 41`. 프로덕션 배포 기준: `release.yml` run `40847386065`, 원장 PR #223 `LAST_UPLOADED_VERSION_CODE=43`, backend run `40838433732` revision `eundunhealth-api--0000068`.
+**제품 버전:** v0.7.3 (versionCode 44) — 앱 업데이트 감지 및 강제 안내 시스템 고도화(`Strict Mandatory Update`: Google Play In-App Updates `2.1.0` + `ON_START` 포그라운드 재검증 + 버전 SSoT 자동화, `minimumSupportedVersionCode = 44`), 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편, 체성분 직접 입력 0.1 정밀도 보존, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (100K TPM) 전환, 콜드 스타트 크래시(`EUNDUNHEALTH-H`) 핫픽스 및 5계층 심층 방어·AGP 거버넌스 적용, 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`).
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 

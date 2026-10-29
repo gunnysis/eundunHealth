@@ -169,6 +169,8 @@ dependencies {
     implementation(libs.camerax.compose)
     implementation(libs.mlkit.face.detection)
     implementation(libs.play.services.base)
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
     implementation(libs.work.runtime.ktx)
 
     // Health Connect
@@ -258,7 +260,7 @@ tasks.register("releaseArtifacts") {
 // =====================================================================================
 // 출력은 build/generated/openapi (gitignored, CI에서 재생성). 컴파일 전 자동 실행.
 // spec 갱신 절차: bash scripts/sync-openapi.sh → backend/openapi.json 커밋.
-// 현재는 side-by-side 단계 — 기존 EundunApi.kt와 공존, Repository는 아직 generated 미사용.
+// 모든 도메인 Repository는 OpenAPI generator 생성 인터페이스(api.generated.api.*)를 사용한다.
 val openApiGeneratedDir = layout.buildDirectory.dir("generated/openapi")
 
 openApiGenerate {

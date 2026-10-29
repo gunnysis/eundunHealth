@@ -66,10 +66,11 @@ async def client(db_engine):
     app.dependency_overrides[get_current_user_id] = override_get_current_user_id
     app.dependency_overrides[get_settings] = override_get_settings
 
+    default_min_version = str(override_get_settings().minimum_supported_android_version_code)
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
-        headers={"Eundun-Client-Version-Code": "41"},
+        headers={"Eundun-Client-Version-Code": default_min_version},
     ) as ac:
         yield ac
     app.dependency_overrides.clear()

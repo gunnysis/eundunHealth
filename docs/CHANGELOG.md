@@ -4,6 +4,21 @@
 
 ---
 
+## [v0.7.3] — 2026-10-29 — 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update`) · Google Play In-App Updates (`2.1.0`) · 포그라운드(`ON_START`) 재검증 · 버전 SSoT 자동화
+
+> **2026-10-29 `v0.7.3` (`versionCode=44`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`) 프로덕션 릴리스.** 신규 버전 출시 후에도 구버전 앱 재실행 시 업데이트 안내가 뜨지 않던 5대 구조적 원인을 해결하여, 콜드 스타트와 포그라운드 재진입(`Lifecycle.Event.ON_START`) 모두에서 백엔드 `/app-compatibility`와 단말 Google Play In-App Updates SDK(`com.google.android.play:app-update-ktx:2.1.0`)를 이중(OR) 점검해 예외 없이 강제 업데이트(`UpdateRequiredScreen` 및 `AppUpdateType.IMMEDIATE` 네이티브 시트)로 전환하도록 고도화했다(설계: `docs/plans/logs/android.md`).
+
+### 🔄 영역 A — Android 이중 강제 업데이트 감지 & 포그라운드(`ON_START`) 재검증
+- **`PlayInAppUpdateChecker` (`com.google.android.play:app-update:2.1.0` / `app-update-ktx:2.1.0`) 도입**: `AppUpdateManager.requestAppUpdateInfo()`를 통해 `UpdateAvailability.UPDATE_AVAILABLE` 및 중단된 강제 업데이트(`DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS`)를 감지하고 `AppUpdateType.IMMEDIATE` 전체화면 업데이트 시트를 실행한다(룰 14 준수 `by lazy` 초기화, 사이드로드 `InstallException` 안전 폴백).
+- **포그라운드 복귀(`Lifecycle.Event.ON_START`) 재검증 (`AuthViewModel.onAppForegrounded`)**: 콜드 스타트(`init`) 1회만 검사하던 한계를 해소하고, 앱을 강제 종료하지 않고 홈 화면에서 재진입할 때도 30초 쿨다운 기반으로 최신 버전 여부를 재점검하여 즉시 `SessionState.UpdateRequired`로 전환한다(콜드 스타트 오프라인 실패 시에는 쿨다운 없이 다음 포그라운드 복귀 즉시 재시도).
+- **런타임 `403 client_update_required` 스토어 이동 CTA 및 레거시 정리**: `ErrorContent`에서 `AppError.ClientUpdateRequired` 수신 시 의미 없는 `"다시 시도"` 버튼 대신 `"Google Play에서 업데이트"` 버튼을 노출하고, `UpdateRequiredScreen`의 미사용 `@Suppress("UnusedParameter") minimumVersionCode` 파라미터 및 `app/build.gradle.kts`의 삭제된 `EundunApi.kt` 레거시 주석을 제거했다.
+
+### 🛡️ 영역 B — Backend 최소 지원 버전(`44`) SSoT 자동화 & 테스트 하드코딩 제거
+- **`bump-version.sh` & `check-version-monotonic.sh` SSoT 자동화**: 버전 번프 시 `version.properties`뿐만 아니라 `backend/app/config.py`, `backend/containerapp.yaml`, `backend/docker-compose.yml`(레거시 `39` 제거), `scripts/verify_containerapp_deployment.py`, `docs/TRD.md`, `docs/ops/operations-snapshot.md`의 `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE`를 원자적으로 함께 치환하고, `check-version-monotonic.sh`에서 5곳의 SSoT 일치 여부를 자동 검증한다.
+- **Backend 테스트 버전 상수 동적화**: `conftest.py`, `test_weekly_plan.py`, `test_profile.py`에서 `41`·`40` 숫자를 하드코딩하던 레거시를 제거하고 `get_settings().minimum_supported_android_version_code`를 동적 참조하도록 리팩토링했다.
+
+---
+
 ## [v0.7.2] — 2026-10-29 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 시각화 대시보드·간소화 개편 · 체성분 0.1 정밀도 직접 입력 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환
 
 > **2026-10-29 `v0.7.2` (`versionCode=43`) 프로덕션 릴리스.** 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 탭의 중복·불필요 요소를 과감히 정리하여 고밀도 시각화 대시보드로 개편하고, 골격근량·체지방률 직접 입력 다이얼로그에서 `0.1` 단위 소수점이 `0.5` 스텝으로 강제 반올림되던 버그를 해결했다. 또한 백엔드 식단 생성 AI 모델을 `gpt-5.4-mini` (`GlobalStandard`, `100K TPM / 100 RPM`, OpenAI Strict Structured Outputs)로 업그레이드하여 배포(`eundunhealth-api--0000068`)하고, 레거시 DeepSeek 인프라 스크립트 정리 및 `okhttp 5.5.1`·`coil 3.6.3` 공급망 업데이트를 완료했다.

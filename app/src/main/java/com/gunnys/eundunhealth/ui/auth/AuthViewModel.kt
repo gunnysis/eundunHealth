@@ -1,6 +1,8 @@
 package com.gunnys.eundunhealth.ui.auth
 
 import android.app.Activity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +15,7 @@ import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.AuthCancelledException
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
+import com.gunnys.eundunhealth.ui.update.InAppUpdateChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -23,16 +26,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+const val DEFAULT_PLAY_PACKAGE_URI = "market://details?id=com.gunnys.eundunhealth"
+const val DEFAULT_PLAY_WEB_URI = "https://play.google.com/store/apps/details?id=com.gunnys.eundunhealth"
+
 @Immutable
 sealed class SessionState {
     data object Unknown : SessionState()
     data class Authenticated(val userId: String, val needsOnboarding: Boolean = false) : SessionState()
     data object Unauthenticated : SessionState()
     data class UpdateRequired(
-        val minimumSupportedVersionCode: Int,
-        val playPackageUri: String,
+        val playPackageUri: String = DEFAULT_PLAY_PACKAGE_URI,
     ) : SessionState()
     data class ResetFailed(val error: AppError) : SessionState()
+
+    val canRecheckCompatibilityOnForeground: Boolean
+        get() = this is Authenticated || this is Unauthenticated
 }
 
 /**
@@ -52,11 +60,16 @@ sealed interface AuthGateUiState {
 }
 
 /**
- * 앱 전역 세션 관리 + 인증 게이트 ViewModel.
+ * 앱 전역 세션 관리 + 인증 게이트 + 강제 업데이트 가드 ViewModel.
  *
  * 브라우저 위임 전환으로 입력 검증·재발송·비밀번호 재설정이 전부 Entra 호스팅 페이지로
  * 넘어가면서 per-screen 로직이 소멸했다. 그래서 `LoginViewModel`/`SignupViewModel`/
  * `ForgotPasswordViewModel` 3종을 폐기하고 여기로 통합했다(설계 §5.6, 룰 11 항목 5 갱신).
+ *
+ * 강제 업데이트 가드(설계: `docs/plans/logs/android.md`, 옛 페어 `2026-10-29-mandatory-app-update-design.md` 흡수):
+ * - 콜드 스타트(`checkSession`)뿐 아니라 포그라운드 복귀(`onAppForegrounded`) 시에도 백엔드
+ *   `/app-compatibility` 와 단말 Google Play `InAppUpdateChecker` 를 이중(OR) 점검하여,
+ *   새 버전 출시 시 예외 없이 `SessionState.UpdateRequired` 로 즉시 전환한다.
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -64,6 +77,7 @@ class AuthViewModel @Inject constructor(
     private val userRepo: UserRepository,
     private val localDataWiper: LocalDataWiper? = null,
     private val appCompatibilityApi: AppCompatibilityApi? = null,
+    private val inAppUpdateChecker: InAppUpdateChecker? = null,
 ) : ViewModel() {
 
     private val _sessionState = MutableStateFlow<SessionState>(SessionState.Unknown)
@@ -71,6 +85,10 @@ class AuthViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<AuthGateUiState>(AuthGateUiState.Idle)
     val uiState: StateFlow<AuthGateUiState> = _uiState.asStateFlow()
+
+    private var lastCompatibilityCheckMs: Long? = null
+    private var isCheckingCompatibility: Boolean = false
+    internal var clockMs: () -> Long = { System.nanoTime() / NANOS_PER_MILLI }
 
     init {
         checkSession()
@@ -110,8 +128,44 @@ class AuthViewModel @Inject constructor(
     )
 
     fun retryStartup() {
+        lastCompatibilityCheckMs = null
         _sessionState.value = SessionState.Unknown
         checkSession()
+    }
+
+    /**
+     * 백엔드 `/app-compatibility` 와 단말 Google Play `InAppUpdateChecker` 를 이중(OR) 조회해
+     * 강제 업데이트 필요 여부를 반환한다.
+     */
+    private suspend fun resolveMandatoryUpdate(): SessionState.UpdateRequired? {
+        val compat = runSuspendCatching {
+            appCompatibilityApi?.getAppCompatibility(
+                platform = AppCompatibilityApi.PlatformGetAppCompatibility.android,
+                versionCode = BuildConfig.VERSION_CODE,
+            )?.body()
+        }.getOrNull()
+
+        if (compat != null && compat.updateRequired) {
+            return SessionState.UpdateRequired(playPackageUri = compat.playPackageUri)
+        }
+
+        val playUpdateAvailable = runSuspendCatching {
+            inAppUpdateChecker?.isImmediateUpdateAvailable() == true
+        }.getOrDefault(false)
+
+        if (playUpdateAvailable) {
+            return SessionState.UpdateRequired(
+                playPackageUri = compat?.playPackageUri ?: DEFAULT_PLAY_PACKAGE_URI,
+            )
+        }
+
+        // 백엔드 조회가 정상 응답했거나(또는 API 미주입 테스트 환경) Play 체크까지 통과한 경우에만
+        // 쿨다운 타임스탬프를 갱신한다. 일시적 오프라인으로 백엔드 응답을 못 받은 경우에는
+        // 다음 포그라운드 복귀 시 쿨다운 없이 즉시 재시도한다.
+        if (compat != null || appCompatibilityApi == null) {
+            lastCompatibilityCheckMs = clockMs()
+        }
+        return null
     }
 
     private fun checkSession() = viewModelScope.launch {
@@ -124,18 +178,9 @@ class AuthViewModel @Inject constructor(
             return@launch
         }
 
-        val compat = runSuspendCatching {
-            appCompatibilityApi?.getAppCompatibility(
-                platform = AppCompatibilityApi.PlatformGetAppCompatibility.android,
-                versionCode = BuildConfig.VERSION_CODE,
-            )?.body()
-        }.getOrNull()
-
-        if (compat != null && compat.updateRequired) {
-            _sessionState.value = SessionState.UpdateRequired(
-                minimumSupportedVersionCode = compat.minimumSupportedVersionCode,
-                playPackageUri = compat.playPackageUri,
-            )
+        val mandatoryUpdate = resolveMandatoryUpdate()
+        if (mandatoryUpdate != null) {
+            _sessionState.value = mandatoryUpdate
             return@launch
         }
 
@@ -150,6 +195,40 @@ class AuthViewModel @Inject constructor(
             .onSuccess { session -> _sessionState.value = session }
             .onFailure { _sessionState.value = SessionState.Unauthenticated }
     }
+
+    /**
+     * 백그라운드 → 포그라운드 복귀(`Lifecycle.Event.ON_START`) 시 버전 호환성을 재검증한다.
+     *
+     * 콜드 스타트(`init`) 1회만 검사하면 사용자가 앱을 끄지 않고 재실행할 때 신규 출시 버전을
+     * 감지하지 못한다. 연속 라이프사이클 이벤트로 인한 불필요한 호출을 막기 위해 마지막 성공 점검 후
+     * [FOREGROUND_CHECK_COOLDOWN_MS] 이내 재호출은 생략한다.
+     */
+    fun onAppForegrounded() {
+        val current = _sessionState.value
+        if (!current.canRecheckCompatibilityOnForeground || isCheckingCompatibility) {
+            return
+        }
+        val lastChecked = lastCompatibilityCheckMs
+        if (lastChecked != null && clockMs() - lastChecked < FOREGROUND_CHECK_COOLDOWN_MS) {
+            return
+        }
+
+        isCheckingCompatibility = true
+        viewModelScope.launch {
+            try {
+                val mandatoryUpdate = resolveMandatoryUpdate()
+                if (mandatoryUpdate != null) {
+                    _sessionState.value = mandatoryUpdate
+                }
+            } finally {
+                isCheckingCompatibility = false
+            }
+        }
+    }
+
+    suspend fun launchImmediateUpdateIfAvailable(
+        launcher: ActivityResultLauncher<IntentSenderRequest>,
+    ): Boolean = inAppUpdateChecker?.launchImmediateUpdateIfAvailable(launcher) ?: false
 
     /**
      * 브라우저를 띄워 인증한다. 성공하면 세션 상태가 전환되고 [AppNavigation] 이 이동시킨다.
@@ -195,5 +274,10 @@ class AuthViewModel @Inject constructor(
     fun onSessionEnded() {
         _uiState.value = AuthGateUiState.Idle
         _sessionState.value = SessionState.Unauthenticated
+    }
+
+    companion object {
+        internal const val FOREGROUND_CHECK_COOLDOWN_MS = 30_000L
+        private const val NANOS_PER_MILLI = 1_000_000L
     }
 }

@@ -11,8 +11,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 
 @dataclass(frozen=True)
@@ -76,8 +76,7 @@ def state_matches(state: DeploymentState, expected_image: str) -> tuple[bool, st
     if state.latest_revision != state.latest_ready_revision:
         return (
             False,
-            "target revision is not ready: "
-            f"latest={state.latest_revision} ready={state.latest_ready_revision or '<none>'}",
+            f"target revision is not ready: latest={state.latest_revision} ready={state.latest_ready_revision or '<none>'}",
         )
     if state.running_status.lower() != "running":
         return False, f"container app is not running: {state.running_status or '<empty>'}"
@@ -137,7 +136,7 @@ def verify_endpoints(fqdn: str) -> None:
     base_url = f"https://{fqdn}"
     probe(f"{base_url}/health", "ok")
     probe(f"{base_url}/health/ready", "ready")
-    probe(f"{base_url}/app-compatibility?platform=android&versionCode=41")
+    probe(f"{base_url}/app-compatibility?platform=android&versionCode=44")
     probe(f"{base_url}/privacy")
     probe(f"{base_url}/account-deletion")
 

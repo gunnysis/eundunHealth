@@ -1264,7 +1264,7 @@ eundunHealth/                          # 루트 저장소 (Gradle & Python 하�
 | `ENVIRONMENT` | `production` | 실행 환경 구분 (`production` / `development`) |
 | `MEAL_AI_MODEL` | `ep-eundunhealth-meal-ai` | Azure AI Foundry 식단 생성 모델 배포명 (`gpt-5.4-mini`, `GlobalStandard` 100K TPM) |
 | `MEAL_AI_ENABLED` | `true` | AI 식단 생성 긴급 차단 킬 스위치 (`false` 설정 시 503 반환) |
-| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | `41` | 지원 최소 Android 클라이언트 `versionCode` |
+| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | `44` | 지원 최소 Android 클라이언트 `versionCode` |
 | `CORS_ORIGINS` | `[]` | CORS 허용 오리진 (네이티브 앱 전용이므로 빈 배열로 와일드카드 전면 차단) |
 
 <details>

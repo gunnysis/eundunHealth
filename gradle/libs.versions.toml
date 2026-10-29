@@ -24,6 +24,7 @@ camerax = "1.6.2"
 workManager = "2.12.0"
 mlkitFaceDetection = "17.1.0"
 playServicesBase = "18.11.1"
+playAppUpdate = "2.1.0"
 detekt = "1.23.8"
 spotless = "8.10.4"
 ktlint = "1.5.0"
@@ -71,6 +72,8 @@ hilt-ext-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hil
 
 mlkit-face-detection = { module = "com.google.android.gms:play-services-mlkit-face-detection", version.ref = "mlkitFaceDetection" }
 play-services-base = { module = "com.google.android.gms:play-services-base", version.ref = "playServicesBase" }
+play-app-update = { group = "com.google.android.play", name = "app-update", version.ref = "playAppUpdate" }
+play-app-update-ktx = { group = "com.google.android.play", name = "app-update-ktx", version.ref = "playAppUpdate" }
 
 health-connect = { module = "androidx.health.connect:connect-client", version.ref = "healthConnect" }
 

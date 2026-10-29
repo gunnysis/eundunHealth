@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |---|---|
 | Application ID | `com.gunnys.eundunhealth` |
-| versionName / versionCode | **`0.7.2` / `43` (태그 `v0.7.2`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=43` |
+| versionName / versionCode | **`0.7.3` / `44` (태그 `v0.7.2`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=43` |
 | Min SDK / Target SDK | 26 / 37 |
 | Kotlin / AGP / Gradle | **2.4.21 / 9.4.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** |
@@ -65,7 +65,7 @@
 | `DEEPSEEK_KEY` | secretref | `deepseek-key` |
 | `MEAL_AI_MODEL` | value | `ep-eundunhealth-meal-ai` (`gpt-5.4-mini`, `2026-03-17`, `GlobalStandard` `capacity: 100` = 100K TPM) |
 | `MEAL_AI_ENABLED` | value | `true` (AI 식단 생성 긴급 kill switch — `'false'` 설정 시 즉시 503 차단) |
-| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `41` (`backend/containerapp.yaml` 정의값; v0.7.0 컷오버 적용 완료) |
+| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `44` (`backend/containerapp.yaml` 정의값; `version.properties` 최신 `versionCode`와 SSoT 동기화) |
 | `ENVIRONMENT` | value | `production` |
 | `CORS_ORIGINS` | value | `[]` (PR #123 — 와일드카드 차단; 네이티브 앱이라 웹 origin 불필요. live 검증: 임의 origin 에 `Access-Control-Allow-Origin` 미반환) |
 
