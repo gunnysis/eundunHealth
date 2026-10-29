@@ -37,7 +37,7 @@ WHERE (table_name, column_name) IN ( {{columns_tuple}} );
 
 ### 3. Sentry 신규 issue 확인
 `mcp__sentry__search_issues` 호출:
-- organizationSlug: `eundunhealth`
+- organizationSlug: `gunnys`
 - projectSlug: `eundunhealth-backend`
 - query 키워드 union: `["rest_day", "UndefinedColumn", "ProgrammingError", "$ARGUMENTS의 첫 토큰"]`
 - statsPeriod: `--since` 값 (default `24h`)
