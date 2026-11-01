@@ -1,16 +1,16 @@
 -r requirements.in
 
 # Development and CI-only direct dependencies.
-pytest==9.1.1
+pytest==9.2.0
 pytest-asyncio==1.4.1
 pytest-cov==7.1.0
 aiosqlite==0.22.1
-ruff==0.17.2
-mypy==2.4.0
+ruff==0.17.3
+mypy==2.4.1
 bandit==1.9.4
 pip-audit==2.10.1
 pip-tools==7.6.2
-types-Markdown==3.10.2.20261007
+types-Markdown==3.11.2.20261029
 # Windows host parity: pytest/click/bandit require colorama on win32; pinning explicitly prevents
 # Linux Dependabot/pip-compile runs from stripping colorama hashes from requirements-dev.txt.
 colorama==0.4.6
