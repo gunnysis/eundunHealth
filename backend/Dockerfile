@@ -1,6 +1,6 @@
 # Linux/amd64 digest verified on 2026-10-27. Update only through the Docker
 # dependency workflow so a base-image change is reviewed and reproducible.
-FROM python:3.14-slim@sha256:4b20ddacd9adac0002725db940785e17c19d0c3ed1843f31e57418988effc58c
+FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913
 
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
