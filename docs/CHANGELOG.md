@@ -4,6 +4,24 @@
 
 ---
 
+## [Unreleased] — 2026-11-02 ~ 2026-11-06 — Wear OS 6 (API 36) 3모듈 Foundation · AGP 9.5.1 · 스마일 트레이닝 무중단 직행 · Android CLI 2-Tier 통합 · 결정론적 문서 감사 린터
+
+### ⌚ 영역 A — Google Wear OS 6.0 (API 36) 3모듈(`:app`, `:wear`, `:core:wear-contract`) Foundation 구축 (`2a49cea`, 2026-11-06)
+- **3모듈 경량 계약 스켈레톤 (`AC-01 ~ AC-05`, `AC-09`)**: `:core:wear-contract` 순수 JVM(`org.jetbrains.kotlin.jvm`, JDK 17) 모듈에 `WearTimeConstants.kt`(`KST_ZONE`) SSoT를 배치하고, `:wear` 모듈(`applicationId = "com.gunnys.eundunhealth"`, `minSdk = 36`, `targetSdk = 37`, `wearVersionCode = 10001`)을 신설했다. 양쪽 모듈의 `res/values/wear.xml`(`eundun_phone_companion`, `eundun_wear_companion`) 및 R8 리소스 축소기 대응 `res/raw/keep_wear_capabilities.xml`(`tools:keep="@array/android_wear_capabilities"`)을 추가해 Release APK 내 Capability 배열 보존을 보장한다.
+- **Wear Compose Material 3 (`1.7.1`) 원형 진단 UI & 29토큰 브랜드 테마 (`AC-06`, `AC-07`)**: `WearTheme.kt`에 모바일 Modern Forest & Mint와 정렬된 29개 전체 M3 컬러 토큰(Pure Black `#000000` OLED 배경, WCAG AAA 대비 최대 12.3:1)을 정의하고, `WearEnvironmentStatusScreen.kt`(`AppScaffold` → `ScreenScaffold` + `LocalScrollCaptureInProgress` 가드 → `TransformingLazyColumn` + `SurfaceTransformation`, Progressive Disclosure 확장 토글, TalkBack `stateDescription` 시맨틱, `bodyExtraSmall` 기반 192dp Small Round `1.24f` 베젤 무손실 레이아웃, 마음·생체 측정 연결 전 Foundation 진단 안내)를 구현했다. `Wear_OS_Large_Round_API_36` 에뮬레이터 콜드 부트 스모크 및 `LARGE_ROUND`/`SMALL_ROUND`/`1.24f` 대배율 프리뷰 렌더링을 검증했다.
+- **3모듈 공급망·정적 분석·CI 가드 확장 (`AC-08`, `AC-10`)**: `scripts/check-agp10-compat.sh`, `AgpBuildContractTest.kt`, `ProguardKeepRulesTest.kt`, `WearEnvironmentSpecTest.kt`, `.githooks/pre-commit`, `.github/workflows/android.yml`, `scripts/android-cli-check.sh`(`--module app|wear`, `previews wear --render`), `scripts/agents/doc_audit.py`(`wearVersionCode=10001` 및 3모듈 합산 `@Test` 266건 검증), `scripts/smoke-cold-start.sh`, `wear/gradle.lockfile`, `core/wear-contract/gradle.lockfile`을 3모듈 기준으로 확장했다.
+
+### 😊 영역 B — 스마일 트레이닝 무중단 직행(`INTRO`·`COMPLETED` 완전 제거) & Compose BOM `2026.09.00` 현대화 (`2f63aec`, 2026-11-06)
+- **Zero-Tab-Overhead 무중단 루프**: `SmileSessionPhase.INTRO`(`SmileIntroContent.kt`)와 완료 후 정적 `COMPLETED` 화면을 완전히 삭제하여, 4대 진입점 터치 즉시 `READY`(1.0초 얼굴 정렬 자동 시작) → `ACTIVE`(2초 × 3회) → `withContext(NonCancellable)` 저장 직후 이전 화면으로 자동 복귀(`NavigateBack`, 에러 시 `SaveErrorOverlayDialog`)하도록 개편했다.
+- **Compose BOM `2026.09.00` 신기술 전수 적용 & 전역 M3 통일**: `Modifier.keepScreenOn()`, `ProcessCameraProvider.awaitInstance(context)` + `awaitCancellation()`, `LifecycleStartEffect`/`LifecycleResumeEffect`, `TextAutoSize.StepBased`, 폴더블 안전 타원 클램프(`ovalHeight <= size.height * 0.44f`), `ContextExt.kt`(`findActivity()`) 및 `TimeConstants.kt`(`KST_ZONE`, `formatDurationKorean`) SSoT 통합을 완료했다.
+
+### 🛠️ 영역 C — AGP `9.5.1` 업그레이드 · Android CLI (`v1.1.16717390`) 하이브리드 통합 · 결정론적 `doc_audit.py` 전환 (`2026-11-02 ~ 2026-11-06`)
+- **AGP `9.5.0 → 9.5.1` 정식 안정판 업그레이드 (`4a3af8b`)**: 멀티 플랫폼(`linux`/`osx`/`windows`) `aapt2-9.5.1-16666295` SHA-256 해시 및 락파일을 동기화했다.
+- **Android CLI `v1.1.16717390` + Android Studio `2026.2.2` 통합 (`scripts/android-cli-check.sh`, `scripts/ensure-android-cli.sh`)**: 단일 파일 K2 Analysis API 진단(`inspect`), `@Preview` 렌더링(`previews`), Release APK 해부(`apk`, `preflight-release.sh` 연동)를 자동화했다.
+- **결정론적 문서 감사 린터(`scripts/agents/doc_audit.py`) 구축**: 외부 Claude Agent SDK 및 시크릿 의존성을 완전히 제거하고 Python 3.12+ stdlib 단독으로 0.05초 만에 6대 핵심 문서의 SSoT 불변식을 검증하도록 `.github/workflows/doc-audit.yml`을 경량화했다.
+
+---
+
 ## [v0.7.3] — 2026-10-29 — 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update`) · Google Play In-App Updates (`2.1.0`) · 포그라운드(`ON_START`) 재검증 · 버전 SSoT 자동화
 
 > **2026-10-29 `v0.7.3` (`versionCode=44`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`) 프로덕션 릴리스.** 신규 버전 출시 후에도 구버전 앱 재실행 시 업데이트 안내가 뜨지 않던 5대 구조적 원인을 해결하여, 콜드 스타트와 포그라운드 재진입(`Lifecycle.Event.ON_START`) 모두에서 백엔드 `/app-compatibility`와 단말 Google Play In-App Updates SDK(`com.google.android.play:app-update-ktx:2.1.0`)를 이중(OR) 점검해 예외 없이 강제 업데이트(`UpdateRequiredScreen` 및 `AppUpdateType.IMMEDIATE` 네이티브 시트)로 전환하도록 고도화했다(설계: `docs/plans/logs/android.md`).
@@ -164,10 +182,6 @@
 
 ### 🔢 버전
 - versionName 0.3.1 → **0.4.0**, versionCode 36 → **37**. Play 업로드 성공 후 release workflow가 원장을 `LAST_UPLOADED_VERSION_CODE=37`로 갱신했다.
-
----
-
-## [Unreleased]
 
 ### 🧹 '오늘의 활동' 제거 및 Health Connect 권한 최소화 (4 → 1)
 - 홈 화면의 `TodayActivityCard` 및 관련 도메인/데이터 계층(`DailyActivity`, `GetTodayActivityUseCase`, `HealthConnectMappers`)과 전용 단위 테스트 2종을 완전 제거했다.

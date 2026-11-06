@@ -137,6 +137,23 @@ if ! grep -q '<item>eundun_phone_companion</item>' app/src/main/res/values/wear.
     echo 'ERROR: app과 wear의 capability 이름이 구분되어 있지 않습니다 (AC-05).'
     failed=1
 fi
+if grep -nE '<[[:space:]]*uses-permission| <[[:space:]]*(service|receiver|provider)' wear/src/main/AndroidManifest.xml; then
+    echo 'ERROR: Foundation 단계의 wear 매니페스트에는 <uses-permission> 또는 백그라운드 컴포넌트 태그를 선언할 수 없습니다 (D3/AC-04).'
+    failed=1
+fi
+if ! grep -q 'LocalScrollCaptureInProgress\.current' wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt; then
+    echo 'ERROR: WearEnvironmentStatusScreen.kt에 LocalScrollCaptureInProgress 스크롤 캡처 가드(T6)가 누락되었습니다.'
+    failed=1
+fi
+
+AGP_VER="$(sed -nE 's/^[[:space:]]*agp[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' gradle/libs.versions.toml | head -n 1)"
+if [ -n "$AGP_VER" ]; then
+    if ! grep -qE "<artifact name=\"aapt2-${AGP_VER}-[^\"]*-windows\.jar\">" gradle/verification-metadata.xml || \
+       ! grep -qE "<artifact name=\"aapt2-${AGP_VER}-[^\"]*-linux\.jar\">" gradle/verification-metadata.xml; then
+        echo "ERROR: gradle/verification-metadata.xml에 AGP ${AGP_VER}용 Windows 또는 Linux aapt2 해시가 누락되었습니다 (T5)."
+        failed=1
+    fi
+fi
 
 if [ "$failed" -ne 0 ]; then
     exit 1

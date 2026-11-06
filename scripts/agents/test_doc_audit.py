@@ -1,7 +1,6 @@
-"""doc_audit 의 collector·파서 단위 테스트.
+"""doc_audit 의 collector·파서 및 결정론적 린터 단위 테스트.
 
-run_audit(Claude Agent SDK 경로)는 제외 — 결정론적 collector/파서 로직만 검증한다.
-실행: python -m pytest scripts/agents/test_doc_audit.py -q
+실행: python -m pytest scripts/agents/test_doc_audit.py -v
 """
 import sys
 from pathlib import Path
@@ -11,6 +10,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from doc_audit import (  # noqa: E402  (sys.path 조작 후 import)
+    audit_api_routes_count,
+    audit_app_version_in_text,
+    audit_backend_api_version_in_text,
+    audit_documents,
+    audit_python_runtime,
+    audit_stale_tech_in_text,
+    audit_wear_version_in_text,
     collect_facts,
     compute_alembic_head,
     count_routes_in_text,
@@ -22,6 +28,8 @@ from doc_audit import (  # noqa: E402  (sys.path 조작 후 import)
     parse_jwt_algorithms,
     parse_python_runtime,
     parse_revision_pair,
+    parse_wear_version,
+    render_report,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -64,7 +72,6 @@ class TestComputeAlembicHead:
         assert result["revision_count"] == 3
 
     def test_branch_yields_no_single_head(self):
-        # b·c 가 둘 다 a 를 가리키면 head 후보 2개 → head=None(분기 신호)
         result = compute_alembic_head([("a", None), ("b", "a"), ("c", "a")])
         assert result["head"] is None
         assert set(result["heads"]) == {"b", "c"}
@@ -107,10 +114,6 @@ class TestCountTestFunctions:
         assert count_test_functions(["def helper(): pass\n"]) == 0
 
     def test_expands_parametrize_literal_list(self):
-        """parametrize 는 def 1개를 케이스 N개로 확장한다 — pytest 실측과 맞추려면 세야 한다.
-
-        이 off-by-one 때문에 수집기가 정확한 문서를 드리프트로 오탐했다(95 vs 96).
-        """
         text = (
             "import pytest\n"
             '@pytest.mark.parametrize("f", ["a.md", "b.md"])\n'
@@ -128,7 +131,6 @@ class TestCountTestFunctions:
         assert count_test_functions([text]) == 6
 
     def test_non_literal_parametrize_counts_once(self):
-        """리터럴이 아니면 정적으로 셀 수 없다 — 과대계상하지 않고 1로 둔다."""
         text = (
             "import pytest\n"
             "CASES = [1, 2, 3]\n"
@@ -142,7 +144,6 @@ class TestCountTestFunctions:
         assert count_test_functions([text]) == 2
 
     def test_unparseable_text_falls_back_to_regex(self):
-        """문법 오류가 있어도 수집기가 죽으면 안 된다(감사 전체가 멈춘다)."""
         assert count_test_functions(["def test_a(: pass\n"]) == 1
 
 
@@ -160,11 +161,6 @@ class TestExtractJsonBlock:
 
 
 class TestCollectFactsIntegration:
-    """실제 repo 통합 — 구조·타입과 *안정* 불변식만 핀(현재 버전값은 변동하므로 핀하지 않음)."""
-
-    # pytest 9 부터 class-scoped fixture 를 인스턴스 메서드로 두면 deprecation 경고가 난다
-    # (fixture 는 클래스당 1회 도는데 테스트마다 새 인스턴스라 self 에 넣은 값이 안 보인다).
-    # 공식 권고대로 classmethod 로 선언한다.
     @pytest.fixture(scope="class")
     @classmethod
     def facts(cls):
@@ -183,7 +179,6 @@ class TestCollectFactsIntegration:
         assert facts["app_version"]["versionCode"].isdigit()
 
     def test_alembic_is_single_head(self, facts):
-        # 선형 이력 불변식: head 1개
         assert facts["alembic"]["head"] is not None
         assert len(facts["alembic"]["heads"]) == 1
 
@@ -196,17 +191,11 @@ class TestCollectFactsIntegration:
         assert facts["backend_tests"]["count"] > 0
 
     def test_python_runtime_sources_agree(self, facts):
-        """Dockerfile · ruff · mypy 세 출처가 같은 런타임을 가리켜야 한다.
-
-        2026-09-02 감사에서 문서 9곳이 "Python 3.12" 로 남았는데도 이 수집기가 못 잡았다.
-        항목이 없었기 때문이다. 이제는 값을 내보내고 출처 간 불일치도 함께 판정한다.
-        """
         rt = facts["python_runtime"]
         assert rt["dockerfile"], "Dockerfile 의 FROM python:X.Y 를 못 읽었다"
         assert rt["mismatch"] is False, f"런타임 출처 불일치: {rt}"
 
     def test_jwt_algorithms_collected(self, facts):
-        """IdP 를 바꾸면 반드시 바뀌는 값 — 문서의 ES256 잔존을 잡기 위한 근거."""
         algs = facts["jwt_algorithms"]
         assert isinstance(algs, list) and algs, "algorithms=[...] 리터럴을 못 읽었다"
 
@@ -232,12 +221,10 @@ class TestParsePythonRuntime:
         }
 
     def test_flags_mismatch(self):
-        """Dockerfile 만 뒤처진 형태 — 런타임 번프에서 실제로 잘 나는 어긋남이다."""
         rt = parse_python_runtime("FROM python:3.12-slim\n", PYPROJECT_314)
         assert rt["mismatch"] is True
 
     def test_missing_sources_are_none_not_mismatch(self):
-        """읽지 못한 것과 어긋난 것은 다르다 — 없는 값으로 거짓 양성을 만들지 않는다."""
         assert parse_python_runtime("FROM alpine:3\n", "") == {
             "dockerfile": None,
             "ruff_target_version": None,
@@ -255,3 +242,130 @@ class TestParseJwtAlgorithms:
 
     def test_absent_returns_empty(self):
         assert parse_jwt_algorithms("no algorithms here") == []
+
+
+# ---------------------------------------------------------------------------
+# 신규 결정론적 린터(Deterministic Linter) 단위 테스트
+# ---------------------------------------------------------------------------
+
+
+class TestAuditAppVersionInText:
+    def test_readme_matches_clean(self):
+        text = (
+            "![versionName](https://img.shields.io/badge/versionName-0.7.3-blue)\n"
+            "![versionCode](https://img.shields.io/badge/versionCode-44-blue)\n"
+        )
+        findings = audit_app_version_in_text("README.md", text, "0.7.3", "44")
+        assert len(findings) == 0
+
+    def test_readme_drift_detected(self):
+        text = (
+            "![versionName](https://img.shields.io/badge/versionName-0.7.2-blue)\n"
+            "![versionCode](https://img.shields.io/badge/versionCode-43-blue)\n"
+        )
+        findings = audit_app_version_in_text("README.md", text, "0.7.3", "44")
+        assert len(findings) == 2
+        assert findings[0]["kind"] == "version"
+        assert findings[0]["severity"] == "high"
+
+    def test_claude_md_drift_detected(self):
+        text = (
+            "**Current state**: versionName `0.7.2` (versionCode `43`, ...)\n"
+            "- **App version**: 저장소 및 Play 운영 versionName **`0.7.2`**, versionCode **`43`** — SSoT\n"
+        )
+        findings = audit_app_version_in_text("CLAUDE.md", text, "0.7.3", "44")
+        assert len(findings) == 2
+        assert "Current state" in findings[0]["locator"]
+        assert "App version" in findings[1]["locator"]
+
+    def test_operations_snapshot_drift_detected(self):
+        text = "| versionName / versionCode | **`0.7.2` / `43` (태그 ...)** |"
+        findings = audit_app_version_in_text("docs/ops/operations-snapshot.md", text, "0.7.3", "44")
+        assert len(findings) == 1
+        assert "0.7.2/43" in findings[0]["doc_says"]
+
+    def test_trd_drift_detected(self):
+        text = "> **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.2/43 (`completed` 100%)**"
+        findings = audit_app_version_in_text("docs/TRD.md", text, "0.7.3", "44")
+        assert len(findings) == 1
+        assert findings[0]["doc_says"] == "v0.7.2/43"
+
+
+class TestAuditBackendApiVersionInText:
+    def test_clean_match(self):
+        text = "API version `1.0.0` — backend/app/__init__.py"
+        assert len(audit_backend_api_version_in_text("CLAUDE.md", text, "1.0.0")) == 0
+
+    def test_drift_detected(self):
+        text = "API version `2.0.0` — backend/app/__init__.py"
+        findings = audit_backend_api_version_in_text("CLAUDE.md", text, "1.0.0")
+        assert len(findings) == 1
+        assert findings[0]["kind"] == "api-version"
+        assert findings[0]["doc_says"] == "2.0.0"
+
+
+class TestAuditPythonRuntimeMismatch:
+    def test_mismatch_generates_finding(self):
+        facts = {"python_runtime": {"mismatch": True, "dockerfile": "3.14", "ruff_target_version": "3.12"}}
+        findings = audit_python_runtime(facts)
+        assert len(findings) == 1
+        assert findings[0]["kind"] == "python-runtime"
+        assert findings[0]["severity"] == "high"
+
+    def test_match_clean(self):
+        facts = {"python_runtime": {"mismatch": False, "dockerfile": "3.14", "ruff_target_version": "3.14"}}
+        assert len(audit_python_runtime(facts)) == 0
+
+
+class TestAuditApiRoutesCount:
+    def test_route_count_matches(self):
+        text = "API Endpoints (총 27 = JWT 필요 22 + 공개 5)"
+        assert len(audit_api_routes_count("CLAUDE.md", text, 27)) == 0
+
+    def test_route_count_mismatch(self):
+        text = "API Endpoints (총 25 = JWT 필요 20 + 공개 5)"
+        findings = audit_api_routes_count("CLAUDE.md", text, 27)
+        assert len(findings) == 1
+        assert findings[0]["kind"] == "endpoint-count"
+
+
+class TestAuditWearVersionInText:
+    def test_parse_wear_version(self):
+        assert parse_wear_version("versionName=0.7.3\nversionCode=44\nwearVersionCode=10001\n") == "10001"
+        assert parse_wear_version("versionName=0.7.3\n") is None
+
+    def test_wear_version_clean(self):
+        text = "Wear OS 앱 (minSdk=36, wearVersionCode=10001)"
+        assert len(audit_wear_version_in_text("README.md", text, "10001")) == 0
+
+    def test_wear_version_drift_detected(self):
+        text = "Wear OS 앱 (minSdk=36, wearVersionCode=9999)"
+        findings = audit_wear_version_in_text("README.md", text, "10001")
+        assert len(findings) == 1
+        assert findings[0]["kind"] == "wear-version"
+
+
+class TestRenderReport:
+    def test_renders_clean_report(self):
+        result = {"clean": True, "summary": "정상", "findings": []}
+        output = render_report(result)
+        assert "✓ 드리프트 없음" in output
+        assert "Deterministic Linter" in output
+
+    def test_renders_findings_report(self):
+        result = {
+            "clean": False,
+            "summary": "1건 감지",
+            "findings": [{
+                "file": "CLAUDE.md",
+                "locator": "Current state",
+                "doc_says": "0.7.2",
+                "ground_truth": "0.7.3",
+                "kind": "version",
+                "severity": "high",
+                "note": "불일치",
+            }],
+        }
+        output = render_report(result)
+        assert "드리프트 1건:" in output
+        assert "[1] (HIGH · version) CLAUDE.md" in output

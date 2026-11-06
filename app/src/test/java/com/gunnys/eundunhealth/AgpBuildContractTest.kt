@@ -75,6 +75,7 @@ class AgpBuildContractTest {
 
     @Test
     fun `wear_and_contract_modules_maintain_AGP_10_SDK_36_and_capability_invariants`() {
+        val appBuild = File(repoRoot, "app/build.gradle.kts").readText()
         val wearBuild = File(repoRoot, "wear/build.gradle.kts").readText()
         val contractBuild = File(repoRoot, "core/wear-contract/build.gradle.kts").readText()
 
@@ -83,12 +84,24 @@ class AgpBuildContractTest {
             Regex("""alias\(libs\.plugins\.kotlin\.android\)|id\("org\.jetbrains\.kotlin\.android"\)""").containsMatchIn(wearBuild),
         )
         assertTrue(
-            "wear 모듈은 모바일과 동일한 applicationId(com.gunnys.eundunhealth)를 사용해야 합니다",
-            wearBuild.contains("""applicationId = "com.gunnys.eundunhealth""""),
+            "wear 모듈은 전용 namespace(com.gunnys.eundunhealth.wear)와 모바일과 동일한 applicationId(com.gunnys.eundunhealth)를 사용해야 합니다",
+            wearBuild.contains("""namespace = "com.gunnys.eundunhealth.wear"""") &&
+                wearBuild.contains("""applicationId = "com.gunnys.eundunhealth""""),
         )
         assertTrue(
-            "wear 모듈은 API 35 이하 레거시를 제외한 minSdk = 36 및 targetSdk = 37 을 유지해야 합니다",
-            wearBuild.contains("minSdk = 36") && wearBuild.contains("targetSdk = 37"),
+            "wear 모듈은 API 35 이하 레거시를 제외한 compileSdk = 37, minSdk = 36, targetSdk = 37 을 유지해야 합니다 (D2)",
+            wearBuild.contains("compileSdk = 37") &&
+                wearBuild.contains("minSdk = 36") &&
+                wearBuild.contains("targetSdk = 37"),
+        )
+        assertTrue(
+            "wear 모듈은 계산식 없이 version.properties 의 wearVersionCode 를 직접 읽어야 합니다 (D5)",
+            wearBuild.contains("""versionProps.getProperty("wearVersionCode")"""),
+        )
+        assertTrue(
+            "app 과 wear 모듈 모두 :core:wear-contract 모듈을 의존해야 합니다 (D1)",
+            appBuild.contains("""implementation(project(":core:wear-contract"))""") &&
+                wearBuild.contains("""implementation(project(":core:wear-contract"))"""),
         )
         assertTrue(
             "wear 모듈은 androidComponents.onVariants 기반 detektDebug, 16KB 정렬, dependencyLocking 을 유지해야 합니다",
@@ -97,9 +110,18 @@ class AgpBuildContractTest {
                 wearBuild.contains("useLegacyPackaging = false") &&
                 wearBuild.contains("lockAllConfigurations()"),
         )
+        listOf(
+            "app/gradle.lockfile",
+            "wear/gradle.lockfile",
+            "core/wear-contract/gradle.lockfile",
+        ).forEach { lockPath ->
+            val lockFile = File(repoRoot, lockPath)
+            assertTrue("$lockPath 가 존재하고 비어 있지 않아야 합니다 (D8)", lockFile.isFile && lockFile.length() > 0L)
+        }
         assertTrue(
-            "core:wear-contract 모듈은 순수 JVM(kotlin.jvm), detektMain 및 dependencyLocking 을 유지해야 합니다",
+            "core:wear-contract 모듈은 순수 JVM(kotlin.jvm), jvmToolchain(17), detektMain 및 dependencyLocking 을 유지해야 합니다",
             contractBuild.contains("alias(libs.plugins.kotlin.jvm)") &&
+                contractBuild.contains("jvmToolchain(17)") &&
                 contractBuild.contains("""tasks.register<Detekt>("detektMain")""") &&
                 contractBuild.contains("lockAllConfigurations()"),
         )
@@ -107,18 +129,36 @@ class AgpBuildContractTest {
             "core:wear-contract 모듈에는 Android/Play Services/직렬화 의존성이 유입되면 안 됩니다 (AC-09)",
             Regex("""com\.android\.|androidx\.|play-services|health-services|serialization""").containsMatchIn(contractBuild),
         )
-        val contractMainFiles = File(repoRoot, "core/wear-contract/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        val contractMainFiles = File(repoRoot, "core/wear-contract/src/main").walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "java") }.toList()
         assertTrue(
-            "core:wear-contract/src/main 에는 최소 1개의 Kotlin 계약 파일이 있어야 하며 Android/Google Play import 가 없어야 합니다 (AC-09)",
-            contractMainFiles.isNotEmpty() &&
+            "Foundation 단계(D1/AC-09)에서 core:wear-contract/src/main 은 WearTimeConstants.kt 단일 SSoT 파일만 유지해야 하며Android/Google Play import 가 없어야 합니다",
+            contractMainFiles.map { it.name } == listOf("WearTimeConstants.kt") &&
                 contractMainFiles.none {
-                    Regex("""^\s*import\s+(android\.|androidx\.|com\.google\.android\.)""", RegexOption.MULTILINE)
+                    Regex("""^\s*import\s+(android\.|androidx\.|com\.google\.android\.|kotlinx\.serialization\.)""", RegexOption.MULTILINE)
                         .containsMatchIn(it.readText())
                 },
         )
         assertFalse(
             "Foundation 단계의 wear 모듈에는 Health Services / Play Services Wearable 런타임 의존성을 조기 추가하지 않아야 합니다 (AC-09)",
-            Regex("""health-services|play-services-wearable""").containsMatchIn(wearBuild),
+            Regex("""health-services|play-services-wearable|kotlinx-coroutines-play-services|kotlinx-coroutines-guava""").containsMatchIn(wearBuild),
+        )
+        val wearMainFiles = File(repoRoot, "wear/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue(
+            "Foundation 단계의 :wear 소스에는 센서 수집(PassiveMonitoring) 및 Data Layer 전송 클라이언트가 유입되면 안 됩니다 (AC-09)",
+            wearMainFiles.none {
+                Regex("""PassiveMonitoringClient|PassiveListenerService|MessageClient|DataClient|ChannelClient|Wearable\.""")
+                    .containsMatchIn(it.readText())
+            },
+        )
+        val wearStatusScreen = File(repoRoot, "wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt").readText()
+        assertTrue(
+            "WearEnvironmentStatusScreen 은 LocalScrollCaptureInProgress 가드(T6), TransformingLazyColumn, SurfaceTransformation 및 3종 Preview 를 유지해야 합니다",
+            wearStatusScreen.contains("LocalScrollCaptureInProgress.current") &&
+                wearStatusScreen.contains("if (!scrollCaptureInProgress)") &&
+                wearStatusScreen.contains("TransformingLazyColumn") &&
+                wearStatusScreen.contains("SurfaceTransformation") &&
+                wearStatusScreen.contains("WearDevices.LARGE_ROUND") &&
+                wearStatusScreen.contains("WearDevices.SMALL_ROUND"),
         )
 
         val versionProps = Properties().apply {
@@ -131,14 +171,15 @@ class AgpBuildContractTest {
 
         val wearManifest = File(repoRoot, "wear/src/main/AndroidManifest.xml").readText()
         assertTrue(
-            "wear 매니페스트는 android.hardware.type.watch 필수 피처와 standalone=false 를 포함해야 합니다",
+            "wear 매니페스트는 android.hardware.type.watch 필수 피처(required=true)와 standalone=false 를 포함해야 합니다",
             wearManifest.contains("""android:name="android.hardware.type.watch"""") &&
+                wearManifest.contains("""android:required="true"""") &&
                 wearManifest.contains("""android:name="com.google.android.wearable.standalone"""") &&
                 wearManifest.contains("""android:value="false""""),
         )
         assertFalse(
-            "Foundation 단계의 wear 매니페스트에는 민감 건강/신체활동/부팅/WakeLock 권한을 조기 선언하지 않아야 합니다 (AC-04)",
-            Regex("""READ_HEART_RATE|READ_HEALTH_DATA_IN_BACKGROUND|BODY_SENSORS|ACTIVITY_RECOGNITION|RECEIVE_BOOT_COMPLETED|WAKE_LOCK""")
+            "Foundation 단계의 wear 매니페스트에는 어떠한 <uses-permission 태그나 백그라운드 <service/<receiver/<provider 컴포넌트도 선언하지 않아야 합니다 (D3 / AC-04 / AC-09)",
+            Regex("""<\s*uses-permission(-sdk-23)?\b|<\s*(service|receiver|provider)\b|READ_HEART_RATE|READ_HEALTH_DATA_IN_BACKGROUND|BODY_SENSORS|ACTIVITY_RECOGNITION|RECEIVE_BOOT_COMPLETED|WAKE_LOCK""")
                 .containsMatchIn(wearManifest),
         )
 

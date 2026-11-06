@@ -1,5 +1,35 @@
 # Multi-AI Handoff Log
 
+## 2026-11-06 (Gemini -> Claude/User) `docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md` 환경설정 구현 설계 고도화(`PROP-06` + `PROP-06-A` Azure 환경 경계 통합) · 공식 문서 팩트체크 · `:wear` 진단 UI 개선 및 SSoT 정합화 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. 환경설정 구현 설계서 고도화 ([`docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md`](docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md))**:
+  - 기존 `2a49cea` 커밋의 Foundation 환경설정 계획서를 기반으로, 향후 **마음 상태(스트레스·공황·기타 증상 포착) 및 일상 생체 신호(`PassiveMonitoringClient` 등) 측정·수집·동기화**(`PROP-06`)로 나아가기 위한 **순수 환경설정·기반 아키텍처 구현 설계서**로 고도화 완료.
+  - [`PROP-06-A`](docs/proposals/2026-11-06-wear-os-azure-backend-architecture.md)의 Azure 백엔드 판단을 환경 경계(`D9`)로 통합: 신규 PaaS(`IoT Hub`, `Event Hubs`, `AHDS FHIR`, `Blob`, `AI Foundry` 직결)를 도입하지 않고 기존 `Azure Container Apps (eundunhealth-api)` + `Azure PostgreSQL 18 (healthapp)` 경계를 재사용하며, 환경설정 단계에서는 백엔드/DB/OpenAPI 변경 0건을 유지.
+  - 공식 문서 팩트체크(`android docs fetch`, `android-cli-check.sh versions`) 및 환경 구축 중 규명된 6대 근본 원인 해결·재발방지 가드(`T1 ~ T6`: R8 `keep_wear_capabilities.xml`, Detekt `WearEnvironmentSpec.kt` 분리, Small Round 192dp 클리핑 방지, Wear OS 6 콜드 부트 오버레이 해제, Linux `aapt2` SHA-256 보존, `ScreenScaffold` `LocalScrollCaptureInProgress` 가드) 명문화.
+- **2. `:wear` Foundation 진단 코드 개선 및 SSoT 문서 정합화**:
+  - [`wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/MainActivity.kt`](wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/MainActivity.kt) & [`WearEnvironmentSpecTest.kt`](wear/src/test/java/com/gunnys/eundunhealth/wear/WearEnvironmentSpecTest.kt): `applicationInfo.minSdkVersion` / `targetSdkVersion` 런타임 실측 전달, `isRuntimeApiSupported` 판정 및 단위 테스트 보강(총 `@Test` 266건: `:app` 261 + `:wear` 3 + `:core:wear-contract` 2).
+  - [`wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt`](wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt): 공식 Wear Compose M3 스킬 가이드 4항에 따라 `ScreenScaffold` `scrollIndicator`에 `if (!LocalScrollCaptureInProgress.current)` 가드 적용, TalkBack `semantics(mergeDescendants = true)` (`stateDescription` + `onClick`) 강화, 접힌 상태 `bodyExtraSmall` 토큰으로 `192dp` Small Round + `fontScale = 1.24f` 원형 베젤 클리핑 완벽 해소 (`WearEnvironmentStatusScreenLargeFontPreview.png` 실측 검증 완료).
+  - [`AgpBuildContractTest.kt`](app/src/test/java/com/gunnys/eundunhealth/AgpBuildContractTest.kt), [`ProguardKeepRulesTest.kt`](app/src/test/java/com/gunnys/eundunhealth/ProguardKeepRulesTest.kt), [`scripts/check-agp10-compat.sh`](scripts/check-agp10-compat.sh), [`scripts/agents/doc_audit.py`](scripts/agents/doc_audit.py): `D1 ~ D9` 및 `T1 ~ T6` 불변식(3모듈 `gradle.lockfile`, `:core:wear-contract` 단일 파일 화이트리스트, `:wear` 무권한/무서비스 가드, `keep_wear_capabilities.xml` 대칭 보존, `wearVersionCode=10001` 및 3모듈 합산 `@Test` 266건 자동 감시) 강화.
+  - 전사 문서(`CLAUDE.md`, `GEMINI.md`, `docs/SPEC.md`, `docs/TRD.md`, `docs/PRD.md`, `docs/CHANGELOG.md`, `docs/proposals/README.md`, `README.md`, `docs/ops/operations-snapshot.md`, `docs/plans/logs/android.md`, `docs/plans/logs/dependencies.md`) 내 `:wear` 파일 트리·테스트 수(`266`)·설계 설명 정합화 완료.
+- **다음 할 일 (Next Steps — 사용자 게이트 선행 필요)**:
+  - **게이트 `G3`**: 실기기 Xiaomi Watch 5 무선 ADB 페어링 및 `ro.build.version.sdk`, `PassiveMonitoringClient.getCapabilitiesAsync()` 실측은 사용자 직접 수행 영역임.
+  - **게이트 `G5` / `A0 ~ A6` / `G4`**: 런타임 센서 측정 권한·법무 고지(`G5`), 백엔드 API/DB 계약(`A0~A6`), Play Console Wear 트랙 업로드(`G4`)는 각 단계 진입 전 사용자 명시적 승인 필요.
+
+---
+
+## 2026-11-06 (Gemini -> Claude/User) 전사 프로젝트 문서 최신화(SSoT 동기화) 완료 (`v0.7.3/44` · Wear OS 6 3모듈 Foundation · 스마일 트레이닝 무중단 직행 · 결정론적 `doc_audit.py` · 18개 문서 전수 정합화)
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. 루트 거버넌스 및 아키텍처 정본 문서 최신화**:
+  - [`CLAUDE.md`](CLAUDE.md), [`GEMINI.md`](GEMINI.md), [`README.md`](README.md), [`AI_HANDOFF.md`](AI_HANDOFF.md), [`scripts/agents/README.md`](scripts/agents/README.md): 프로덕션 버전 `v0.7.3/44` (`LAST_UPLOADED_VERSION_CODE=44`, 백엔드 리비전 `eundunhealth-api--0000069` / 이미지 `6357981`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`), 3모듈 아키텍처(`:app`, `:wear` `wearVersionCode=10001` / `minSdk=36`, `:core:wear-contract` Pure JVM 17), 14개 UDF ViewModel, Android `@Test` 259건 / Backend pytest 147건, FastAPI `0.162.0` / Starlette `1.10.0`, 운영 안전 룰 1~16 및 100% 결정론적 Python stdlib 문서 감사기(`doc_audit.py`) 반영.
+- **2. 제품·기술·기능 명세 및 컨벤션 문서 최신화**:
+  - [`docs/PRD.md`](docs/PRD.md) (`v3.9`), [`docs/TRD.md`](docs/TRD.md) (`v2.2`), [`docs/SPEC.md`](docs/SPEC.md) (`v2.2`), [`docs/CHANGELOG.md`](docs/CHANGELOG.md), [`docs/conventions/versioning.md`](docs/conventions/versioning.md), [`docs/conventions/naming.md`](docs/conventions/naming.md): 스마일 트레이닝 `INTRO`/`COMPLETED` 정적 단계 제거(`READY -> ACTIVE -> NavigateBack`), 1-Tap 3버튼 테마 세그먼트(`ThemeModeSegmentedRow`), `PROP-06` 제안서 등재, `bump-version.sh` & `check-version-monotonic.sh --check-ssot` 원자적 동기화, 3모듈 디렉터리 구조 및 27개 API 엔드포인트 정합화.
+- **3. 운영(`docs/ops/*.md`) 및 작업 원장(`docs/plans/logs/*.md` + `docs/plans/README.md`) 최신화**:
+  - [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md), [`docs/ops/play-store-release.md`](docs/ops/play-store-release.md), [`docs/ops/monitoring-and-cost.md`](docs/ops/monitoring-and-cost.md), [`docs/ops/predeployment-readiness.md`](docs/ops/predeployment-readiness.md), [`docs/ops/dependency-deferred.md`](docs/ops/dependency-deferred.md), [`docs/plans/logs/android.md`](docs/plans/logs/android.md), [`docs/plans/logs/process-infra.md`](docs/plans/logs/process-infra.md), [`docs/plans/logs/dependencies.md`](docs/plans/logs/dependencies.md) 최신 이력 및 SSoT 반영.
+
+---
+
 ## 2026-11-06 (Gemini -> Claude/User) Google Wear OS 6.0 (API 36) Foundation & 개발/검증 환경 구축 완료 (`:app`, `:wear`, `:core:wear-contract` 3모듈 · Wear Compose M3 `1.7.1` · `AC-01 ~ AC-10` 전수 통과)
 
 **현재까지의 작업 상태 (Current Status):**
@@ -37,19 +67,18 @@
 **현재까지의 작업 상태 (Current Status):**
 - **1. Part 1 — 스마일 트레이닝 인트로 대시보드(INTRO)·완료 페이지(COMPLETED) 완전 제거 및 코칭 HUD/가이드 디자인 업그레이드**:
   - [SmileTrainingViewModel.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingViewModel.kt), [SmileTrainingScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingScreen.kt): SmileSessionPhase.INTRO 및 SmileIntroContent.kt를 완전 삭제하고, 4대 진입점 터치 즉시 onInitialEntry(hasCameraHardware, hasCameraPermission) → READY(1.0초 얼굴 정렬 자동 시작) → ACTIVE(2초 × 3회) → withContext(NonCancellable) 저장 직후 NavigateBack으로 자동 복귀(저장 실패 시 SaveErrorOverlayDialog 모달 노출)하는 무중단 Zero-Tab-Overhead 흐름 완성.
-  - [SmilePhaseGuideContents.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmilePhaseGuideContents.kt), [SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [ProgressHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt): SmileGuideCardLayout 공통 래퍼(72dp 원형 배지 + RoundedCornerShape(24.dp) 카드 + 52dp 버튼), 폴더블 안전 타원 클램프(ovalHeight = minOf(..., size.height * 0.44f)), FaceOvalVignetteOverlay 색상 보간·외곽 글로우, RepStepIndicatorRow 폭·색상 보간, BottomCoachingOverlay nimateContentSize + AnimatedVisibility, 진행 허브 누적 연습 시간(ormatDurationKorean) 배지 추가.
+  - [SmilePhaseGuideContents.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmilePhaseGuideContents.kt), [SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [ProgressHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt): SmileGuideCardLayout 공통 래퍼(72dp 원형 배지 + RoundedCornerShape(24.dp) 카드 + 52dp 버튼), 폴더블 안전 타원 클램프(ovalHeight = minOf(..., size.height * 0.44f)), FaceOvalVignetteOverlay 색상 보간·외곽 글로우, RepStepIndicatorRow 폭·색상 보간, BottomCoachingOverlay `animateContentSize` + AnimatedVisibility, 진행 허브 누적 연습 시간(`formatDurationKorean`) 배지 추가.
 - **2. Part 2 — Jetpack Compose BOM 2026.09.00 (UI/Foundation 1.12.1) · CameraX 1.6.2 · Lifecycle 2.11.0 신기술 전수 적용**:
   - Modifier.keepScreenOn() 적용 ([SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [WorkoutGuideScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt)).
-  - ProcessCameraProvider.awaitInstance(context) + waitCancellation() 코루틴 바인딩 전환 ([SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt)).
+  - ProcessCameraProvider.awaitInstance(context) + `awaitCancellation()` 코루틴 바인딩 전환 ([SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt)).
   - LifecycleStartEffect / LifecycleResumeEffect 선언형 생명주기 전환 ([SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [SmileTrainingScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingScreen.kt), [AppNavigation.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/AppNavigation.kt), [HomeScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt), [ProgressHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt), [ProfileHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt)).
   - TextAutoSize.StepBased 적용 ([ProfileHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt), [ProgressHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt), [StatisticsScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/statistics/StatisticsScreen.kt)) 및 [MotionTokens.kt](app/src/main/java/com/gunnys/eundunhealth/ui/theme/MotionTokens.kt) quickSpring()/progressSpring() 확장.
 - **3. Part 3 & Part 4 — 프로젝트 전역 M3 디자인 일관성 고도화 및 레거시/기술 부채 청산**:
   - [EmptyContent.kt](app/src/main/java/com/gunnys/eundunhealth/ui/components/EmptyContent.kt), [ErrorContent.kt](app/src/main/java/com/gunnys/eundunhealth/ui/components/ErrorContent.kt), [BadgeScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/badge/BadgeScreen.kt), [StatisticsScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/statistics/StatisticsScreen.kt), [HistoryScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/history/HistoryScreen.kt), [GoalScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/goal/GoalScreen.kt), [MealPlanScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/mealplan/MealPlanScreen.kt) M3 토큰·셰이프·모션 통일.
-  - [ContextExt.kt](app/src/main/java/com/gunnys/eundunhealth/ui/util/ContextExt.kt)(indActivity()), [TimeConstants.kt](app/src/main/java/com/gunnys/eundunhealth/domain/model/TimeConstants.kt)(KST_ZONE, ormatDurationKorean) SSoT 통합, [HealthRepositoryImpl.kt](app/src/main/java/com/gunnys/eundunhealth/data/repository/HealthRepositoryImpl.kt)·[ProfileHubViewModel.kt](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubViewModel.kt) 
-unSuspendCatching(룰 14 Layer 2) 교체, [MealPlanRepositoryImpl.kt](app/src/main/java/com/gunnys/eundunhealth/data/repository/MealPlanRepositoryImpl.kt) 	oDomain() 통합, cycleTheme() 데드코드 및 [gradle/libs.versions.toml](gradle/libs.versions.toml) 미사용 선언 제거.
+  - [ContextExt.kt](app/src/main/java/com/gunnys/eundunhealth/ui/util/ContextExt.kt)(`findActivity()`), [TimeConstants.kt](app/src/main/java/com/gunnys/eundunhealth/domain/model/TimeConstants.kt)(KST_ZONE, `formatDurationKorean`) SSoT 통합, [HealthRepositoryImpl.kt](app/src/main/java/com/gunnys/eundunhealth/data/repository/HealthRepositoryImpl.kt)·[ProfileHubViewModel.kt](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubViewModel.kt) `runSuspendCatching`(룰 14 Layer 2) 교체, [MealPlanRepositoryImpl.kt](app/src/main/java/com/gunnys/eundunhealth/data/repository/MealPlanRepositoryImpl.kt) `toDomain()` 통합, cycleTheme() 데드코드 및 [gradle/libs.versions.toml](gradle/libs.versions.toml) 미사용 선언 제거.
 - **4. 전수 검증 게이트 통과**:
   - ./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:assembleDebug → **BUILD SUCCESSFUL** (259 tests PASS, Detekt 0건).
-  - ash scripts/check-agp10-compat.sh & ash scripts/check-plans-links.sh → **OK**.
+  - `bash scripts/check-agp10-compat.sh` & `bash scripts/check-plans-links.sh` → **OK**.
   - python scripts/agents/doc_audit.py --strict → **드리프트 0건 (100% CLEAN)**.
 
 ---
@@ -92,26 +121,25 @@ unSuspendCatching(룰 14 Layer 2) 교체, [MealPlanRepositoryImpl.kt](app/src/ma
 
 ---
 
-## 2026-11-02 (Gemini -> Claude/User) GitHub CI doc-audit 실패(xit code 1) 및 Proceed 버튼 오류 근본 원인 해결 · Claude Code 의존성 완전 제거 및 초고속(0.05s) 결정론적 문서 감사 린터 엔진 구축 완료
+## 2026-11-02 (Gemini -> Claude/User) GitHub CI doc-audit 실패(`exit code 1`) 및 Proceed 버튼 오류 근본 원인 해결 · Claude Code 의존성 완전 제거 및 초고속(0.05s) 결정론적 문서 감사 린터 엔진 구축 완료
 
 **현재까지의 작업 상태 (Current Status):**
 - **1. Proceed 버튼 오류 근본 원인 해결 (GEMINI.md)**:
   - GEMINI.md 규칙 4번의 '사용자 검토용 Proceed 버튼 활성화' 문구가 실제 IDE UI 환경에 없는 버튼을 안내하도록 유도하던 근본 원인을 수정.
   - 별도 버튼 없이 채팅으로 명시적 승인('승인', '진행해', '시작' 등)을 요청하도록 룰 현실화 및 허위 안내 원천 차단.
-- **2. GitHub CI doc-audit 7주 연속 실패 (xit code 1) 근본 원인 규명 및 아키텍처 혁신**:
-  - **근본 원인**: Claude Code 구독 해지/미사용에 따라 Anthropic에서 구독 토큰(CLAUDE_CODE_OAUTH_TOKEN)을 차단(Your organization has disabled Claude subscription access for Claude Code)했으나, CI 워크플로우가 단순 문자열 존재로 
-eady=true 통과시키고 SDK 예외 미처리로 매주 월요일 프로세스가 크래시(xit code 1)함.
-  - **Claude Code 및 외부 AI 종속성 전면 청소**: claude-agent-sdk 삭제, 외부 시크릿(CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_API_KEY) 참조 전면 제거, 토큰 비용  및 시크릿 0개 아키텍처 완성.
+- **2. GitHub CI doc-audit 7주 연속 실패 (`exit code 1`) 근본 원인 규명 및 아키텍처 혁신**:
+  - **근본 원인**: Claude Code 구독 해지/미사용에 따라 Anthropic에서 구독 토큰(CLAUDE_CODE_OAUTH_TOKEN)을 차단(Your organization has disabled Claude subscription access for Claude Code)했으나, CI 워크플로우가 단순 문자열 존재로  `ready=true` 통과시키고 SDK 예외 미처리로 매주 월요일 프로세스가 크래시(`exit code 1`)함.
+  - **Claude Code 및 외부 AI 종속성 전면 청소**: claude-agent-sdk 삭제, 외부 시크릿(CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_API_KEY) 참조 전면 제거, 토큰 비용 `$0` 및 시크릿 0개 아키텍처 완성.
   - **결정론적 문서 감사 린터 (Deterministic Linter) 구축 ([scripts/agents/doc_audit.py](scripts/agents/doc_audit.py))**:
     - 외부 네트워크나 AI 호출 없이 Python 3.12+ stdlib 단독 구동. 0.05초 만에 6대 문서(CLAUDE.md, README.md, docs/ops/operations-snapshot.md, docs/TRD.md, docs/PRD.md, docs/CHANGELOG.md)의 SSoT 불변식(버전, API 버전, DB 스키마, 파이썬 런타임 mismatch, CORS 기본값, API 라우트 수, 폐기 기술 잔존 등)을 100% 정밀 검증.
   - **CI 워크플로우 경량화 ([.github/workflows/doc-audit.yml](.github/workflows/doc-audit.yml))**:
-    - 이원화되었던 잡(collector-test, udit)을 단일 통합 doc-audit 잡으로 단순화하여 CI 수행 시간을 기존 4분 → **15초 이내**로 단축.
+    - 이원화되었던 잡(`collector-test`, `audit`)을 단일 통합 doc-audit 잡으로 단순화하여 CI 수행 시간을 기존 4분 → **15초 이내**로 단축.
 - **3. 잔여 문서 드리프트 정합화 및 전수 검증**:
-  - [CLAUDE.md](CLAUDE.md) 및 [docs/TRD.md](docs/TRD.md)의 구버전 잔재(0.7.2/43)를 최신 프로덕션인 0.7.3/44로 정합화.
+  - [CLAUDE.md](CLAUDE.md) 및 [docs/TRD.md](docs/TRD.md)의 구버전 잔재(`v0.7.2/43`)를 최신 프로덕션인 `v0.7.3/44`로 정합화.
   - doc_audit.py --strict 실행 결과 **드리프트 0건 (100% CLEAN)** 달성.
   - [scripts/agents/test_doc_audit.py](scripts/agents/test_doc_audit.py) 단위 테스트 **49 passed in 0.12s** (Windows / WSL2 Ubuntu 100% 패리티 통과).
   - 백엔드 전체 테스트 pytest backend/tests/ **147 passed**.
-  - ash scripts/check-plans-links.sh **OK: 끊긴 참조 0건**.
+  - `bash scripts/check-plans-links.sh` **OK: 끊긴 참조 0건**.
 
 ---
 

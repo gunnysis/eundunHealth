@@ -17,14 +17,14 @@
 
 - **Naming**: ruff `N` (PEP 8). N818 만 의도적 ignore (`AppException`/`NotFoundException` 등 네이밍 유지).
 - **Docstring**: ruff `D` + `convention = "pep257"`. public class/function 필수.
-  - Per-file-ignore: `tests/**` (test 명이 spec), `alembic/**` (auto-generated), `app/main.py` (FastAPI 앱 인스턴스), `app/schemas/**` D101 (Pydantic `Field(description=...)` 대체), `app/models/**` D101 (ORM table).
+  - Per-file-ignore: `tests/**` (test 명이 spec), `app/main.py` (FastAPI 앱 인스턴스), `app/schemas/**` D101 (Pydantic `Field(description=...)` 대체), `app/models/**` D101 (ORM table). (레거시 `alembic/**` 은 v0.7.0 PostgreSQL 18 Drop & Recreate 전환으로 제거됨)
   - Global ignore: D100 (모듈 헤더 비강제), D104 (패키지 헤더 비강제), D107 (`__init__` 비강제 — 클래스 docstring 으로 대체).
 - **Type hints**: mypy strict (PEP 484/526) + Pydantic plugin.
 - **작성 정책**:
   - 1-2 줄 한국어 요약, behavioral "why" 중심.
   - type 정보 중복 금지 (mypy + Pydantic 이 cover).
   - 도메인 용어 (Entra, JWT, Container App, RS256 등) 는 영문 유지.
-- **Auto-generated 디렉토리** (alembic, openapi-generator 출력 등): per-file-ignore 작성 시 D 외 lint 룰 (UP/I/N) 도 보일러플레이트로 위반 가능 — 모두 검토 (PR #68 lesson L4 — alembic UP007/UP035/I001 16건 사례).
+- **Auto-generated 디렉토리** (openapi-generator 출력 등): per-file-ignore 작성 시 D 외 lint 룰 (UP/I/N) 도 보일러플레이트로 위반 가능 — 모두 검토 (PR #68 lesson L4 사례).
 
 ## 3. Azure 인프라
 

@@ -6,10 +6,12 @@
     <string name="wear_diag_env_version_api">v%1$s (%2$d) · API %3$d</string>
     <string name="wear_diag_env_subtitle_compact">T%1$d · %2$s</string>
     <string name="wear_diag_env_subtitle_expanded">min %1$d · target %2$d · %3$s</string>
-    <string name="wear_diag_status_title">수집 기능 상태</string>
-    <string name="wear_diag_status_summary">센서·백그라운드 수집 대기</string>
-    <string name="wear_diag_status_subtitle">Foundation 진단 화면</string>
-    <string name="wear_diag_status_detail">워치 센서 수집 및 모바일 동기화 연결 전 단계입니다.</string>
+    <string name="wear_diag_status_title">마음·생체 측정 준비</string>
+    <string name="wear_diag_status_summary">측정·동기화 연결 전 단계</string>
+    <string name="wear_diag_status_subtitle">환경설정(Foundation) 진단</string>
+    <string name="wear_diag_status_detail">스트레스·공황 등 마음 상태와 생체 신호(심박·HRV) 측정 및 모바일 동기화 연결 전 환경 점검 화면입니다.</string>
     <string name="wear_diag_action_expand">상세 정보 펼치기</string>
     <string name="wear_diag_action_collapse">상세 정보 접기</string>
+    <string name="wear_diag_state_expanded">상세 정보 펼쳐짐</string>
+    <string name="wear_diag_state_collapsed">요약 정보 표시 중</string>
 </resources>

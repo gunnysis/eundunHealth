@@ -39,7 +39,7 @@
 
 - **대상 사용자** — 헬스장 회원 또는 홈트레이닝 실천자, PT 미수강, 운동 초~중급자
 - **언어 / 지역** — 한국어 UI, KST 시간대, 한국 사용자 대상
-- **현재 단계** — **v0.7.3 (versionCode 44, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`, 2026-10-29)**. 앱 업데이트 감지 및 강제 안내 시스템 고도화(`Strict Mandatory Update`: Google Play In-App Updates `2.1.0` `IMMEDIATE` + 포그라운드 `ON_START` 재검증 + `ErrorContent` 스토어 이동 CTA + 버전 SSoT 자동화), 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 탭 비주얼 대시보드·간소화 개편, 골격근량·체지방률 직접 입력 `0.1` 정밀도 수정, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (`GlobalStandard`, `100K TPM / 100 RPM`, OpenAI Strict JSON Schema) 전환, 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어(룰 14)·AGP 거버넌스(룰 15)·배포 연동 PR 트리아지(룰 16) 수립, 스마일 트레이닝 v2 전면 리팩토링(`2.0초 유지 × 3회 반복` 단일 표준 스펙, `READY` 1.0초 자동 시작, 풀블리드 카메라 HUD, 4대 접속 경로 IA, `/v2/smile-training/*` 컷오버, Room DB v2), Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, 운영 DB 하드 리셋 `hard-reset-v2-pg18-prod-20261029`), AGP 9.5.1 정식 업그레이드가 포함된다.
+- **현재 단계** — **v0.7.3 (versionCode 44, `wearVersionCode=10001`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`, 2026-10-29 출시 / 2026-11-06 Wear OS 6 3모듈 Foundation 반영)**. 앱 업데이트 감지 및 강제 안내 시스템 고도화(`Strict Mandatory Update`: Google Play In-App Updates `2.1.0` `IMMEDIATE` + 포그라운드 `ON_START` 재검증 + `ErrorContent` 스토어 이동 CTA + 버전 SSoT 자동화), **Google Wear OS 6.0 (API 36) 3모듈(`:app`, `:wear`, `:core:wear-contract`) Foundation 및 Wear Compose Material 3 (`1.7.1`) 원형 진단 UI 구축**, 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 탭 비주얼 대시보드·간소화 개편, 골격근량·체지방률 직접 입력 `0.1` 정밀도 수정, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (`GlobalStandard`, `100K TPM / 100 RPM`, OpenAI Strict JSON Schema) 전환, 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어(룰 14)·AGP 거버넌스(룰 15)·배포 연동 PR 트리아지(룰 16) 수립, 스마일 트레이닝 v2 전면 리팩토링(`2.0초 유지 × 3회 반복` 단일 표준 스펙, `INTRO`/`COMPLETED` 중간 화면 제거 및 `READY` 1.0초 자동 시작 → `ACTIVE` → 즉시 저장 후 자동 복귀 `NavigateBack`, 풀블리드 카메라 HUD, 4대 접속 경로 IA, `/v2/smile-training/*` 컷오버, Room DB v2), Azure Database for PostgreSQL 18.4(`healthapp`) / 로컬·CI PostgreSQL 18.6 업그레이드 및 Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql`, `DEFAULT uuidv7()`, 100건 엣지 케이스 Seeder, 운영 DB 하드 리셋 `hard-reset-v2-pg18-prod-20261029`), AGP 9.5.1 정식 업그레이드가 포함된다.
 
 상세 제품 요구사항은 [docs/PRD.md](docs/PRD.md), 기술 요구사항은 [docs/TRD.md](docs/TRD.md), 기능 명세는 [docs/SPEC.md](docs/SPEC.md) 참조.
 
@@ -49,7 +49,7 @@
 
 - **적응형 주간 운동 계획 v2 (`헬스장` / `홈트레이닝`) & 다중 휴식 요일(`restDays`)** — 매주 첫 진입 시 `헬스장`(OSS ExerciseDB + 추천 운동 46종 한국어 번들 `korean_exercises.json` v2) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위 지원)을 선택해 계획을 생성하거나, 프로필의 `기본 운동 환경` 설정으로 주간 자동 생성. 주 1~6일 원하는 휴식 요일(`restDays`)을 자유롭게 지정하고 대근육 우선순위 큐로 운동을 균형 배치
 - **AI 맞춤 주간 식단** (v0.3.0 / v0.3.1 / v0.7.2) — 신체 지표·목표·주간 운동량을 바탕으로 Azure AI Foundry `gpt-5.4-mini` (`GlobalStandard` 100K TPM) 모델이 7일×3끼 맞춤 식단과 영양소(칼로리·탄단지)를 생성 (국외 이전 사전 고지 및 `X-AI-Data-Processing-Consent: true` 명시적 동의 기반)
-- **온디바이스 스마일 트레이닝 v2** (v0.5.0 / v2) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(단일 표준 스펙 `SmileTrainingSpec`: `2.0초 유지 × 3회 반복`, `READY` 1.0초 자동 시작, 종료 후 감정 설문 제거 및 자동 완료)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db` v2) 및 `WorkManager`로 세션 요약·연속일을 서버(`/v2/smile-training/*`)와 동기화
+- **온디바이스 스마일 트레이닝 v2** (v0.5.0 / v2 / 2026-11-06 무중단 직행) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(단일 표준 스펙 `SmileTrainingSpec`: `2.0초 유지 × 3회 반복`, `INTRO`/`COMPLETED` 중간 대기·완료 화면 제거, 진입 즉시 `READY` 1.0초 자동 시작 → `ACTIVE` → `NonCancellable` 저장 직후 이전 화면 자동 복귀 `NavigateBack`)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db` v2) 및 `WorkManager`로 세션 요약·연속일을 서버(`/v2/smile-training/*`)와 동기화
 - **Health Connect 연동** — 운동 세션 자동 감지 및 완료 추적
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
 - **목표 설정 및 진행 시각화** (v0.3) — 체중 / 체지방률 목표 + 프로필 변화 이력 차트
@@ -61,45 +61,46 @@
 
 ## 기술 스택
 
-### Android 클라이언트 (`app/`)
+### Android & Wear OS 클라이언트 (`:app`, `:wear`, `:core:wear-contract`)
 
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Kotlin 2.4.21, Java 17 | KSP 2.3.12 |
-| 빌드 | Gradle 9.8.2, AGP 9.5.1 | Min SDK 26 / Target SDK 37, dependency locking + SHA-256 verification |
-| UI | Jetpack Compose (BOM 2026.09.00) | Material 3 |
+| 빌드 & 멀티모듈 | Gradle 9.8.2, AGP 9.5.1 | `:app` (Min SDK 26) · `:wear` (Min SDK 36, Wear OS 6+, `wearVersionCode=10001`) · `:core:wear-contract` (Pure JVM 17, `KST_ZONE` SSoT) / Target SDK 37, dependency locking + SHA-256 verification |
+| UI (`:app` / `:wear`) | Jetpack Compose (BOM 2026.09.00) · Wear Compose Material 3 `1.7.1` | 모바일 Material 3 (Modern Forest & Mint 36슬롯 + Pretendard Variable) · 워치 Wear Compose M3 (`WearTheme` 29토큰 + `TransformingLazyColumn`) |
 | DI | Hilt 2.60.1 | 4개 모듈 (`NetworkModule`, `DatabaseModule`, `RepositoryModule`, `CoroutineModule`) |
-| 비동기 | kotlinx-coroutines + Flow | |
+| 비동기 | kotlinx-coroutines 1.11.0 + Flow | |
 | 네트워크 | Retrofit 3.0.0 + OkHttp 5.5.1 + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 + `Eundun-Client-Version-Code` 헤더 |
 | 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v2, KSP 스키마 export) |
 | 카메라 & 온디바이스 비전 | CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0 | Google Play services unbundled (`ModuleInstallClient`) |
+| 인앱 업데이트 | Google Play In-App Updates 2.1.0 (`app-update-ktx`) | `PlayInAppUpdateChecker` (`AppUpdateType.IMMEDIATE` + `/app-compatibility` 이중 채널) |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
 | Auth | MSAL Android 8.6.0 | RS256 JWT · `oid` claim |
-| 건강 데이터 | Health Connect 1.1.0 (stable) | |
+| 건강 데이터 | Health Connect 1.1.0 (stable) | `READ_EXERCISE` 단독 권한 |
 | 모니터링 | Sentry Android 8.61.1 (Gradle plugin 6.24.0) | 16KB page-aligned native libs |
 | API 클라이언트 | OpenAPI Generator 7.26.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동, 8개 generated API |
-| 품질 도구 | Detekt 1.23.8 (`detekt-cli` + `androidComponents`) + Spotless 8.10.4 + ktlint 1.5.0 | pre-commit hook + `check-agp10-compat.sh` 가드 |
+| 품질 도구 & CLI | Detekt 1.23.8 (`detekt-cli` + `androidComponents`) + Spotless 8.10.4 + ktlint 1.5.0 + Android CLI `v1.1.16717390` | pre-commit hook + `check-agp10-compat.sh` + `android-cli-check.sh` · 단위 테스트 266 `@Test` |
 
 ### Backend (`backend/`)
 
 | 영역 | 선택 | 비고 |
 |------|------|------|
 | 언어 / 런타임 | Python 3.14 | |
-| 프레임워크 | FastAPI 0.161.0 + uvicorn 0.54.0 | hash lock 공통 설치 |
+| 프레임워크 | FastAPI 0.162.0 + uvicorn 0.54.0 | hash lock 공통 설치 |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.1.6 async + asyncpg 0.32.0 | `Mapped[T]` 패턴 |
 | 스키마 파이프라인 | Drop & Recreate 전용 (`02_schema_create_all.sql`) | PostgreSQL 18 `DEFAULT uuidv7()` + `app.schema_bootstrap` 멱등 기동 + `hard_reset_db.py` / `seed_edge_cases.py`(100건 시딩·11개 제약 검증) |
-| HTTP 코어 | starlette 1.9.0 | |
+| HTTP 코어 | starlette 1.10.0 | |
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | AI 클라이언트 | openai 3.37.0 (`AsyncOpenAI`) | Azure AI Foundry `gpt-5.4-mini` (`GlobalStandard` 100K TPM, Strict JSON Schema) 연동 |
 | 모니터링 | Sentry SDK 2.73.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 146/146 PASS, coverage 94%+ (sysmon core) |
+| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 147/147 PASS, coverage 94%+ (sysmon core) |
 
 ### 인프라
 
 | 구성 요소 | 값 |
 |-----------|---|
-| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000068`) |
+| Container App | `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **warm min 1 / max 3** + Key Vault 참조 + system MI + probe 3종, active revision `0000069`, image `6357981`) |
 | Key Vault | `kv-eundunhealth` (Standard, Azure RBAC, 90d soft-delete + purge protection) — 백엔드 secret **8개** |
 | Container Registry | ACR `eundunhealthacr` (Basic SKU, 주간 `acr purge` 스케줄 Task 2개) |
 | Database | Azure PostgreSQL Flexible Server `healthapp` (PostgreSQL 18.4, B1ms, 32GB; 로컬/CI `postgres:18-alpine` `18.6`) |
@@ -113,15 +114,19 @@
 
 ## 아키텍처
 
-### Android — Clean Architecture
+### Android & Wear OS — 3모듈 Clean Architecture (`:app`, `:wear`, `:core:wear-contract`)
 
 ```
-ui/          # Jetpack Compose 화면 15개 + ViewModel 14개 + Navigation (sealed Screen + 적응형 MainAppShell)
-  components/    # 공용 컴포넌트 12개 (AuthErrorBanner, BodyMetricDefaults, BodyMetricsSliders, GenderSelector, HybridBodyMetricPicker, LineChart, OptionalBodyCompositionCard, ProfileSummaryCard, RestDaysSelector, Skeleton, Error, Empty)
-  auth/ home/ onboarding/ profile/ navigation/ statistics/ goal/ mealplan/ smile/ history/ badge/ workout/ splash/ theme/ util/
-domain/      # 모델 + 리포지토리 인터페이스 + UseCase(LoadCurrentWeekPlan / CreateWeeklyPlan / HomeWeeklyPlanGenerator 등) + 스마일 신호 평가기(smile/) + AppError sealed class
-data/        # Repository 구현 + OpenAPI 생성 클라이언트 + Room(2종) + WorkManager(sync/) + ML Kit(smile/) + Health Connect + MSAL(auth/) + 한국어 번역(translation/) + DataStore
-di/          # Hilt 모듈 4개 (NetworkModule, DatabaseModule, RepositoryModule, CoroutineModule)
+app/         # 모바일 Android 앱 (Min SDK 26, Target SDK 37)
+  ui/        # Jetpack Compose 화면 15개 + ViewModel 14개 + Navigation (sealed Screen + 적응형 MainAppShell)
+    components/  # 공용 컴포넌트 12개 (AuthErrorBanner, BodyMetricDefaults, BodyMetricsSliders, GenderSelector, HybridBodyMetricPicker, LineChart, OptionalBodyCompositionCard, ProfileSummaryCard, RestDaysSelector, Skeleton, Error, Empty)
+    auth/ home/ onboarding/ profile/ navigation/ statistics/ goal/ mealplan/ smile/ history/ badge/ workout/ splash/ update/ theme/ util/
+  domain/    # 모델 + 리포지토리 인터페이스 + UseCase(LoadCurrentWeekPlan / CreateWeeklyPlan / HomeWeeklyPlanGenerator 등) + 스마일 신호 평가기(smile/) + AppError sealed class
+  data/      # Repository 구현 + OpenAPI 생성 클라이언트 + Room(2종) + WorkManager(sync/) + ML Kit(smile/) + Health Connect + MSAL(auth/) + 한국어 번역(translation/) + DataStore
+  di/        # Hilt 모듈 4개 (NetworkModule, DatabaseModule, RepositoryModule, CoroutineModule)
+wear/        # Google Wear OS 6.0+ 워치 앱 (Min SDK 36, Target SDK 37, wearVersionCode=10001)
+  presentation/  # MainActivity + WearEnvironmentSpec + WearEnvironmentStatusScreen (AppScaffold → ScreenScaffold → TransformingLazyColumn) + WearTheme (29 M3 컬러 토큰)
+core/wear-contract/ # 순수 JVM 17 공유 계약 모듈 (WearTimeConstants.kt: KST_ZONE SSoT, 안드로이드/GMS 의존성 0)
 ```
 
 핵심 패턴
@@ -186,11 +191,13 @@ sql/                  # 정규 Drop & Recreate DDL (01_cleanup_drop_all.sql, 02_
 
 ```
 .
-├── app/                      # Android 앱 (Kotlin / Compose)
+├── app/                      # 모바일 Android 앱 (Kotlin / Compose Material 3, Min SDK 26)
+├── wear/                     # Wear OS 6.0+ 워치 앱 (Kotlin / Wear Compose Material 3, Min SDK 36)
+├── core/wear-contract/       # 순수 JVM 17 공유 계약 모듈 (WearTimeConstants.kt: KST_ZONE SSoT)
 ├── backend/                  # FastAPI 백엔드 (Python 3.14)
 │   ├── app/                  # 애플리케이션 코드
 │   ├── sql/                  # PostgreSQL 18 Drop & Recreate 정규 DDL (01_cleanup / 02_schema)
-│   ├── tests/                # pytest (143 PASS, coverage 94%+)
+│   ├── tests/                # pytest (147 PASS, coverage 94%+)
 │   ├── openapi.json          # Android OpenAPI Generator 입력
 │   └── docker-compose.yml    # 로컬 PG + uvicorn 동시 기동
 ├── docs/                     # 모든 비코드 문서
@@ -198,13 +205,14 @@ sql/                  # 정규 Drop & Recreate DDL (01_cleanup_drop_all.sql, 02_
 │   ├── CHANGELOG.md
 │   ├── store/                # Play Store 호스팅 대상 (개인정보 처리방침·계정 삭제 안내)
 │   ├── plans/                # design + plan 페어 / 토픽 ledger
+│   ├── proposals/            # 아키텍처 및 제품 확장 제안서 (PROP-01 ~ PROP-06)
 │   └── ops/                  # 운영 스냅샷·배포 전 체크리스트·런북·인시던트
-├── scripts/                  # 자동화 (preflight / agp10-compat / verify_containerapp_deployment / openapi-sync / hooks)
+├── scripts/                  # 자동화 (preflight / android-cli-check / agp10-compat / verify_containerapp_deployment / openapi-sync / agents)
 ├── config/                   # Detekt 설정·baseline
-├── gradle/libs.versions.toml # Android 버전 카탈로그
+├── gradle/libs.versions.toml # Android/Wear 버전 카탈로그
 ├── .github/workflows/        # 7 workflows (android / backend / backend-rollback / release / warm-baseline-check / doc-audit / docs-plans-index)
-├── .githooks/                # pre-commit (spotless + detekt + plans-index)
-├── CLAUDE.md                 # 운영 안전 규칙 + AI 협업 컨벤션
+├── .githooks/                # pre-commit (spotless + detekt + version-monotonic + plans-index)
+├── CLAUDE.md / GEMINI.md     # 운영 안전 규칙 (룰 1~16) + Multi-AI 협업 컨벤션
 └── README.md                 # ← 본 문서
 ```
 
@@ -217,8 +225,8 @@ sql/                  # 정규 Drop & Recreate DDL (01_cleanup_drop_all.sql, 02_
 | 도구 | 버전 | 용도 |
 |------|------|------|
 | JDK | 17 | Android / Gradle |
-| Android Studio | Hedgehog 이상 권장 | 빌드 / 디바이스 디버깅 |
-| Android SDK | API 37 | Target SDK |
+| Android Studio | Rabbit 2 \| 2026.2.2 권장 | 빌드 / 디바이스 디버깅 / Android CLI (`v1.1.16717390`) Live IPC 연동 |
+| Android SDK | API 37 (Compile/Target) · API 36 (Wear OS 6) | 모바일 & Wear OS 빌드 및 에뮬레이터 |
 | Python | 3.14 | Backend |
 | Docker Desktop | latest | Backend 로컬 실행 (PostgreSQL 18) + 스키마 하드 리셋 검증 |
 | Git | 2.40+ | hooks (`core.hooksPath`) |
@@ -353,7 +361,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 
 ## 운영 안전 규칙
 
-지난 인시던트의 root cause 가 모두 누적된 결과로 도출된 **13 개 강제 규칙**. 자세한 본문은 [CLAUDE.md](CLAUDE.md), 인시던트 이력은 [docs/ops/incident-log.md](docs/ops/incident-log.md).
+지난 인시던트의 root cause 가 모두 누적된 결과로 도출된 **16 개 강제 규칙 (룰 1 ~ 룰 16)**. 자세한 본문은 [CLAUDE.md](CLAUDE.md), 인시던트 이력은 [docs/ops/incident-log.md](docs/ops/incident-log.md).
 
 | # | 룰 | 출처 |
 |---|----|------|
@@ -368,8 +376,11 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | 9 | Design doc 의 baseline / 추정값은 측정 후 결정 | PR #68 |
 | 10 | Subagent reviewer 의 측정 결과는 controller 가 직접 fact-check | PR #68 |
 | 11 | ViewModel 은 UDF-Enhanced 패턴 준수 (`collectAsStateWithLifecycle` 전용) | 2026-06-06 |
-| 12 | Gson 반사 모델은 R8 keep 전수 + 패키지 단위 (`ProguardKeepRulesTest`) | INC 2026-06-15 |
+| 12 | Gson 반사 모델 및 리플렉션 생성자는 R8 keep 전수 + 패키지/생성자 단위 (`ProguardKeepRulesTest`) | INC 2026-06-15 · INC-32 |
 | 13 | Play 업로드 전 versionCode 는 원장(`play-upload-ledger.md`)과 대조 | INC-2026-06-19-28 |
+| 14 | 배포 후 장애 재발 방지 5계층 심층 방어 (DI 빌더 직접 테스트 · Lazy 초기화 · R8 매핑 · Cold-Start 스모크 · Robo/Sentry 확인) | INC-32 · INC-33 · INC-34 |
+| 15 | AGP(`9.5.1`) 락스텝 매트릭스 · Built-in Kotlin · Windows/Linux 듀얼 플랫폼 `aapt2` 해시 · 6단계 업그레이드 거버넌스 | PR #181 |
+| 16 | 배포 연동 PR 정리 및 Dependabot 5-Bucket Triage 거버넌스 (`scripts/triage-prs.sh`) | v0.7.2 |
 
 > [!CAUTION]
 > Destructive 명령(`Remove-Item -Recurse`, `az containerapp delete`, `git push --force`, `az acr repository delete`)을 실행하기 전 항상 [§6.8 5문항](docs/ops/monitoring-and-cost.md) 점검.
@@ -381,7 +392,7 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | 문서 | 내용 |
 |------|------|
 | [CHANGELOG](docs/CHANGELOG.md) | 버전별 변경 이력 |
-| [버전 관리](docs/conventions/versioning.md) | 앱/백엔드 버전 SSoT · semver 정책 · bump 절차 |
+| [버전 관리](docs/conventions/versioning.md) | 앱/워치/백엔드 버전 SSoT · semver 정책 · bump 절차 |
 | [PRD](docs/PRD.md) | 제품 요구사항 |
 | [TRD](docs/TRD.md) | 기술 요구사항 + 구현 후 변경 사항 |
 | [SPEC](docs/SPEC.md) | 기능 명세 |
@@ -390,24 +401,24 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 | [Plans 인덱스](docs/plans/README.md) | design+plan 페어 + 토픽 ledger (자동 생성) |
 | [운영 스냅샷](docs/ops/operations-snapshot.md) | 현재 운영 상태 단일 출처 |
 | [배포 전 체크리스트](docs/ops/predeployment-readiness.md) | v0.3.1 배포 게이트 · 불변 조건 검증 · 롤백 런북 |
-| [Play 업로드 원장](docs/ops/play-upload-ledger.md) | versionCode 단조성 SSoT (`LAST_UPLOADED_VERSION_CODE=40`) |
+| [Play 업로드 원장](docs/ops/play-upload-ledger.md) | versionCode 단조성 SSoT (`LAST_UPLOADED_VERSION_CODE=44`) |
 | [인시던트 로그](docs/ops/incident-log.md) | 인시던트 이력 + root cause + 재발 방지 패턴 |
 | [마이그레이션 런북](docs/ops/migration-runbook.md) | Ktor → FastAPI 절차 + 사후 정리 |
 | [Container Apps Job 런북](docs/ops/azure-container-apps-jobs.md) | orphan reaper Job 프로비저닝 패턴 + 함정 회피(E1~E4, 공식문서 fact-check) |
 | [모니터링 및 비용](docs/ops/monitoring-and-cost.md) | Sentry / ACR / Budget + 안전 패턴 |
 | [Play Store 출시](docs/ops/play-store-release.md) | 첫 출시 8 단계 + 데이터 안전 답변 |
 | [의존성 보류](docs/ops/dependency-deferred.md) | 출시 후 재검토 항목 |
-| [CLAUDE.md](CLAUDE.md) | AI 협업 컨벤션 + 운영 안전 룰 1~13 |
+| [CLAUDE.md](CLAUDE.md) | AI 협업 컨벤션 + 운영 안전 룰 1~16 |
 
 ---
 
 ## 프로젝트 상태 및 로드맵
 
-**현재 버전** — Play 프로덕션 및 저장소 최신 릴리스는 **`v0.6.1` (versionCode `40`)**이다. 운영 증거는 `release.yml` run `40647597577`(원장 PR #211, `LAST_UPLOADED_VERSION_CODE=40`), backend run `40647560099`, revision `eundunhealth-api--0000066`(image `c12f969`, alembic head `d7f4a2c91b10`)이다.
+**현재 버전** — Play 프로덕션 및 저장소 최신 릴리스는 **`v0.7.3` (versionCode `44`, Wear `:wear` `wearVersionCode=10001`)**이다. 운영 증거는 `release.yml` run `40868910274`(원장 PR #226, `LAST_UPLOADED_VERSION_CODE=44`), `backend.yml` run `40868854537`, revision `eundunhealth-api--0000069`(image `6357981`, PostgreSQL 18 `02_schema_create_all.sql` 3NF 9테이블)이다.
 
 ### 마일스톤 진행
 
-스펙 마일스톤(v0.1 / v0.2 / v0.3)은 모두 구현 완료. 출시 후 v0.1.x ~ v0.5.x 는 기능 확장 / 안정화 / 배포 하드닝 릴리스 라인.
+스펙 마일스톤(v0.1 / v0.2 / v0.3)은 모두 구현 완료. 출시 후 v0.1.x ~ v0.7.x 는 기능 확장 / 안정화 / 배포 하드닝 릴리스 라인.
 
 **스펙 (3 트랙)**
 - [x] **v0.1** — 신체 정보 기반 주간 운동 계획 + 완료 추적 + 배지(7 종)
@@ -444,6 +455,8 @@ pwsh -File scripts/register-azure-credentials.ps1 -Verify
 - [x] **v0.7.0 — 스마일 트레이닝 v2 컷오버 · PostgreSQL 18 하드 리셋 파이프라인 · AGP 9.4.1 업그레이드 출시 (2026-10-29)** — 단일 표준 규격(`2.0초 유지 × 3회 반복`, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), Azure PostgreSQL 18.4(`healthapp`) / 로컬·CI `postgres:18-alpine` `18.6` 업그레이드 및 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`), `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41`. **2026-10-29 백엔드 배포(`0000067`, run `40816129146`) 및 Play production `completed`(100%) 업로드 성공** (run `40816257901`, 원장 PR #215).
 - [x] **v0.7.1 — 콜드 스타트 크래시 핫픽스(`EUNDUNHEALTH-H`) · 5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) 출시 (2026-10-29)** — `SmileTrainingDatabase` 빌더 충돌 해결 및 `DefaultLocalDataWiper` `dagger.Lazy` 지연 주입, 콜드 스타트 스모크 게이트(`scripts/smoke-cold-start.sh`) 구축. **2026-10-29 Play production `completed`(100%) 업로드 성공** (run `40825396534`, 원장 PR #217).
 - [x] **v0.7.2 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드 개편 · 체성분 직접 입력 0.1 정밀도 수정 · AI 식단 `gpt-5.4-mini` (100K TPM) 전환 출시 (2026-10-29)** — 진행/프로필 허브 시각화 대시보드 및 중복 메뉴 제거, `HybridBodyMetricPicker` 0.1 정밀도 보존, `ep-eundunhealth-meal-ai`(`gpt-5.4-mini`, Strict JSON Schema) 전환, PR Triage 거버넌스(룰 16) 및 `okhttp 5.5.1`·`coil 3.6.3` 갱신. **2026-10-29 백엔드 배포(`0000068`, run `40838433732`) 및 Play production `completed`(100%) 업로드 성공** (run `40847386065`, 원장 PR #223).
+- [x] **v0.7.3 — 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update`) · 버전 SSoT 자동화 출시 (2026-10-29)** — Google Play In-App Updates `2.1.0`(`PlayInAppUpdateChecker`, `AppUpdateType.IMMEDIATE`) + 백엔드 `/app-compatibility` 이중 채널 강제 업데이트 감지, `AppNavigation` `ON_START` 포그라운드 재검증(30초 쿨다운), `ErrorContent` 스토어 이동 CTA, `bump-version.sh` & `check-version-monotonic.sh` 최소 지원 버전(`44`) SSoT 자동 동기화. **2026-10-29 백엔드 배포(`0000069`, run `40868854537`) 및 Play production `completed`(100%) 업로드 성공** (run `40868910274`, 원장 PR #226).
+- [x] **Post-v0.7.3 Foundation — Wear OS 6 (API 36) 3모듈 Foundation · AGP 9.5.1 · 스마일 트레이닝 무중단 직행 · Android CLI 2-Tier 통합 (2026-11-04 ~ 2026-11-06)** — `:app` + `:wear`(`minSdk=36`, `wearVersionCode=10001`, Wear Compose M3 `1.7.1` `WearEnvironmentStatusScreen`, `WearTheme` 29토큰, `res/raw/keep_wear_capabilities.xml`) + `:core:wear-contract`(Pure JVM 17 `KST_ZONE` SSoT) 3모듈 구축(`2a49cea`), AGP `9.5.1` 업그레이드(`4a3af8b`), 스마일 트레이닝 `INTRO`/`COMPLETED` 제거 무중단 직행 및 Compose BOM `2026.09.00` 현대화(`2f63aec`), Android CLI `v1.1.16717390` + Studio `2026.2.2` 통합(`scripts/android-cli-check.sh`), 결정론적 문서 감사 린터(`scripts/agents/doc_audit.py`) 전환.
 
 세부 history 는 [docs/CHANGELOG.md](docs/CHANGELOG.md) 와 [docs/plans/logs/](docs/plans/logs/) 토픽 ledger 참조.
 

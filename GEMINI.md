@@ -8,7 +8,7 @@ Gemini는 프로젝트의 아키텍처, 코드 리뷰, UI 및 IDE 통합 개발�
 Gemini는 작업을 시작하기 전 반드시 다음 문서를 스캔하고 세션 기준 환경으로 삼아야 합니다.
 
 1. 전역 워크스테이션 규칙(`C:\Users\Administrator\.gemini\config\GEMINI.md` 및 `C:\Users\Administrator\.claude\rules\*.md`): 호스트 PC 사양, Windows + WSL2 Ubuntu(`wsl -d Ubuntu`) 하이브리드 툴체인, 동적 실측 우선 원칙(환경·버전 변경 가능성 상시 고려), 작업 방식 및 프롬프트 계약을 준수합니다.
-2. `CLAUDE.md`: 본 프로젝트의 코딩 컨벤션, 아키텍처 제약, 보안 규칙(특히 룰 1~13)의 단일 진실 공급원입니다.
+2. `CLAUDE.md`: 본 프로젝트의 코딩 컨벤션, 아키텍처 제약, 보안 규칙(룰 1~16)의 단일 진실 공급원입니다.
 3. `docs/ops/operations-snapshot.md`: 인프라, 버전 등 최신 운영 상태 파악을 위해 참고합니다.
 4. 기존 코드베이스에 정의된 스타일과 아키텍처를 위반하지 않아야 합니다.
 

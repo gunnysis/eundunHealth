@@ -198,8 +198,8 @@ curl -s https://repo1.maven.org/maven2/io/gitlab/arturbosch/detekt/detekt-gradle
 # 3) detekt 플러그인은 app에 적용하지 않고 CLI runtime + custom Detekt task 등록
 # 4) classpath는 debugCompileClasspath + configureJavaCompileTask + SDK bootClasspath 사용
 
-./gradlew :app:tasks --all -Pandroid.debug.obsoleteApi=true --warning-mode all
-./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleRelease
+./gradlew :app:help :wear:help "-Pandroid.debug.obsoleteApi=true" --warning-mode all
+./gradlew :core:wear-contract:detektMain :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleRelease :wear:detektDebug :wear:testDebugUnitTest :wear:assembleRelease
 ```
 
 2026-10-15 실측으로 legacy variant 및 Gradle 10 ReportingExtension 경고 0건,

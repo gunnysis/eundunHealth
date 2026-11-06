@@ -7,42 +7,27 @@
 
 | 위치 | 환경 | tracesSampleRate | DSN 상태 |
 |------|------|------------------|---------|
-| Android `EundunHealthApplication.kt` | DEBUG | 1.0 | `local.properties:SENTRY_DSN` 설정됨 |
+| Android `EundunHealthApplication.kt` | DEBUG | 1.0 | `local.properties:eundunhealth-app_SENTRY_DSN` 설정됨 |
 | Android `EundunHealthApplication.kt` | PROD | 0.2 | 동일 |
 | Backend `app/main.py` (lifespan) | development | 1.0 | `.env:SENTRY_DSN` 빈 값 → init skip |
-| Backend `app/main.py` (lifespan) | production | 0.2 | **Container App env `SENTRY_DSN=""` (비활성)** |
+| Backend `app/main.py` (lifespan) | production | 0.2 | **활성 (`kv-eundunhealth` Key Vault `sentry-dsn-backend` 참조)** |
 
 프로덕션 샘플링 0.2 = 트랜잭션 80% 절감. Sentry 무료 할당량(10K events/month) 안에서 안정 운영.
 
-### 1.1 백엔드 DSN 활성화 절차 (선택)
+### 1.1 백엔드 DSN Key Vault 연동 절차 (완료 — 2026-06-09 Key Vault IaC 전환)
 
-마이그레이션 직후 백엔드 Sentry는 의도적으로 비활성 — Android와 같은 프로젝트로 보내면 이벤트가 섞임. 별도 프로젝트로 분리 권장:
+백엔드 Sentry는 `gunnys/eundunhealth-backend` 독립 프로젝트로 분리되어 있으며, DSN은 Azure Key Vault(`kv-eundunhealth`)의 `sentry-dsn-backend` 시크릿에서 Managed Identity(`identity: system`)로 주입된다(`backend/containerapp.yaml`).
 
-1. **Sentry 대시보드에서 신규 프로젝트 생성**
-   - Sentry → Projects → Create Project
-   - Platform: **Python (FastAPI)** 선택
-   - Project name: `eundunhealth-backend`
-   - 생성 직후 표시되는 DSN을 복사 (`https://<key>@<org>.ingest.sentry.io/<project>`)
-
-2. **Container App secret으로 등록**
+1. **Key Vault 시크릿 갱신 시**
    ```bash
-   DSN="<위에서 복사한 DSN>"
-   az containerapp secret set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
-     --secrets "sentry-dsn-backend=${DSN}"
+   az keyvault secret set --vault-name kv-eundunhealth --name sentry-dsn-backend --value "<DSN>"
    ```
+   > 즉시 반영이 필요하면 `docs/ops/operations-snapshot.md §2` 의 버전 고정 후 리비전 재시작 절차를 따른다.
 
-3. **env var를 secretref로 전환**
-   ```bash
-   az containerapp update --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
-     --set-env-vars "SENTRY_DSN=secretref:sentry-dsn-backend"
-   ```
-
-4. **헬스체크 + Sentry 대시보드에서 release health 확인**
+2. **헬스체크 + Sentry 대시보드에서 release health 확인**
    ```bash
    curl -sf https://eundunhealth-api.livelyriver-782a792f.koreacentral.azurecontainerapps.io/health
    ```
-
-   첫 트랜잭션이 5~10초 안에 Sentry 대시보드에 표시되면 성공.
 
 ### 1.2 검증 — DSN 미설정 시 백엔드 동작
 
@@ -71,18 +56,21 @@ Premium SKU 업그레이드(~17,000원/월 이상)는 비용 부담이 있어, �
 
 별도 명령 실행 불필요 — `bash redeploy.sh` 호출 시 자동 동작.
 
-### 2.2 수동 점검 (분기별)
+### 2.2 정기 자동 정리 (`acr purge` ACR Task 2종) 및 수동 점검
+
+2026-09-01부터 매주 일요일 UTC 새벽에 실행되는 **ACR 스케줄 Task 2개**(`purge-eundunhealth-api`, `purge-eundunhealth-api-untagged`)가 최근 30일·최대 10개 태그만 남기고 미사용 manifest를 자동 정리한다(`operations-snapshot.md §3` 참조).
 
 ```bash
-# 누적된 태그 확인
+# 누적된 태그 및 정리 Task 실행 이력 확인
 az acr repository show-tags --name eundunhealthacr --repository eundunhealth-api --orderby time_desc -o tsv
+az acr task list-runs --registry eundunhealthacr -o table
 
-# 특정 태그 삭제 (예시) — 같은 manifest digest를 공유하는 다른 태그도 함께 사라지니 신중히
-az acr repository delete --name eundunhealthacr --image eundunhealth-api:<old-tag> --yes
+# 특정 태그만 제거 (룰 1 준수: az acr repository delete --image <tag> 절대 금지 — 공유 manifest 파괴 방지)
+az acr repository untag --name eundunhealthacr --image eundunhealth-api:<old-tag>
 
-# manifest 단위 삭제는 더 안전 (특정 digest만 정리)
-az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api
-az acr manifest delete --name eundunhealthacr --image eundunhealth-api@sha256:<digest> --yes
+# 태그 없는(untagged) manifest digest 확인 및 삭제
+az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api --query "[?tags==null].digest" -o tsv
+az acr repository delete --name eundunhealthacr --image eundunhealth-api@sha256:<untagged-digest> --yes
 ```
 
 > Premium SKU로 업그레이드한다면 다음 명령으로 자동화 가능:
@@ -115,6 +103,7 @@ az acr manifest delete --name eundunhealthacr --image eundunhealth-api@sha256:<d
 | Key Vault Standard | ~0원 (저빈도 read, 무료한도 내) |
 | Container Registry Basic | ~7,000원 |
 | PostgreSQL Flexible B1ms + 32GB | ~30,000원 |
+| Azure AI Foundry (`gpt-5.4-mini`, `GlobalStandard` 100K TPM) | 종량제 (~수백원, 유휴 비용 $0) |
 | Azure Monitor Alerts (metric 4개) | ~550-700원 |
 | **합계** | **~43,700원** |
 
@@ -146,44 +135,39 @@ Monitor Alert 비용 = metric alert
 
 > **요지**: `az acr repository delete --image <tag>`는 **태그가 가리키는 manifest 자체를 삭제**한다. 같은 manifest를 가리키는 모든 태그가 함께 사라진다. 옛 이미지를 untag만 하려면 반드시 `az acr repository untag`.
 
-### 6.2 Container App secret 교체 (참고: INC-15)
+### 6.2 Container App secret 교체 (참고: INC-15, Key Vault IaC)
+
+모든 운영 시크릿(8종)은 Azure Key Vault(`kv-eundunhealth`)를 단일 출처로 참조한다(`identity: system` / reaper Job은 `id-eundunhealth-reaper`). 직접 값을 Container App에 넣지 않는다.
 
 ```bash
-# 1) secret 등록 (값을 shell history에 안 남기려면 환경변수 경유)
-NEW_VALUE=$(cat /dev/stdin)   # 또는 password manager에서 가져와 NEW_VALUE 변수에 담기
-az containerapp secret set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
-  --secrets "<secret-name>=${NEW_VALUE}"
+# 1) Key Vault에 새 시크릿 버전 등록
+az keyvault secret set --vault-name kv-eundunhealth --name <secret-name> --value "$NEW_VALUE"
 
-# 2) env var를 secretref로 연결 (잊으면 빈 문자열로 작동)
-az containerapp update --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
-  --set-env-vars "<ENV_NAME>=secretref:<secret-name>"
-
-# 3) 새 revision이 적용됐는지 확인
-az containerapp show --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
-  --query "{revision: properties.latestRevisionName, env: properties.template.containers[0].env[?name=='<ENV_NAME>']}"
-
-# 4) /health 헬스체크
-curl -sf https://<FQDN>/health
+# 2) 즉시 반영이 필요한 경우(30분 캐시 우회): 버전 ID를 포함한 keyvaultref로 갱신 후 리비전 재시작
+# 상세 절차는 docs/ops/operations-snapshot.md §2 "시크릿 값을 바꿨을 때" 참조
 ```
 
-### 6.3 프로덕션 DB 마이그레이션 / 데이터 정리 (참고: INC-06, INC-14)
+### 6.3 프로덕션 DB 스키마 부트스트랩 / 하드 리셋 (참고: INC-06, INC-14, v0.7.0 PG18 전환)
+
+> **2026-10-29(v0.7.0) 변경**: 과거 Alembic 점진 마이그레이션(`alembic upgrade head`)은 완전 폐기되고, PostgreSQL 18.4 **Drop & Recreate 전용 파이프라인(`backend/sql/02_schema_create_all.sql`, `python -m app.schema_bootstrap`, `backend/scripts/hard_reset_db.py`)** 으로 일원화되었다. 운영 DB에서 파괴적 리셋을 수행할 때는 반드시 룰 5 및 사용자 사전 승인을 거친다.
 
 ```bash
 # 1) firewall 임시 허용
 MY_IP=$(curl -sf https://api.ipify.org)
+RULE_NAME="temp-$(date +%s)"
 az postgres flexible-server firewall-rule create \
   --resource-group rg-eundunhealth-prod-krc --server-name healthapp \
-  --name temp-$(date +%s) --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
+  --name "$RULE_NAME" --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
 
-# 2) 작업 (alembic / SQL)
+# 2) 작업 (멱등 스키마 검증 또는 승인된 하드 리셋)
 cd backend
 export DATABASE_URL="postgresql+asyncpg://<db-admin-user>:****@healthapp.postgres.database.azure.com:5432/postgres?ssl=require"
-.venv/Scripts/alembic upgrade head
+.venv/Scripts/python.exe -m app.schema_bootstrap
 
 # 3) 반드시 회수 (성공/실패 무관)
 az postgres flexible-server firewall-rule delete \
   --resource-group rg-eundunhealth-prod-krc --server-name healthapp \
-  --name temp-XXX --yes
+  --name "$RULE_NAME" --yes
 ```
 
 > **요지**: `az containerapp exec --command "..."`로 비대화형 명령 결과를 받기는 불안정(INC-06). 로컬 firewall 임시 허용 패턴이 정석.
@@ -201,23 +185,19 @@ az postgres flexible-server firewall-rule delete \
 - Sentry project slug (sentry-gradle plugin의 `projectName`)가 바뀌면 `local.properties:SENTRY_PROJECT_ANDROID=<new-slug>`로 override.
 - 새 APK/AAB를 빌드 → 단말 재설치해야 새 DSN 적용. 옛 빌드는 죽은 DSN으로 이벤트 발송 → 무시됨.
 
-### 6.6 backend.yml `secretref` 신규/변경 시 Container App secret 동기화 (참고: INC-18)
+### 6.6 `containerapp.yaml` / `reaper-job.yaml` `secretref` 신규/변경 시 Key Vault 동기화 (참고: INC-18, 룰 6)
 
-`.github/workflows/backend.yml`의 `Deploy to Container App` step은 `--set-env-vars`에서 `<ENV>=secretref:<secret-name>` 형태로 Container App에 미리 등록된 secret을 참조한다. **secretref만 추가하고 secret을 등록하지 않으면 deploy step이 `ContainerAppSecretRefNotFound`로 실패한다.**
+`.github/workflows/backend.yml`의 배포는 `backend/containerapp.yaml` 및 `backend/reaper-job.yaml`(`--yaml`)을 단일 출처로 사용한다. **YAML에 `secretref`만 추가하고 Key Vault(`kv-eundunhealth`) 및 YAML `secrets:` 섹션에 등록하지 않으면 배포가 실패한다.**
 
-backend.yml에 새 `secretref` 라인을 추가하는 PR은 반드시 한 단위로 다음 세 단계를 함께 처리한다:
+새 `secretref`를 추가하는 PR은 반드시 한 단위로 다음 네 곳을 함께 처리한다(룰 6):
 
-1. **backend.yml**에 `--set-env-vars`에 새 `<ENV>=secretref:<secret-name>` 추가
-2. **운영자가 Container App에 secret 등록** (PR 머지 *전*에):
+1. **Key Vault(`kv-eundunhealth`)에 시크릿 등록** (PR 머지 *전*에):
    ```bash
-   az containerapp secret set --name eundunhealth-api --resource-group rg-eundunhealth-prod-krc \
-     --secrets "<secret-name>=<value>"
+   az keyvault secret set --vault-name kv-eundunhealth --name <secret-name> --value "<value>"
    ```
-3. **`docs/ops/operations-snapshot.md` §2 Secrets 목록 갱신**
-
-PR 머지 후 첫 push에서 deploy job의 **"Verify required Container App secrets exist"** step(INC-18 재발 방지로 추가됨)이 누락된 secret을 fast-fail로 잡아낸다. 단, 이 step은 PR 단계에는 실행되지 않으니(deploy job 자체가 main push에서만 실행) PR 단계의 양쪽 동시화 책임은 reviewer가 진다.
-
-> **새 필수 secret을 추가했다면** `backend.yml`의 "Verify required Container App secrets exist" step의 `REQUIRED` 문자열에도 그 secret 이름을 추가해야 한다. 누락 시 사전 점검을 우회.
+2. **`backend/containerapp.yaml` (및 필요 시 `backend/reaper-job.yaml`)** 의 `secrets:`(`keyVaultUrl` + `identity`)와 `env:`(`secretRef`) 동시 추가
+3. **`.github/workflows/backend.yml`** 의 "Verify required Key Vault secrets exist" step `REQUIRED` 배열에 시크릿 이름 추가
+4. **`docs/ops/operations-snapshot.md` §2 Secrets 목록 갱신**
 
 ### 6.7 GitHub repo secret 만료 (참고: INC-17) — 2026-07-03 소멸
 

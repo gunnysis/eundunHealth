@@ -25,7 +25,7 @@
 | :--- | :--- | :---: | :--- |
 | **1. 모듈 구조 (§2.1)** | **대안 B: 3모듈 경량 계약 구조**<br>(`:app` + `:wear` + `:core:wear-contract` [Pure JVM]) | **Foundation 구현 완료**<br>([Plan](../plans/2026-11-06-wear-os-foundation-env-setup-plan.md)) | • Foundation에서는 `KST_ZONE`만 공유하고 생체 DTO/전송 경로는 런타임 계약 승인까지 보류 |
 | **2. 패키지 & 버전 (§2.2)** | • **동일 `applicationId`**: `com.gunnys.eundunhealth`<br>• **워치 `versionCode`**: 명시적 별도 SSoT (`wearVersionCode=10001`) | **Foundation 구현 완료**<br>([Plan](../plans/2026-11-06-wear-os-foundation-env-setup-plan.md)) | • 모든 폼팩터에서 고유한 코드와 Wear 내부 단조성을 별도로 검증하고 휴리스틱을 배제 |
-| **3. 생체 수집 API (§4)** | **`PassiveMonitoringClient` 단독 주력 채택**<br>(`PassiveListenerService` + 재부팅 복구 `BroadcastReceiver`) | **본 제안서 관리**<br>(Phase 1 런타임) | • 사용자가 매번 워치 앱을 열지 않아도 **착용만으로 24/7 저전력(보조 프로세서 배칭) 일상 심박·활동량·수면/휴식 상태 자동 수집** |
+| **3. 생체·증상 수집 API (§4)** | **`PassiveMonitoringClient` 단독 주력 채택**<br>(`PassiveListenerService` + 재부팅 복구 `BroadcastReceiver`) | **본 제안서 관리**<br>(Phase 1 런타임) | • 사용자가 매번 워치 앱을 열지 않아도 **착용만으로 24/7 저전력(보조 프로세서 배칭) 마음 상태(스트레스·공황·기타 증상 신호 포착) 및 일상 심박·활동량·수면/휴식 상태 자동 수집** |
 | **4. 기기 차이 대응 (§3.2)** | **Google Wear OS 표준 단일 구현체 + 런타임 Capability 탐지** | **본 제안서 관리**<br>(Phase 1 런타임) | • Pixel Watch와 Xiaomi Watch 5 모두 동일한 `HealthServicesClient` HAL 사용, `PassiveMonitoringCapabilities`로 동적 분기 |
 | **5. 기기 간 통신 (§5)** | • **워치→폰**: `ChannelClient`(배치 주력) + `MessageClient`(제어/ACK)<br>• **보조 이력**: 스마트폰 `Health Connect` | **본 제안서 관리**<br>(Phase 2~3) | • `PassiveMonitoringClient`의 배치 전달 특성에 맞춰 워치 Room DB(`PENDING`) 선저장 후 폰 수신 ACK 확인 시 `SYNCED` 전이 |
 | **6. 전사 리팩토링 (§1.2)** | **`:app`·`Build/CI`·`Backend` 6대 영역 구조적 리팩토링** | **부분 완료**<br>(①·⑥ [Plan 완료](../plans/2026-11-06-wear-os-foundation-env-setup-plan.md) / ②~⑤ 본 문서) | • 환경·상수·CI 리팩토링(①·⑥)은 선행 Plan에서 완료했고, 런타임 DB·워커·허브 UI 리팩토링(②~⑤)은 Phase 2~3에서 수행 |
@@ -55,8 +55,8 @@ flowchart LR
 
     subgraph Cloud["☁️ Azure Cloud (rg-eundunhealth-prod-krc)"]
         API["Container Apps (eundunhealth-api)"] --> PG[("Azure PostgreSQL 18.4<br/>(uuidv7 + zstd 시계열 요약)")]
-        JOB["ACA Job (eundunhealth-reaper)"] -.->|"고아 정리 & 시계열 롤업"| PG
-        API <-->|"생체 요약 컨텍스트"| AIF["Azure AI Foundry (gpt-5.4-mini)"]
+        JOB["ACA Job (eundunhealth-reaper)"] -.->|"고아 계정 정리 전용 (분석 분리)"| PG
+        API -.-|"기본 비연결 (Gate A5 대기)"| AIF["Azure AI Foundry (gpt-5.4-mini)"]
     end
 
     Watch -.-> Contract

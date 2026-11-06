@@ -15,6 +15,8 @@ class MainActivity : ComponentActivity() {
                 versionName = BuildConfig.VERSION_NAME,
                 wearVersionCode = BuildConfig.VERSION_CODE,
                 runtimeSdkInt = Build.VERSION.SDK_INT,
+                minSdkInt = applicationInfo.minSdkVersion,
+                targetSdkInt = applicationInfo.targetSdkVersion,
             )
         setContent {
             EundunWearTheme {

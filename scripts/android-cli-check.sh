@@ -131,8 +131,14 @@ cmd_inspect() {
 
 cmd_previews() {
     local do_render=0
-    local target_file="app/src/main/java/com/gunnys/eundunhealth/ui/components/EmptyContent.kt"
-    local target_composable="EmptyContentPreview"
+    local module_target="app"
+    local target_file=""
+    local target_composable=""
+
+    if [ "${1:-}" = "app" ] || [ "${1:-}" = "wear" ]; then
+        module_target="$1"
+        shift
+    fi
 
     if [ "${1:-}" = "--render" ]; then
         do_render=1
@@ -145,6 +151,18 @@ cmd_previews() {
         fi
     fi
 
+    if [ -z "$target_file" ]; then
+        if [ "$module_target" = "wear" ]; then
+            target_file="wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt"
+            target_composable="${target_composable:-WearEnvironmentStatusScreenPreview}"
+        else
+            target_file="app/src/main/java/com/gunnys/eundunhealth/ui/components/EmptyContent.kt"
+            target_composable="${target_composable:-EmptyContentPreview}"
+        fi
+    elif [ -z "$target_composable" ]; then
+        target_composable="WearEnvironmentStatusScreenPreview"
+    fi
+
     if [ "$do_render" -eq 0 ]; then
         if [ -f "$REPO_ROOT/scripts/ensure-java.sh" ]; then
             # shellcheck source=scripts/ensure-java.sh
@@ -152,7 +170,6 @@ cmd_previews() {
             ensure_java
         fi
 
-        local module_target="${1:-app}"
         echo "==> [Compose @Preview Inventory (gradle://.?:${module_target}@debug)]"
         local tmp_preview
         tmp_preview="$(mktemp)"

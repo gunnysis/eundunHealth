@@ -55,7 +55,7 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 | **이메일 주소** | ✅ | ❌ | Microsoft Entra External ID (저장됨) | 로그인 식별 |
 | **사용자 ID** | ✅ | ❌ | 백엔드 DB(Azure PostgreSQL) | 운동 기록 연결 |
 | **신체 활동(키/몸무게/체지방률/근육량/휴식일/기본 운동 환경)** | ✅ | ❌ | 백엔드 DB + 동의 후 AI 식단 생성 시 Azure AI Foundry | 앱 기능·개인 맞춤 목적. 식단 생성 직전 명시 동의, 전송 중 암호화, 삭제 요청 지원 |
-| **스마일 트레이닝 요약 기록(루틴/난이도/수행시간/반복횟수/기분점수)** | ✅ | ❌ | 백엔드 DB + 단말 내부 DB (`smile_training.db`) | **카메라 이미지·영상·생체 템플릿은 저장·전송하지 않음**(온디바이스 실시간 판정 후 즉시 폐기). 요약 수치만 저장, 단독 삭제 및 계정 삭제 지원 |
+| **스마일 트레이닝 요약 기록(수행시간/완료 반복횟수/수행시각)** | ✅ | ❌ | 백엔드 DB + 단말 내부 DB (`smile_training.db`) | **카메라 이미지·영상·생체 템플릿은 저장·전송하지 않음**(온디바이스 실시간 판정 후 즉시 폐기). 요약 수치만 저장, 단독 삭제 및 계정 삭제 지원 |
 | **건강·피트니스(Health Connect 읽기)** | ✅ | ❌ | **READ 권한 1개(`READ_EXERCISE` 운동 세션 단독)** **읽기 전용**(쓰기 없음). ⚠️ #106(v0.1.12)에서 체중·체지방 HC 읽기 제거(6→4), 2026-10-16 '오늘의 활동' 제거로 걸음·칼로리·심박수 회수(4→1) | 운동 세션→완료 날짜만 백엔드 전송(원본 세션 미저장). **신체 4지표(키·몸무게·체지방·골격근)는 HC 아닌 사용자 직접 입력**. Data safety 폼은 실제 권한(`READ_EXERCISE` 1종)과 정확히 일치해야 함(검수 가드). 상세 privacy-policy.md §1 |
 | **앱 충돌/성능 진단 (Sentry)** | ✅ | ❌ (3rd party 처리) | 익명 crash + transaction | 사용자 PII 자동 스크럽됨 |
 | **광고 ID / IDFA / 위치** | ❌ | ❌ | 미사용 | |
@@ -96,7 +96,9 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 
 > 과거 이 자리에 있던 인라인 정책 초안(2026-05-24)은 SSoT 와의 드리프트를 막기 위해 제거됨 — 2026-06-10. 본문은 항상 `docs/store/` 의 두 파일을 참조할 것. 계정 삭제 완전성(goals·user_profile_history 포함)은 `backend tests/test_account.py::test_delete_account_purges_all_user_data` 가 회귀 가드.
 
-### 4.1 App Links(이메일 확인 딥링크) — Play App Signing 키 등록 (✅ 2026-06-18 해소)
+### 4.1 App Links(이메일 확인 딥링크) — Play App Signing 키 등록 (📜 v0.1 초기 기록 — v0.2.0 Entra 전환으로 폐기)
+
+> **현행 (2026-09 v0.2.0~)**: Microsoft Entra External ID 브라우저 위임(`msauth://com.gunnys.eundunhealth/<SHA1-base64>`) 전환으로 Supabase 이메일 확인 App Links 및 `backend/app/routers/auth.py`(`/.well-known/assetlinks.json`)는 완전 제거되었다. 현행 Play App Signing 키 등록 대상은 Entra 앱 등록의 Android Redirect URI(`operations-snapshot.md §5-A`)다. 아래 본문은 v0.1 당시 설계·해소 기록으로 보존한다.
 
 이메일 확인/자동로그인 딥링크(App Links)는 **설치된 앱의 서명 인증서 SHA-256** 이 `/.well-known/assetlinks.json` 에 있어야 검증(autoVerify)된다. **AAB 는 Play App Signing 으로 Google 이 재서명**(opt-out 불가)하므로, **Play 로 배포(내부 테스트 트랙 포함)된 설치본의 인증서 = Play App Signing 키**이지 로컬 업로드 키가 아니다.
 
@@ -186,7 +188,7 @@ Play Store는 **Privacy Policy URL**이 필수이며, 계정 생성이 가능한
 - **Data safety**(§3 — #106 정합표) + **개인정보 URL + 계정삭제 URL**(§4)
 - 타겟 고객·콘텐츠, 광고 선언, 정부 앱 등 **앱 콘텐츠** 전 항목
 
-> **✅ 완료 — 2026-06-29 프로덕션 정식 출시(LIVE).** v0.1.18/32(2026-06-19 preflight, AAB 8.35MB·Sentry 매핑 `af1a233a`)로 출시·승인. 본 문서의 8단계는 완주됨 — 이후 릴리스는 §6 빌드 절차 + 원장 갱신(룰 13, `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=32`)만 반복하면 된다.
+> **✅ 완료 — 2026-06-29 프로덕션 정식 출시(LIVE).** v0.1.18/32(2026-06-19 preflight, AAB 8.35MB·Sentry 매핑 `af1a233a`)로 최초 출시·승인. 본 문서의 8단계는 완주됨 — 이후 릴리스는 §7 자동 업로드(`release.yml` 태그 푸시 → 프로덕션 업로드 + `play-upload-ledger.md` 자동 PR 생성, 현행 `LAST_UPLOADED_VERSION_CODE=44`) 경로로 수행한다.
 
 ---
 

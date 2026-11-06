@@ -4,6 +4,20 @@
 
 ## Recent (last 90 days)
 
+### 2026-11-06 — Wear OS 6 (API 36) 3모듈(`:app` + `:wear` + `:core:wear-contract`) Foundation · 원형 M3 진단 UI · 공급망/CI 가드 구축 및 환경설정 구현 설계(`PROP-06` / `PROP-06-A` 경계 통합) 완료 (commit `2a49cea`)
+
+- **Commit**: `2a49cea`
+- **Why**: `PROP-06`(워치 기반 마음 상태·스트레스·공황·증상 포착 및 생체 신호 수집 통합 아키텍처 제안) 및 `PROP-06-A`(Azure 백엔드 아키텍처 판단) 중 백엔드 API나 모바일 프로덕션 런타임 동작에 영향을 주지 않고 즉시 구축 가능한 **환경 설정·멀티모듈 스캐폴딩·테마 파운데이션·공급망 락·정적/동적 검증 인프라·Azure 환경 경계**를 선행 구축하여 후속 런타임 Phase 0~3의 기반을 마련해야 했다.
+- **What**:
+  - **3모듈 멀티모듈 스캐폴딩 (`settings.gradle.kts`, `:core:wear-contract`, `:wear`)**: 순수 JVM 17 공유 계약 모듈 `:core:wear-contract`(`WearTimeConstants.kt` `KST_ZONE = ZoneId.of("Asia/Seoul")` SSoT 통합)와 Wear OS 6 전용 모듈 `:wear`(`namespace = "com.gunnys.eundunhealth.wear"`, `applicationId = "com.gunnys.eundunhealth"`, `minSdk = 36`, `targetSdk = 37`, `wearVersionCode = 10001`)를 신설하고 `:app`의 `TimeConstants.kt`가 `:core:wear-contract`의 `KST_ZONE`을 위임 참조하도록 일원화.
+  - **Wear Compose Material 3 (`1.7.1`) 원형 디자인 시스템 & 환경 진단 화면**: OLED 순수 블랙(`#000000`) 배경 및 브랜드 에메랄드 민트(`#7CDA9C`, `#60BE82`) 기반 29개 컬러 토큰(`WearTheme.kt` `EundunWearColorScheme`), `WearEnvironmentSpec.kt` 런타임/타깃 SDK 실측 전달 및 `isRuntimeApiSupported` 판정, `AppScaffold` + `ScreenScaffold`(`!LocalScrollCaptureInProgress.current` 스크롤 인디케이터 가드) + `TransformingLazyColumn` + `SurfaceTransformation` + TalkBack `stateDescription` 기반 `WearEnvironmentStatusScreen` 및 `@Preview(device = WearDevices.LARGE_ROUND)` / `SMALL_ROUND` / `LargeFont(1.24f)` 3종 프리뷰 구현.
+  - **리소스 축소 방어 & Capability 양방향 선언**: `app/src/main/res/values/wear.xml`, `wear/src/main/res/values/wear.xml` 정적 Capability 배열 대칭 선언 및 R8 `isShrinkResources = true` 소거 방지용 `res/raw/keep_wear_capabilities.xml`(`tools:keep="@array/android_wear_capabilities"`) 적용.
+  - **공급망 락파일 & CI/로컬 가드 확장**: `gradle.lockfile`, `wear/gradle.lockfile`, `core/wear-contract/gradle.lockfile` 및 `gradle/verification-metadata.xml`(`aapt2-9.5.1-16666295-linux.jar` 포함) 동기화, `check-agp10-compat.sh`·`check-version-monotonic.sh`·`preflight-release.sh`·`android-cli-check.sh`·`.githooks/pre-commit`·`.github/workflows/android.yml`·`doc_audit.py` 3모듈 확장.
+  - **환경설정 구현 설계 고도화 (`PROP-06-A` Azure 환경 경계 통합)**: `docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md`에 기존 Azure Container Apps + PostgreSQL 18 재사용 환경 경계(`D9`, 신규 PaaS 0건)와 6대 근본 원인 트러블슈팅/재발 방지 가드(`T1~T6`), 사용자 게이트(`G0~G5`, `A0~A6`)를 통합.
+- **Outcome**: Spotless / 3모듈 Detekt(0건) / 3모듈 단위 테스트 266/266 PASS(`WearTimeConstantsTest`, `WearEnvironmentSpecTest`, `AgpBuildContractTest`, `ProguardKeepRulesTest` 포함) / `:app`·`:wear` R8 `assembleRelease` PASS / WSL2 Ubuntu Linux CI 패리티 검증 PASS / `doc_audit.py --strict` 드리프트 0건 통과.
+- **Files touched**: `settings.gradle.kts`, `version.properties`, `gradle/libs.versions.toml`, `gradle/verification-metadata.xml`, `gradle.lockfile`, `app/{build.gradle.kts,gradle.lockfile,src/main/res/values/wear.xml,src/main/res/raw/keep_wear_capabilities.xml}`, `core/wear-contract/**`, `wear/**`, `scripts/{check-agp10-compat,check-version-monotonic,preflight-release,android-cli-check}.sh`, `.githooks/pre-commit`, `.github/workflows/android.yml`, `scripts/agents/{doc_audit,test_doc_audit}.py`, `docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md`, `docs/proposals/2026-11-06-wear-os-integration-architecture.md`, `docs/proposals/2026-11-06-wear-os-azure-backend-architecture.md`
+- **설계 원문**: `docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md`
+
 ### 2026-11-06 — AGP(Android Gradle Plugin) 최신 정식 안정판 `9.5.1` 업그레이드 (룰 15 6단계 전수 검증 · 듀얼 플랫폼 `aapt2` 해시 동기화 · SSoT 문서 정합화)
 
 - **Why**: Google Maven 및 Android Studio 인덱스 기준 최신 정식 안정판 AGP `9.5.1`(`com.android.tools.build:gradle:9.5.1`, `aapt2:9.5.1-16666295`)이 릴리스됨에 따라 룰 15(AGP 아키텍처·호환성 매트릭스 및 업그레이드 6단계 거버넌스)에 의거해 빌드 툴체인과 공급망 해시 락을 최신 안정판으로 동기화해야 했다.

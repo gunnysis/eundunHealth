@@ -1,6 +1,6 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
-**문서 버전:** v3.8 (2026-10-29 — v0.7.2 진행·프로필 허브 비주얼 대시보드 개편 & AI 식단 `gpt-5.4-mini` 전환 · v0.7.1 콜드 스타트 크래시 핫픽스 · v0.7.0 스마일 트레이닝 v2 단일 표준 규격 컷오버 · PostgreSQL 18 스키마 하드 리셋 반영)
+**문서 버전:** v3.9 (2026-11-06 — v0.7.3 Strict Mandatory Update · 스마일 트레이닝 INTRO/COMPLETED 제거 무중단 직행 · Wear OS 6 3모듈 Foundation & PROP-06 반영 · v0.7.2 비주얼 대시보드 · v0.7.1 콜드 스타트 핫픽스 · v0.7.0 스마일 v2 & PG 18 반영)
 **제품 버전:** v0.7.3 (versionCode 44) — 앱 업데이트 감지 및 강제 안내 시스템 고도화(`Strict Mandatory Update`: Google Play In-App Updates `2.1.0` + `ON_START` 포그라운드 재검증 + 버전 SSoT 자동화, `minimumSupportedVersionCode = 44`), 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편, 체성분 직접 입력 0.1 정밀도 보존, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (100K TPM) 전환, 콜드 스타트 크래시(`EUNDUNHEALTH-H`) 핫픽스 및 5계층 심층 방어·AGP 거버넌스 적용, 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`).
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
@@ -152,7 +152,7 @@
 
 ### 2.7. 테마 설정
 
-- SYSTEM / DARK / LIGHT 3단계 순환 토글
+- 프로필 탭(`ProfileHubScreen`) 내 인라인 **1-Tap 3단 세그먼트 버튼 (`자동(SYSTEM) · 라이트(LIGHT) · 다크(DARK)`, `ThemeModeSegmentedRow`)**으로 즉시 전환
 - 앱 재시작 시 설정 유지 (DataStore)
 - Material3 Dynamic Color 지원 (Android 12+)
 
@@ -172,14 +172,14 @@
 - 결과는 참고용 비의료 정보이며 알레르기·질환이 있는 사용자는 전문가 확인 안내를 받는다.
 - `MEAL_AI_ENABLED`는 운영 중 즉시 생성을 중단할 수 있는 kill switch다.
 
-### 2.9. 온디바이스 스마일 트레이닝 v2 (v0.5.0 / v2)
+### 2.9. 온디바이스 스마일 트레이닝 v2 (v0.5.0 / v2 / 2026-11-06 무중단 직행)
 
 ```
 진입 경로 4종 (오늘 탭 상단 퀵 칩 / 스마트 코칭 카드 / 운동 가이드 완료 화면 / 진행 탭 최상단)
-  → 루트 모달(SmileTrainingScreen) 진입 (옵션 선택 없는 단일 표준 규격: 2초 미소 유지 × 3회 반복)
+  → 루트 모달(SmileTrainingScreen) 진입 (중간 인트로 대기 화면 제거, 단일 표준 규격: 2초 미소 유지 × 3회 반복)
   → 카메라 권한 확인 및 Google Play 서비스 ML Kit 얼굴 검출 모듈 준비
-  → 전면 카메라 미러 뷰파인더 + 1.0초 얼굴 정렬 시 자동 시작 + 실시간 미소 유지 코칭 (사진·영상 저장/전송 없음)
-  → 3회 반복 달성 → 설문 없이 즉시 축하 화면(COMPLETED) 전환 및 로컬 Room 저장 & WorkManager 서버 동기화
+  → 전면 카메라 미러 뷰파인더(READY) + 1.0초 얼굴 정렬 시 자동 시작(ACTIVE) + 실시간 미소 유지 코칭 (사진·영상 저장/전송 없음)
+  → 3회 반복 달성 → 완료 정적 화면이나 설문 없이 NonCancellable 로컬 Room 저장 & WorkManager 동기화 예약 직후 이전 화면으로 자동 복귀(NavigateBack)
 ```
 
 - 카메라 프레임·얼굴 랜드마크·확률값은 기기 메모리 안에서만 일시 처리 후 즉시 폐기(`imageProxy.close()`)하며 어디에도 저장·전송하지 않는다.
@@ -393,7 +393,7 @@ Splash
 | 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
 | 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
 
-### v0.2.0 ~ v0.7.2에서 추가 완료 (2026-09 ~ 2026-10)
+### v0.2.0 ~ v0.7.3+에서 추가 완료 (2026-09 ~ 2026-11)
 
 | 영역 | 도입 버전 | 비고 |
 |------|----------|------|
@@ -404,10 +404,12 @@ Splash
 | 적응형 메뉴트리(`오늘·식단·진행·프로필`) & Health Connect 투명성 | v0.4.0 | `MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`, multiple back stack |
 | 온디바이스 스마일 트레이닝(Smile Training v2) & 오프라인 우선 동기화 | v0.5.0 / v2 | CameraX 1.6.2 + ML Kit 얼굴 검출, 단일 표준 규격(2초×3회), `SmileTrainingDatabase` v2 + `SmileSyncWorker`, `/v2/smile-training/*` 4개 API, `smile_training_sessions` 테이블 |
 | 적응형 주간 운동 계획 v2 (`헬스장`/`홈트레이닝` 모드 & 다중 휴식 요일 `restDays`) | v0.6.0 (2026-10-27) | `/v2/weekly-plan` 7개 API, `PUT /v2/profile/default-workout-plan-mode`, `GET /app-compatibility`, `restDays` 1~6일 다중 선택(대근육 우선순위 큐 라운드로빈), 내장 18종 홈트레이닝 생성기 |
-| UI/UX 전면 리뉴얼 및 브랜드 시스템 (`PROP-05`) | v0.6.1 (2026-10-28) | Modern Forest & Mint 36슬롯 + Pretendard Variable 가변 폰트, `TodayHeroCard`, 단계별 운동 가이드, 12개 UDF ViewModel |
+| UI/UX 전면 리뉴얼 및 브랜드 시스템 (`PROP-05`) | v0.6.1 (2026-10-28) | Modern Forest & Mint 36슬롯 + Pretendard Variable 가변 폰트, `TodayHeroCard`, 단계별 운동 가이드, 14개 UDF ViewModel |
 | PostgreSQL 18 하드 리셋 & 스마일 트레이닝 v2 정본 통합 | v0.7.0 (2026-10-29) | Azure PostgreSQL 18.4 Flexible Server 마이그레이션, Zero-Legacy Drop & Recreate 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()` PK), 스마일 트레이닝 v2 단일 규격(2초×3회, 1초 자동 시작) 통합 |
 | 콜드 스타트 크래시 핫픽스 및 5계층 심층 방어 거버넌스 | v0.7.1 (2026-10-29) | Sentry 크래시(`EUNDUNHEALTH-H`) 해결: `DatabaseModule` 마이그레이션 충돌 해소, `DefaultLocalDataWiper` `dagger.Lazy` 지연 초기화, 룰 14·15 확립 |
 | 진행·프로필 허브 비주얼 대시보드 개편 & AI 식단 `gpt-5.4-mini` 전환 | v0.7.2 (2026-10-29) | `ProgressHubScreen`/`ProfileHubScreen` 비주얼 대시보드 및 중복 메뉴 제거, 체성분 직접 입력 `0.1` 정밀도 수정, Azure AI Foundry `gpt-5.4-mini` (`100K TPM`, OpenAI Strict JSON Schema) 적용 |
+| 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update`) | v0.7.3 (2026-10-29) | Google Play In-App Updates `2.1.0`(`PlayInAppUpdateChecker`) + 백엔드 `/app-compatibility` 이중 채널 강제 업데이트 감지, `ON_START` 포그라운드 재검증, `ErrorContent` 스토어 이동 CTA, 버전 SSoT(`44`) 자동화 |
+| 스마일 트레이닝 무중단 직행(`INTRO`/`COMPLETED` 제거) & Wear OS 6 3모듈 Foundation | 2026-11-06 | 스마일 트레이닝 `READY -> ACTIVE -> NavigateBack` 직행 및 Compose BOM `2026.09.00` 현대화, `:app` + `:wear`(`minSdk=36`, Wear Compose M3 `1.7.1` `WearEnvironmentStatusScreen`) + `:core:wear-contract`(Pure JVM 17) Foundation 구축 |
 
 ### 향후 확장 후보 (Product Proposals)
 
@@ -416,10 +418,11 @@ Splash
 | 제안 ID | 기능명 | 목표 버전 | 설명 | 상세 기획 |
 |:---:|---|:---:|---|:---:|
 | **PROP-01** | **휴식일 자유 다중 지정 (Flexible Multi-Rest Days)** | `v0.6.0` (구현 완료) | 주 1~6일 자유로운 휴식일 멀티 선택 및 $N$일 기준 동적 주간 완료율 | [plans/logs/android.md](plans/logs/android.md) |
-| **PROP-02** | 식단 섭취 체크 및 영양 리포트 | `v0.7.0+` | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 | [proposals/README.md](proposals/README.md) |
-| **PROP-03** | 맞춤 추천 고도화 (점진적 과부하) | `v0.7.0+` | 운동 이력 기반 AI 운동 루틴 및 중량/볼륨 추천 | [proposals/README.md](proposals/README.md) |
+| **PROP-02** | 식단 섭취 체크 및 영양 리포트 | `v0.8.0+` | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 | [proposals/README.md](proposals/README.md) |
+| **PROP-03** | 맞춤 추천 고도화 (점진적 과부하) | `v0.8.0+` | 운동 이력 기반 AI 운동 루틴 및 중량/볼륨 추천 | [proposals/README.md](proposals/README.md) |
 | **PROP-04** | ~~적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)~~ | 기각 | 실제 운동 일수($N$)에 적응하는 전신/2분할/3분할 매트릭스 처방 (Deferred/Rejected) | [rejections/2026-10-27-adaptive-split-engine.md](proposals/rejections/2026-10-27-adaptive-split-engine.md) |
 | **PROP-05** | **UI/UX 개선 종합 기획** | `v0.6.1` (구현 완료) | 브랜드·디자인 기반, 오늘 탭 Today Hero, 운동 가이드 모드, 진행·식단·프로필 허브, 온보딩·첫 경험 개선 | [plans/logs/android.md](plans/logs/android.md) |
+| **PROP-06** | **Google Wear OS (API 36) 통합 아키텍처 (마음·스트레스·공황·증상 포착 & `PassiveMonitoring` · 3모듈 경량 계약)** | `v0.8.0+` (Foundation 완료) | `:app`/`:wear`/`:core:wear-contract` 3모듈 Foundation 환경 구축 완료(`2a49cea`); `PassiveMonitoringClient` 기반 마음·생체 신호 수집 + Wearable Data Layer 동기화 및 기존 Azure Container Apps/PG18 확장(`Phase 0~3` 실기기 게이트 대기) | [2026-11-06-wear-os-integration-architecture.md](proposals/2026-11-06-wear-os-integration-architecture.md) · [2026-11-06-wear-os-azure-backend-architecture.md](proposals/2026-11-06-wear-os-azure-backend-architecture.md) · [Foundation Plan](plans/2026-11-06-wear-os-foundation-env-setup-plan.md) |
 | - | 사용자 정의 루틴 | 백로그 | 자동 생성된 plan을 사용자가 직접 편집 | - |
 | - | 추가 배지 / 시즌 챌린지 | 백로그 | 시즌별 한정 배지, 친구 간 챌린지 | - |
 | - | 소셜 기능 | 백로그 | 친구 추가, 운동 현황 공유 | - |

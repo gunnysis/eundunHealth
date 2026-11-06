@@ -8,9 +8,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalScrollCaptureInProgress
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -22,6 +24,7 @@ import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.ListHeaderDefaults
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.ScrollIndicator
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TitleCard
@@ -36,16 +39,28 @@ fun WearEnvironmentStatusScreen(
     spec: WearEnvironmentSpec,
     modifier: Modifier = Modifier,
     columnState: TransformingLazyColumnState = rememberTransformingLazyColumnState(),
+    initialEnvExpanded: Boolean = false,
+    initialStatusExpanded: Boolean = false,
 ) {
     val transformationSpec = rememberTransformationSpec()
-    var isEnvExpanded by rememberSaveable { mutableStateOf(false) }
-    var isStatusExpanded by rememberSaveable { mutableStateOf(false) }
+    var isEnvExpanded by rememberSaveable(initialEnvExpanded) { mutableStateOf(initialEnvExpanded) }
+    var isStatusExpanded by rememberSaveable(initialStatusExpanded) { mutableStateOf(initialStatusExpanded) }
 
     val expandLabel = stringResource(R.string.wear_diag_action_expand)
     val collapseLabel = stringResource(R.string.wear_diag_action_collapse)
+    val expandedStateDesc = stringResource(R.string.wear_diag_state_expanded)
+    val collapsedStateDesc = stringResource(R.string.wear_diag_state_collapsed)
+    val scrollCaptureInProgress = LocalScrollCaptureInProgress.current
 
     AppScaffold(modifier = modifier) {
-        ScreenScaffold(scrollState = columnState) { contentPadding ->
+        ScreenScaffold(
+            scrollState = columnState,
+            scrollIndicator = {
+                if (!scrollCaptureInProgress) {
+                    ScrollIndicator(state = columnState)
+                }
+            },
+        ) { contentPadding ->
             TransformingLazyColumn(
                 state = columnState,
                 contentPadding = contentPadding,
@@ -71,6 +86,7 @@ fun WearEnvironmentStatusScreen(
 
                 item(key = "env_card") {
                     val envActionLabel = if (isEnvExpanded) collapseLabel else expandLabel
+                    val envStateDesc = if (isEnvExpanded) expandedStateDesc else collapsedStateDesc
 
                     TitleCard(
                         onClick = { isEnvExpanded = !isEnvExpanded },
@@ -105,7 +121,8 @@ fun WearEnvironmentStatusScreen(
                             .minimumVerticalContentPadding(
                                 CardDefaults.minimumVerticalListContentPadding,
                             )
-                            .semantics {
+                            .semantics(mergeDescendants = true) {
+                                stateDescription = envStateDesc
                                 onClick(label = envActionLabel, action = null)
                             },
                     ) {
@@ -117,13 +134,19 @@ fun WearEnvironmentStatusScreen(
                                 spec.wearVersionCode,
                                 spec.runtimeSdkInt,
                             ),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style =
+                            if (isEnvExpanded) {
+                                MaterialTheme.typography.bodyMedium
+                            } else {
+                                MaterialTheme.typography.bodyExtraSmall
+                            },
                         )
                     }
                 }
 
                 item(key = "status_card") {
                     val statusActionLabel = if (isStatusExpanded) collapseLabel else expandLabel
+                    val statusStateDesc = if (isStatusExpanded) expandedStateDesc else collapsedStateDesc
 
                     TitleCard(
                         onClick = { isStatusExpanded = !isStatusExpanded },
@@ -144,7 +167,8 @@ fun WearEnvironmentStatusScreen(
                             .minimumVerticalContentPadding(
                                 CardDefaults.minimumVerticalListContentPadding,
                             )
-                            .semantics {
+                            .semantics(mergeDescendants = true) {
+                                stateDescription = statusStateDesc
                                 onClick(label = statusActionLabel, action = null)
                             },
                     ) {
@@ -155,7 +179,12 @@ fun WearEnvironmentStatusScreen(
                             } else {
                                 stringResource(R.string.wear_diag_status_summary)
                             },
-                            style = MaterialTheme.typography.bodyMedium,
+                            style =
+                            if (isStatusExpanded) {
+                                MaterialTheme.typography.bodyMedium
+                            } else {
+                                MaterialTheme.typography.bodySmall
+                            },
                         )
                     }
                 }

@@ -8,26 +8,27 @@ eundunHealth(은둔헬스) is a Korean health/fitness Android app with a **FastA
 
 > **Repository release:** `v0.7.3/44` (2026-10-29 — 앱 업데이트 감지 및 강제 안내 시스템 고도화 `Strict Mandatory Update`: Google Play In-App Updates `2.1.0` `IMMEDIATE` + 포그라운드 `ON_START` 30초 쿨다운 재검증 + `ErrorContent` 스토어 이동 CTA + `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44` SSoT 자동화; `release.yml` run `40868910274`, 원장 PR #226 `LAST_UPLOADED_VERSION_CODE=44`, `backend.yml` run `40868854537` revision `eundunhealth-api--0000069` / 이미지 `6357981`). 직전 `v0.7.2/43` (`release.yml` run `40847386065`, 원장 PR #223 `LAST_UPLOADED_VERSION_CODE=43`, `backend.yml` run `40838433732` revision `eundunhealth-api--0000068` / 이미지 `db8b4f8`).
 
-**Current state**: versionName `0.7.3` (versionCode `44`, 2026-10-29 — **앱 업데이트 감지 및 강제 안내 시스템 고도화 `Strict Mandatory Update`: Google Play In-App Updates `2.1.0` `IMMEDIATE` + 포그라운드 `ON_START` 30초 쿨다운 재검증 + `ErrorContent` 스토어 이동 CTA + `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44` SSoT 자동화**: Play production `completed`(100%) 업로드 run `40868910274` + 원장 PR #226 `LAST_UPLOADED_VERSION_CODE=44` · 백엔드 배포 run `40868854537` active revision `eundunhealth-api--0000069` / 이미지 `6357981`). 직전 `v0.7.2` (versionCode `43`, 2026-10-29 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 버그 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환 · PR Triage 거버넌스(룰 16): run `40847386065`, 원장 PR #223). 직전 v0.7.1 (versionCode `42`, 2026-10-29 — 콜드 스타트 크래시 핫픽스 `EUNDUNHEALTH-H`, Room 지연 초기화, 5계층 심층 방어 룰 14 & AGP 거버넌스 룰 15, 원장 PR #217). 직전 v0.7.0 (versionCode `41`, 2026-10-29 — 스마일 트레이닝 v2 단일 스펙 컷오버, PostgreSQL 18.4 Drop & Recreate 스키마 파이프라인 `02_schema_create_all.sql` `DEFAULT uuidv7()`, AGP 9.4.1, `minimumSupportedVersionCode = 41`, 원장 PR #215). 직전 v0.6.1 (versionCode `40`, 2026-10-28 — UI/UX 전면 리뉴얼 `PROP-05` Modern Forest & Mint 36슬롯 + Pretendard Variable, 원장 PR #211). 직전 v0.6.0 (versionCode `39`, 2026-10-27 — **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 풀스택 출시 & 온디바이스 스마일 트레이닝(Smile Training)**: Play production `completed`(100%) 업로드 run `40469947190` + 원장 커밋 `f9eeefc` · 백엔드 배포 run `40469877206` active revision `eundunhealth-api--0000065` / 이미지 `a0b6701` · 주간 운동 계획 `/v2/weekly-plan` 7개 API(`planMode = gym | home` 필수, 동일 주 재생성 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · 프로필 다중 휴식 요일 `restDays`(1~6일, 대근육 우선순위 큐 라운드로빈 배치) & 기본 운동 환경 `PUT /v2/profile/default-workout-plan-mode`(신체 계측 이력 미오염) · `GET /app-compatibility` & `Eundun-Client-Version-Code` 버전 가드(`minimumSupportedVersionCode = 39`, `PUT /profile` 포함) · alembic head `d7f4a2c91b10`(`weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode`, `user_profiles.rest_days` `INTEGER[]`, `data_reset_audits` 테이블) · Android `EundunDatabase` v3 & 내장 18종 무장비 홈트레이닝 생성기(`HomeWeeklyPlanGenerator`, `REPS`/`SECONDS` 단위) · CameraX 1.6.2 + ML Kit 얼굴 검출 미소 근육 운동 · 오프라인 우선 Room(`smile_training.db`) & WorkManager 동기화 + 원격 이력 복원(`refreshRemoteHistoryIfEmpty`) + 계정 삭제/v2 로컬 와이퍼(`LocalDataWiper`) · 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) + `/smile-training/sessions`·`/smile-training/statistics` 4개 엔드포인트 · 법적 고지 온디바이스 무저장·무전송 및 운동 환경 명시). 직전 v0.5.0 (versionCode `38`, 2026-10-26 — Play production `completed` 업로드 run `40274395812` + 원장 커밋 `cbd155f` · 백엔드 배포 run `40274391632` active revision `eundunhealth-api--0000063` / 이미지 `869407a`). 직전 v0.4.0 (versionCode `37`, 2026-10-17 — 메뉴트리 아키텍처 개편 & Play 프로덕션 업로드 `39026967924` / 원장 `48f57c7`). 직전 v0.3.1 (versionCode `36` — 프로덕션 배포 하드닝 & 고지 정합화: AI 식단 생성 시 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) 검증 · Play Store 10% 단계 출시(`status: inProgress`, `userFraction: 0.1`) · `backend-production` 환경 게이트 + `backend-rollback.yml` 롤백 워크플로 · Container App `verify_containerapp_deployment.py` 불변 조건 검증 + orphan reaper Job 이미지 동기화 · AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents` 전환, `check-agp10-compat.sh`) · ExerciseDB 추천 운동 46종 한국어 현지화(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백). PR #178·#181·#186·#188·#191). 직전 v0.3.0 (versionCode `35`, 2026-09-21 — **AI 맞춤 주간 식단 기능 출시**: Azure AI Foundry `DeepSeek-V3.2` 연동 · `POST /meals/generate` & `GET /meals/current` · `meal_plans`/`meal_plan_items` 테이블(alembic `718783053fcd`) + `user_profiles.gender`(alembic `0dda67f1638a`) · Android `MealPlanScreen`/`MealPlanViewModel`). 직전 v0.2.0 (versionCode `34`, 2026-09-02 — Supabase Auth → **Microsoft Entra External ID** 전환[브라우저 위임 인증]). 직전 v0.1.19/33 = Android CD 첫 실 e2e 릴리스: 태그 push → `release.yml` → Play 내부 트랙 자동 업로드 + 원장 자동 갱신[P4, PR #143] — **2026-07-03 실 업로드 성공·원장 자동 커밋 `32f0ebe` 실증**; 의존성 배치 #139 + release 서명 keystore 존재-조건부화 포함. 직전 v0.1.18/32 — 출시 재업로드: v0.1.17/31 이 Play "이미 사용된 버전 코드 31" 로 거부(INC-2026-06-19-28) → versionCode 32 재빌드 + versionCode 단조성 가드(`play-upload-ledger.md` 원장·`check-version-monotonic.sh`·룰 13). 직전 v0.1.17/31 공개 출시 전 전체 감사(브랜치 `fix/pre-release-audit`). 직전 v0.1.16/30 — 출시 후 심층 감사 개선(브랜치 `feature/deep-audit-improvements`): JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`+5s timeout) · `user_profile_history` 복합인덱스(alembic `b78b256c2b20`) · 계정삭제 orphan reaper(fail-safe) + **후속 PR #127**: orphan reaper Container Apps Job 프로비저닝(UAI·주간 cron `0 18 * * 0`·운영 런북 `docs/ops/azure-container-apps-jobs.md`). 직전 v0.1.15 = 감사 LOW 후속(PR #123). 직전 v0.1.14 출시 준비 종합(PR #122). 버전 SSoT = 루트 `version.properties`(앱) + `backend/app/__init__.py:__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3·v0.3.1·v0.4.0·v0.5.0·v0.6.0·v0.6.1·v0.7.0·v0.7.1·v0.7.2 spec all implemented. Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09 ~ 2026-10-29)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret 8개→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포 · active revision `eundunhealth-api--0000068` / 이미지 `db8b4f8`). Play Store: **프로덕션 정식 출시(LIVE)** — 프로덕션 = **v0.7.2/43**(2026-10-29 `release.yml` 태그 CD run `40847386065` 가 프로덕션 트랙에 **`completed`(100%)**로 업로드, 원장 자동 PR #223 `a89447a`). 직전 프로덕션 = v0.7.1/42(2026-10-29, 원장 PR #217) ← v0.7.0/41(2026-10-29, 원장 PR #215) ← v0.6.1/40(2026-10-28, 원장 PR #211) ← v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02, 원장 커밋 `45e4051`) ← v0.1.19/33(2026-07-03) ← 첫 출시 v0.1.18/32(2026-06-29). **출시 후 전제**: 프로덕션 사용자 데이터가 존재할 수 있음 — 룰 5(Auth 제공자 교체·무단 TRUNCATE 금지) 발효, 스키마 정본은 `backend/sql/02_schema_create_all.sql`(`python -m app.schema_bootstrap`). **저장소 public 전환(2026-07-02)**: 사전 보안감사 + 인프라 식별자 스크럽(PR #137 — `__SUBSCRIPTION_ID__` 런타임 주입·pre-commit GUID 가드·`backend/.dockerignore`) 후 전환, secret scanning·push protection·CodeQL 기본 설정 활성. CodeQL java-kotlin autobuild 가 clean checkout 에서 release variant 를 빌드하므로 **release 서명은 keystore 존재-조건부**(INC-2026-07-02-29, unsigned 폴백 + preflight 서명 fail-fast 가드). 출시 산출물 단일 위치 `app/build/outputs/bundle`(preflight·AS 마법사 동일 경로, stale `app/release/` 삭제). **RG 이관(2026-07-29)**: 운영 리소스 전체를 `apps` → `rg-eundunhealth-prod-krc` 로 이관 완결(상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry). Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
+**Current state**: versionName `0.7.3` (versionCode `44`, 2026-10-29 — **앱 업데이트 감지 및 강제 안내 시스템 고도화 `Strict Mandatory Update`: Google Play In-App Updates `2.1.0` `IMMEDIATE` + 포그라운드 `ON_START` 30초 쿨다운 재검증 + `ErrorContent` 스토어 이동 CTA + `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44` SSoT 자동화**: Play production `completed`(100%) 업로드 run `40868910274` + 원장 PR #226 `LAST_UPLOADED_VERSION_CODE=44` · 백엔드 배포 run `40868854537` active revision `eundunhealth-api--0000069` / 이미지 `6357981`). 직전 `v0.7.2` (versionCode `43`, 2026-10-29 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 버그 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환 · PR Triage 거버넌스(룰 16): run `40847386065`, 원장 PR #223). 직전 v0.7.1 (versionCode `42`, 2026-10-29 — 콜드 스타트 크래시 핫픽스 `EUNDUNHEALTH-H`, Room 지연 초기화, 5계층 심층 방어 룰 14 & AGP 거버넌스 룰 15, 원장 PR #217). 직전 v0.7.0 (versionCode `41`, 2026-10-29 — 스마일 트레이닝 v2 단일 스펙 컷오버, PostgreSQL 18.4 Drop & Recreate 스키마 파이프라인 `02_schema_create_all.sql` `DEFAULT uuidv7()`, AGP 9.4.1, `minimumSupportedVersionCode = 41`, 원장 PR #215). 직전 v0.6.1 (versionCode `40`, 2026-10-28 — UI/UX 전면 리뉴얼 `PROP-05` Modern Forest & Mint 36슬롯 + Pretendard Variable, 원장 PR #211). 직전 v0.6.0 (versionCode `39`, 2026-10-27 — **적응형 주간 운동 계획 v2(`헬스장`/`홈트레이닝`) & 휴식 요일 자유 다중 지정(`restDays` 1~6일, Zero-Legacy) 풀스택 출시 & 온디바이스 스마일 트레이닝(Smile Training)**: Play production `completed`(100%) 업로드 run `40469947190` + 원장 커밋 `f9eeefc` · 백엔드 배포 run `40469877206` active revision `eundunhealth-api--0000065` / 이미지 `a0b6701` · 주간 운동 계획 `/v2/weekly-plan` 7개 API(`planMode = gym | home` 필수, 동일 주 재생성 409 `weekly_plan_exists`, 손상 계획 `DELETE` 204) · 프로필 다중 휴식 요일 `restDays`(1~6일, 대근육 우선순위 큐 라운드로빈 배치) & 기본 운동 환경 `PUT /v2/profile/default-workout-plan-mode`(신체 계측 이력 미오염) · `GET /app-compatibility` & `Eundun-Client-Version-Code` 버전 가드(`minimumSupportedVersionCode = 39`, `PUT /profile` 포함) · alembic head `d7f4a2c91b10`(`weekly_plans.plan_mode`, `user_profiles.default_workout_plan_mode`, `user_profiles.rest_days` `INTEGER[]`, `data_reset_audits` 테이블) · Android `EundunDatabase` v3 & 내장 18종 무장비 홈트레이닝 생성기(`HomeWeeklyPlanGenerator`, `REPS`/`SECONDS` 단위) · CameraX 1.6.2 + ML Kit 얼굴 검출 미소 근육 운동 · 오프라인 우선 Room(`smile_training.db`) & WorkManager 동기화 + 원격 이력 복원(`refreshRemoteHistoryIfEmpty`) + 계정 삭제/v2 로컬 와이퍼(`LocalDataWiper`) · 백엔드 `smile_training_sessions` 테이블(alembic `a3869f575d6a`) + `/smile-training/sessions`·`/smile-training/statistics` 4개 엔드포인트 · 법적 고지 온디바이스 무저장·무전송 및 운동 환경 명시). 직전 v0.5.0 (versionCode `38`, 2026-10-26 — Play production `completed` 업로드 run `40274395812` + 원장 커밋 `cbd155f` · 백엔드 배포 run `40274391632` active revision `eundunhealth-api--0000063` / 이미지 `869407a`). 직전 v0.4.0 (versionCode `37`, 2026-10-17 — 메뉴트리 아키텍처 개편 & Play 프로덕션 업로드 `39026967924` / 원장 `48f57c7`). 직전 v0.3.1 (versionCode `36` — 프로덕션 배포 하드닝 & 고지 정합화: AI 식단 생성 시 명시적 동의 헤더(`X-AI-Data-Processing-Consent: true`) 검증 · Play Store 10% 단계 출시(`status: inProgress`, `userFraction: 0.1`) · `backend-production` 환경 게이트 + `backend-rollback.yml` 롤백 워크플로 · Container App `verify_containerapp_deployment.py` 불변 조건 검증 + orphan reaper Job 이미지 동기화 · AGP 10 대비 빌드 현대화(`org.jetbrains.kotlin.android` 제거, `detekt-cli` + `androidComponents` 전환, `check-agp10-compat.sh`) · ExerciseDB 추천 운동 46종 한국어 현지화(`korean_exercises.json` v2, SHA-256 지문 대조 + 영문 폴백). PR #178·#181·#186·#188·#191). 직전 v0.3.0 (versionCode `35`, 2026-09-21 — **AI 맞춤 주간 식단 기능 출시**: Azure AI Foundry `DeepSeek-V3.2` 연동 · `POST /meals/generate` & `GET /meals/current` · `meal_plans`/`meal_plan_items` 테이블(alembic `718783053fcd`) + `user_profiles.gender`(alembic `0dda67f1638a`) · Android `MealPlanScreen`/`MealPlanViewModel`). 직전 v0.2.0 (versionCode `34`, 2026-09-02 — Supabase Auth → **Microsoft Entra External ID** 전환[브라우저 위임 인증]). 직전 v0.1.19/33 = Android CD 첫 실 e2e 릴리스: 태그 push → `release.yml` → Play 내부 트랙 자동 업로드 + 원장 자동 갱신[P4, PR #143] — **2026-07-03 실 업로드 성공·원장 자동 커밋 `32f0ebe` 실증**; 의존성 배치 #139 + release 서명 keystore 존재-조건부화 포함. 직전 v0.1.18/32 — 출시 재업로드: v0.1.17/31 이 Play "이미 사용된 버전 코드 31" 로 거부(INC-2026-06-19-28) → versionCode 32 재빌드 + versionCode 단조성 가드(`play-upload-ledger.md` 원장·`check-version-monotonic.sh`·룰 13). 직전 v0.1.17/31 공개 출시 전 전체 감사(브랜치 `fix/pre-release-audit`). 직전 v0.1.16/30 — 출시 후 심층 감사 개선(브랜치 `feature/deep-audit-improvements`): JWKS 이벤트루프 블로킹 제거(`asyncio.to_thread`+5s timeout) · `user_profile_history` 복합인덱스(alembic `b78b256c2b20`) · 계정삭제 orphan reaper(fail-safe) + **후속 PR #127**: orphan reaper Container Apps Job 프로비저닝(UAI·주간 cron `0 18 * * 0`·운영 런북 `docs/ops/azure-container-apps-jobs.md`). 직전 v0.1.15 = 감사 LOW 후속(PR #123). 직전 v0.1.14 출시 준비 종합(PR #122). 버전 SSoT = 루트 `version.properties`(앱 `versionName`/`versionCode` 및 워치 `wearVersionCode=10001`) + `backend/app/__init__.py:__version__`(API `1.0.0`, 앱과 독립) — 정책 `docs/conventions/versioning.md`, bump `bash scripts/bump-version.sh`. v0.1·v0.2·v0.3·v0.3.1·v0.4.0·v0.5.0·v0.6.0·v0.6.1·v0.7.0·v0.7.1·v0.7.2·v0.7.3 spec all implemented (+ 2026-11-06 Wear OS 6 3-module `:app`/`:wear`/`:core:wear-contract` Foundation). Production cutover from Ktor → FastAPI completed. **백엔드 인프라(2026-06-09 ~ 2026-10-29)**: scale-to-zero cold start(측정 21.5s) 제거 = `min/max 1/3` warm baseline + **Key Vault full IaC**(secret 8개→KV 참조 · system MI pull/resolve · health probe 3종 startup/liveness=`/health`·readiness=`/health/ready` · `backend/containerapp.yaml` `--yaml` 배포 · active revision `eundunhealth-api--0000069` / 이미지 `6357981`). Play Store: **프로덕션 정식 출시(LIVE)** — 프로덕션 = **v0.7.3/44**(2026-10-29 `release.yml` 태그 CD run `40868910274` 가 프로덕션 트랙에 **`completed`(100%)**로 업로드, 원장 자동 PR #226 `2187ab1`). 직전 프로덕션 = v0.7.2/43(2026-10-29, 원장 PR #223 `a89447a`) ← v0.7.1/42(2026-10-29, 원장 PR #217) ← v0.7.0/41(2026-10-29, 원장 PR #215) ← v0.6.1/40(2026-10-28, 원장 PR #211) ← v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02, 원장 커밋 `45e4051`) ← v0.1.19/33(2026-07-03) ← 첫 출시 v0.1.18/32(2026-06-29). **출시 후 전제**: 프로덕션 사용자 데이터가 존재할 수 있음 — 룰 5(Auth 제공자 교체·무단 TRUNCATE 금지) 발효, 스키마 정본은 `backend/sql/02_schema_create_all.sql`(`python -m app.schema_bootstrap`). **저장소 public 전환(2026-07-02)**: 사전 보안감사 + 인프라 식별자 스크럽(PR #137 — `__SUBSCRIPTION_ID__` 런타임 주입·pre-commit GUID 가드·`backend/.dockerignore`) 후 전환, secret scanning·push protection·CodeQL 기본 설정 활성. CodeQL java-kotlin autobuild 가 clean checkout 에서 release variant 를 빌드하므로 **release 서명은 keystore 존재-조건부**(INC-2026-07-02-29, unsigned 폴백 + preflight 서명 fail-fast 가드). 출시 산출물 단일 위치 `app/build/outputs/bundle`(preflight·AS 마법사 동일 경로, stale `app/release/` 삭제). **RG 이관(2026-07-29)**: 운영 리소스 전체를 `apps` → `rg-eundunhealth-prod-krc` 로 이관 완결(상세: `docs/plans/logs/process-infra.md` 2026-07-29 entry). Detailed runtime snapshot: `docs/ops/operations-snapshot.md`.
 
 > Legacy Ktor backend source is archived under `D:\backup\dev\project\eundunHealth\`. Infrastructure rollback would require rebuilding from that archive (Ktor images were removed from ACR after FastAPI stabilized).
 
 ## Build & Run Commands
 
-### Android App (root project)
+### Android App & Wear OS Multi-Module (root project)
 ```bash
-./gradlew :app:assembleDebug           # Debug build
-./gradlew :app:assembleRelease         # Release APK (R8 + signing)
-./gradlew :app:bundleRelease           # Release AAB (Play Store)
-./gradlew :app:testDebugUnitTest       # Run all unit tests
+./gradlew :app:assembleDebug :wear:assembleDebug      # Debug build (:app + :wear)
+./gradlew :app:assembleRelease :wear:assembleRelease  # Release APK (R8 + signing)
+./gradlew :app:bundleRelease :wear:bundleRelease      # Release AAB (Play Store)
+./gradlew :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest  # Run all unit tests
 ./gradlew :app:testDebugUnitTest --tests "com.gunnys.eundunhealth.domain.usecase.SyncHealthDataUseCaseTest"
 
-# 코드 품질
-./gradlew :app:spotlessApply           # 자동 포맷 (ktlint)
-./gradlew :app:spotlessCheck           # 포맷 검증 (CI에서 사용)
-./gradlew :app:detektDebug             # 정적 분석 (detekt-cli + androidComponents 커스텀 태스크, baseline-debug.xml)
-./gradlew :app:detektBaselineDebug     # baseline 재생성
-bash scripts/check-agp10-compat.sh     # AGP 10 호환성 가드 (금지 속성/레거시 플러그인 차단)
+# 코드 품질 (3모듈)
+./gradlew spotlessApply                               # 자동 포맷 (ktlint, 전 모듈)
+./gradlew spotlessCheck                               # 포맷 검증 (CI에서 사용)
+./gradlew :core:wear-contract:detektMain :app:detektDebug :wear:detektDebug  # 정적 분석 (detekt-cli + androidComponents)
+./gradlew :app:detektBaselineDebug                    # baseline 재생성
+bash scripts/check-agp10-compat.sh                    # AGP 10 호환성 & 3모듈 아키텍처 가드
+bash scripts/android-cli-check.sh status              # Android CLI + Studio + AVD 통합 상태 확인
 
 # git pre-commit hook 활성화 (clone 직후 1회)
 git config core.hooksPath .githooks
@@ -82,7 +83,7 @@ bash C:/programming/docker/eundunhealth-api/redeploy.sh [tag]
 FastAPI uvicorn 이미지 빌드 → ACR `eundunhealthacr` → Container App `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central) 업데이트 → /health 헬스체크 → timestamp 태그 자동 정리(최근 5개만 보존). 환경변수 변경은 별도 `az containerapp update --set-env-vars` 또는 `secret set`. 자세한 절차는 `docs/ops/migration-runbook.md` 및 `docs/ops/predeployment-readiness.md`.
 
 **Android 출시 (자동 — Play 프로덕션 트랙 `completed` 100% 업로드)** — 태그 `v*` push 로 `release.yml` 이 preflight 전체 게이트(룰 2·13·Sentry 매핑) → 서명 AAB → Play **프로덕션 트랙** 업로드(`status: completed`) → `release-ledger/v<version>-<code>` 브랜치의 원장 PR 생성까지 수행한다. `main`에는 직접 push하지 않으며 사용자가 업로드 증거를 확인한 뒤 squash merge한다. environment `play-release`(required reviewer) 승인 게이트. 사전 검증: `gh workflow run release.yml`(dry_run 기본 true = 업로드 생략). 수동 업로드 폴백 시에도 별도 원장 PR이 필수다(룰 13).
-> 트랙은 2026-09-02 에 internal → production 으로 바뀌었고, 2026-10-16(v0.3.1/36)에서 10% 단계 출시를 거친 뒤 2026-10-17(v0.4.0/37), 2026-10-26(v0.5.0/38, run `40274395812`, 원장 커밋 `cbd155f`), 2026-10-27(v0.6.0/39, run `40469947190`, 원장 자동 커밋 `f9eeefc`) 및 2026-10-28(v0.6.1/40, run `40647597577`, 원장 자동 PR #211)에는 `status: completed`(100%)로 업로드된다. **태그는 반드시 고친 `release.yml` 이 포함된 커밋에 단다** — `push: tags` 는 태그 시점 워크플로 파일로 실행된다. 프로덕션은 이전 버전으로 롤백되지 않는다(halt rollout 또는 상위 versionCode 재업로드만 가능).
+> 트랙은 2026-09-02 에 internal → production 으로 바뀌었고, 2026-10-16(v0.3.1/36)에서 10% 단계 출시를 거친 뒤 2026-10-17(v0.4.0/37), 2026-10-26(v0.5.0/38, run `40274395812`, 원장 커밋 `cbd155f`), 2026-10-27(v0.6.0/39, run `40469947190`, 원장 자동 커밋 `f9eeefc`), 2026-10-28(v0.6.1/40, run `40647597577`, 원장 자동 PR #211) 및 2026-10-29(v0.7.0/41 PR #215 · v0.7.1/42 PR #217 · v0.7.2/43 PR #223 · v0.7.3/44, run `40868910274`, 원장 자동 PR #226)에는 `status: completed`(100%)로 업로드된다. **태그는 반드시 고친 `release.yml` 이 포함된 커밋에 단다** — `push: tags` 는 태그 시점 워크플로 파일로 실행된다. 프로덕션은 이전 버전으로 롤백되지 않는다(halt rollout 또는 상위 versionCode 재업로드만 가능).
 > **로컬 release APK 로는 로그인 검증 불가** — release 소스셋 `redirect_uri` 해시가 Play App Signing 키 기준이라 업로드 키 서명본은 MSAL 초기화가 실패한다(설계상 정상). 실기기 검증은 debug APK 또는 Play 설치본.
 
 **Azure 로그인 (CI)** — OIDC 연합(PR #141/#142, 2026-07-02)이 유일 경로: `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` secrets + federated credential `github-main`. 장수명 `AZURE_CREDENTIALS` 는 **2026-07-03 완전 제거됨**(GitHub secret + Entra 앱 비밀번호 — 만료 점검 불요). OIDC 장애 시 긴급 폴백만:
@@ -218,7 +219,7 @@ DELETE /account
 - **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.5.1** + **Coil 3.6.3** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
 - **Detekt 1.23.8 (`detekt-cli` + `androidComponents` 커스텀 태스크) + Spotless 8.10.4 + ktlint 1.5.0**
-- **Android 단위 테스트**: 242 `@Test` 케이스 (JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
+- **Android 단위 테스트**: 266 `@Test` 케이스 (`:app` 261 + `:wear` 3 + `:core:wear-contract` 2 합산, JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
 - Entra JWT algorithm: **RS256** — backend 는 OIDC discovery 로 얻은 `jwks_uri`/`issuer` 로 검증. **issuer 를 문자열로 조합하지 말 것** — 서브도메인이 tenantId 라 조합하면 전 API 401 이 되고 서명·audience 는 통과해 추적이 어렵다
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)
@@ -226,16 +227,16 @@ DELETE /account
 - pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
-- **Python 3.14**, FastAPI 0.161.0, Starlette 1.9.0, Uvicorn 0.54.0, SQLAlchemy 2.1.6 async + asyncpg 0.32.0 (PostgreSQL 18 네이티브 `DEFAULT uuidv7()` + Drop & Recreate 전용 스키마 파이프라인)
+- **Python 3.14**, FastAPI 0.162.0, Starlette 1.10.0, Uvicorn 0.54.0, SQLAlchemy 2.1.6 async + asyncpg 0.32.0 (PostgreSQL 18 네이티브 `DEFAULT uuidv7()` + Drop & Recreate 전용 스키마 파이프라인)
 - **API version `1.0.0`** — `backend/app/__init__.py:__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
 - **pydantic-settings 2.16.1**, **PyJWT[crypto] 2.15.1** (JWKS), **httpx 0.28.1**, **markdown 3.11.2**, **openai 3.37.0**
 - **Sentry SDK 2.73.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy 2.4.0 strict, ruff 0.17.2 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.1.1 — 146/146 PASS**. `requirements.in`/`requirements-dev.in`을 원본으로 하고 생성된 hash lock을 CI/Docker에서 `--require-hashes`로 설치한다.
+- mypy 2.4.0 strict, ruff 0.17.2 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.1.1 — 147/147 PASS**. `requirements.in`/`requirements-dev.in`을 원본으로 하고 생성된 hash lock을 CI/Docker에서 `--require-hashes`로 설치한다.
 - 정규 DB 스키마 SSoT: `backend/sql/02_schema_create_all.sql` (`01_cleanup_drop_all.sql` + `app/schema_bootstrap.py` + `scripts/hard_reset_db.py` + `scripts/seed_edge_cases.py` 100건 시더·11개 제약 조건 검증, 점진적 `ALTER TABLE`/Alembic 폐기)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 
 ### Infrastructure
-- **Container App** `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포. Active revision: `eundunhealth-api--0000068`, image `db8b4f8`)
+- **Container App** `eundunhealth-api` (RG `rg-eundunhealth-prod-krc`, Korea Central, **Min/Max 1/3 warm baseline** — cold start 제거. health probe 3종. IaC: `backend/containerapp.yaml` `--yaml` 배포. Active revision: `eundunhealth-api--0000069`, image `6357981`)
 - **Key Vault** `kv-eundunhealth` (RG `rg-eundunhealth-prod-krc`, Standard, **Azure RBAC**, 90d soft-delete + purge protection) — 백엔드 secret **8개**(KV 참조, 직접값 아님: `database-url`, `entra-tenant-id`, `entra-subdomain`, `entra-backend-client-id`, `entra-backend-client-secret`, `sentry-dsn-backend`, `deepseek-endpoint`, `deepseek-key`). Container App **system MI** = Secrets User(KV) + AcrPull(ACR), CI SP = Secrets User(KV). audit → Log Analytics `workspace-appsDOlM` (`kv-audit` 진단설정 — **2026-09-02 에 실제로 생성**했다)
 - **ACR** `eundunhealthacr` (Basic SKU — [retention 정책은 Premium 전용](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus). 정기 정리는 **`acr purge` 스케줄 ACR Task 2개**가 담당: `purge-eundunhealth-api`[일 01:00 UTC, 태그 `--ago 30d --keep 10`] + `purge-eundunhealth-api-untagged`[01:30, dangling 스윕]. 2026-09-01 도입 — 태그 56→14·매니페스트 68→13·용량 2.21→0.60 GiB. `redeploy.sh` 의 timestamp 5개 보존은 로컬 수동 경로 전용)
 - **Azure PostgreSQL** Flexible Server `healthapp` (PostgreSQL 18.4, B1ms, 32GB, Korea Central; 로컬/CI Docker `postgres:18-alpine` `18.6`). Firewall 기본 차단 + Container App IP만 허용 + `allow-azure-services`
@@ -246,7 +247,7 @@ DELETE /account
 
 ## 운영 안전 규칙 (Claude 작업 시 필독)
 
-지난 인시던트들의 root cause는 모두 `docs/ops/incident-log.md`에 기록됨. 다음 5개 룰은 그 결과로 만들어진 강제 가이드 — 어기면 운영 사고로 직결.
+지난 인시던트들의 root cause는 모두 `docs/ops/incident-log.md`에 기록됨. 다음 16개 룰(룰 1 ~ 룰 16)은 그 결과로 만들어진 강제 가이드 — 어기면 운영 사고로 직결.
 
 ### 룰 1 — ACR 정리는 `untag`만 사용 (INC-01)
 `az acr repository delete --image <repo>:<tag>`는 그 tag가 가리키는 **manifest 자체를 삭제**해서 같은 digest를 공유하는 `latest`·`fastapi-latest` 등이 함께 사라진다. 옛 timestamp 태그 정리는 반드시:
@@ -348,7 +349,7 @@ SDD (superpowers:subagent-driven-development) 의 spec reviewer / code quality r
 **예외**: SDD 외 일반 대화의 답변, code-explorer 의 발견 사항 등은 비대상 (별도 verify 룰).
 
 ### 룰 11 — ViewModel 은 UDF-Enhanced 패턴 준수 (2026-06-06 Phase 1-5 마이그레이션 후)
-12 ViewModel 전수를 UDF-Enhanced 패턴으로 마이그레이션 완료. 신규 VM 작성 · 기존 VM 수정 시 아래 5개 체크리스트 **모두** 만족.
+12 ViewModel 전수를 UDF-Enhanced 패턴으로 마이그레이션 완료(현행 `:app` 14 ViewModel 전수 적용). 신규 VM 작성 · 기존 VM 수정 시 아래 5개 체크리스트 **모두** 만족.
 
 **체크리스트** (새 ViewModel 작성 · 기존 ViewModel 수정 시):
 1. **단일 `_uiState` MutableStateFlow** — 화면의 모든 렌더 상태를 `data class XxxUiState(...)` 하나로 관리. 별도 `_error` / `_isLoading` StateFlow 금지 (허용 예외 아래 참조).
@@ -531,7 +532,7 @@ AGP 업그레이드는 단순 빌드 도구 버전 변경이 아니라 **R8 바�
 - `@docs/plans/README.md` — design+plan 페어 인덱스 (frontmatter 기반 자동 생성, status/PR/인시던트 추적 컬럼 포함)
 - `@docs/ops/operations-snapshot.md` — **현재 운영 상태 단일 출처**
 - `@docs/ops/predeployment-readiness.md` — **v0.3.1 배포 전·후 체크리스트 & 롤백 런북** (`backend-production` 환경 게이트, `verify_containerapp_deployment.py` 불변 조건, `backend-rollback.yml`, Play 10% 단계 출시 검증)
-- `@docs/ops/play-upload-ledger.md` — Play 업로드 versionCode 단조성 원장 SSoT (`LAST_UPLOADED_VERSION_CODE=39`)
+- `@docs/ops/play-upload-ledger.md` — Play 업로드 versionCode 단조성 원장 SSoT (`LAST_UPLOADED_VERSION_CODE=44`)
 - `@docs/ops/incident-log.md` — 인시던트 이력 + root cause + 재발 방지 패턴
 - `@docs/ops/migration-runbook.md` — Ktor → FastAPI 마이그레이션 절차 + 사후 정리
 - `@docs/ops/monitoring-and-cost.md` — Sentry/ACR/Budget + §6 Destructive 명령 안전 패턴
@@ -571,26 +572,27 @@ AGP 업그레이드는 단순 빌드 도구 버전 변경이 아니라 **R8 바�
 - `scripts/hooks/secretref-guard.sh` — git commit 시 backend.yml 신규 secretref 가 Container
   App 에 등록됐는지 자동 검증 (룰 6 1차 가드). PreToolUse hook 으로 자동 실행. fail-open.
 
-### 에이전트 스크립트 (`scripts/agents/`) — **WIP, 삭제 금지**
-> Claude Agent SDK 기반 헤드리스 자동화. errant artifact 로 오해해 삭제했다 복구한 이력 있음. 상세: `docs/plans/logs/process-infra.md` (2026-06-16 Agent SDK 적용 검토 entry).
+### 문서 일관성 감사 스크립트 (`scripts/agents/`) — **삭제 금지**
+> 외부 AI·유료 API·시크릿 의존성 없이 Python 3.12+ 표준 라이브러리(stdlib)만으로 동작하는 100% 결정론적 문서 감사 린터(2026-11-02 전환 완료). 상세: `scripts/agents/README.md` 및 `docs/plans/logs/process-infra.md`.
 
-- `scripts/agents/doc_audit.py` — 문서 드리프트 감사관. 2단계: (1) collector — `version.properties`·`backend/app/__init__.py`·alembic head·pytest 수 등 canonical SSoT 파싱(결정론적, SDK 불필요); (2) auditor — Claude Agent SDK로 문서 사본(CLAUDE.md/README/operations-snapshot/TRD/PRD/CHANGELOG)과 대조(read-only, `dontAsk`+`[Read,Grep,Glob]` → 파일 변경 불가). 설계 배경: INC-27(`bump-version.sh` blind-replace).
-- `scripts/agents/doc-audit.sh` — 로컬 wrapper (구독 인증 + 출력 포맷).
-- `scripts/agents/test_doc_audit.py` — collector/파서 단위테스트 (SDK·인증 불필요).
-- `scripts/agents/requirements.txt` — `claude-agent-sdk` (Python 3.10+).
+- `scripts/agents/doc_audit.py` — 결정론적 문서 드리프트 린터(0.05s, 비용 $0). (1) collector — `version.properties`·`backend/app/__init__.py`·`02_schema_create_all.sql`·라우터 엔드포인트·pytest 수 등 canonical SSoT 파싱; (2) deterministic linter — 6대 문서(`CLAUDE.md`, `README.md`, `docs/ops/operations-snapshot.md`, `docs/TRD.md`, `docs/PRD.md`, `docs/CHANGELOG.md`)의 버전·API 버전·엔드포인트 수·폐기 기술 잔존 여부를 정밀 대조(read-only). 설계 배경: INC-27(`bump-version.sh` blind-replace).
+- `scripts/agents/doc-audit.sh` — 로컬 실행 wrapper.
+- `scripts/agents/test_doc_audit.py` — collector/파서 및 린터 규칙 단위테스트 (49 passed).
+- `scripts/agents/requirements.txt` — 빈 파일(주석 전용; 외부 패키지 불필요).
 
 ```bash
-# 결정론적 사실 수집만 (SDK·인증 불필요)
+# 결정론적 사실 수집만 (JSON 출력)
 python scripts/agents/doc_audit.py --collect-only
 
-# 전체 감사 (collector → SDK auditor → 사람용 리포트)
+# 전체 문서 일관성 감사 (드리프트 발견 시 exit 2 하드 게이트)
+python scripts/agents/doc_audit.py --strict
 bash scripts/agents/doc-audit.sh
 
 # 단위 테스트
 backend/.venv/Scripts/python.exe -m pytest scripts/agents/test_doc_audit.py -q
 ```
 
-**CI**: `.github/workflows/doc-audit.yml` — 2 job. `collector-test`(시크릿 불필요·항상 실행) + `audit`(주간 cron 월 09:00 KST + `workflow_dispatch`, `CLAUDE_CODE_OAUTH_TOKEN` 또는 `ANTHROPIC_API_KEY` 미설정 시 GREEN 스킵). advisory — `--strict` 미지정이라 드리프트가 있어도 run 은 green(Step Summary + artifact 로만 리포트).
+**CI**: `.github/workflows/doc-audit.yml` — 단일 `doc-audit` job (시크릿 불필요, PR/push/주간 cron 월 09:00 KST + `workflow_dispatch`에서 15초 내 실행).
 
 ### Claude Code 슬래시 명령 (`.claude/commands/`)
 

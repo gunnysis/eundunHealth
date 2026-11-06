@@ -11,4 +11,7 @@ data class WearEnvironmentSpec(
     val minSdkInt: Int = 36,
     val targetSdkInt: Int = 37,
     val timeZoneId: String = KST_ZONE.id,
-)
+) {
+    val isRuntimeApiSupported: Boolean
+        get() = runtimeSdkInt >= minSdkInt
+}

@@ -1,6 +1,6 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-10-29 — v0.7.2/43 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환 · PR Triage 거버넌스(룰 16) 수립 (직전 v0.7.1/42 콜드 스타트 크래시 핫픽스 · 5계층 심층 방어 룰 14 & AGP 거버넌스 룰 15)**
+> 작성일: 2026-05-25 / 최근 갱신: **2026-11-06 — Wear OS 6 (API 36) 3모듈(`:app` + `:wear` + `:core:wear-contract`) Foundation(`2a49cea`) · 스마일 트레이닝 `INTRO`/`COMPLETED` 정적 단계 제거 무중단 직행(`2f63aec`) · AGP `9.5.1`(`4a3af8b`) · Android CLI `v1.1.16717390` + Android Studio `2026.2.2` 하이브리드 워크플로 · 결정론적 문서 감사기(`doc_audit.py`) · v0.7.3/44 Strict Mandatory Update 출시 완료**
 > 작성 기준: 태그 `v0.7.3`의 **v0.7.3/44**가 release workflow run `40868910274`로 Play production `completed`(100%) 업로드됐고, 원장 PR #226이 `LAST_UPLOADED_VERSION_CODE=44`를 기록한다. 백엔드는 run `40868854537`로 revision `eundunhealth-api--0000069`(이미지 `6357981`, digest `sha256:8be02b3bc8a8693fa2d60f53e9466277b37fc568781c750cbe918fc4ba16e00c`)에 배포 및 reaper Job 동기화 완료됐다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
@@ -15,7 +15,7 @@
 | Min SDK / Target SDK | 26 / 37 (`:app` 모바일) · 36 / 37 (`:wear` Wear OS 6+, `wearVersionCode=10001`, Wear Compose M3 `1.7.1`) |
 | Kotlin / AGP / Gradle | **2.4.21 / 9.5.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** (Wear Compose Material 3 / Foundation / Navigation **1.7.1**, Wear Tooling Preview **1.0.0**) |
-| 차트 | Vico 3.3.1 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
+| 차트 | Vico 3.1.0 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
 | 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.4** + ktlint 1.5.0 |
 | Android CLI / IDE 통합 | **`android-cli 1.1.16717390`** + **Android Studio `Rabbit 2 \| 2026.2.2`** (`scripts/ensure-android-cli.sh`, `scripts/android-cli-check.sh` 하이브리드 K2 파일 진단·듀얼 엔진 `@Preview`·APK R8 분석·`smoke-cold-start.sh` UI 트리/스크린샷 증적) |
@@ -23,14 +23,15 @@
 | Sentry SDK | 운영 Android **8.61.1** / Gradle plugin **6.24.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
-산출물 경로 (로컬 최신 = **v0.7.2/43 R8 빌드, 2026-10-29 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 v0.7.2/43 CI 빌드(`release.yml` run `40847386065`)이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
+산출물 경로 (프로덕션 최신 = **v0.7.3/44 R8 빌드, 2026-10-29 출시** / 로컬 최신 = **2026-11-06 `:app` + `:wear` R8 빌드 실측** — **단일 정규 위치**). ⚠️ **Play 에 올라간 산출물은 v0.7.3/44 CI 빌드(`release.yml` run `40868910274`)이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
 - AAB: `app/build/outputs/bundle/release/app-release.aab` (16,670,847 bytes)
-- APK: `app/build/outputs/apk/release/app-release.apk` (12,062,201 bytes)
+- APK (`:app`): `app/build/outputs/apk/release/app-release.apk`
+- APK (`:wear`): `wear/build/outputs/apk/release/wear-release.apk` (`wearVersionCode=10001`, Wear OS 6 전용 Foundation 빌드)
 - ProGuard mapping: `app/build/outputs/mapping/release/mapping.txt` (Sentry 매핑 자동 업로드 — `-PsentryRelease=true` 일 때만, 룰 2)
 - 경로 일원화: `preflight-release.sh`(룰 2) **및** Android Studio "Generate Signed Bundle/APK" 모두 위 경로로 출력하도록 설정됨. 과거 IDE 마법사가 만들던 `app/release/`(stale v0.1.10 AAB)는 삭제 — 출시 산출물은 이 위치 하나만 본다.
 
 > **출시 상태: production upload 완료.** 원장 기준 프로덕션 = **v0.7.3/44**(2026-10-29 `release.yml` run `40868910274`가 프로덕션 트랙에 **`completed`(100%)**로 자동 업로드, 원장 자동 PR #226). CI/원장은 업로드를 증명하며 Play Console의 후속 처리·가시성은 독립적으로 관찰한다.
-> 이력: v0.7.1/42(2026-10-29, 원장 PR #217) ← v0.7.0/41(2026-10-29, 원장 PR #215) ← v0.6.1/40(2026-10-28, 원장 PR #211) ← v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=43` — 다음 릴리스 versionCode ≥ 44(룰 13 가드).
+> 이력: v0.7.2/43(2026-10-29, 원장 PR #223) ← v0.7.1/42(2026-10-29, 원장 PR #217) ← v0.7.0/41(2026-10-29, 원장 PR #215) ← v0.6.1/40(2026-10-28, 원장 PR #211) ← v0.6.0/39(2026-10-27, 원장 커밋 `f9eeefc`) ← v0.5.0/38(2026-10-26, 원장 커밋 `cbd155f`) ← v0.4.0/37(2026-10-17, 원장 커밋 `48f57c7`) ← v0.3.1/36(2026-10-16, 원장 커밋 `1a19eb7`) ← v0.3.0/35(2026-09-21, 원장 커밋 `3e2e7b8`) ← v0.2.0/34(2026-09-02 production 직접 업로드, 원장 커밋 `45e4051`) ← v0.1.19/33(내부 트랙 후 수동 승격) ← v0.1.18/32 첫 출시. 원장 `play-upload-ledger.md` `LAST_UPLOADED_VERSION_CODE=44` — 다음 릴리스 versionCode ≥ 45(룰 13 가드).
 > **출시 후 전제**: 프로덕션 사용자 데이터 존재 가능 — 룰 5 발효(Auth 제공자/테넌트 교체·무단 TRUNCATE 금지), 스키마 정본은 `backend/sql/02_schema_create_all.sql`(`python -m app.schema_bootstrap`). 백엔드는 자동 배포로 운영(앱과 독립).
 > **미검증 잔여 1건**: release 소스셋의 MSAL `redirect_uri` 해시는 **Play App Signing 키** 기준이라 로컬 업로드키 서명본으로는 로그인을 검증할 수 없다(설계상 정상). 골든패스는 debug 빌드로 전 구간 통과했으나, **Play 설치본에서의 로그인 1회 확인**이 남아 있다.
 
@@ -430,21 +431,24 @@ GitHub Actions (7개 워크플로):
   - **`.github/workflows/backend-rollback.yml`** — 존재하는 SHA 7자리 이미지와 `ROLLBACK` 확인 문자열을 받아 app/reaper를 함께 복구하고 같은 검증기를 실행
   - `backend-production` required reviewer=`gunnysis`, deployment branch=`main` only; Entra OIDC subject=`repo:gunnysis/eundunHealth:environment:backend-production` (2026-10-16 생성·조회 검증)
   - Azure 로그인 = **OIDC federated**(secrets `AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID`). 구 `AZURE_CREDENTIALS` 는 2026-07-03 완전 제거. OIDC 장애 시 롤백 = 워크플로 yml revert + `pwsh -File scripts/register-azure-credentials.ps1`
-- **`.github/workflows/android.yml`** — `app/**`·빌드 파일 변경 시 `check-agp10-compat.sh` + spotlessCheck + **collectAsState anti-pattern 검사** (룰 11) + detektDebug + testDebugUnitTest + assembleDebug + assembleRelease(R8 가드) + PR이면 APK artifact 업로드
+- **`.github/workflows/android.yml`** — `app/**`·`wear/**`·`core/wear-contract/**`·빌드 파일 변경 시 `check-agp10-compat.sh` + `check-version-monotonic.sh` + spotlessCheck + **collectAsState anti-pattern 검사** (`app`·`wear`, 룰 11) + `:core:wear-contract:(detektMain,test)` + `:app:(detektDebug,testDebugUnitTest,assembleDebug,assembleRelease)` + `:wear:(detektDebug,testDebugUnitTest,assembleDebug,assembleRelease)`(R8 가드) + PR이면 APK artifact 업로드
 - **`.github/workflows/release.yml`** — 태그 `v*` push(또는 dispatch dry-run): environment `play-release` 승인 → preflight 전체 게이트 → 서명 AAB → **Play production `completed`(100%) 업로드** → 원장 자동 갱신. 현재 운영자 1명 정책이며, 공개 사용자가 늘어나거나 고위험 변경이면 단계 출시로 재검토
 - **`.github/workflows/warm-baseline-check.yml`** — 매일 minReplicas < 1 회귀 감지
-- **`.github/workflows/doc-audit.yml`** — 문서 드리프트 수집기 단위 테스트 + 주간 감사
+- **`.github/workflows/doc-audit.yml`** — 결정론적 Python stdlib 문서 감사기(`scripts/agents/doc_audit.py --strict`) 단위 테스트(`test_doc_audit.py`) + 주간/수동 감사
 - **`.github/workflows/docs-plans-index.yml`** — `docs/plans/README.md` 인덱스 및 참조 링크 드리프트 차단
 - **`.github/dependabot.yml`** — pip + github-actions + gradle 주간 PR (KST 월 06:00, 보안 패치는 단일 PR로 그룹화)
 
 로컬 자동화:
-- **`scripts/preflight-release.sh`** — Spotless + Detekt + Tests + `releaseArtifacts`(AAB+APK 동시) 일괄 (INC-04 차단)
-- **`scripts/check-agp10-compat.sh`** — AGP 10 호환성 가드 (금지 속성·레거시 플러그인·`kotlinOptions` 차단)
+- **`scripts/preflight-release.sh`** — Spotless + 3모듈 Detekt/Tests + `:app:releaseArtifacts` + `:wear:assembleRelease` + `android-cli-check.sh apk` 일괄 (INC-04 차단)
+- **`scripts/android-cli-check.sh` & `scripts/ensure-android-cli.sh`** — Android CLI(`v1.1.16717390`) + 실행 중인 Android Studio(`2026.2.2`) 하이브리드 파일 진단(`inspect`), 듀얼 엔진 `@Preview` 렌더링(`previews`), APK R8/버전 분석(`apk`), Google Maven 버전 조회(`versions`), 공식 문서 검색(`docs`)
+- **`scripts/smoke-cold-start.sh`** — 에뮬레이터 콜드 스타트/Room 마이그레이션/메인 셸 진입 런타임 스모크 게이트 (룰 14 계층 4)
+- **`scripts/triage-prs.sh`** — 오픈 PR(Dependabot 포함) CI·충돌·변경 범위 전수 스캔 (룰 16)
+- **`scripts/check-agp10-compat.sh`** — AGP 10 호환성 및 3모듈 아키텍처 불변식 가드 (`:core:wear-contract` 순수 JVM, `:wear` `minSdk=36`·M3 강제·`wear.xml` 대칭성)
 - **`scripts/verify_containerapp_deployment.py`** — Container App 및 Reaper Job 배포 사후 불변 조건 검증기
 - **`scripts/bump-version.sh`** — 앱 버전 bump (versionName + versionCode +1 + semver/단조 가드 + 문서 동기화, `--dry-run`). 정책: `docs/conventions/versioning.md`
 - **`backend/scripts/hard_reset_db.py` & `seed_edge_cases.py`** — PostgreSQL 18 Drop & Recreate 하드 리셋 파이프라인 및 100건 엣지 케이스 시더 + 11개 제약 조건 검증기
 - **`scripts/register-azure-credentials.ps1`** — SP 생성/패치 + AcrPush role + GitHub secret 등록. **2026-07-03 이후 = OIDC 장애 시 긴급 폴백·SP 역할 관리 전용** (상시 `AZURE_CREDENTIALS` secret 은 제거됨)
-- **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11)
+- **`.githooks/pre-commit`** — 로컬 .kt 변경 시 spotlessApply + `:core:wear-contract:detektMain` / `:app:detektDebug` / `:wear:detektDebug` + **collectAsState anti-pattern 검사** (룰 11)
 
 ---
 
@@ -503,7 +507,7 @@ az consumption usage list --start-date $(date -d '-30 days' +%Y-%m-%d) --end-dat
 # (소멸 2026-07-03) SP credential 만료 점검 — OIDC 전환 + AZURE_CREDENTIALS 완전 제거로
 # 만료되는 장수명 secret 이 더 이상 없음. federated credential 은 만료 개념 없음.
 
-# 옛 untagged manifest 누적 확인 (Basic SKU에선 직접 삭제 불가)
+# untagged(dangling) manifest 누적 확인 (태그 없는 매니페스트는 digest로 삭제 가능; acr purge 자동 작업이 정리)
 az acr manifest list-metadata --name eundunhealthacr --repository eundunhealth-api \
   --query "[?tags==null].digest" -o tsv | wc -l
 
@@ -616,3 +620,7 @@ MCP 서버 3종 운영 활용:
 | 2026-10-29 | **v0.7.0/41 — PostgreSQL 18 스키마 하드 리셋(Drop & Recreate) 파이프라인 구축 · 운영 `healthapp` 하드 리셋 실증 · AGP 9.4.1 정식 업그레이드 및 전사 리팩토링**. ① 운영 Azure PostgreSQL 18.4(`healthapp`) 무중단 동적 파라미터 5종 튜닝 및 로컬/CI Docker `postgres:18-alpine`(`18.6`) 업그레이드 ② Drop & Recreate 전용 스키마 파이프라인(`01_cleanup_drop_all.sql`, `02_schema_create_all.sql` PostgreSQL 18 `DEFAULT uuidv7()`), 기동 멱등 부트스트랩(`python -m app.schema_bootstrap`), 하드 리셋 CLI(`hard_reset_db.py`), 100건 엣지 케이스 Seeder(`seed_edge_cases.py`), 11개 제약 위반/연쇄 삭제 검증 스위트(`test_v2_reset.py`) 구축 및 레거시 Alembic 전수 제거 ③ 운영 `healthapp` 하드 리셋(`hard-reset-v2-pg18-prod-20261029`) 및 `/health`·`/health/ready` 200 검증 완료 ④ AGP 9.4.1 업그레이드, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=41` 상향, Android/Backend 전사 엣지 케이스 리팩토링 완료. backend pytest **146/146** · android @Test **222/222** |
 | 2026-10-29 | **v0.7.1/42 — 콜드 스타트 크래시 핫픽스(`EUNDUNHEALTH-H` / `INC-2026-10-29-34`) · Room 지연 초기화 · 5계층 심층 방어(룰 14) & AGP 거버넌스(룰 15) 수립**. ① `DatabaseModule.provideSmileTrainingDatabase`에서 `MIGRATION_1_2`(`startVersion = 1`)와 충돌하던 `.fallbackToDestructiveMigrationFrom(dropAllTables = true, 1)` 제거로 콜드 스타트 `IllegalArgumentException` 근본 해결 ② `DefaultLocalDataWiper`에 `dagger.Lazy<Dao>` 주입을 적용해 콜드 스타트 메인 스레드 Room DB 동기 초기화 결합 해소 ③ `runSuspendCatching` 공통화 및 `AppError.reportToSentry()` `CancellationException` 재던지기 가드 전수 적용 ④ DI 팩토리/빌더 계약 단위 테스트(`DatabaseModuleTest`, `NetworkModuleTest`, `DefaultLocalDataWiperTest`, `AgpBuildContractTest`), 계측 테스트(`DatabaseMigrationAndInitTest`), 콜드 스타트 런타임 스모크 게이트(`scripts/smoke-cold-start.sh`) 신설 및 `CLAUDE.md` 룰 14·15 제정. backend pytest **146/146** · android @Test **238/238** |
 | 2026-10-29 | **v0.7.2/43 — 진행(`ProgressHubScreen`) & 프로필(`ProfileHubScreen`) 시각화 대시보드·간소화 개편 · 체성분 직접 입력 0.1 정밀도 수정 · Azure AI Foundry 식단 모델 `gpt-5.4-mini` (100K TPM) 전환 · Play 프로덕션 출시 완료**. ① `ProgressHubScreen`: '한눈에 보는 요약'을 원형 프로그레스 링+7일 요일 스탬프 히어로 카드 및 4주 미니 막대 그래프·목표 비교 타일로 개편하고, 중복되던 '운동 기록과 목표'의 통계·기록·목표 3개 행을 제거해 단일 `챌린지 배지` 컬렉션 쇼케이스 카드로 간소화 ② `ProfileHubScreen`: 5개 파편화 섹션을 내 신체·루틴 히어로 대시보드(`ProfileBodyHeroCard`), 운동 환경·Health Connect 통합 카드, 원탭 3버튼 테마 세그먼트(`ThemeModeSegmentedRow`) 통합 카드, 경량 푸터로 개편 ③ `HybridBodyMetricPicker` 직접 입력 `0.1` 정밀도 보존 수정(`BodyMetricAnchorTest`) ④ `ep-eundunhealth-meal-ai`(`gpt-5.4-mini`, `100K TPM / 100 RPM`, OpenAI Strict JSON Schema) 배포(`eundunhealth-api--0000068`, run `40838433732`, 이미지 `db8b4f8`), 인프라 스크립트 정본화(`meal-ai-endpoint.bicep`), `okhttp 5.5.1`·`coil 3.6.3` 갱신 및 `dependabot.yml` AGP 자동 번프 제외 가드 적용 ⑤ 태그 `v0.7.2` `release.yml`(run `40847386065`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 PR #223 병합(`a89447a`, `LAST_UPLOADED_VERSION_CODE=43`). backend pytest **146/146** · android @Test **242/242** |
+| 2026-10-29 | **v0.7.3/44 — 구 버전(≤43) 전수 차단 Strict Mandatory Update · Play In-App Updates `2.1.0` 연동 · 버전 SSoT 원자적 동기화 가드 및 프로덕션 배포 완료 (PR #225·#226)**. ① 백엔드 `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`(`backend/app/config.py`, `backend/containerapp.yaml`) 상향 및 `bump-version.sh`·`check-version-monotonic.sh --check-ssot` 원자적 SSoT 동기화 가드 구축 ② Android `MandatoryUpdateScreen` + `UpdateGateViewModel` + Google Play In-App Updates(`com.google.android.play:app-update-ktx:2.1.0`) 연동 ③ 백엔드 배포(run `40868854537`) → 활성 revision **`eundunhealth-api--0000069`**(이미지 `6357981`, reaper Job 동기화) ④ 태그 `v0.7.3` `release.yml`(run `40868910274`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 PR #226 병합(`LAST_UPLOADED_VERSION_CODE=44`). backend pytest **147/147** · android @Test **256/256** |
+| 2026-11-02 | **문서 감사기(`scripts/agents/doc_audit.py`) Claude Agent SDK 의존성 제거 및 100% 결정론적 Python stdlib 린터 전환**. 외부 AI API 키(`ANTHROPIC_API_KEY`) 및 서드파티 패키지 의존성을 완전 제거하고 14개 SSoT 지점 교차 대조 결정론적 린터로 재설계(`test_doc_audit.py` 13건 PASS, `.github/workflows/doc-audit.yml` 무과금 CI 게이트화) |
+| 2026-11-04 | **Android CLI (`v1.1.16717390`) & Android Studio (`Rabbit 2 \| 2026.2.2`) 하이브리드 워크플로 통합 및 AGP 9.5.0 / Gradle 9.8.2 업그레이드**. `scripts/ensure-android-cli.sh`·`scripts/android-cli-check.sh`(`status`/`inspect`/`previews`/`apk`/`versions`/`docs`) 신설, `smoke-cold-start.sh` `android layout`·`android screen capture` 증적 자동화, AGP 9.5.0 + Gradle 9.8.2 + `fastapi 0.162.0` / `starlette 1.10.0` 업그레이드 |
+| 2026-11-06 | **스마일 트레이닝 `INTRO`/`COMPLETED` 제거 무중단 직행(`2f63aec`) · AGP `9.5.1`(`4a3af8b`) · Wear OS 6 (API 36) 3모듈(`:app` + `:wear` + `:core:wear-contract`) Foundation(`2a49cea`) 및 환경설정 구현 설계(`PROP-06` / `PROP-06-A` 경계 통합) 완료**. ① 스마일 트레이닝 진입 즉시 `READY`(1.0초 얼굴 정렬 자동 시작) → `ACTIVE`(3회 완료 시 `NonCancellable` Room 저장 후 즉시 `NavigateBack`) 무중단 직행 전환 및 Compose BOM `2026.09.00` `ModalBottomSheet`·`HorizontalPager` 시그니처 현대화 ② AGP `9.5.1` 패치 업그레이드(Rule 15 6단계 게이트 통과) ③ `:core:wear-contract`(Pure JVM 17, `WearTimeConstants.KST_ZONE` SSoT) 및 `:wear`(`minSdk=36`, `targetSdk=37`, `wearVersionCode=10001`, Wear Compose M3 `1.7.1`, `WearEnvironmentStatusScreen` `LocalScrollCaptureInProgress` 가드 및 TalkBack `stateDescription`, OLED 29슬롯 `EundunWearColorScheme`, `res/raw/keep_wear_capabilities.xml`) 신설 + Linux CI `aapt2-9.5.1-16666295-linux.jar` SHA-256 검증 메타데이터 동기화 ④ `docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md` 환경설정 구현 설계 고도화(`PROP-06-A` 기존 Azure Container Apps + PostgreSQL 18 재사용 환경 경계 `D9` 및 6대 트러블슈팅/재발방지 가드 `T1~T6` 통합). backend pytest **147/147** · android/wear @Test **266/266** |

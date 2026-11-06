@@ -1,38 +1,44 @@
 name: doc-audit
 
 # 문서 드리프트 감사 — canonical 코드/인프라 값 ↔ 문서 서술 일관성을 점검한다.
-# 도구: scripts/agents/doc_audit.py (collector=결정론적 + auditor=Claude Agent SDK, read-only).
-# 설계 근거: docs/plans/logs/process-infra.md (2026-06-16 Agent SDK 적용 검토 entry).
+# 도구: scripts/agents/doc_audit.py (100% 결정론적 린터, 외부 AI 의존성 없음, 비용 $0).
+# 검사 대상 문서: CLAUDE.md, README.md, docs/ops/operations-snapshot.md, docs/TRD.md, docs/PRD.md, docs/CHANGELOG.md
 #
-# 두 job 의 트리거가 다르다 — 비용 구조가 다르기 때문이다.
-#   - audit(SDK auditor): 토큰을 쓰고 시크릿이 필요 → schedule + 수동만. 모든 PR/포크에서
-#     돌리면 비용·실패 노이즈. 하드 게이트가 필요해지면 `--strict` 를 주고 트리거를 넓힌다.
-#   - collector-test(결정론적 파서): 시크릿 불필요·초 단위 → `scripts/agents/**` 변경 시 실행.
-#
-# 2026-09-02 이전에는 워크플로 전체가 schedule + 수동뿐이었다. 그래서 `doc_audit.py` 를 고쳐도
-# **다음 월요일까지 아무것도 검증하지 않았다** — 그날 실제로 이 파일을 수정한 커밋이 CI 를
-# 통째로 우회했다(로컬 테스트로만 확인됨). `android.yml` 의 루트 `gradle.properties` 구멍과
-# 같은 형태다: 도구를 고치는 변경이 그 도구의 게이트를 안 타는 것.
+# 트리거:
+#   - PR 및 main 브랜치 push: scripts/agents/**, doc-audit.yml, 주요 문서 변경 시 자동 검증.
+#   - schedule: 매주 월요일 00:00 UTC = 09:00 KST (정기 무결성 점검).
+#   - workflow_dispatch: 수동 즉시 실행 지원.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'  # 매주 월요일 00:00 UTC = 09:00 KST (한 주간 머지 드리프트 점검)
+    - cron: '0 0 * * 1'  # 매주 월요일 00:00 UTC = 09:00 KST
   push:
     branches: [main]
     paths:
       - 'scripts/agents/**'
       - '.github/workflows/doc-audit.yml'
+      - 'version.properties'
+      - 'CLAUDE.md'
+      - 'README.md'
+      - 'docs/ops/operations-snapshot.md'
+      - 'docs/TRD.md'
+      - 'docs/PRD.md'
   pull_request:
     paths:
       - 'scripts/agents/**'
       - '.github/workflows/doc-audit.yml'
+      - 'version.properties'
+      - 'CLAUDE.md'
+      - 'README.md'
+      - 'docs/ops/operations-snapshot.md'
+      - 'docs/TRD.md'
+      - 'docs/PRD.md'
 
 permissions:
   contents: read
 
 jobs:
-  # 1) 결정론적 collector/파서 — 시크릿 불필요, 항상 실행. (scripts/agents 단위테스트 CI 가드)
-  collector-test:
+  doc-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -43,70 +49,29 @@ jobs:
           python-version: '3.12'
 
       - name: Install pytest
-        # scripts/ 테스트는 백엔드 의존성이 필요 없어 독립 설치한다. 다만 버전은
-        # backend/requirements-dev.txt 와 맞춘다 — 같은 툴이 저장소 안에서 다른 버전으로
-        # 돌면 어느 결과가 진짜인지 알 수 없다.
+        # scripts/ 테스트는 백엔드 의존성 없이 표준 라이브러리만 검증하므로 pytest 만 설치한다.
+        # 버전은 backend/requirements-dev.txt 와 동일한 9.1.1 로 고정한다.
         run: pip install 'pytest==9.1.1'
 
-      - name: Unit tests (collector / parsers)
+      - name: Unit tests (collector & audit rules)
         run: python -m pytest scripts/agents/test_doc_audit.py -v
 
-      - name: Collector smoke (사실 수집 — SDK·인증 불필요)
-        run: python scripts/agents/doc_audit.py --collect-only
-
-  # 2) SDK auditor — 구독(OAuth token) 또는 API key 시크릿 필요. 미설정이면 GREEN 으로 스킵.
-  #    push/PR 에서는 돌리지 않는다(위 헤더의 비용 근거) — 트리거 확대는 collector-test 한정.
-  audit:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Setup Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
-        with:
-          python-version: '3.12'
-
-      # 시크릿 미설정 시 실패 대신 notice 후 스킵 — 운영자 셋업 전에도 스케줄이 빨갛지 않도록.
-      - name: Detect auth credential
-        id: auth
-        env:
-          OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          APIKEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          if [ -n "$OAUTH" ] || [ -n "$APIKEY" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::auth 시크릿 미설정 — 감사 스킵. 활성화: 로컬 \`claude setup-token\`(구독·추가비용 0) → 출력 토큰을 repo secret CLAUDE_CODE_OAUTH_TOKEN 에 등록(대안: ANTHROPIC_API_KEY=종량)."
-          fi
-
-      - name: Install Agent SDK
-        if: steps.auth.outputs.ready == 'true'
-        run: pip install -r scripts/agents/requirements.txt
-
-      - name: Run documentation drift audit
-        if: steps.auth.outputs.ready == 'true'
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Run documentation audit
         run: |
           set -o pipefail
-          # advisory: --strict 미지정 → 드리프트가 있어도 exit 0(리포트만). 게이트화 시 --strict 추가.
-          python scripts/agents/doc_audit.py --quiet | tee audit-report.txt
+          python scripts/agents/doc_audit.py | tee audit-report.txt
           {
-            echo '## 📄 문서 드리프트 감사'
+            echo '## 📄 문서 일관성 감사 리포트 (Deterministic Document Audit)'
             echo ''
             echo '```'
             cat audit-report.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           if grep -q '드리프트 [1-9]' audit-report.txt; then
-            echo "::warning::문서 드리프트가 감지되었습니다 — 위 Step Summary 의 리포트를 확인하세요."
+            echo "::warning::문서 드리프트가 감지되었습니다 — Step Summary 를 확인하세요."
           fi
 
       - name: Upload report artifact
-        if: steps.auth.outputs.ready == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: doc-audit-report

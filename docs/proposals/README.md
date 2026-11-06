@@ -15,7 +15,7 @@
 | **PROP-03** | 운동 이력 기반 점진적 과부하 AI 중량/볼륨 추천 | `Idea` | `v0.7.0+` | Workout, History | [docs/PRD.md](../PRD.md#향후-확장-후보) |
 | **PROP-04** | **운동 일수($N$) 기반 적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)** | `Deferred (Rejected)` | - | WeeklyPlan, Exercise Catalog, MealPlan | [rejections/2026-10-27-adaptive-split-engine.md](rejections/2026-10-27-adaptive-split-engine.md) |
 | **PROP-05** | **UI/UX 개선 종합 기획 (브랜드·Today Hero·운동 가이드·허브·온보딩)** | `Shipped (v0.6.1)` | `v0.6.1` (완료) | Theme, Home, Workout, Hubs, Onboarding | [docs/plans/logs/android.md](../plans/logs/android.md) |
-| **PROP-06** | **Wear OS 통합 아키텍처 (PassiveMonitoring · 3모듈 경량 계약 · 전사 리팩토링)** | `Exploring (Foundation Built / Phase 0~3 Pending)` | `v0.8.0+` | Wear OS, Health Services, Data Layer, Room, Azure PG18 | [통합 제안](2026-11-06-wear-os-integration-architecture.md) · [Azure 판단](2026-11-06-wear-os-azure-backend-architecture.md) · [Foundation Plan](../plans/2026-11-06-wear-os-foundation-env-setup-plan.md) |
+| **PROP-06** | **Wear OS 통합 아키텍처 (마음·스트레스·공황·증상 신호 포착 · `PassiveMonitoring` · 3모듈 경량 계약 · Azure 환경 경계)** | `Exploring (Foundation Built / Phase 0~3 Pending)` | `v0.8.0+` | Wear OS, Health Services, Data Layer, Room, Azure PG18 | [통합 제안](2026-11-06-wear-os-integration-architecture.md) · [Azure 판단](2026-11-06-wear-os-azure-backend-architecture.md) · [Foundation Plan](../plans/2026-11-06-wear-os-foundation-env-setup-plan.md) |
 
 ---
 
