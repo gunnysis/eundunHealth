@@ -13,11 +13,12 @@
 | Application ID | `com.gunnys.eundunhealth` |
 | versionName / versionCode | **`0.7.3` / `44` (태그 `v0.7.3`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=44` |
 | Min SDK / Target SDK | 26 / 37 |
-| Kotlin / AGP / Gradle | **2.4.21 / 9.4.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
+| Kotlin / AGP / Gradle | **2.4.21 / 9.5.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** |
 | 차트 | Vico 3.3.1 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
 | 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.4** + ktlint 1.5.0 |
+| Android CLI / IDE 통합 | **`android-cli 1.1.16717390`** + **Android Studio `Rabbit 2 \| 2026.2.2`** (`scripts/ensure-android-cli.sh`, `scripts/android-cli-check.sh` 하이브리드 K2 파일 진단·듀얼 엔진 `@Preview`·APK R8 분석·`smoke-cold-start.sh` UI 트리/스크린샷 증적) |
 | API client | openapi-generator **7.26.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 8개 generated client |
 | Sentry SDK | 운영 Android **8.61.1** / Gradle plugin **6.24.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |

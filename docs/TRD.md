@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 > **문서 버전:** v2.1 (현행 아키텍처 정본, 2026-10-29 최신화)  
-> **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.2/43 (`completed` 100%, 원장 PR #223)**, 백엔드 활성 리비전 **`eundunhealth-api--0000068` (`db8b4f8`)**  
+> **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.3/44 (`completed` 100%, 원장 PR #226)**, 백엔드 활성 리비전 **`eundunhealth-api--0000069` (`6357981`)**  
 > **패키지 명:** `com.gunnys.eundunhealth`  
 > **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -256,7 +256,7 @@ graph TB
 | **백엔드 IDE / 툴체인** | **Python 3.14 (venv) + uv / pip-compile** | 해시 락(`requirements.txt`, `--require-hashes`) 엄격 검증 |
 | **테스트 디바이스** | **Samsung Galaxy Phone (Android 14 / One UI 6.1)** | Health Connect 및 실제 카메라 센서 실기기 검증 |
 | **빌드 자동화 도구** | **Gradle 9.8.2** (Android) / **pip-compile** (Backend) | Gradle Hash Verification (`gradle/verification-metadata.xml`) |
-| **Android 빌드 플러그인** | **AGP 9.4.1** | Kotlin 내장 툴체인, `detekt-cli` + `androidComponents` 통합 |
+| **Android 빌드 플러그인** | **AGP 9.5.1** | Kotlin 내장 툴체인, `detekt-cli` + `androidComponents` 통합 |
 | **코드 정적 분석 & 포맷터** | **Detekt 1.23.8 + Spotless 8.10.4 + ktlint 1.5.0** | 빌드 파이프라인 무결성 게이트 강제 |
 | **모니터링 / 에러 추적** | **Sentry** (Android `8.61.1` / Backend `2.73.0`) | R8 ProGuard 매핑 자동 업로드 및 풀스택 분산 추적 |
 | **형상 관리 & CI/CD** | **Git + GitHub Actions** | Entra OIDC 무암호 Azure 배포 및 Google Play 내부/프로덕션 트랙 자동 릴리스 |
@@ -1085,9 +1085,9 @@ Android 앱과 FastAPI 백엔드의 성능 트랜잭션과 에러를 독립된 �
 
 #### [빌드 사양]
 - **Compile / Target SDK:** 37 (Android 17) / **Min SDK:** 26 (Android 8.0 Oreo)
-- **빌드 도구:** Gradle 9.8.2 + AGP 9.4.1 (Kotlin 2.4.21 내장)
+- **빌드 도구:** Gradle 9.8.2 + AGP 9.5.1 (Kotlin 2.4.21 내장)
 - **자바 런타임:** Eclipse Temurin 17 (Java 17 바이트코드)
-- **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.7.2`, `VERSION_CODE=43`)
+- **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.7.3`, `VERSION_CODE=44`)
 
 #### [주요 CLI 명령어]
 ```bash
@@ -1158,7 +1158,7 @@ python backend/scripts/seed_edge_cases.py
 ```text
 eundunHealth/                          # 루트 저장소 (Gradle & Python 하이브리드)
 ├── app/                               # Android 네이티브 앱 (:app 모듈)
-│   ├── build.gradle.kts               # AGP 9.4.1 + Kotlin 2.4.21 + R8 + Sentry 6.24.0
+│   ├── build.gradle.kts               # AGP 9.5.1 + Kotlin 2.4.21 + R8 + Sentry 6.24.0
 │   └── src/
 │       ├── main/
 │       │   ├── java/com/gunnys/eundunhealth/

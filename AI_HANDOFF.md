@@ -1,5 +1,18 @@
 # Multi-AI Handoff Log
 
+## 2026-11-06 (Gemini -> Claude/User) AGP(Android Gradle Plugin) 최신 정식 안정판 `9.5.1` 업그레이드 완료 (룰 15 6단계 전수 검증 · 멀티 플랫폼 해시 락 · SSoT 문서 정합화)
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. AGP `9.5.0` → `9.5.1` 정식 안정판 업그레이드 ([`gradle/libs.versions.toml`](gradle/libs.versions.toml))**:
+  - `android studio version-lookup agp` (`Stable: 9.5.1`) 및 Google Maven 공식 메타데이터 실측 대조 후 `agp = "9.5.1"` 적용 (`Gradle 9.8.2` / `Kotlin 2.4.21` / `KSP 2.3.12` / `Hilt 2.60.1` / `JDK 17` 락스텝 호환).
+- **2. 공급망 락파일([`app/gradle.lockfile`](app/gradle.lockfile)) 및 멀티 플랫폼 SHA-256 검증 메타데이터([`gradle/verification-metadata.xml`](gradle/verification-metadata.xml)) 동기화**:
+  - `./gradlew :app:dependencies --write-locks --write-verification-metadata sha256` 실행 및 `com.android.tools.build:aapt2:9.5.1-16666295`의 `-linux.jar`(`fa1014cb...`), `-osx.jar`(`a43df4c4...`), `-windows.jar`(`0cca2866...`), `.pom`(`fe9320e0...`) 해시 등재 완료 ([`AgpBuildContractTest`](app/src/test/java/com/gunnys/eundunhealth/AgpBuildContractTest.kt) 통과).
+- **3. SSoT 문서 동기화 및 6단계 검증 게이트 전수 통과**:
+  - [`CLAUDE.md`](CLAUDE.md), [`README.md`](README.md), [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md), [`docs/TRD.md`](docs/TRD.md), [`docs/SPEC.md`](docs/SPEC.md) AGP `9.5.1` 동기화.
+  - `bash scripts/check-agp10-compat.sh` OK, `./gradlew :app:help "-Pandroid.debug.obsoleteApi=true" --warning-mode all` 신규 경고 0건, `:app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:assembleDebug :app:assembleRelease` PASS (259 tests PASS), `python scripts/agents/doc_audit.py --strict` 드리프트 0건 (100% CLEAN).
+
+---
+
 ## 2026-11-06 (Gemini -> Claude/User) 스마일 트레이닝 무중단 직행(INTRO·COMPLETED 완전 제거) & 프로젝트 전역 Compose(BOM 2026.09.00) 신기술 적용·M3 디자인 통일·레거시 청산 완료
 
 **현재까지의 작업 상태 (Current Status):**

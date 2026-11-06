@@ -65,7 +65,7 @@
 
 ### 빌드 도구
 
-AGP 9.4.1 · Gradle 9.8.2 · KSP 2.0.21-1.0.28 · Sentry Gradle Plugin · Detekt 1.23.8 · Spotless 8.10.4 — 버전은 `gradle/libs.versions.toml` 참조.
+AGP 9.5.1 · Gradle 9.8.2 · KSP 2.3.12 · Sentry Gradle Plugin 6.24.0 · Detekt 1.23.8 · Spotless 8.10.4 — 버전은 `gradle/libs.versions.toml` 참조.
 
 ### 인프라
 

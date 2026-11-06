@@ -4,6 +4,16 @@
 
 ## Recent (last 90 days)
 
+### 2026-11-06 — AGP(Android Gradle Plugin) 최신 정식 안정판 `9.5.1` 업그레이드 (룰 15 6단계 전수 검증 · 듀얼 플랫폼 `aapt2` 해시 동기화 · SSoT 문서 정합화)
+
+- **Why**: Google Maven 및 Android Studio 인덱스 기준 최신 정식 안정판 AGP `9.5.1`(`com.android.tools.build:gradle:9.5.1`, `aapt2:9.5.1-16666295`)이 릴리스됨에 따라 룰 15(AGP 아키텍처·호환성 매트릭스 및 업그레이드 6단계 거버넌스)에 의거해 빌드 툴체인과 공급망 해시 락을 최신 안정판으로 동기화해야 했다.
+- **What**:
+  - **AGP `9.5.0` → `9.5.1` 업그레이드 (`gradle/libs.versions.toml`)**: `android studio version-lookup agp`(`Stable: 9.5.1`) 및 Google Maven 공식 메타데이터 실측 후 `agp = "9.5.1"` 적용 (`Gradle 9.8.2` / `Kotlin 2.4.21` / `KSP 2.3.12` / `Hilt 2.60.1` / `JDK 17` 호환).
+  - **공급망 락파일 & 멀티 플랫폼(`Windows` + `Linux` + `macOS`) SHA-256 검증 메타데이터 동기화**: `app/gradle.lockfile` 및 `gradle/verification-metadata.xml`을 `--write-locks --write-verification-metadata sha256`으로 갱신하고, Google Maven 공식 `aapt2-9.5.1-16666295-linux.jar`(`fa1014cb...`), `aapt2-9.5.1-16666295-osx.jar`(`a43df4c4...`), `aapt2-9.5.1-16666295-windows.jar`(`0cca2866...`), `.pom`(`fe9320e0...`) 해시를 모두 등재하여 `AgpBuildContractTest` 및 Linux CI(`ubuntu-latest`) 패리티 보장.
+  - **SSoT 문서 일괄 동기화**: `CLAUDE.md`, `README.md`, `docs/ops/operations-snapshot.md`, `docs/TRD.md`, `docs/SPEC.md`의 AGP 버전 표기를 `9.5.1`로 정합화.
+- **Outcome**: `check-agp10-compat.sh` OK, `-Pandroid.debug.obsoleteApi=true` 신규 경고 0건, Spotless/Detekt(0건)/Lint/단위 테스트 259/259 PASS(`AgpBuildContractTest` 포함)/`assembleDebug`/`assembleRelease`(R8 Full Mode) 통과, `doc_audit.py --strict` 드리프트 0건 통과.
+- **Files touched**: `gradle/libs.versions.toml`, `app/gradle.lockfile`, `gradle/verification-metadata.xml`, `CLAUDE.md`, `README.md`, `docs/ops/operations-snapshot.md`, `docs/TRD.md`, `docs/SPEC.md`
+
 ### 2026-11-06 — 스마일 트레이닝 무중단 직행(`INTRO`·`COMPLETED` 완전 제거) & 프로젝트 전역 Compose(`BOM 2026.09.00`) 신기술 적용·M3 디자인 통일·레거시 청산
 
 - **Why**: ① 스마일 트레이닝 진입 시 중간 대기소(`SmileSessionPhase.INTRO` / `SmileIntroContent.kt`)와 완료 후 정적 페이지(`COMPLETED` / `CompletedContent`)가 각각 2단계 터치를 강제하고 `오늘`·`진행` 탭의 대시보드와 중복되었으며, ② 카메라 HUD·폴더블(`480dp~600dp` 높이) 타원 오버플로우·가이드 화면·`EmptyContent`/`ErrorContent`·`BadgeScreen`·`StatisticsScreen`·`HistoryScreen`·`GoalScreen`·`MealPlanScreen`의 디자인 토큰 편차, ③ Compose `BOM 2026.09.00`(`UI/Foundation 1.12.1`)·`CameraX 1.6.2`·`Lifecycle 2.11.0` 환경에서 레거시 수동 `DisposableEffect`·`FLAG_KEEP_SCREEN_ON`·`ProcessCameraProvider.getInstance` 콜백 잔존, ④ `findActivity()` 4중 중복, `KST_ZONE` 5중 중복, `suspend` 내 일반 `runCatching` 잔존(룰 14 Layer 2), 죽은 `cycleTheme()` 코드 및 미사용 카탈로그 선언을 전사적으로 일괄 해소해야 했다.
