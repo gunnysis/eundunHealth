@@ -11,14 +11,14 @@
 
 | 날짜 | 주제 | type | status | tags |
 |---|---|---|---|---|
-| 2026-11-04 | android-cli-integration | design + plan | in-progress | android-cli, android-studio, compose-preview, r8-analyze, cold-start-smoke, multi-ai-skills |
+| 2026-11-06 | wear-os-foundation-env-setup | plan | in-progress | wear-os, multi-module, wear-contract, agp9-built-in-kotlin, wear-compose-m3, android-cli, dependency-locking |
 
 ## Topic Ledgers (완료 작업 history)
 
 - [Android](logs/android.md) — recent 12, older 21
 - [Backend](logs/backend.md) — recent 4, older 4
 - [Dependencies](logs/dependencies.md) — recent 4, older 6
-- [Process & Infra](logs/process-infra.md) — recent 6, older 23
+- [Process & Infra](logs/process-infra.md) — recent 7, older 23
 
 ## 워크플로
 

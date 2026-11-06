@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wear_app_name">은둔헬스 워치</string>
+    <string name="wear_diag_header">은둔헬스 워치</string>
+    <string name="wear_diag_env_title">런타임 환경</string>
+    <string name="wear_diag_env_version_api">v%1$s (%2$d) · API %3$d</string>
+    <string name="wear_diag_env_subtitle_compact">T%1$d · %2$s</string>
+    <string name="wear_diag_env_subtitle_expanded">min %1$d · target %2$d · %3$s</string>
+    <string name="wear_diag_status_title">수집 기능 상태</string>
+    <string name="wear_diag_status_summary">센서·백그라운드 수집 대기</string>
+    <string name="wear_diag_status_subtitle">Foundation 진단 화면</string>
+    <string name="wear_diag_status_detail">워치 센서 수집 및 모바일 동기화 연결 전 단계입니다.</string>
+    <string name="wear_diag_action_expand">상세 정보 펼치기</string>
+    <string name="wear_diag_action_collapse">상세 정보 접기</string>
+</resources>

@@ -31,3 +31,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "eundunHealth"
 include(":app")
+include(":wear")
+include(":core:wear-contract")

@@ -1,11 +1,34 @@
 #!/usr/bin/env bash
 # AGP 10에서 삭제되는 opt-out과 레거시 variant 연동의 재도입을 차단하고,
-# AGP/R8/16KB 페이지 정렬/Dependency Locking 핵심 불변식을 검증한다.
+# AGP/R8/16KB 페이지 정렬/Dependency Locking 핵심 불변식을 검증한다 (:app, :wear, :core:wear-contract).
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
 failed=0
+
+REQUIRED_FILES=(
+    settings.gradle.kts
+    build.gradle.kts
+    version.properties
+    app/build.gradle.kts
+    wear/build.gradle.kts
+    core/wear-contract/build.gradle.kts
+    wear/src/main/AndroidManifest.xml
+    app/src/main/res/values/wear.xml
+    wear/src/main/res/values/wear.xml
+    app/src/main/res/raw/keep_wear_capabilities.xml
+    wear/src/main/res/raw/keep_wear_capabilities.xml
+)
+for req in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$req" ]; then
+        echo "ERROR: 필수 멀티모듈 빌드/리소스 파일이 누락되었습니다: $req"
+        failed=1
+    fi
+done
+
+ANDROID_BUILD_FILES=(build.gradle.kts app/build.gradle.kts wear/build.gradle.kts)
+ALL_BUILD_FILES=("${ANDROID_BUILD_FILES[@]}" core/wear-contract/build.gradle.kts)
 
 check_forbidden() {
     local pattern="$1"
@@ -26,12 +49,12 @@ check_forbidden \
 check_forbidden \
     'kotlinOptions[[:space:]]*\{' \
     'AGP 10에서 제거되는 android.kotlinOptions 블록을 사용하지 마세요 (Java 17 compileOptions 상속 또는 최상위 kotlin.compilerOptions 사용).' \
-    build.gradle.kts app/build.gradle.kts
+    "${ALL_BUILD_FILES[@]}"
 
 check_forbidden \
     'alias\(libs\.plugins\.kotlin\.android\)|id\("org\.jetbrains\.kotlin\.android"\)' \
     'AGP built-in Kotlin 프로젝트에 Kotlin Android 플러그인을 적용하지 마세요.' \
-    build.gradle.kts app/build.gradle.kts
+    "${ANDROID_BUILD_FILES[@]}"
 
 check_forbidden \
     'id[[:space:]]*=[[:space:]]*"org\.jetbrains\.kotlin\.android"' \
@@ -41,32 +64,77 @@ check_forbidden \
 check_forbidden \
     '(applicationVariants|libraryVariants|testVariants|unitTestVariants)' \
     '레거시 Android variant API 대신 androidComponents API를 사용하세요.' \
-    build.gradle.kts app/build.gradle.kts
+    "${ANDROID_BUILD_FILES[@]}"
 
 check_forbidden \
     'variant\.compileClasspath|variant\.compileConfiguration|android\.bootClasspath|\.getJavaCompile\(' \
     'AGP 10에서 제거되는 variant/SDK classpath API 대신 resolvable configuration과 sdkComponents를 사용하세요.' \
-    build.gradle.kts app/build.gradle.kts
+    "${ANDROID_BUILD_FILES[@]}"
 
-if grep -nE 'alias\(libs\.plugins\.detekt\)' app/build.gradle.kts; then
-    echo 'ERROR: detekt 1.23.8 플러그인 적용은 레거시 AGP API와 Gradle 10 API를 호출합니다.'
-    echo '       루트 apply false + app custom Detekt task 구조를 유지하세요.'
+for android_mod in app/build.gradle.kts wear/build.gradle.kts; do
+    if grep -nE 'alias\(libs\.plugins\.detekt\)' "$android_mod"; then
+        echo "ERROR: $android_mod — detekt 1.23.8 플러그인 적용은 레거시 AGP API와 Gradle 10 API를 호출합니다."
+        echo '       루트 apply false + custom Detekt task 구조를 유지하세요.'
+        failed=1
+    fi
+
+    if ! grep -q 'androidComponents\.onVariants' "$android_mod" || \
+       ! grep -q 'tasks\.register<Detekt>("detektDebug")' "$android_mod"; then
+        echo "ERROR: $android_mod — androidComponents 기반 detektDebug 품질 게이트가 없습니다."
+        failed=1
+    fi
+
+    if ! grep -q 'lockAllConfigurations()' "$android_mod"; then
+        echo "ERROR: $android_mod — dependencyLocking { lockAllConfigurations() }가 없습니다."
+        failed=1
+    fi
+
+    if ! grep -q 'useLegacyPackaging = false' "$android_mod"; then
+        echo "ERROR: $android_mod — 16KB 페이지 정렬 호환을 위한 jniLibs.useLegacyPackaging = false 설정이 없습니다."
+        failed=1
+    fi
+done
+
+if ! grep -q 'lockAllConfigurations()' core/wear-contract/build.gradle.kts; then
+    echo 'ERROR: core/wear-contract/build.gradle.kts에 dependencyLocking { lockAllConfigurations() }가 없습니다.'
     failed=1
 fi
-
-if ! grep -q 'androidComponents\.onVariants' app/build.gradle.kts || \
-   ! grep -q 'tasks\.register<Detekt>("detektDebug")' app/build.gradle.kts; then
-    echo 'ERROR: androidComponents 기반 detektDebug 품질 게이트가 없습니다.'
+if ! grep -q 'alias(libs\.plugins\.kotlin\.jvm)' core/wear-contract/build.gradle.kts || \
+   ! grep -q 'tasks\.register<Detekt>("detektMain")' core/wear-contract/build.gradle.kts; then
+    echo 'ERROR: core/wear-contract/build.gradle.kts에 kotlin.jvm 플러그인 또는 detektMain 품질 게이트가 없습니다.'
     failed=1
 fi
-
-if ! grep -q 'lockAllConfigurations()' app/build.gradle.kts; then
-    echo 'ERROR: app/build.gradle.kts에 dependencyLocking { lockAllConfigurations() }가 없습니다.'
+if grep -nE 'com\.android\.|androidx\.|play-services|health-services|serialization' core/wear-contract/build.gradle.kts; then
+    echo 'ERROR: core/wear-contract는 순수 JVM 계약 모듈이어야 하며 Android/Play Services/직렬화 의존성을 포함할 수 없습니다 (AC-09).'
     failed=1
 fi
-
-if ! grep -q 'useLegacyPackaging = false' app/build.gradle.kts; then
-    echo 'ERROR: 16KB 페이지 정렬 호환을 위한 jniLibs.useLegacyPackaging = false 설정이 없습니다.'
+if grep -rnE '^[[:space:]]*import[[:space:]]+(android\.|androidx\.|com\.google\.android\.)' core/wear-contract/src/main/; then
+    echo 'ERROR: core/wear-contract/src/main 내부에 Android/Google Play 프레임워크 import가 유입되었습니다 (AC-09).'
+    failed=1
+fi
+if grep -nE 'health-services|play-services-wearable' wear/build.gradle.kts || \
+   grep -rnE 'PassiveMonitoringClient|PassiveListenerService|MessageClient|DataClient|ChannelClient' wear/src/main/; then
+    echo 'ERROR: Foundation 단계의 :wear 모듈에는 센서/Data Layer 런타임 구현을 조기 유입할 수 없습니다 (AC-09).'
+    failed=1
+fi
+if ! grep -q 'android\.hardware\.type\.watch' wear/src/main/AndroidManifest.xml || \
+   ! grep -q 'com\.google\.android\.wearable\.standalone' wear/src/main/AndroidManifest.xml; then
+    echo 'ERROR: wear/src/main/AndroidManifest.xml에 watch 필수 피처 또는 standalone 메타데이터가 누락되었습니다 (AC-03).'
+    failed=1
+fi
+if grep -nE 'READ_HEART_RATE|READ_HEALTH_DATA_IN_BACKGROUND|BODY_SENSORS|ACTIVITY_RECOGNITION|RECEIVE_BOOT_COMPLETED|WAKE_LOCK' wear/src/main/AndroidManifest.xml; then
+    echo 'ERROR: Foundation 단계의 wear 매니페스트에 민감 건강/신체활동/부팅/WakeLock 권한이 선언되었습니다 (AC-04).'
+    failed=1
+fi
+for keep_file in app/src/main/res/values/wear.xml wear/src/main/res/values/wear.xml app/src/main/res/raw/keep_wear_capabilities.xml wear/src/main/res/raw/keep_wear_capabilities.xml; do
+    if ! grep -q 'tools:keep="@array/android_wear_capabilities"' "$keep_file"; then
+        echo "ERROR: $keep_file 에 tools:keep=\"@array/android_wear_capabilities\" 선언이 없습니다 (AC-05)."
+        failed=1
+    fi
+done
+if ! grep -q '<item>eundun_phone_companion</item>' app/src/main/res/values/wear.xml || \
+   ! grep -q '<item>eundun_wear_companion</item>' wear/src/main/res/values/wear.xml; then
+    echo 'ERROR: app과 wear의 capability 이름이 구분되어 있지 않습니다 (AC-05).'
     failed=1
 fi
 
@@ -74,4 +142,4 @@ if [ "$failed" -ne 0 ]; then
     exit 1
 fi
 
-echo 'OK: AGP 10 호환성 가드 통과'
+echo 'OK: AGP 10 호환성 및 3모듈 불변식 가드 통과 (:app, :wear, :core:wear-contract)'

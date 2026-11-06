@@ -5,7 +5,7 @@
 # (한 번 실행하면 이 디렉토리의 훅이 적용됩니다.)
 #
 # 동작 (분기별 독립 — staged 변경에 해당하는 분기만 작동):
-# 1) Kotlin (.kt/.kts) staged → spotlessApply (자동 포맷) + detektDebug (baseline 외 신규 위반 차단)
+# 1) Kotlin (.kt/.kts) staged → spotlessApply (자동 포맷) + detekt (baseline 외 신규 위반 차단)
 # 2) docs/plans/*.md staged → gen-plans-index.sh (README.md 자동 재생성 + auto-stage)
 # 3) backend/*.py staged → ruff check
 # 4) requirements*.txt staged → 비-ASCII 차단 (cp949 환경 pip-audit 깨짐 재발방지)
@@ -20,19 +20,25 @@ CHANGED_KOTLIN=$(git diff --cached --name-only --diff-filter=ACM \
     | grep -E '\.(kt|kts)$' || true)
 
 if [ -n "$CHANGED_KOTLIN" ]; then
-    echo "[pre-commit] Kotlin changes detected → spotlessApply + detektDebug"
+    echo "[pre-commit] Kotlin changes detected → spotlessApply + detekt (:core:wear-contract, :app, :wear)"
     cd "$REPO_ROOT"
 
-    # 자동 포맷
-    ./gradlew :app:spotlessApply -q
+    if [ -f "$REPO_ROOT/scripts/ensure-java.sh" ]; then
+        # shellcheck source=scripts/ensure-java.sh
+        source "$REPO_ROOT/scripts/ensure-java.sh"
+        ensure_java
+    fi
+
+    # 자동 포맷 (3모듈)
+    ./gradlew :core:wear-contract:spotlessApply :app:spotlessApply :wear:spotlessApply -q
 
     # 포맷 결과를 다시 스테이지 (변경된 파일만)
     echo "$CHANGED_KOTLIN" | while read -r file; do
         [ -f "$file" ] && git add "$file"
     done
 
-    # 정적 분석
-    ./gradlew :app:detektDebug -q
+    # 정적 분석 (3모듈)
+    ./gradlew :core:wear-contract:detektMain :app:detektDebug :wear:detektDebug -q
 
     # collectAsState anti-pattern 검사 (staged .kt 파일만, 룰 11)
     echo "[pre-commit] Checking for banned collectAsState() in staged Kotlin files..."
@@ -65,8 +71,6 @@ if [ -n "$CHANGED_PLANS" ]; then
 fi
 
 # 페어 참조 링크 가드 — 어느 .md 든 staged 면 검사한다.
-# 페어를 ledger 로 이관하면서 `git rm` 하면, 그 페어를 참조하던 **다른 문서**의 링크가
-# 조용히 죽는다(이관 컨벤션에 리다이렉트 단계가 없었다). 여기서 잡지 않으면 CI 까지 간다.
 CHANGED_MD=$(git diff --cached --name-only --diff-filter=ACMD \
     | grep -E '\.md$' || true)
 
@@ -86,18 +90,13 @@ if [ -n "$CHANGED_PY" ]; then
     echo "[pre-commit] backend/*.py changes detected → ruff check"
     cd "$REPO_ROOT/backend"
 
-    # venv ruff 우선, 없으면 PATH ruff fallback (CI 와 동일 룰셋, pyproject 자동 로딩)
     RUFF=".venv/Scripts/ruff.exe"
     [ -x "$RUFF" ] || RUFF="ruff"
 
-    # 변경된 파일만 검사 (전체 app/ 스캔보다 빠름, file-local 룰만 적용되므로 충분)
     echo "$CHANGED_PY" | sed 's|^backend/||' | xargs "$RUFF" check
 fi
 
 # ---------- 4) requirements*.txt cp949 디코드 가드 ----------
-# em-dash(—) 등 cp949 가 디코드 못 하는 바이트가 들어가면 cp949(한국어 Windows) pip-audit 가
-# UnicodeDecodeError 로 깨진다(Linux/CI UTF-8 은 통과 → 로컬에서만 막을 수 있음). 한국어 주석
-# 자체는 cp949 로 디코드되므로 "non-ASCII 전부 차단"이 아니라 cp949 디코드 가능성으로 판정한다.
 CHANGED_REQS=$(git diff --cached --name-only --diff-filter=ACM \
     | grep -E '(^|/)requirements[^/]*\.txt$' || true)
 
@@ -122,19 +121,16 @@ if [ -n "$CHANGED_REQS" ]; then
     fi
 fi
 
-# ---------- 5) AGP 10 호환성 ----------
-CHANGED_ANDROID_BUILD=$(git diff --cached --name-only --diff-filter=ACM \
-    | grep -E '^(build\.gradle\.kts|app/build\.gradle\.kts|gradle\.properties|gradle/libs\.versions\.toml|scripts/check-agp10-compat\.sh)$' || true)
+# ---------- 5) AGP 10 호환성 & 멀티모듈 불변식 ----------
+CHANGED_ANDROID_BUILD=$(git diff --cached --name-only --diff-filter=ACMD \
+    | grep -E '^(settings\.gradle\.kts|build\.gradle\.kts|version\.properties|gradle\.properties|gradle/libs\.versions\.toml|gradle/verification-metadata\.xml|(app|wear|core/wear-contract)/build\.gradle\.kts|wear/src/main/AndroidManifest\.xml|(app|wear)/src/main/res/(values/wear|raw/keep_wear_capabilities)\.xml|core/wear-contract/src/.*|scripts/check-agp10-compat\.sh)$' || true)
 
 if [ -n "$CHANGED_ANDROID_BUILD" ]; then
-    echo "[pre-commit] Android build changes detected → AGP 10 compatibility check"
+    echo "[pre-commit] Android build/contract changes detected → AGP 10 & 3-module compatibility check"
     bash "$REPO_ROOT/scripts/check-agp10-compat.sh"
 fi
 
 # ---------- 6) Azure 구독 GUID 평문 가드 ----------
-# 리소스 ID 의 구독 GUID 는 커밋하지 않는다(public repo 정찰면 축소).
-# 규약: YAML/스크립트는 __SUBSCRIPTION_ID__ 플레이스홀더 + 배포/프로비저닝 시
-# `az account show --query id` 주입 (backend.yml deploy step, setup-reaper-job.sh 참조).
 GUID_RE='/subscriptions/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 if git diff --cached -U0 | grep -E '^\+' | grep -qE "$GUID_RE"; then
     echo "[pre-commit] ERROR: staged 추가 라인에 Azure 구독 GUID 리터럴(/subscriptions/<guid>)이 있습니다."

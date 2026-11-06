@@ -107,11 +107,11 @@ android install --launch app/build/outputs/apk/debug/app-debug.apk
 **Android CLI (`v1.1.16717390`) & 실행 중인 Android Studio (`Rabbit 2 | 2026.2.2`) 하이브리드 워크플로**
 > 출처: [developer.android.com/tools/agents/android-cli](https://developer.android.com/tools/agents/android-cli). 프로젝트 진입점: `bash scripts/android-cli-check.sh <subcommand>`.
 
-- **상태·버전 조회**: `bash scripts/android-cli-check.sh status` (CLI·SDK·AVD·실행 중 Studio PID/프로젝트 감지), `bash scripts/android-cli-check.sh versions` (`libs.versions.toml` 7대 핵심 라이브러리 vs Google Maven 최신 안정판 조회).
-- **단일 파일 K2 Analysis API 무결성 점검 (~1~2초)**: `bash scripts/android-cli-check.sh inspect <file.kt>` — 실행 중인 Android Studio가 `READY`이면 `android studio analyze-file`로 즉시 K2/Lint 진단을 수행하고, Studio 미실행 시 `./gradlew :app:compileDebugKotlin :app:detektDebug`로 자동 폴백한다. 심볼릭 링크 경로(`apps_ln`)에서 호출해도 스크립트가 Studio 프로젝트 정본 경로(`C:/programming/apps/eundunHealth`)로 자동 변환한다.
-- **듀얼 엔진 Compose `@Preview` 검증**: `bash scripts/android-cli-check.sh previews [--render [file] [preview_fn]]` — `android preview list "gradle://.?:app@debug"`로 `@Preview` 목록을 추출하고, Studio 실행 시 `android studio render-compose-preview --print-semantics`로 `app/build/reports/compose-previews/`에 PNG와 a11y 시맨틱 트리를 렌더링한다 (`isIncludeAndroidResources = true` 미사용으로 순수 JVM 단위 테스트 242건 속도 100% 보존).
-- **Release APK 정밀 해부 (룰 2·14·15 연동)**: `bash scripts/android-cli-check.sh apk [apk_path]` — `android apk analyze` 기반으로 `version.properties` 버전 일치, `minSdk=26`/`targetSdk=37`, `isFullMode=true`, 핵심 DEX/리소스 보존을 검증하며 `scripts/preflight-release.sh`에 자동 게이트로 배선됨.
-- **콜드 스타트 스모크 (`scripts/smoke-cold-start.sh`)**: `--auto-emulator [avd]` 플래그로 에뮬레이터 자동 부팅(`android emulator start --wait`), `android install` 고속 델타 설치(`adb install -r` 폴백), 콜드 스타트 직후 `app/build/reports/cold-start/{layout.json,screen.png}`(`android layout --pretty` + `android screen capture --annotate`) 증적 자동 수집을 지원한다.
+- **상태·버전 조회**: `bash scripts/android-cli-check.sh status` (CLI·SDK·AVD `Galaxy_S25_Ultra` / `Wear_OS_Large_Round_API_36`·실행 중 Studio PID/프로젝트 감지), `bash scripts/android-cli-check.sh versions` (`libs.versions.toml` 핵심 라이브러리 vs Google Maven 최신 안정판 조회).
+- **단일 파일 K2 Analysis API 무결성 점검 (~1~2초)**: `bash scripts/android-cli-check.sh inspect <file.kt>` — 실행 중인 Android Studio가 `READY`이면 `android studio analyze-file`로 즉시 K2/Lint 진단을 수행하고, Studio 미실행 시 `./gradlew :core:wear-contract:detektMain :app:compileDebugKotlin :app:detektDebug :wear:compileDebugKotlin :wear:detektDebug`로 자동 폴백한다. 심볼릭 링크 경로(`apps_ln`)에서 호출해도 스크립트가 Studio 프로젝트 정본 경로(`C:/programming/apps/eundunHealth`)로 자동 변환한다.
+- **듀얼 엔진 Compose `@Preview` 검증**: `bash scripts/android-cli-check.sh previews [app|wear] [--render [file] [preview_fn]]` — `android preview list "gradle://.?:{app,wear}@debug"`로 `@Preview` 목록을 추출하고, Studio 실행 시 `android studio render-compose-preview --print-semantics`(미동기화/미실행 시 `android preview render --component-tree` 폴백)로 `{app,wear}/build/reports/compose-previews/`에 PNG와 a11y 시맨틱 트리를 렌더링한다 (`isIncludeAndroidResources = true` 미사용으로 순수 JVM 단위 테스트 속도 100% 보존).
+- **Release APK 정밀 해부 (룰 2·14·15 연동)**: `bash scripts/android-cli-check.sh apk [--module app|wear] [apk_path]` — `android analyze` 기반으로 `version.properties` 버전 일치(`versionCode=44` / `wearVersionCode=10001`), `minSdk`/`targetSdk`, `isFullMode=true`, 핵심 DEX/리소스 보존을 검증하며 `scripts/preflight-release.sh`에 자동 게이트로 배선됨.
+- **콜드 스타트 스모크 (`scripts/smoke-cold-start.sh`)**: `--module app|wear` 및 `--auto-emulator [avd]` 플래그로 에뮬레이터 자동 부팅(`android emulator start`), `android install` 고속 델타 설치(`adb install -r` 폴백), 콜드 스타트 직후 `{app,wear}/build/reports/cold-start/{layout.json,screen.png}`(`android layout --pretty` + `android screen capture --annotate`) 증적 자동 수집을 지원한다.
 - **공식 문서 검색**: `bash scripts/android-cli-check.sh docs "<query>"` (`android docs` RAG 검색).
 
 **Live Edit (Compose UI 반복 개발 — IDE 전용, 저장소 산출물 없음)**
@@ -132,7 +132,7 @@ android install --launch app/build/outputs/apk/debug/app-debug.apk
 ## Architecture
 
 ### Multi-Project Structure
-- **Root project** includes only `:app` (Android). Backend는 별도 디렉토리 `backend/`에 FastAPI(Python) 프로젝트로 분리.
+- **Root project** includes 3 Gradle modules: `:app` (Mobile Android), `:wear` (Wear OS 6+ Android, `minSdk=36`, `targetSdk=37`, `wearVersionCode=10001`), and `:core:wear-contract` (Pure JVM 17 shared contract module, `KST_ZONE` SSoT). Backend는 별도 디렉토리 `backend/`에 FastAPI(Python) 프로젝트로 분리.
 - Dependency versions centralized in `gradle/libs.versions.toml` (Android).
 - Build secrets (Backend URL, Sentry DSN, Entra API scope) loaded from `local.properties` into BuildConfig fields. MSAL 의 client_id/authority 는 `R.raw` 리소스를 요구하므로 `app/src/{debug,release}/res/raw/auth_config_ciam.json` 에 둔다(BuildConfig 주입 불가). ExerciseDB는 OSS API라 키 불필요.
 - Release signing credentials도 `local.properties`에 (`RELEASE_STORE_PASSWORD`, `RELEASE_KEY_PASSWORD`, `RELEASE_KEY_ALIAS=eundunhealth_sign_key`). `build.gradle.kts`에 하드코드 금지.
@@ -209,11 +209,11 @@ DELETE /account
 ### Android App
 - **Kotlin 2.4.21**, KSP 2.3.12 (Kotlin과 호환 필요)
 - **Gradle 9.8.2**, AGP 9.5.1 (2026-11-06 9.5.0→9.5.1, AGP 9.5 최소 Gradle 9.6.0 충족; 내장 Kotlin + 새 DSL 기본 활성; dependency lock + SHA-256 verification)
-- **Min SDK 26**, Target SDK 37, Java 17
-- **Compose BOM 2026.09.00**, Activity Compose 1.13.0, Navigation Compose 2.10.2, Lifecycle 2.11.0, Core KTX 1.19.1
+- **Min SDK 26** (`:app`) / **Min SDK 36** (`:wear`, Wear OS 6+), Target SDK 37, Java 17
+- **Compose BOM 2026.09.00**, Activity Compose 1.13.0, Navigation Compose 2.10.2, Lifecycle 2.11.0, Core KTX 1.19.1, **Wear Compose Material 3 / Foundation / Navigation 1.7.1**, Wear Tooling Preview 1.0.0
 - **Hilt 2.60.1**, Room 2.8.5, WorkManager 2.12.0 (`hilt-work` 1.4.0), CameraX 1.6.2 (`camera-compose`), ML Kit Face Detection 17.1.0 (`play-services-mlkit-face-detection`, unbundled `play-services-base` 18.11.1), DataStore 1.3.0, Health Connect 1.1.0, Retrofit 3.0.0, MSAL 8.6.0, OpenAPI Generator 7.26.0
-- **버전 관리**: SSoT = 루트 `version.properties`(앱 versionName/versionCode) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
-- **App version**: 저장소 및 Play 운영 versionName **`0.7.3`**, versionCode **`44`** — SSoT 는 루트 `version.properties`, 업로드 최고값은 원장 `LAST_UPLOADED_VERSION_CODE=44`. 후보를 운영 완료로 기록하지 않는다.
+- **버전 관리**: SSoT = 루트 `version.properties`(앱 `versionName`/`versionCode` 및 워치 명시적 `wearVersionCode=10001`) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
+- **App version**: 저장소 및 Play 운영 versionName **`0.7.3`**, versionCode **`44`** (Wear `:wear` `wearVersionCode=10001`) — SSoT 는 루트 `version.properties`, 업로드 최고값은 원장 `LAST_UPLOADED_VERSION_CODE=44`. 후보를 운영 완료로 기록하지 않는다.
 - **Sentry Android 8.61.1** (Sentry Gradle plugin 6.24.0, eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.5.1** + **Coil 3.6.3** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)

@@ -1,13 +1,15 @@
 package com.gunnys.eundunhealth
 
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.util.Properties
 
 /**
- * AGP(Android Gradle Plugin) 9 Built-in Kotlin + AGP 10-Ready 새 DSL 및 공급망 불변식을
- * JVM 단위 테스트에서도 고정한다 (`scripts/check-agp10-compat.sh` 와 이중 방어, CLAUDE.md 룰 15).
+ * AGP(Android Gradle Plugin) 9 Built-in Kotlin + AGP 10-Ready 새 DSL 및 3모듈(:app, :wear, :core:wear-contract)
+ * 공급망·패키지·Capability·최소 권한 불변식을 JVM 단위 테스트에서도 고정한다 (`scripts/check-agp10-compat.sh` 와 이중 방어, CLAUDE.md 룰 15).
  */
 class AgpBuildContractTest {
 
@@ -68,6 +70,90 @@ class AgpBuildContractTest {
         assertTrue(
             "공급망 재현성을 위해 dependencyLocking { lockAllConfigurations() } 가 유지되어야 합니다",
             appBuild.contains("lockAllConfigurations()"),
+        )
+    }
+
+    @Test
+    fun `wear_and_contract_modules_maintain_AGP_10_SDK_36_and_capability_invariants`() {
+        val wearBuild = File(repoRoot, "wear/build.gradle.kts").readText()
+        val contractBuild = File(repoRoot, "core/wear-contract/build.gradle.kts").readText()
+
+        assertFalse(
+            "wear 모듈에 kotlin-android 플러그인을 중복 적용하면 안 됩니다",
+            Regex("""alias\(libs\.plugins\.kotlin\.android\)|id\("org\.jetbrains\.kotlin\.android"\)""").containsMatchIn(wearBuild),
+        )
+        assertTrue(
+            "wear 모듈은 모바일과 동일한 applicationId(com.gunnys.eundunhealth)를 사용해야 합니다",
+            wearBuild.contains("""applicationId = "com.gunnys.eundunhealth""""),
+        )
+        assertTrue(
+            "wear 모듈은 API 35 이하 레거시를 제외한 minSdk = 36 및 targetSdk = 37 을 유지해야 합니다",
+            wearBuild.contains("minSdk = 36") && wearBuild.contains("targetSdk = 37"),
+        )
+        assertTrue(
+            "wear 모듈은 androidComponents.onVariants 기반 detektDebug, 16KB 정렬, dependencyLocking 을 유지해야 합니다",
+            wearBuild.contains("androidComponents.onVariants") &&
+                wearBuild.contains("""tasks.register<Detekt>("detektDebug")""") &&
+                wearBuild.contains("useLegacyPackaging = false") &&
+                wearBuild.contains("lockAllConfigurations()"),
+        )
+        assertTrue(
+            "core:wear-contract 모듈은 순수 JVM(kotlin.jvm), detektMain 및 dependencyLocking 을 유지해야 합니다",
+            contractBuild.contains("alias(libs.plugins.kotlin.jvm)") &&
+                contractBuild.contains("""tasks.register<Detekt>("detektMain")""") &&
+                contractBuild.contains("lockAllConfigurations()"),
+        )
+        assertFalse(
+            "core:wear-contract 모듈에는 Android/Play Services/직렬화 의존성이 유입되면 안 됩니다 (AC-09)",
+            Regex("""com\.android\.|androidx\.|play-services|health-services|serialization""").containsMatchIn(contractBuild),
+        )
+        val contractMainFiles = File(repoRoot, "core/wear-contract/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue(
+            "core:wear-contract/src/main 에는 최소 1개의 Kotlin 계약 파일이 있어야 하며 Android/Google Play import 가 없어야 합니다 (AC-09)",
+            contractMainFiles.isNotEmpty() &&
+                contractMainFiles.none {
+                    Regex("""^\s*import\s+(android\.|androidx\.|com\.google\.android\.)""", RegexOption.MULTILINE)
+                        .containsMatchIn(it.readText())
+                },
+        )
+        assertFalse(
+            "Foundation 단계의 wear 모듈에는 Health Services / Play Services Wearable 런타임 의존성을 조기 추가하지 않아야 합니다 (AC-09)",
+            Regex("""health-services|play-services-wearable""").containsMatchIn(wearBuild),
+        )
+
+        val versionProps = Properties().apply {
+            File(repoRoot, "version.properties").inputStream().use { load(it) }
+        }
+        val appVc = versionProps.getProperty("versionCode")?.trim()?.toIntOrNull() ?: 0
+        val wearVc = versionProps.getProperty("wearVersionCode")?.trim()?.toIntOrNull() ?: 0
+        assertTrue("versionCode 와 wearVersionCode 는 모두 양의 정수여야 합니다", appVc > 0 && wearVc > 0)
+        assertNotEquals("Play 멀티-AAB 규약상 모바일 versionCode 와 워치 wearVersionCode 는 서로 달라야 합니다", appVc, wearVc)
+
+        val wearManifest = File(repoRoot, "wear/src/main/AndroidManifest.xml").readText()
+        assertTrue(
+            "wear 매니페스트는 android.hardware.type.watch 필수 피처와 standalone=false 를 포함해야 합니다",
+            wearManifest.contains("""android:name="android.hardware.type.watch"""") &&
+                wearManifest.contains("""android:name="com.google.android.wearable.standalone"""") &&
+                wearManifest.contains("""android:value="false""""),
+        )
+        assertFalse(
+            "Foundation 단계의 wear 매니페스트에는 민감 건강/신체활동/부팅/WakeLock 권한을 조기 선언하지 않아야 합니다 (AC-04)",
+            Regex("""READ_HEART_RATE|READ_HEALTH_DATA_IN_BACKGROUND|BODY_SENSORS|ACTIVITY_RECOGNITION|RECEIVE_BOOT_COMPLETED|WAKE_LOCK""")
+                .containsMatchIn(wearManifest),
+        )
+
+        val appWearXml = File(repoRoot, "app/src/main/res/values/wear.xml").readText()
+        val wearWearXml = File(repoRoot, "wear/src/main/res/values/wear.xml").readText()
+        val appKeepXml = File(repoRoot, "app/src/main/res/raw/keep_wear_capabilities.xml").readText()
+        val wearKeepXml = File(repoRoot, "wear/src/main/res/raw/keep_wear_capabilities.xml").readText()
+        assertTrue(
+            "app 과 wear 의 res/values/wear.xml 및 res/raw/keep_wear_capabilities.xml 은 tools:keep 보호와 서로 다른 capability 이름을 가져야 합니다 (AC-05)",
+            appWearXml.contains("""tools:keep="@array/android_wear_capabilities"""") &&
+                wearWearXml.contains("""tools:keep="@array/android_wear_capabilities"""") &&
+                appKeepXml.contains("""tools:keep="@array/android_wear_capabilities"""") &&
+                wearKeepXml.contains("""tools:keep="@array/android_wear_capabilities"""") &&
+                appWearXml.contains("<item>eundun_phone_companion</item>") &&
+                wearWearXml.contains("<item>eundun_wear_companion</item>"),
         )
     }
 

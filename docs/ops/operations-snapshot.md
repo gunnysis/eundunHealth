@@ -10,11 +10,11 @@
 
 | 항목 | 값 |
 |---|---|
-| Application ID | `com.gunnys.eundunhealth` |
+| Application ID | `com.gunnys.eundunhealth` (모바일 `:app` & 워치 `:wear` 동일 패키지; 공유 계약 `:core:wear-contract` Pure JVM 17) |
 | versionName / versionCode | **`0.7.3` / `44` (태그 `v0.7.3`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=44` |
-| Min SDK / Target SDK | 26 / 37 |
+| Min SDK / Target SDK | 26 / 37 (`:app` 모바일) · 36 / 37 (`:wear` Wear OS 6+, `wearVersionCode=10001`, Wear Compose M3 `1.7.1`) |
 | Kotlin / AGP / Gradle | **2.4.21 / 9.5.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
-| Compose BOM | **2026.09.00** |
+| Compose BOM | **2026.09.00** (Wear Compose Material 3 / Foundation / Navigation **1.7.1**, Wear Tooling Preview **1.0.0**) |
 | 차트 | Vico 3.3.1 (compose-m3) — v0.1.5 에서 2.1.0 → 3.1.0 마이그레이션 → 3.2.2 dependabot |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
 | 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.4** + ktlint 1.5.0 |
@@ -523,13 +523,12 @@ gh workflow run backend.yml --ref main -f deploy=true
 
 ## 11. MCP 통합 (2026-05-28)
 
-Claude Code MCP 서버 4종 운영 활용:
+MCP 서버 3종 운영 활용:
 
 | MCP 서버 | 주 사용 시나리오 | 인증 |
 |---|---|---|
 | `mcp__sentry__*` | INC root cause 분석, Phase 5 검증, 신규 issue 알림 | OAuth (qkr133456@gmail.com) |
 | `mcp__azure__*` | Container App 상태/로그, ACR 정리, PG 쿼리, secret list 검증 | az CLI shared, `AZURE_TENANT_ID` env 주입 |
-| `mcp__github__*` | PR 작성/조회, CI run polling, 코드 검색 | GitHub Copilot OAuth (gunnysis) |
 | `mcp__plugin_context7_context7__*` | 공식 docs fetch (Alembic, PG, Docker, Container Apps) | 없음 (public) |
 
 권한 분리 (`.claude/settings.local.json`):

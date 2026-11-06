@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-11-04 — 전역 워크스테이션 & eundunHealth Android CLI (`v1.1.16717390`) + Android Studio Live Integration 2-Tier 통합
+
+- **Why**: IDE 인메모리 엔진(PSI 정적 분석, Compose `@Preview` 렌더링, Google Maven 버전 조회)과 터미널 CLI 간 단절을 해소하고, WSL2 Ubuntu ↔ Windows 호스트 Studio IPC 브리지 및 R8 Full Mode / Cold-Start UI 레이아웃 자동 검증을 구축해야 했다.
+- **What**:
+  - **Tier 1 (전역 워크스테이션)**: `windows-dev-setup`에 6번째 WSL2 래퍼 `~/.local/bin/android` 배포, `pwsh-doctor.ps1` / `wsl-doctor.ps1` 게이트 추가, 글로벌 에이전트 스코프에 공식 Android 도메인 스킬 6종(`camerax`, `jetpack-compose-performance`, `r8-analyzer`, `edge-to-edge`, `adaptive`, `play-policy-insights`) 설치.
+  - **Tier 2 (`eundunHealth`)**: `scripts/ensure-android-cli.sh` 및 단일 진입점 `scripts/android-cli-check.sh`(`status`, `versions`, `inspect`, `previews`, `apk`, `docs`) 구현(심볼릭 링크 `apps_ln` → Studio 정본 경로 자동 정규화 포함), `preflight-release.sh` 및 `smoke-cold-start.sh` 고도화.
+- **Outcome**: `pwsh-doctor.ps1` (`PASS 87 / FAIL 0`), `wsl-doctor.ps1` (`PASS 36 / FAIL 0`), `android-cli-check.sh` 6개 서브커맨드 및 `doc_audit.py --strict` 전수 통과.
+- **Files touched**: `scripts/{ensure-android-cli,android-cli-check,preflight-release,smoke-cold-start}.sh`, `.claude/settings.local.json`, `CLAUDE.md`, `GEMINI.md`, `docs/ops/operations-snapshot.md`, `AI_HANDOFF.md`
+- **설계 원문**: `2026-11-04-android-cli-integration-{design,plan}.md` (본 entry 로 흡수)
+
+---
+
 ### 2026-10-27 — CI aggregate gate·Action pin·릴리스 원장 PR 전환
 
 - Android/backend path filter는 유지하면서 항상 완료되는 `Repository Gate`가 변경 영역의 결과를 집계해 필수 검사 pending 문제를 막도록 했다.

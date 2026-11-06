@@ -1,5 +1,24 @@
 # Multi-AI Handoff Log
 
+## 2026-11-06 (Gemini -> Claude/User) Google Wear OS 6.0 (API 36) Foundation & 개발/검증 환경 구축 완료 (`:app`, `:wear`, `:core:wear-contract` 3모듈 · Wear Compose M3 `1.7.1` · `AC-01 ~ AC-10` 전수 통과)
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. 계획서 최종 정제 및 단일 활성 파일 유지 ([`docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md`](docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md))**:
+  - [`docs/proposals/2026-11-06-wear-os-integration-architecture.md`](docs/proposals/2026-11-06-wear-os-integration-architecture.md) (`PROP-06`)에서 Foundation 환경 구축 범위를 분리·승격하고, 구형 완료 페어(`2026-11-04-android-cli-integration-*`)를 [`docs/plans/logs/process-infra.md`](docs/plans/logs/process-infra.md)로 이관하여 `docs/plans/` 내 단일 활성 계획 문서 체계를 확립.
+- **2. 호스트 Wear OS 6.0 (API 36) SDK 및 `Wear_OS_Large_Round_API_36` AVD 구축 (`AC-07`)**:
+  - `system-images/android-36/android-wear-signed/x86_64` 설치 및 `Wear_OS_Large_Round_API_36` (`wearos_large_round`) 생성 완료.
+  - 콜드 부트 시 오버레이되는 `com.google.android.wearable.setupwizard` 및 AC 충전 화면(`dumpsys battery unplug`) 해제 프로비저닝 후 `wear-debug.apk` 설치·실행·스크롤 검증 완료 ([`wear/build/reports/emulator-smoke-scrolled.png`](wear/build/reports/emulator-smoke-scrolled.png)).
+- **3. 3모듈 경량 계약 스켈레톤 (`:app`, `:wear`, `:core:wear-contract`) 및 비민감 진단 UI 구축 (`AC-01 ~ AC-06`, `AC-09`)**:
+  - [`:core:wear-contract`](core/wear-contract/build.gradle.kts): 순수 JVM(`org.jetbrains.kotlin.jvm`, JDK 17) 모듈로 [`WearTimeConstants.kt`](core/wear-contract/src/main/kotlin/com/gunnys/eundunhealth/wear/contract/WearTimeConstants.kt) (`KST_ZONE`)만 보유하고 [`:app` `TimeConstants.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/model/TimeConstants.kt)에서 위임 참조. 미검증 생체 DTO·Data Layer 경로·센서 서비스·건강 권한은 Foundation에서 100% 배제 (`AC-04`, `AC-09`).
+  - [`:wear`](wear/build.gradle.kts): `applicationId = "com.gunnys.eundunhealth"`, `minSdk = 36`, `compileSdk = 37`, `targetSdk = 37`, 명시적 `wearVersionCode = 10001` ([`version.properties`](version.properties)), Wear Compose Material 3 (`1.7.1`) 기반 [`WearEnvironmentStatusScreen.kt`](wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt) (`AppScaffold` → `ScreenScaffold` → `TransformingLazyColumn` + `SurfaceTransformation`) 및 `LARGE_ROUND`/`SMALL_ROUND` 프리뷰 PNG 렌더링·육안 검수 완료 (`AC-06`).
+  - Capability 리소스 보존 (`AC-05`): [`app/src/main/res/values/wear.xml`](app/src/main/res/values/wear.xml) (`eundun_phone_companion`), [`wear/src/main/res/values/wear.xml`](wear/src/main/res/values/wear.xml) (`eundun_wear_companion`) 및 R8 리소스 축소기 대응 [`app/src/main/res/raw/keep_wear_capabilities.xml`](app/src/main/res/raw/keep_wear_capabilities.xml), [`wear/src/main/res/raw/keep_wear_capabilities.xml`](wear/src/main/res/raw/keep_wear_capabilities.xml) 추가로 Release APK 내 `array/android_wear_capabilities` 보존을 `aapt2 dump resources`로 실측 확인.
+- **4. 품질·공급망·CI 가드 확장 (`AC-08`, `AC-10`)**:
+  - [`scripts/check-agp10-compat.sh`](scripts/check-agp10-compat.sh), [`scripts/android-cli-check.sh`](scripts/android-cli-check.sh) (`apk --module app|wear`, 멀티모듈 `inspect`/`previews`), [`.githooks/pre-commit`](.githooks/pre-commit), [`.github/workflows/android.yml`](.github/workflows/android.yml), [`AgpBuildContractTest.kt`](app/src/test/java/com/gunnys/eundunhealth/AgpBuildContractTest.kt), 3모듈 `gradle.lockfile` 및 [`gradle/verification-metadata.xml`](gradle/verification-metadata.xml) 동기화 완료.
+- **다음 할 일 (Next Steps — 사용자 게이트 선행 필요)**:
+  - `G1`/`G3`: 실기기 Xiaomi Watch 5 USB/무선 ADB 연결(`ro.build.version.sdk`, `getCapabilitiesAsync()` 실측) 및 모바일 기기 블루투스/Wi-Fi 페어링은 사용자 직접 수행 영역임.
+
+---
+
 ## 2026-11-06 (Gemini -> Claude/User) AGP(Android Gradle Plugin) 최신 정식 안정판 `9.5.1` 업그레이드 완료 (룰 15 6단계 전수 검증 · 멀티 플랫폼 해시 락 · SSoT 문서 정합화)
 
 **현재까지의 작업 상태 (Current Status):**
@@ -43,7 +62,7 @@ unSuspendCatching(룰 14 Layer 2) 교체, [MealPlanRepositoryImpl.kt](app/src/ma
   - **Doctor 검증 스크립트 연동**: `pwsh-doctor.ps1` (**`PASS 87 / WARN 0 / FAIL 0`**) 및 `wsl-doctor.ps1` (**`PASS 36 / WARN 1 / FAIL 0`**, `[PASS] 래퍼 동작: android android-cli 1.1.16717390`)에 `android` CLI 점검 추가.
   - **전역 규칙 & 권한 동기화**: `C:\Users\Administrator\.claude\rules\windows-workstation.md`, `C:\Users\Administrator\.gemini\config\GEMINI.md` 기준선(래퍼 6개, `android-cli 1.1.16717390`, Android Studio `Rabbit 2 | 2026.2.2`) 갱신 및 `C:\Users\Administrator\.claude\settings.json`에 읽기 전용 `android` CLI 허용 규칙 등록 (`normalize-settings.js --verify-portable` 및 `test-guard.js` 37/37 통과).
   - **공식 도메인 스킬 6종 전역 동기화**: `android skills add`로 `camerax`, `jetpack-compose-performance`, `r8-analyzer`, `edge-to-edge`, `adaptive`, `play-policy-insights`를 6개 에이전트 타겟(`android-studio, antigravity, antigravity-cli, antigravity-ide, claude-code, gemini`)에 설치 완료 (총 20/20 스킬 활성).
-- **2. Tier 2 — `eundunHealth` 프로젝트 전용 하이브리드 통합 (`docs/plans/2026-11-04-android-cli-integration-{design,plan}.md`)**:
+- **2. Tier 2 — `eundunHealth` 프로젝트 전용 하이브리드 통합 (`docs/plans/logs/process-infra.md` — 옛 페어 `docs/plans/2026-11-04-android-cli-integration-{design,plan}.md` 흡수)**:
   - **[`scripts/ensure-android-cli.sh`](scripts/ensure-android-cli.sh)**: Windows Git Bash / PowerShell / WSL2 Ubuntu 전 환경에서 `android` CLI를 탐색·노출하는 헬퍼 스크립트(`ANDROID_CLI_REQUIRED=1` 지원).
   - **[`scripts/android-cli-check.sh`](scripts/android-cli-check.sh)**: 단일 하이브리드 오케스트레이터(`status` / `inspect` / `previews` / `apk` / `versions` / `docs`).
     - **근본 원인 해결 (심볼릭 링크 경로 `apps_ln` ↔ Studio VFS `Error: Failed to get module.`)**: `android studio check`가 반환하는 Studio 프로젝트 정본 경로(`C:/programming/apps/eundunHealth`)를 파싱해 상대/심볼릭 링크 파일 경로를 정본 경로로 자동 매핑하여 `analyze-file` 및 `render-compose-preview`가 100% 성공하도록 구현.
