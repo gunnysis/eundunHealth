@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,6 +37,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.Statistics
@@ -128,6 +131,7 @@ private fun StatisticsContent(stats: Statistics, modifier: Modifier = Modifier) 
         // 완료율 추이 차트 (TalkBack 요약 포함)
         Card(
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -168,6 +172,7 @@ private fun WorkoutModeRatioCard(stats: Statistics) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -213,6 +218,7 @@ private fun WorkoutModeRatioCard(stats: Statistics) {
 private fun StreakCard(label: String, value: Int, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(
@@ -221,12 +227,23 @@ private fun StreakCard(label: String, value: Int, modifier: Modifier = Modifier)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(label, style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.height(4.dp))
             Text(
-                "${value}주",
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "${value}주",
                 style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 20.sp,
+                    maxFontSize = 32.sp,
+                    stepSize = 1.sp,
+                ),
             )
         }
     }

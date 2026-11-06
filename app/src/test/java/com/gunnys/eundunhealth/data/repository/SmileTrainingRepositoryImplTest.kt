@@ -12,14 +12,17 @@ import com.gunnys.eundunhealth.domain.repository.SyncBatchOutcome
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import retrofit2.Response
 import java.io.IOException
@@ -219,6 +222,25 @@ class SmileTrainingRepositoryImplTest {
         coVerify(exactly = 1) { api.listSmileTrainingSessions(cursor = null, limit = 50) }
     }
 
+    @Test
+    fun `refreshRemoteHistoryIfEmpty rethrows CancellationException per Rule 14 Layer 2`() = runTest {
+        val dao = InMemorySmileSessionDao()
+        val api = mockk<SmileTrainingApi>()
+        val authRepo = mockk<AuthRepository>()
+        val workManager = mockk<WorkManager>(relaxed = true)
+
+        coEvery { authRepo.getCurrentUserId() } returns "user-1"
+        coEvery { api.listSmileTrainingSessions(cursor = null, limit = 50) } throws CancellationException("cancelled")
+
+        val repo = SmileTrainingRepositoryImpl(dao, api, authRepo, workManager)
+        try {
+            repo.refreshRemoteHistoryIfEmpty()
+            fail("Expected CancellationException to be rethrown")
+        } catch (_: CancellationException) {
+            // Expected per Rule 14 Layer 2
+        }
+    }
+
     private fun entityAtKst(
         year: Int,
         month: Int,
@@ -252,7 +274,13 @@ class SmileTrainingRepositoryImplTest {
 
         override suspend fun getById(id: String, userId: String): SmileSessionEntity? = state.value.firstOrNull { it.id == id && it.userId == userId }
 
+        override suspend fun countSessionsByUser(userId: String): Int = state.value.count { it.userId == userId }
+
         override fun observeSessionsByUser(userId: String): Flow<List<SmileSessionEntity>> = state
+
+        override fun observeRecentSessionsByUser(userId: String, limit: Int): Flow<List<SmileSessionEntity>> = state.map { list ->
+            list.filter { it.userId == userId }.sortedByDescending { it.occurredAtUtc }.take(limit)
+        }
 
         override suspend fun getSessionsByUser(userId: String): List<SmileSessionEntity> = state.value.filter { it.userId == userId }.sortedByDescending { it.occurredAtUtc }
 

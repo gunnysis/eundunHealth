@@ -24,6 +24,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -56,7 +57,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -73,9 +73,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.data.preferences.ThemeMode
 import com.gunnys.eundunhealth.domain.model.FitnessLevel
@@ -96,7 +95,6 @@ fun ProfileHubScreen(
     onRequestHealthPermissions: () -> Unit,
     onOpenHealthConnectManagement: () -> Unit,
     onRefreshHealthConnectStatus: () -> Unit,
-    onCycleTheme: () -> Unit,
     onSelectThemeMode: ((ThemeMode) -> Unit)? = null,
     onToggleDynamicColor: (Boolean) -> Unit = {},
     onLogout: () -> Unit,
@@ -105,7 +103,10 @@ fun ProfileHubScreen(
     var showModeDialog by rememberSaveable { mutableStateOf(false) }
     var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
 
-    RefreshOnResume(onRefreshHealthConnectStatus)
+    LifecycleResumeEffect(onRefreshHealthConnectStatus) {
+        onRefreshHealthConnectStatus()
+        onPauseOrDispose {}
+    }
 
     Scaffold(
         topBar = {
@@ -152,7 +153,6 @@ fun ProfileHubScreen(
             AppearanceSettingsCard(
                 themeMode = state.themeMode,
                 dynamicColorEnabled = state.dynamicColorEnabled,
-                onCycleTheme = onCycleTheme,
                 onSelectThemeMode = onSelectThemeMode,
                 onToggleDynamicColor = onToggleDynamicColor,
             )
@@ -398,6 +398,12 @@ private fun BodyStatPill(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 textAlign = TextAlign.Center,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 11.sp,
+                    maxFontSize = 14.sp,
+                    stepSize = 1.sp,
+                ),
             )
         }
     }
@@ -657,7 +663,6 @@ private fun HealthConnectListItemContent(
 private fun AppearanceSettingsCard(
     themeMode: ThemeMode,
     dynamicColorEnabled: Boolean,
-    onCycleTheme: () -> Unit,
     onSelectThemeMode: ((ThemeMode) -> Unit)?,
     onToggleDynamicColor: (Boolean) -> Unit,
 ) {
@@ -670,44 +675,38 @@ private fun AppearanceSettingsCard(
         shape = MaterialTheme.shapes.medium,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // 테마 설정: 행 탭 시 순환 + 하단 3버튼 세그먼트 칩으로 원탭 직접 선택 지원
-            Surface(
-                onClick = onCycleTheme,
-                color = Color.Transparent,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        TintedIconBadge(
-                            icon = Icons.Default.DarkMode,
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            // 테마 설정: 3버튼 세그먼트 칩으로 원탭 직접 선택 지원
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    TintedIconBadge(
+                        icon = Icons.Default.DarkMode,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "테마",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
                         )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "테마",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = themeMode.displayName(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                        Text(
+                            text = themeMode.displayName(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
+                }
 
-                    if (onSelectThemeMode != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        ThemeModeSegmentedRow(
-                            selectedMode = themeMode,
-                            onSelectMode = onSelectThemeMode,
-                        )
-                    }
+                if (onSelectThemeMode != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ThemeModeSegmentedRow(
+                        selectedMode = themeMode,
+                        onSelectMode = onSelectThemeMode,
+                    )
                 }
             }
 
@@ -954,18 +953,6 @@ private fun DefaultPlanModeOptionRow(
         RadioButton(selected = selected, onClick = null)
         Spacer(modifier = Modifier.width(12.dp))
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-private fun RefreshOnResume(onRefresh: () -> Unit) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, onRefresh) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) onRefresh()
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 }
 

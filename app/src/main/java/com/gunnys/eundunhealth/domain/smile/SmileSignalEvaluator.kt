@@ -78,7 +78,11 @@ class SmileStandardRule(
         return FrameVerdict.Satisfied
     }
 
-    fun evaluate(signal: FrameSignal, currentlySmiling: Boolean, smoothedSmileProbability: Float? = signal.smileProbability): FrameVerdict {
+    fun evaluate(
+        signal: FrameSignal,
+        currentlySmiling: Boolean,
+        smoothedSmileProbability: Float? = signal.smileProbability,
+    ): FrameVerdict {
         val precheck = checkFaceGeometry(signal)
         if (precheck != null) return precheck
 
@@ -128,7 +132,8 @@ class SmileStandardRule(
  * - 프레임 수가 아니라 `timestampElapsedMs`(단조 시간) 기준으로 유지 시간을 계산한다.
  * - 지수 이동 평균(EMA, alpha=0.6) 스무딩 + 최근 1,000ms 슬라이딩 윈도우 충족 비율(>= 75%) + 히스테리시스를 결합해
  *   미세한 프레임 노이즈로 게이지가 튀는 현상을 방지한다.
- * - READY 단계에서는 얼굴 정렬이 1,000ms 연속 유지되면 자동 시작(`shouldAutoStart = true`)을 트리거한다.
+ * - READY 단계에서는 얼굴 정렬이 1,000ms 연속 유지되면 자동 시작(`shouldAutoStart = true`)을 트리거하며,
+ *   150ms 이내의 순간 흔들림(노이즈)으로 정렬 게이지가 즉시 0%로 초기화되지 않도록 완충한다.
  */
 class SmileSignalEvaluator(
     private val rule: SmileStandardRule = SmileStandardRule(),
@@ -136,6 +141,7 @@ class SmileSignalEvaluator(
     private val windowSizeMs: Long = DEFAULT_WINDOW_SIZE_MS,
     private val minWindowSatisfiedRatio: Float = DEFAULT_MIN_WINDOW_RATIO,
     private val readyAutoStartHoldMs: Long = SmileTrainingSpec.READY_AUTO_START_HOLD_MS,
+    private val readyNoiseGraceMs: Long = DEFAULT_READY_NOISE_GRACE_MS,
     private val emaAlpha: Float = SmileTrainingSpec.EMA_SMOOTHING_ALPHA,
 ) {
     private data class TimedVerdict(val timestampMs: Long, val isSatisfied: Boolean)
@@ -149,6 +155,7 @@ class SmileSignalEvaluator(
     private var smoothedSmileProbability: Float? = null
 
     private var readyAlignedAccumulatedMs: Long = 0L
+    private var readyUnalignedAccumulatedMs: Long = 0L
     private var lastReadyTimestampMs: Long? = null
 
     fun reset() {
@@ -164,6 +171,7 @@ class SmileSignalEvaluator(
 
     fun resetReadyAlignment() {
         readyAlignedAccumulatedMs = 0L
+        readyUnalignedAccumulatedMs = 0L
         lastReadyTimestampMs = null
     }
 
@@ -182,25 +190,18 @@ class SmileSignalEvaluator(
         lastReadyTimestampMs = signal.timestampElapsedMs
 
         return when (val verdict = rule.evaluateReadyAlignment(signal)) {
-            is FrameVerdict.Unmeasurable -> {
-                readyAlignedAccumulatedMs = 0L
-                ReadyAlignmentSnapshot(
-                    isFaceAligned = false,
-                    alignmentProgress = 0f,
-                    shouldAutoStart = false,
-                    guideMessage = verdict.reason.userGuide,
-                )
-            }
-            is FrameVerdict.BelowThreshold -> {
-                readyAlignedAccumulatedMs = 0L
-                ReadyAlignmentSnapshot(
-                    isFaceAligned = false,
-                    alignmentProgress = 0f,
-                    shouldAutoStart = false,
-                    guideMessage = verdict.userGuide,
-                )
-            }
+            is FrameVerdict.Unmeasurable -> handleUnalignedReadyVerdict(
+                deltaMs = deltaMs,
+                allowAutoStart = allowAutoStart,
+                guideMessage = verdict.reason.userGuide,
+            )
+            is FrameVerdict.BelowThreshold -> handleUnalignedReadyVerdict(
+                deltaMs = deltaMs,
+                allowAutoStart = allowAutoStart,
+                guideMessage = verdict.userGuide,
+            )
             FrameVerdict.Satisfied -> {
+                readyUnalignedAccumulatedMs = 0L
                 if (allowAutoStart) {
                     readyAlignedAccumulatedMs += deltaMs
                 } else {
@@ -221,6 +222,27 @@ class SmileSignalEvaluator(
                 )
             }
         }
+    }
+
+    private fun handleUnalignedReadyVerdict(
+        deltaMs: Long,
+        allowAutoStart: Boolean,
+        guideMessage: String,
+    ): ReadyAlignmentSnapshot {
+        readyUnalignedAccumulatedMs += deltaMs
+        val withinGrace = allowAutoStart &&
+            readyAlignedAccumulatedMs > 0L &&
+            readyUnalignedAccumulatedMs <= readyNoiseGraceMs
+        if (!withinGrace) {
+            readyAlignedAccumulatedMs = 0L
+        }
+        val progress = (readyAlignedAccumulatedMs.toFloat() / readyAutoStartHoldMs.toFloat()).coerceIn(0f, 1f)
+        return ReadyAlignmentSnapshot(
+            isFaceAligned = withinGrace,
+            alignmentProgress = progress,
+            shouldAutoStart = false,
+            guideMessage = guideMessage,
+        )
     }
 
     fun onFrame(signal: FrameSignal): SmileEvaluatorSnapshot {
@@ -377,6 +399,7 @@ class SmileSignalEvaluator(
     companion object {
         const val DEFAULT_WINDOW_SIZE_MS = 1000L
         const val DEFAULT_MIN_WINDOW_RATIO = 0.75f
+        const val DEFAULT_READY_NOISE_GRACE_MS = 150L
         private const val MAX_FRAME_DELTA_MS = 350L
         private const val DECAY_MULTIPLIER = 2L
     }

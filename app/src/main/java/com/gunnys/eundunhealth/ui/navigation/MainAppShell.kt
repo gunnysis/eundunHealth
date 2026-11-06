@@ -169,7 +169,6 @@ private fun MainContent(
                     viewModel.refreshHealthConnectStatus()
                     viewModel.refreshDefaultWorkoutPlanMode()
                 },
-                onCycleTheme = viewModel::cycleTheme,
                 onSelectThemeMode = viewModel::setThemeMode,
                 onToggleDynamicColor = viewModel::setDynamicColorEnabled,
                 onLogout = onLogout,

@@ -18,6 +18,7 @@ import com.gunnys.eundunhealth.domain.model.CurrentWeekPlanRead
 import com.gunnys.eundunhealth.domain.model.DayPlan
 import com.gunnys.eundunhealth.domain.model.Exercise
 import com.gunnys.eundunhealth.domain.model.ExerciseType
+import com.gunnys.eundunhealth.domain.model.KST_ZONE
 import com.gunnys.eundunhealth.domain.model.PlanSource
 import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.domain.model.UserProfile
@@ -36,7 +37,6 @@ import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
 import com.gunnys.eundunhealth.api.generated.model.WorkoutPlanMode as ApiWorkoutPlanMode
 
@@ -50,7 +50,7 @@ class WorkoutRepositoryImpl @Inject constructor(
 ) : WorkoutRepository {
 
     // 주 시작(월요일)은 KST 고정 — 디바이스 타임존과 무관하게 plan/통계 key(weekStart)가 흔들리지 않도록.
-    private fun currentWeekStart(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul")).with(DayOfWeek.MONDAY)
+    private fun currentWeekStart(): LocalDate = LocalDate.now(KST_ZONE).with(DayOfWeek.MONDAY)
 
     @Suppress("TooGenericExceptionCaught")
     override suspend fun loadCurrentWeekPlan(): CurrentWeekPlanRead {

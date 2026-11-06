@@ -81,8 +81,8 @@ class DialogAndLayoutGuardTest {
         )
         assertTrue(
             "ProgressHubScreen must refresh summary on ON_RESUME lifecycle event",
-            progressHub.contains("RefreshProgressOnResume") &&
-                progressHub.contains("Lifecycle.Event.ON_RESUME"),
+            progressHub.contains("LifecycleResumeEffect") ||
+                (progressHub.contains("RefreshProgressOnResume") && progressHub.contains("Lifecycle.Event.ON_RESUME")),
         )
     }
 

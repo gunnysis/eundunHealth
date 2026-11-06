@@ -6,9 +6,9 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import com.gunnys.eundunhealth.domain.model.KST_ZONE
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
 
 class HealthConnectDataSource @Inject constructor(
@@ -25,16 +25,15 @@ class HealthConnectDataSource @Inject constructor(
 
     suspend fun getExerciseDatesThisWeek(weekStart: LocalDate): List<LocalDate> {
         // KST 고정 — weekStart 계산(WorkoutRepository)과 동일 타임존이어야 날짜 버킷이 어긋나지 않음.
-        val zoneId = ZoneId.of("Asia/Seoul")
-        val startTime = weekStart.atStartOfDay(zoneId).toInstant()
-        val endTime = weekStart.plusDays(7).atStartOfDay(zoneId).toInstant()
+        val startTime = weekStart.atStartOfDay(KST_ZONE).toInstant()
+        val endTime = weekStart.plusDays(7).atStartOfDay(KST_ZONE).toInstant()
 
         val request = ReadRecordsRequest(
             recordType = ExerciseSessionRecord::class,
             timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
         )
         return client.readRecords(request).records
-            .map { it.startTime.atZone(zoneId).toLocalDate() }
+            .map { it.startTime.atZone(KST_ZONE).toLocalDate() }
             .distinct()
     }
 

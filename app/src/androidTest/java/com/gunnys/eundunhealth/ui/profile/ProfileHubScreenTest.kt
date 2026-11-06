@@ -41,7 +41,6 @@ class ProfileHubScreenTest {
                 onRequestHealthPermissions = {},
                 onOpenHealthConnectManagement = {},
                 onRefreshHealthConnectStatus = {},
-                onCycleTheme = {},
                 onLogout = {},
             )
         }
@@ -65,7 +64,6 @@ class ProfileHubScreenTest {
                 onRequestHealthPermissions = {},
                 onOpenHealthConnectManagement = { openedManagement = true },
                 onRefreshHealthConnectStatus = {},
-                onCycleTheme = {},
                 onLogout = {},
             )
         }

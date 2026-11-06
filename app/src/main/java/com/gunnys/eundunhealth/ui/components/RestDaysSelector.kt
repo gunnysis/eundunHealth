@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.MAX_REST_DAYS
 import com.gunnys.eundunhealth.domain.model.TOTAL_DAYS_IN_WEEK
 import com.gunnys.eundunhealth.domain.model.normalizeRestDays
+import com.gunnys.eundunhealth.ui.theme.EundunHealthTheme
 
 internal val DAY_SHORT_LABELS = listOf("월", "화", "수", "목", "금", "토", "일")
 private val DAY_FULL_LABELS = listOf("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
@@ -194,7 +195,7 @@ fun RestDaysSelector(
 @Preview(showBackground = true)
 @Composable
 private fun RestDaysSelectorPreview() {
-    MaterialTheme {
+    EundunHealthTheme {
         Column(modifier = Modifier.padding(16.dp)) {
             RestDaysSelector(
                 restDays = listOf(6, 7),

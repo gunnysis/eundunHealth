@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -45,7 +46,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,12 +60,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
+import com.gunnys.eundunhealth.domain.model.formatDurationKorean
 import com.gunnys.eundunhealth.ui.home.PlanModeBadge
 import com.gunnys.eundunhealth.ui.theme.EundunTheme
 
@@ -82,7 +82,10 @@ fun ProgressHubScreen(
     viewModel: ProgressHubViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    RefreshProgressOnResume(onRefresh = viewModel::loadSummary)
+    LifecycleResumeEffect(viewModel) {
+        viewModel.loadSummary()
+        onPauseOrDispose {}
+    }
 
     Scaffold(
         topBar = {
@@ -129,20 +132,6 @@ fun ProgressHubScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
-    }
-}
-
-@Composable
-private fun RefreshProgressOnResume(onRefresh: () -> Unit) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, onRefresh) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                onRefresh()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 }
 
@@ -478,6 +467,12 @@ private fun FourWeekTrendVisualTile(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 16.sp,
+                    maxFontSize = 24.sp,
+                    stepSize = 1.sp,
+                ),
             )
             Text(
                 text = state.recentFourWeeksSubLabel,
@@ -636,6 +631,12 @@ private fun GoalProgressVisualTile(
                 } else {
                     MaterialTheme.colorScheme.onSurface
                 },
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 16.sp,
+                    maxFontSize = 24.sp,
+                    stepSize = 1.sp,
+                ),
             )
             Text(
                 text = state.goalDeltaSubLabel,
@@ -677,11 +678,18 @@ private fun SmileTrainingProgressCard(
     onClick: () -> Unit,
 ) {
     val extendedColors = EundunTheme.extendedColors
+    val totalDurationSuffix = if (smileStats.totalDurationSec > 0) {
+        " · 총 ${formatDurationKorean(smileStats.totalDurationSec)}"
+    } else {
+        ""
+    }
     val summaryText = when {
         smileStats.isCompletedToday ->
-            "오늘 연습 완료 · 연속 ${smileStats.currentStreakDays}일째 (누적 ${smileStats.totalSessions}회)"
+            "오늘 연습 완료 · 연속 ${smileStats.currentStreakDays}일째 (누적 ${smileStats.totalSessions}회$totalDurationSuffix)"
         smileStats.currentStreakDays > 0 ->
-            "연속 ${smileStats.currentStreakDays}일 진행 중 · 오늘 10초 미소 연습을 이어가세요"
+            "연속 ${smileStats.currentStreakDays}일 진행 중 (누적 ${smileStats.totalSessions}회$totalDurationSuffix) · 오늘 10초 미소 연습을 이어가세요"
+        smileStats.totalSessions > 0 ->
+            "누적 ${smileStats.totalSessions}회$totalDurationSuffix · 오늘 10초 미소 연습을 시작해 보세요"
         else ->
             "2초 미소 × 3회 반복 온디바이스 표정 근육 및 마음 연습"
     }

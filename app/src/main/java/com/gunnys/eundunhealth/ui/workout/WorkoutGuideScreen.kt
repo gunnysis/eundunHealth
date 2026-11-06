@@ -1,7 +1,5 @@
 package com.gunnys.eundunhealth.ui.workout
 
-import android.app.Activity
-import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -49,7 +47,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -93,18 +91,8 @@ fun WorkoutGuideScreen(
     viewModel: WorkoutGuideViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val view = LocalView.current
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
-
-    // 가이드 세션 동안 화면 꺼짐 방지 (FLAG_KEEP_SCREEN_ON)
-    DisposableEffect(context) {
-        val window = (context as? Activity)?.window
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
 
     ObserveAsEvents(viewModel.sideEffect) { effect ->
         when (effect) {
@@ -261,6 +249,7 @@ private fun WorkoutGuideInProgressContent(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .keepScreenOn()
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         LinearProgressIndicator(

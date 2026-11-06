@@ -8,6 +8,7 @@ import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.HealthRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
@@ -46,7 +47,7 @@ class ProfileHubViewModel @Inject constructor(
         refreshDefaultWorkoutPlanMode()
         viewModelScope.launch {
             val mode = themePreferences.themeMode.first()
-            val dynamicColor = runCatching { themePreferences.dynamicColorEnabled.first() }.getOrDefault(false)
+            val dynamicColor = runSuspendCatching { themePreferences.dynamicColorEnabled.first() }.getOrDefault(false)
             _uiState.value = _uiState.value.copy(
                 themeMode = mode,
                 dynamicColorEnabled = dynamicColor,
@@ -106,16 +107,6 @@ class ProfileHubViewModel @Inject constructor(
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch {
         themePreferences.setThemeMode(mode)
         _uiState.value = _uiState.value.copy(themeMode = mode)
-    }
-
-    fun cycleTheme() = viewModelScope.launch {
-        val next = when (_uiState.value.themeMode) {
-            ThemeMode.SYSTEM -> ThemeMode.DARK
-            ThemeMode.DARK -> ThemeMode.LIGHT
-            ThemeMode.LIGHT -> ThemeMode.SYSTEM
-        }
-        themePreferences.setThemeMode(next)
-        _uiState.value = _uiState.value.copy(themeMode = next)
     }
 
     fun setDynamicColorEnabled(enabled: Boolean) = viewModelScope.launch {

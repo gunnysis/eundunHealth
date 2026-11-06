@@ -10,11 +10,13 @@ import androidx.camera.core.SurfaceRequest
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.compose.animation.core.Spring
+import androidx.camera.lifecycle.awaitInstance
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +51,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +60,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -65,6 +70,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -76,12 +82,16 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.gunnys.eundunhealth.data.smile.MlKitSmileSignalAnalyzer
 import com.gunnys.eundunhealth.domain.smile.FrameSignal
-import java.util.Locale
+import com.gunnys.eundunhealth.ui.theme.MotionTokens
+import com.gunnys.eundunhealth.ui.util.findActivity
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import android.util.Size as AndroidSize
@@ -116,86 +126,97 @@ internal fun SmileCameraStage(
     val currentOnPermissionRevoked by rememberUpdatedState(onPermissionRevoked)
     val currentOnCameraError by rememberUpdatedState(onCameraError)
     var surfaceRequest by remember { mutableStateOf<SurfaceRequest?>(null) }
+    val activeAnalyzerRef = remember { mutableStateOf<MlKitSmileSignalAnalyzer?>(null) }
+
+    SideEffect {
+        activeAnalyzerRef.value?.isPaused = uiState.phase == SmileSessionPhase.REP_SUCCESS
+    }
 
     DisposableEffect(view, context) {
         val window = context.findActivity()?.window
         val controller = if (window != null) WindowCompat.getInsetsController(window, view) else null
         val prevLightStatusBars = controller?.isAppearanceLightStatusBars
+        val prevLightNavigationBars = controller?.isAppearanceLightNavigationBars
         controller?.isAppearanceLightStatusBars = false
+        controller?.isAppearanceLightNavigationBars = false
         onDispose {
             if (prevLightStatusBars != null) {
                 controller.isAppearanceLightStatusBars = prevLightStatusBars
             }
+            if (prevLightNavigationBars != null) {
+                controller.isAppearanceLightNavigationBars = prevLightNavigationBars
+            }
         }
     }
 
-    DisposableEffect(lifecycleOwner, context) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_STOP -> currentOnLifecycleStopped()
-                Lifecycle.Event.ON_RESUME -> {
-                    val granted = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.CAMERA,
-                    ) == PackageManager.PERMISSION_GRANTED
-                    if (!granted) {
-                        currentOnPermissionRevoked()
-                    }
-                }
-                else -> Unit
-            }
+    LifecycleResumeEffect(context) {
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            currentOnPermissionRevoked()
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
+        onPauseOrDispose {}
+    }
 
-        val analysisExecutor = Executors.newSingleThreadExecutor()
-        val analyzer = runCatching {
-            MlKitSmileSignalAnalyzer(
-                onSignal = { signal -> currentOnFrameSignal(signal) },
-            )
-        }.getOrElse {
-            currentOnCameraError("얼굴 인식 분석기를 초기화할 수 없습니다. 잠시 후 다시 시도해주세요.")
-            return@DisposableEffect onDispose {
-                lifecycleOwner.lifecycle.removeObserver(observer)
-                analysisExecutor.shutdown()
+    LifecycleStartEffect(Unit) {
+        onStopOrDispose {
+            // T-1 방어: 세션 완료(NavigateBack)로 인해 컴포저블이 정상 Dispose되는 경우에는
+            // lifecycle 상태가 여전히 STARTED 이상이므로 일시정지를 호출하지 않는다.
+            // 오직 실제 Activity/화면이 백그라운드(STOPPED)로 내려간 경우에만 일시정지한다.
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                currentOnLifecycleStopped()
             }
         }
+    }
 
-        val cameraProviderFuture = runCatching {
-            ProcessCameraProvider.getInstance(context)
-        }.getOrElse {
-            analyzer.close()
-            currentOnCameraError("카메라 서비스를 초기화할 수 없습니다.")
-            return@DisposableEffect onDispose {
-                lifecycleOwner.lifecycle.removeObserver(observer)
-                analysisExecutor.shutdown()
-            }
-        }
+    @Suppress("TooGenericExceptionCaught")
+    LaunchedEffect(lifecycleOwner, context) {
         val mainExecutor = ContextCompat.getMainExecutor(context)
+        val analysisExecutor = Executors.newSingleThreadExecutor()
+        var analyzer: MlKitSmileSignalAnalyzer? = null
+        var cameraProvider: ProcessCameraProvider? = null
+        try {
+            val createdAnalyzer = MlKitSmileSignalAnalyzer(
+                onSignal = { signal ->
+                    mainExecutor.execute {
+                        currentOnFrameSignal(signal)
+                    }
+                },
+                callbackExecutor = analysisExecutor,
+            )
+            analyzer = createdAnalyzer
+            activeAnalyzerRef.value = createdAnalyzer
 
-        val bindRunnable = Runnable {
-            val provider = runCatching { cameraProviderFuture.get() }.getOrNull()
-            if (provider == null) {
-                currentOnCameraError("카메라 서비스를 초기화할 수 없습니다.")
-                return@Runnable
-            }
-            bindFrontCameraUseCases(
+            val provider = ProcessCameraProvider.awaitInstance(context)
+            cameraProvider = provider
+            val bound = bindFrontCameraUseCases(
                 provider = provider,
                 lifecycleOwner = lifecycleOwner,
                 analysisExecutor = analysisExecutor,
-                analyzer = analyzer,
-                onSurfaceRequest = { surfaceRequest = it },
+                analyzer = createdAnalyzer,
+                onSurfaceRequest = { req -> surfaceRequest = req },
                 onBindError = { msg -> currentOnCameraError(msg) },
             )
-        }
-        cameraProviderFuture.addListener(bindRunnable, mainExecutor)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            surfaceRequest = null
-            if (cameraProviderFuture.isDone) {
-                runCatching { cameraProviderFuture.get().unbindAll() }
+            if (bound) {
+                awaitCancellation()
             }
-            analyzer.close()
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (_: SecurityException) {
+            currentOnPermissionRevoked()
+        } catch (_: Throwable) {
+            currentOnCameraError("카메라 서비스를 초기화할 수 없습니다. 잠시 후 다시 시도해주세요.")
+        } finally {
+            activeAnalyzerRef.value = null
+            surfaceRequest = null
+            runCatching { cameraProvider?.unbindAll() }
+            val analyzerToClose = analyzer
+            if (analyzerToClose != null) {
+                runCatching { analysisExecutor.execute { analyzerToClose.close() } }
+                    .onFailure { runCatching { analyzerToClose.close() } }
+            }
             analysisExecutor.shutdown()
         }
     }
@@ -205,16 +226,19 @@ internal fun SmileCameraStage(
         SmileSessionPhase.REP_SUCCESS -> 1f
         else -> uiState.holdProgress
     }
-    val animatedProgress by animateFloatAsState(
+    val animatedProgressState = animateFloatAsState(
         targetValue = rawTargetProgress.coerceIn(0f, 1f),
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
+        animationSpec = MotionTokens.progressSpring(),
         label = "smileHoldProgress",
     )
+    val progressProvider = remember(animatedProgressState) { { animatedProgressState.value } }
 
-    Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .keepScreenOn()
+            .background(Color.Black),
+    ) {
         surfaceRequest?.let { req ->
             CameraXViewfinder(
                 surfaceRequest = req,
@@ -226,7 +250,7 @@ internal fun SmileCameraStage(
             phase = uiState.phase,
             isFaceAligned = uiState.isFaceAligned,
             isInSmileState = uiState.isInSmileState,
-            holdProgress = animatedProgress,
+            progressProvider = progressProvider,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -243,8 +267,16 @@ internal fun SmileCameraStage(
             )
 
             BottomCoachingOverlay(
-                uiState = uiState,
-                animatedProgress = animatedProgress,
+                phase = uiState.phase,
+                isPaused = uiState.isPaused,
+                isFaceAligned = uiState.isFaceAligned,
+                isInSmileState = uiState.isInSmileState,
+                guideMessage = uiState.guideMessage,
+                currentRep = uiState.currentRep,
+                targetReps = uiState.targetReps,
+                heldTenthsSec = uiState.heldTenthsSec,
+                targetTenthsSec = uiState.targetTenthsSec,
+                progressProvider = progressProvider,
                 onStartExercise = onStartExercise,
                 onPauseExercise = onPauseExercise,
                 onStopExercise = onCloseClick,
@@ -261,40 +293,40 @@ private fun bindFrontCameraUseCases(
     analyzer: MlKitSmileSignalAnalyzer,
     onSurfaceRequest: (SurfaceRequest) -> Unit,
     onBindError: (String) -> Unit,
-) {
-    runCatching {
-        val selector = when {
-            provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
-            provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
-            else -> {
-                onBindError("이 기기에서 사용 가능한 카메라를 찾을 수 없습니다.")
-                return
-            }
+): Boolean = runCatching {
+    val selector = when {
+        provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
+        provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
+        else -> {
+            onBindError("이 기기에서 사용 가능한 카메라를 찾을 수 없습니다.")
+            return false
         }
-
-        val preview = Preview.Builder().build().also { previewUseCase ->
-            previewUseCase.setSurfaceProvider(onSurfaceRequest)
-        }
-        val resolutionSelector = ResolutionSelector.Builder()
-            .setResolutionStrategy(
-                ResolutionStrategy(
-                    AnalysisTargetResolution,
-                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
-                ),
-            )
-            .build()
-
-        val imageAnalysis = ImageAnalysis.Builder()
-            .setResolutionSelector(resolutionSelector)
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build()
-            .also { it.setAnalyzer(analysisExecutor, analyzer) }
-
-        provider.unbindAll()
-        provider.bindToLifecycle(lifecycleOwner, selector, preview, imageAnalysis)
-    }.onFailure {
-        onBindError("카메라를 시작할 수 없습니다. 다른 앱에서 카메라를 사용 중인지 확인해주세요.")
     }
+
+    val preview = Preview.Builder().build().also { previewUseCase ->
+        previewUseCase.setSurfaceProvider(onSurfaceRequest)
+    }
+    val resolutionSelector = ResolutionSelector.Builder()
+        .setResolutionStrategy(
+            ResolutionStrategy(
+                AnalysisTargetResolution,
+                ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+            ),
+        )
+        .build()
+
+    val imageAnalysis = ImageAnalysis.Builder()
+        .setResolutionSelector(resolutionSelector)
+        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+        .build()
+        .also { it.setAnalyzer(analysisExecutor, analyzer) }
+
+    provider.unbindAll()
+    provider.bindToLifecycle(lifecycleOwner, selector, preview, imageAnalysis)
+    true
+}.getOrElse {
+    onBindError("카메라를 시작할 수 없습니다. 다른 앱에서 카메라를 사용 중인지 확인해주세요.")
+    false
 }
 
 @Composable
@@ -302,62 +334,94 @@ private fun FaceOvalVignetteOverlay(
     phase: SmileSessionPhase,
     isFaceAligned: Boolean,
     isInSmileState: Boolean,
-    holdProgress: Float,
+    progressProvider: () -> Float,
     modifier: Modifier = Modifier,
 ) {
-    val borderColor = when {
-        phase == SmileSessionPhase.REP_SUCCESS || isInSmileState -> ProgressEndColor
+    val isSmileHighlighted = phase == SmileSessionPhase.REP_SUCCESS || isInSmileState
+    val targetBorderColor = when {
+        isSmileHighlighted -> ProgressEndColor
         isFaceAligned -> GuideBorderAligned
         else -> GuideBorderIdle
     }
+    val animatedBorderColor by animateColorAsState(
+        targetValue = targetBorderColor,
+        animationSpec = MotionTokens.quickSpring(),
+        label = "ovalBorderColor",
+    )
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isSmileHighlighted) 0.24f else 0f,
+        animationSpec = MotionTokens.quickSpring(),
+        label = "ovalGlowAlpha",
+    )
     val progressBrush = remember {
         Brush.sweepGradient(
             listOf(ProgressStartColor, ProgressEndColor, ProgressStartColor),
         )
     }
 
-    Canvas(
-        modifier = modifier.graphicsLayer {
-            compositingStrategy = CompositingStrategy.Offscreen
-        },
-    ) {
-        drawRect(color = VignetteScrim)
+    Spacer(
+        modifier = modifier
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithCache {
+                // T-6 방어: 폴더블 펼침/가로 모드/분할 화면에서도 상·하단 HUD와 겹치지 않도록
+                // 타원 높이를 화면 높이의 44% 이하로 클램핑한다.
+                val ovalHeight = minOf(size.width * 0.68f * 1.28f, size.height * 0.44f)
+                val ovalWidth = ovalHeight / 1.28f
+                val topLeft = Offset(
+                    x = (size.width - ovalWidth) / 2f,
+                    y = (size.height - ovalHeight) * 0.40f,
+                )
+                val ovalSize = Size(width = ovalWidth, height = ovalHeight)
+                val borderStroke = Stroke(width = 3.dp.toPx())
+                val glowStroke = Stroke(width = 12.dp.toPx())
+                val ringPadding = 8.dp.toPx()
+                val arcTopLeft = Offset(topLeft.x - ringPadding, topLeft.y - ringPadding)
+                val arcSize = Size(ovalSize.width + ringPadding * 2, ovalSize.height + ringPadding * 2)
+                val arcStroke = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round)
 
-        val ovalWidth = size.width * 0.68f
-        val ovalHeight = ovalWidth * 1.28f
-        val topLeft = Offset(
-            x = (size.width - ovalWidth) / 2f,
-            y = (size.height - ovalHeight) * 0.40f,
-        )
-        val ovalSize = Size(width = ovalWidth, height = ovalHeight)
+                onDrawBehind {
+                    drawRect(color = VignetteScrim)
 
-        drawOval(
-            color = Color.Transparent,
-            topLeft = topLeft,
-            size = ovalSize,
-            blendMode = BlendMode.Clear,
-        )
+                    drawOval(
+                        color = Color.Transparent,
+                        topLeft = topLeft,
+                        size = ovalSize,
+                        blendMode = BlendMode.Clear,
+                    )
 
-        drawOval(
-            color = borderColor,
-            topLeft = topLeft,
-            size = ovalSize,
-            style = Stroke(width = 3.dp.toPx()),
-        )
+                    if (glowAlpha > 0.01f) {
+                        drawOval(
+                            color = animatedBorderColor.copy(alpha = glowAlpha),
+                            topLeft = topLeft,
+                            size = ovalSize,
+                            style = glowStroke,
+                        )
+                    }
 
-        if (holdProgress > 0.01f) {
-            val ringPadding = 8.dp.toPx()
-            drawArc(
-                brush = progressBrush,
-                startAngle = -90f,
-                sweepAngle = 360f * holdProgress,
-                useCenter = false,
-                topLeft = Offset(topLeft.x - ringPadding, topLeft.y - ringPadding),
-                size = Size(ovalSize.width + ringPadding * 2, ovalSize.height + ringPadding * 2),
-                style = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round),
-            )
-        }
-    }
+                    drawOval(
+                        color = animatedBorderColor,
+                        topLeft = topLeft,
+                        size = ovalSize,
+                        style = borderStroke,
+                    )
+
+                    val holdProgress = progressProvider()
+                    if (holdProgress > 0.01f) {
+                        drawArc(
+                            brush = progressBrush,
+                            startAngle = -90f,
+                            sweepAngle = 360f * holdProgress,
+                            useCenter = false,
+                            topLeft = arcTopLeft,
+                            size = arcSize,
+                            style = arcStroke,
+                        )
+                    }
+                }
+            },
+    )
 }
 
 @Composable
@@ -426,11 +490,21 @@ private fun RepStepIndicatorRow(
     ) {
         repeat(targetReps.coerceIn(1, 5)) { index ->
             val completed = index < currentRep
+            val indicatorWidth by animateDpAsState(
+                targetValue = if (completed) 20.dp else 8.dp,
+                animationSpec = MotionTokens.quickSpring(),
+                label = "repStepWidth",
+            )
+            val indicatorColor by animateColorAsState(
+                targetValue = if (completed) ProgressEndColor else Color(0x4DFFFFFF),
+                animationSpec = MotionTokens.quickSpring(),
+                label = "repStepColor",
+            )
             Box(
                 modifier = Modifier
-                    .size(width = if (completed) 18.dp else 8.dp, height = 6.dp)
+                    .size(width = indicatorWidth, height = 6.dp)
                     .background(
-                        color = if (completed) ProgressEndColor else Color(0x4DFFFFFF),
+                        color = indicatorColor,
                         shape = CircleShape,
                     ),
             )
@@ -440,8 +514,16 @@ private fun RepStepIndicatorRow(
 
 @Composable
 private fun BottomCoachingOverlay(
-    uiState: SmileTrainingUiState,
-    animatedProgress: Float,
+    phase: SmileSessionPhase,
+    isPaused: Boolean,
+    isFaceAligned: Boolean,
+    isInSmileState: Boolean,
+    guideMessage: String,
+    currentRep: Int,
+    targetReps: Int,
+    heldTenthsSec: Int,
+    targetTenthsSec: Int,
+    progressProvider: () -> Float,
     onStartExercise: () -> Unit,
     onPauseExercise: () -> Unit,
     onStopExercise: () -> Unit,
@@ -453,18 +535,20 @@ private fun BottomCoachingOverlay(
         shape = RoundedCornerShape(24.dp),
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .animateContentSize(animationSpec = MotionTokens.standardSpring())
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             AlignmentStatusBadge(
-                phase = uiState.phase,
-                isPaused = uiState.isPaused,
-                isFaceAligned = uiState.isFaceAligned,
-                isInSmileState = uiState.isInSmileState,
+                phase = phase,
+                isPaused = isPaused,
+                isFaceAligned = isFaceAligned,
+                isInSmileState = isInSmileState,
             )
 
-            if (uiState.phase == SmileSessionPhase.REP_SUCCESS) {
+            AnimatedVisibility(visible = phase == SmileSessionPhase.REP_SUCCESS) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
@@ -474,28 +558,33 @@ private fun BottomCoachingOverlay(
             }
 
             Text(
-                text = uiState.guideMessage,
+                text = guideMessage,
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
 
-            if (uiState.phase == SmileSessionPhase.ACTIVE) {
-                ActiveHoldProgressSection(
-                    animatedProgress = animatedProgress,
-                    heldDurationMs = uiState.heldDurationMs,
-                    targetHoldDurationMs = uiState.targetHoldDurationMs,
-                    onPauseExercise = onPauseExercise,
-                    onStopExercise = onStopExercise,
-                )
+            AnimatedVisibility(visible = phase == SmileSessionPhase.ACTIVE) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    ActiveHoldProgressSection(
+                        progressProvider = progressProvider,
+                        heldTenthsSec = heldTenthsSec,
+                        targetTenthsSec = targetTenthsSec,
+                        onPauseExercise = onPauseExercise,
+                        onStopExercise = onStopExercise,
+                    )
+                }
             }
 
-            if (uiState.phase == SmileSessionPhase.READY) {
+            AnimatedVisibility(visible = phase == SmileSessionPhase.READY) {
                 ReadyStartButton(
-                    isPaused = uiState.isPaused,
-                    currentRep = uiState.currentRep,
-                    targetReps = uiState.targetReps,
+                    isPaused = isPaused,
+                    currentRep = currentRep,
+                    targetReps = targetReps,
                     onStartExercise = onStartExercise,
                 )
             }
@@ -519,16 +608,21 @@ private fun AlignmentStatusBadge(
         isFaceAligned -> "정면 정렬 완료 · 미소를 지어보세요" to GuideBorderAligned
         else -> "가이드 타원에 얼굴을 맞춰주세요" to WarningBadgeColor
     }
+    val animatedBadgeColor by animateColorAsState(
+        targetValue = badgeColor,
+        animationSpec = MotionTokens.quickSpring(),
+        label = "hudBadgeColor",
+    )
     Surface(
-        color = badgeColor.copy(alpha = 0.18f),
+        color = animatedBadgeColor.copy(alpha = 0.18f),
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.55f)),
+        border = BorderStroke(1.dp, animatedBadgeColor.copy(alpha = 0.55f)),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
-            color = badgeColor,
+            color = animatedBadgeColor,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
         )
     }
@@ -536,17 +630,19 @@ private fun AlignmentStatusBadge(
 
 @Composable
 private fun ActiveHoldProgressSection(
-    animatedProgress: Float,
-    heldDurationMs: Long,
-    targetHoldDurationMs: Long,
+    progressProvider: () -> Float,
+    heldTenthsSec: Int,
+    targetTenthsSec: Int,
     onPauseExercise: () -> Unit,
     onStopExercise: () -> Unit,
 ) {
-    val heldSec = String.format(Locale.US, "%.1f", heldDurationMs / 1000f)
-    val targetSec = String.format(Locale.US, "%.1f", targetHoldDurationMs / 1000f)
+    val safeHeldTenths = heldTenthsSec.coerceAtLeast(0)
+    val safeTargetTenths = targetTenthsSec.coerceAtLeast(1)
+    val heldSecText = "${safeHeldTenths / 10}.${safeHeldTenths % 10}"
+    val targetSecText = "${safeTargetTenths / 10}.${safeTargetTenths % 10}"
 
     LinearProgressIndicator(
-        progress = { animatedProgress },
+        progress = progressProvider,
         modifier = Modifier.fillMaxWidth().height(8.dp),
         color = ProgressEndColor,
         trackColor = Color(0x33FFFFFF),
@@ -554,7 +650,7 @@ private fun ActiveHoldProgressSection(
     )
 
     Text(
-        text = "유지 시간 ${heldSec}초 / 목표 ${targetSec}초",
+        text = "유지 시간 ${heldSecText}초 / 목표 ${targetSecText}초",
         style = MaterialTheme.typography.bodyMedium,
         color = Color(0xFFCFD8DC),
     )
@@ -567,6 +663,7 @@ private fun ActiveHoldProgressSection(
         OutlinedButton(
             onClick = onPauseExercise,
             modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+            shape = RoundedCornerShape(14.dp),
             border = BorderStroke(1.dp, Color(0x66FFFFFF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
         ) {
@@ -599,6 +696,7 @@ private fun ReadyStartButton(
     Button(
         onClick = onStartExercise,
         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = ProgressEndColor,
             contentColor = Color(0xFF062112),

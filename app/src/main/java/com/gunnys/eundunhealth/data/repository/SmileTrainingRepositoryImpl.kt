@@ -10,6 +10,7 @@ import com.gunnys.eundunhealth.data.sync.SmileSyncWorker
 import com.gunnys.eundunhealth.domain.model.SmileSessionRecord
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.SmileSyncStatus
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.repository.AuthRepository
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.SyncBatchOutcome
@@ -37,15 +38,17 @@ class SmileTrainingRepositoryImpl @Inject constructor(
     private val workManager: WorkManager,
 ) : SmileTrainingRepository {
 
-    override fun observeSessions(): Flow<List<SmileSessionRecord>> = flow {
+    override fun observeSessions(limit: Int): Flow<List<SmileSessionRecord>> = flow {
         val userId = authRepository.getCurrentUserId()
         if (userId == null) {
             emit(emptyList())
             return@flow
         }
-        val mappedFlow = smileSessionDao.observeSessionsByUser(userId).map { entities: List<SmileSessionEntity> ->
-            mapEntitiesToDomain(entities)
-        }
+        val safeLimit = limit.coerceIn(1, MAX_BATCH_SIZE)
+        val mappedFlow = smileSessionDao.observeRecentSessionsByUser(userId, safeLimit)
+            .map { entities: List<SmileSessionEntity> ->
+                mapEntitiesToDomain(entities)
+            }
         emitAll(mappedFlow)
     }
 
@@ -65,7 +68,7 @@ class SmileTrainingRepositoryImpl @Inject constructor(
         durationSec: Int,
         completedReps: Int,
         occurredAtEpochMs: Long,
-    ): Result<SmileSessionRecord> = runCatching {
+    ): Result<SmileSessionRecord> = runSuspendCatching {
         val userId = authRepository.getCurrentUserId() ?: error("로그인이 필요합니다.")
         val sessionId = UUID.randomUUID().toString()
         val entity = SmileSessionEntity(
@@ -117,10 +120,10 @@ class SmileTrainingRepositoryImpl @Inject constructor(
         return if (needsRetry) SyncBatchOutcome.RETRY_NEEDED else SyncBatchOutcome.ALL_SYNCED
     }
 
-    override suspend fun refreshRemoteHistoryIfEmpty(): Result<Int> = runCatching {
-        val userId = authRepository.getCurrentUserId() ?: return@runCatching 0
-        if (smileSessionDao.getSessionsByUser(userId).isNotEmpty()) {
-            return@runCatching 0
+    override suspend fun refreshRemoteHistoryIfEmpty(): Result<Int> = runSuspendCatching {
+        val userId = authRepository.getCurrentUserId() ?: return@runSuspendCatching 0
+        if (smileSessionDao.countSessionsByUser(userId) > 0) {
+            return@runSuspendCatching 0
         }
         val response = smileTrainingApi.listSmileTrainingSessions(limit = REMOTE_HYDRATE_LIMIT)
         if (!response.isSuccessful) {
@@ -139,7 +142,7 @@ class SmileTrainingRepositoryImpl @Inject constructor(
         insertedCount
     }
 
-    override suspend fun retryBlockedSessions(): Result<Int> = runCatching {
+    override suspend fun retryBlockedSessions(): Result<Int> = runSuspendCatching {
         val userId = authRepository.getCurrentUserId() ?: error("로그인이 필요합니다.")
         val resetCount = smileSessionDao.resetBlockedToPending(userId)
         if (resetCount > 0) {
@@ -148,7 +151,7 @@ class SmileTrainingRepositoryImpl @Inject constructor(
         resetCount
     }
 
-    override suspend fun deleteAllSessions(): Result<Unit> = runCatching {
+    override suspend fun deleteAllSessions(): Result<Unit> = runSuspendCatching {
         val userId = authRepository.getCurrentUserId() ?: error("로그인이 필요합니다.")
         workManager.cancelUniqueWork(SmileSyncWorker.UNIQUE_WORK_NAME)
         val response = smileTrainingApi.deleteAllSmileTrainingSessions()

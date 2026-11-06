@@ -10,17 +10,13 @@ class HealthRepositoryImpl @Inject constructor(
     private val healthConnect: HealthConnectDataSource,
 ) : HealthRepository {
 
-    override suspend fun isAvailable(): Boolean = try {
+    override suspend fun isAvailable(): Boolean = runSuspendCatching {
         healthConnect.isAvailable()
-    } catch (_: Exception) {
-        false
-    }
+    }.getOrDefault(false)
 
-    override suspend fun hasPermissions(): Boolean = try {
+    override suspend fun hasPermissions(): Boolean = runSuspendCatching {
         healthConnect.hasPermissions()
-    } catch (_: Exception) {
-        false
-    }
+    }.getOrDefault(false)
 
     // ktlint 의 `function-signature` 는 expression body 를 시그니처 줄에 **붙여** 쓰려 하고,
     // 그러면 이 줄이 164자가 되어 detekt `MaxLineLength`(140)를 위반한다. 두 도구의 계약이

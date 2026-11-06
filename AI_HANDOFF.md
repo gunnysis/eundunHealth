@@ -1,5 +1,107 @@
 # Multi-AI Handoff Log
 
+## 2026-11-06 (Gemini -> Claude/User) 스마일 트레이닝 무중단 직행(INTRO·COMPLETED 완전 제거) & 프로젝트 전역 Compose(BOM 2026.09.00) 신기술 적용·M3 디자인 통일·레거시 청산 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. Part 1 — 스마일 트레이닝 인트로 대시보드(INTRO)·완료 페이지(COMPLETED) 완전 제거 및 코칭 HUD/가이드 디자인 업그레이드**:
+  - [SmileTrainingViewModel.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingViewModel.kt), [SmileTrainingScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingScreen.kt): SmileSessionPhase.INTRO 및 SmileIntroContent.kt를 완전 삭제하고, 4대 진입점 터치 즉시 onInitialEntry(hasCameraHardware, hasCameraPermission) → READY(1.0초 얼굴 정렬 자동 시작) → ACTIVE(2초 × 3회) → withContext(NonCancellable) 저장 직후 NavigateBack으로 자동 복귀(저장 실패 시 SaveErrorOverlayDialog 모달 노출)하는 무중단 Zero-Tab-Overhead 흐름 완성.
+  - [SmilePhaseGuideContents.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmilePhaseGuideContents.kt), [SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [ProgressHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt): SmileGuideCardLayout 공통 래퍼(72dp 원형 배지 + RoundedCornerShape(24.dp) 카드 + 52dp 버튼), 폴더블 안전 타원 클램프(ovalHeight = minOf(..., size.height * 0.44f)), FaceOvalVignetteOverlay 색상 보간·외곽 글로우, RepStepIndicatorRow 폭·색상 보간, BottomCoachingOverlay nimateContentSize + AnimatedVisibility, 진행 허브 누적 연습 시간(ormatDurationKorean) 배지 추가.
+- **2. Part 2 — Jetpack Compose BOM 2026.09.00 (UI/Foundation 1.12.1) · CameraX 1.6.2 · Lifecycle 2.11.0 신기술 전수 적용**:
+  - Modifier.keepScreenOn() 적용 ([SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [WorkoutGuideScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/workout/WorkoutGuideScreen.kt)).
+  - ProcessCameraProvider.awaitInstance(context) + waitCancellation() 코루틴 바인딩 전환 ([SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt)).
+  - LifecycleStartEffect / LifecycleResumeEffect 선언형 생명주기 전환 ([SmileCameraStage.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileCameraStage.kt), [SmileTrainingScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/smile/SmileTrainingScreen.kt), [AppNavigation.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/AppNavigation.kt), [HomeScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeScreen.kt), [ProgressHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt), [ProfileHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt)).
+  - TextAutoSize.StepBased 적용 ([ProfileHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt), [ProgressHubScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt), [StatisticsScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/statistics/StatisticsScreen.kt)) 및 [MotionTokens.kt](app/src/main/java/com/gunnys/eundunhealth/ui/theme/MotionTokens.kt) quickSpring()/progressSpring() 확장.
+- **3. Part 3 & Part 4 — 프로젝트 전역 M3 디자인 일관성 고도화 및 레거시/기술 부채 청산**:
+  - [EmptyContent.kt](app/src/main/java/com/gunnys/eundunhealth/ui/components/EmptyContent.kt), [ErrorContent.kt](app/src/main/java/com/gunnys/eundunhealth/ui/components/ErrorContent.kt), [BadgeScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/badge/BadgeScreen.kt), [StatisticsScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/statistics/StatisticsScreen.kt), [HistoryScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/history/HistoryScreen.kt), [GoalScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/goal/GoalScreen.kt), [MealPlanScreen.kt](app/src/main/java/com/gunnys/eundunhealth/ui/mealplan/MealPlanScreen.kt) M3 토큰·셰이프·모션 통일.
+  - [ContextExt.kt](app/src/main/java/com/gunnys/eundunhealth/ui/util/ContextExt.kt)(indActivity()), [TimeConstants.kt](app/src/main/java/com/gunnys/eundunhealth/domain/model/TimeConstants.kt)(KST_ZONE, ormatDurationKorean) SSoT 통합, [HealthRepositoryImpl.kt](app/src/main/java/com/gunnys/eundunhealth/data/repository/HealthRepositoryImpl.kt)·[ProfileHubViewModel.kt](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubViewModel.kt) 
+unSuspendCatching(룰 14 Layer 2) 교체, [MealPlanRepositoryImpl.kt](app/src/main/java/com/gunnys/eundunhealth/data/repository/MealPlanRepositoryImpl.kt) 	oDomain() 통합, cycleTheme() 데드코드 및 [gradle/libs.versions.toml](gradle/libs.versions.toml) 미사용 선언 제거.
+- **4. 전수 검증 게이트 통과**:
+  - ./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:assembleDebug → **BUILD SUCCESSFUL** (259 tests PASS, Detekt 0건).
+  - ash scripts/check-agp10-compat.sh & ash scripts/check-plans-links.sh → **OK**.
+  - python scripts/agents/doc_audit.py --strict → **드리프트 0건 (100% CLEAN)**.
+
+---
+
+## 2026-11-04 (Gemini -> Claude/User) 2-Tier (전역 워크스테이션 + `eundunHealth` 프로젝트) Android CLI (`v1.1.16717390`) & 실행 중인 Android Studio (`Rabbit 2 | 2026.2.2`) 통합 구축 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. Tier 1 — 전역 워크스테이션 기반 구축 (`gunnysis/windows-dev-setup` & `gunnysis/claude-config` & `~/.gemini/config/GEMINI.md`)**:
+  - **WSL2 Ubuntu `~/.local/bin/android` 6번째 정식 래퍼 등록**: `C:\programming\windows-dev-setup\wsl\local-bin\android` 신설(사용자명 하드코딩 금지, 동적 탐색 + WSL 경로를 `wslpath -m`으로 자동 변환) 및 `bootstrap.ps1 -SkipPackages` 배포 완료.
+  - **Doctor 검증 스크립트 연동**: `pwsh-doctor.ps1` (**`PASS 87 / WARN 0 / FAIL 0`**) 및 `wsl-doctor.ps1` (**`PASS 36 / WARN 1 / FAIL 0`**, `[PASS] 래퍼 동작: android android-cli 1.1.16717390`)에 `android` CLI 점검 추가.
+  - **전역 규칙 & 권한 동기화**: `C:\Users\Administrator\.claude\rules\windows-workstation.md`, `C:\Users\Administrator\.gemini\config\GEMINI.md` 기준선(래퍼 6개, `android-cli 1.1.16717390`, Android Studio `Rabbit 2 | 2026.2.2`) 갱신 및 `C:\Users\Administrator\.claude\settings.json`에 읽기 전용 `android` CLI 허용 규칙 등록 (`normalize-settings.js --verify-portable` 및 `test-guard.js` 37/37 통과).
+  - **공식 도메인 스킬 6종 전역 동기화**: `android skills add`로 `camerax`, `jetpack-compose-performance`, `r8-analyzer`, `edge-to-edge`, `adaptive`, `play-policy-insights`를 6개 에이전트 타겟(`android-studio, antigravity, antigravity-cli, antigravity-ide, claude-code, gemini`)에 설치 완료 (총 20/20 스킬 활성).
+- **2. Tier 2 — `eundunHealth` 프로젝트 전용 하이브리드 통합 (`docs/plans/2026-11-04-android-cli-integration-{design,plan}.md`)**:
+  - **[`scripts/ensure-android-cli.sh`](scripts/ensure-android-cli.sh)**: Windows Git Bash / PowerShell / WSL2 Ubuntu 전 환경에서 `android` CLI를 탐색·노출하는 헬퍼 스크립트(`ANDROID_CLI_REQUIRED=1` 지원).
+  - **[`scripts/android-cli-check.sh`](scripts/android-cli-check.sh)**: 단일 하이브리드 오케스트레이터(`status` / `inspect` / `previews` / `apk` / `versions` / `docs`).
+    - **근본 원인 해결 (심볼릭 링크 경로 `apps_ln` ↔ Studio VFS `Error: Failed to get module.`)**: `android studio check`가 반환하는 Studio 프로젝트 정본 경로(`C:/programming/apps/eundunHealth`)를 파싱해 상대/심볼릭 링크 파일 경로를 정본 경로로 자동 매핑하여 `analyze-file` 및 `render-compose-preview`가 100% 성공하도록 구현.
+    - **근본 원인 해결 (순수 JVM 단위 테스트 속도 보존)**: `isIncludeAndroidResources = true`를 켜지 않고 `android preview list "gradle://.?:app@debug"` + `android studio render-compose-preview --print-semantics` 듀얼 엔진 조합으로 `@Preview` PNG 및 a11y 시맨틱 트리를 `app/build/reports/compose-previews/`에 생성.
+  - **[`scripts/preflight-release.sh`](scripts/preflight-release.sh) & [`scripts/smoke-cold-start.sh`](scripts/smoke-cold-start.sh) 고도화**:
+    - `preflight-release.sh`에 `bash scripts/android-cli-check.sh apk` (R8 fullMode, 버전 SSoT, DEX/리소스 보존 검증) 게이트 추가.
+    - `smoke-cold-start.sh`에 `--auto-emulator [avd]`, `android install` 고속 델타 설치(`adb install -r` 폴백), 콜드 스타트 직후 `app/build/reports/cold-start/{layout.json,screen.png}` 자동 캡처 연동.
+  - **문서 및 권한 정합화**: [`.claude/settings.local.json`](.claude/settings.local.json), [`CLAUDE.md`](CLAUDE.md), [`GEMINI.md`](GEMINI.md), [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md), [`docs/plans/README.md`](docs/plans/README.md) 동기화 완료.
+
+---
+
+## 2026-11-04 (Gemini -> Claude/User) AGP(Android Gradle Plugin) 최신 정식 안정판 `9.5.0` 업그레이드 완료 (룰 15 6단계 전수 검증 · 듀얼 플랫폼 해시 락 동기화 · SSoT 문서 정합화)
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. AGP `9.4.1` → `9.5.0` 최신 정식 안정판 업그레이드 ([`gradle/libs.versions.toml`](gradle/libs.versions.toml))**:
+  - Google Maven 공식 메타데이터(`com.android.tools.build:gradle`) 및 Android Developer 릴리스 노트를 실측 대조하여 프리릴리스(`9.6.0-alpha*`)를 배제하고 최신 정식 안정판 **`9.5.0`** 채택 (최소 요구 `Gradle 9.6.0` 대비 현행 `Gradle 9.8.2` 100% 충족, `Kotlin 2.4.21` / `KSP 2.3.12` / `Hilt 2.60.1` / `JDK 17` 락스텝 호환).
+- **2. 공급망 락 파일 및 듀얼 플랫폼(`Windows` + `Linux` + `macOS`) SHA-256 검증 메타데이터 동기화**:
+  - [`app/gradle.lockfile`](app/gradle.lockfile) 및 [`gradle/verification-metadata.xml`](gradle/verification-metadata.xml): `./gradlew :app:dependencies --write-locks --write-verification-metadata sha256` 및 `:app:assembleDebug --write-verification-metadata sha256`로 AGP `9.5.0` 아티팩트 체인 갱신.
+  - Linux CI(`ubuntu-latest`) 및 멀티 플랫폼 패리티를 위해 Google Maven 공식 배포본(`com.android.tools.build:aapt2:9.5.0-16666295`)의 `aapt2-9.5.0-16666295-linux.jar`(`fa1014cb...`), `aapt2-9.5.0-16666295-osx.jar`(`a43df4c4...`), `aapt2-9.5.0-16666295-windows.jar`(`0cca2866...`) SHA-256 해시를 모두 등재하고 [`AgpBuildContractTest`](app/src/test/java/com/gunnys/eundunhealth/AgpBuildContractTest.kt)로 검증.
+- **3. AGP 9.5+ Obsolete API 점검 및 SSoT 문서 동기화**:
+  - `./gradlew :app:help "-Pandroid.debug.obsoleteApi=true" --warning-mode all` 점검 통과 (신규 AGP Obsolete API 경고 0건; AGP 9.5+에서 `:app:tasks`가 Layoutlib `generate*ComposePreviewRunfiles`를 전 variant에 강제 실체화하는 특성을 [`CLAUDE.md`](CLAUDE.md) 룰 15에 반영).
+  - [`CLAUDE.md`](CLAUDE.md), [`README.md`](README.md), [`docs/ops/operations-snapshot.md`](docs/ops/operations-snapshot.md), [`docs/TRD.md`](docs/TRD.md), [`docs/SPEC.md`](docs/SPEC.md)의 현행 AGP 버전을 `9.5.0`으로 일괄 정합화.
+- **4. 전수 검증 게이트 통과**:
+  - `bash scripts/check-agp10-compat.sh` → **OK: AGP 10 호환성 가드 통과** (WSL2 Ubuntu).
+  - `./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:assembleDebug :app:assembleRelease` → **BUILD SUCCESSFUL** (단위 테스트 242 케이스 전수 통과, Detekt 0건, R8 Release APK 및 `mapping.txt` 내 `FaceRegistrar`·`ExerciseDto` 보존 확인).
+  - `python scripts/agents/doc_audit.py --strict` → **드리프트 0건 (100% CLEAN)**, `pytest scripts/agents/test_doc_audit.py` **49 passed**.
+
+---
+
+## 2026-11-02 (Gemini -> Claude/User) GitHub CI doc-audit 실패(xit code 1) 및 Proceed 버튼 오류 근본 원인 해결 · Claude Code 의존성 완전 제거 및 초고속(0.05s) 결정론적 문서 감사 린터 엔진 구축 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. Proceed 버튼 오류 근본 원인 해결 (GEMINI.md)**:
+  - GEMINI.md 규칙 4번의 '사용자 검토용 Proceed 버튼 활성화' 문구가 실제 IDE UI 환경에 없는 버튼을 안내하도록 유도하던 근본 원인을 수정.
+  - 별도 버튼 없이 채팅으로 명시적 승인('승인', '진행해', '시작' 등)을 요청하도록 룰 현실화 및 허위 안내 원천 차단.
+- **2. GitHub CI doc-audit 7주 연속 실패 (xit code 1) 근본 원인 규명 및 아키텍처 혁신**:
+  - **근본 원인**: Claude Code 구독 해지/미사용에 따라 Anthropic에서 구독 토큰(CLAUDE_CODE_OAUTH_TOKEN)을 차단(Your organization has disabled Claude subscription access for Claude Code)했으나, CI 워크플로우가 단순 문자열 존재로 
+eady=true 통과시키고 SDK 예외 미처리로 매주 월요일 프로세스가 크래시(xit code 1)함.
+  - **Claude Code 및 외부 AI 종속성 전면 청소**: claude-agent-sdk 삭제, 외부 시크릿(CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_API_KEY) 참조 전면 제거, 토큰 비용  및 시크릿 0개 아키텍처 완성.
+  - **결정론적 문서 감사 린터 (Deterministic Linter) 구축 ([scripts/agents/doc_audit.py](scripts/agents/doc_audit.py))**:
+    - 외부 네트워크나 AI 호출 없이 Python 3.12+ stdlib 단독 구동. 0.05초 만에 6대 문서(CLAUDE.md, README.md, docs/ops/operations-snapshot.md, docs/TRD.md, docs/PRD.md, docs/CHANGELOG.md)의 SSoT 불변식(버전, API 버전, DB 스키마, 파이썬 런타임 mismatch, CORS 기본값, API 라우트 수, 폐기 기술 잔존 등)을 100% 정밀 검증.
+  - **CI 워크플로우 경량화 ([.github/workflows/doc-audit.yml](.github/workflows/doc-audit.yml))**:
+    - 이원화되었던 잡(collector-test, udit)을 단일 통합 doc-audit 잡으로 단순화하여 CI 수행 시간을 기존 4분 → **15초 이내**로 단축.
+- **3. 잔여 문서 드리프트 정합화 및 전수 검증**:
+  - [CLAUDE.md](CLAUDE.md) 및 [docs/TRD.md](docs/TRD.md)의 구버전 잔재(0.7.2/43)를 최신 프로덕션인 0.7.3/44로 정합화.
+  - doc_audit.py --strict 실행 결과 **드리프트 0건 (100% CLEAN)** 달성.
+  - [scripts/agents/test_doc_audit.py](scripts/agents/test_doc_audit.py) 단위 테스트 **49 passed in 0.12s** (Windows / WSL2 Ubuntu 100% 패리티 통과).
+  - 백엔드 전체 테스트 pytest backend/tests/ **147 passed**.
+  - ash scripts/check-plans-links.sh **OK: 끊긴 참조 0건**.
+
+---
+
+## 2026-10-30 (Gemini -> Claude/User) `docs/store/privacy-policy.md` 개인정보 처리방침 최신화 및 중복 제거 완료 (SSoT 동기화 및 전수 검증)
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. [`docs/store/privacy-policy.md`](docs/store/privacy-policy.md) 최신화 및 중복 제거**:
+  - **문서 메타데이터 최신화**: 최종 업데이트 일자 `2026-10-30` 갱신.
+  - **중복 서술 및 파편화 제거**:
+    - 기존 §1 말미의 미수집 서술과 §7 광고/추적 간의 중복 문구를 정리하여 §7 "광고, 추적 금지 및 미수집 정보"로 일원화 (광고 미게재, AAID/IDFA 미수집, 위치·연락처·마이크 미수집 등 응집).
+    - §1 수집 정보 항목을 실제 수집·처리 데이터(인증, 신체 정보, 운동 기록, 목표/통계, 스마일 트레이닝 비생체 요약, 온디바이스 카메라 실시간 처리 원칙, Health Connect 읽기 전용, Sentry 진단) 중심으로 명료화.
+    - §3-1(2) AI 맞춤 식단 국외 이전 표 바로 아래 4줄짜리 중복 텍스트(국외 추론 위치 재언급, 모델 미학습 정책 재언급, Azure PostgreSQL 보관 재언급 등)를 제거하고 "책임 있는 AI 보호 조치 안내" 1줄로 정돈.
+    - Health Connect(`READ_EXERCISE` 단독 읽기 전용, 쓰기 없음, 원본 미보관) 및 스마일 트레이닝(온디바이스 ML Kit 얼굴 표정 감지, 카메라 영상/생체 템플릿 미저장·미전송 메모리 즉시 폐기) 정책을 일관되게 정합화.
+    - §4 보관/파기 및 §5 사용자 권리 행사를 체계적으로 구조화(계정 삭제 시 즉시 영구 삭제, 스마일 트레이닝 요약 단독 전체 삭제 기능 명시, Sentry 90일 보존, [계정 및 데이터 삭제 안내](docs/store/account-deletion.md) 상호 링크).
+- **2. SSoT 동기화 및 백엔드 법적 라우트 검증**:
+  - `bash scripts/sync-legal-docs.sh` 실행 → [`backend/app/legal/privacy-policy.md`](backend/app/legal/privacy-policy.md) 동기화 완료.
+  - `backend/.venv/Scripts/pytest.exe backend/tests/test_legal.py` → **6 passed in 0.21s** (SSoT 드리프트 불변식 및 `/privacy` HTML 서빙 검증 100% 통과).
+  - `backend/.venv/Scripts/pytest.exe scripts/agents/test_doc_audit.py -q` → **36 passed in 0.09s**.
+  - `bash scripts/check-plans-links.sh` → **OK: 끊긴 참조 0건**.
+
+---
+
 ## 2026-10-29 (Gemini -> Claude/User) `v0.7.3` (`versionCode=44`) 프로덕션 배포 완료 · 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update Architecture`, PR #225 / 원장 PR #226 / `release.yml` `40868910274` / `backend.yml` `40868854537` `eundunhealth-api--0000069`)
 
 **현재까지의 작업 상태 (Current Status):**

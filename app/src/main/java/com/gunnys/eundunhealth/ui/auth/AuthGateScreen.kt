@@ -1,8 +1,5 @@
 package com.gunnys.eundunhealth.ui.auth
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +46,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.theme.EundunHealthTheme
+import com.gunnys.eundunhealth.ui.util.findActivity
 
 private data class ValueIntroSlide(
     val icon: ImageVector,
@@ -237,12 +235,6 @@ private fun ValueIntroCard(slide: ValueIntroSlide) {
             )
         }
     }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
 
 @Preview(showBackground = true)

@@ -15,8 +15,14 @@ interface SmileSessionDao {
     @Query("SELECT * FROM smile_sessions WHERE id = :id AND userId = :userId LIMIT 1")
     suspend fun getById(id: String, userId: String): SmileSessionEntity?
 
+    @Query("SELECT COUNT(*) FROM smile_sessions WHERE userId = :userId")
+    suspend fun countSessionsByUser(userId: String): Int
+
     @Query("SELECT * FROM smile_sessions WHERE userId = :userId ORDER BY occurredAtUtc DESC")
     fun observeSessionsByUser(userId: String): Flow<List<SmileSessionEntity>>
+
+    @Query("SELECT * FROM smile_sessions WHERE userId = :userId ORDER BY occurredAtUtc DESC LIMIT :limit")
+    fun observeRecentSessionsByUser(userId: String, limit: Int = 10): Flow<List<SmileSessionEntity>>
 
     @Query("SELECT * FROM smile_sessions WHERE userId = :userId ORDER BY occurredAtUtc DESC")
     suspend fun getSessionsByUser(userId: String): List<SmileSessionEntity>
