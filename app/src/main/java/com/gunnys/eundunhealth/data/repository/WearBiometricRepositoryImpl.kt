@@ -19,6 +19,7 @@ import com.gunnys.eundunhealth.wear.contract.BiometricPayloadCodec
 import com.gunnys.eundunhealth.wear.contract.WearContractConstants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -53,10 +54,13 @@ class WearBiometricRepositoryImpl @Inject constructor(
         emitAll(mapped)
     }
 
-    override suspend fun ingestFromWatchEnvelope(rawGzipBytes: ByteArray): Result<Int> = runSuspendCatching {
-        val userId = authRepository.getCurrentUserId() ?: return@runSuspendCatching 0
+    override suspend fun ingestFromWatchEnvelope(rawGzipBytes: ByteArray): Result<List<String>> = runSuspendCatching {
+        val userId =
+            authRepository.getCurrentUserId()
+                ?: authRepository.restoreSession()
+                ?: return@runSuspendCatching emptyList()
         val envelope = BiometricPayloadCodec.decodeBatchGzip(rawGzipBytes)
-        if (envelope.summaries.isEmpty()) return@runSuspendCatching 0
+        if (envelope.summaries.isEmpty()) return@runSuspendCatching emptyList()
         val entities =
             envelope.summaries.map { record ->
                 record.toLocalEntity(
@@ -68,7 +72,8 @@ class WearBiometricRepositoryImpl @Inject constructor(
             }
         wearBiometricDao.upsertAll(entities)
         SmileSyncWorker.enqueueUnique(workManager)
-        entities.size
+        runCatching { syncPendingSummaries(MAX_BATCH_DAYS) }
+        entities.map { it.recordDate }.distinct()
     }
 
     override suspend fun requestWatchSyncNow(): Result<String> = runSuspendCatching {
@@ -86,6 +91,9 @@ class WearBiometricRepositoryImpl @Inject constructor(
                     ).await()
                 pingedNodes++
             }
+        }
+        if (pingedNodes > 0) {
+            delay(WATCH_FLUSH_WAIT_MS)
         }
         syncPendingSummaries(MAX_BATCH_DAYS)
         if (pingedNodes > 0) {
@@ -165,6 +173,7 @@ class WearBiometricRepositoryImpl @Inject constructor(
 
     companion object {
         private const val MAX_BATCH_DAYS = 30
+        private const val WATCH_FLUSH_WAIT_MS = 600L
         private const val DEFAULT_WATCH_MODEL = "Xiaomi Watch 5 (M2501W1)"
         private const val HTTP_BAD_REQUEST = 400
         private const val HTTP_UNAUTHORIZED = 401
@@ -263,11 +272,11 @@ private fun WearBiometricSummaryEntity.toApiItem(): BiometricDailySummaryItem = 
     maxDeltaBpmPerMin = maxDeltaBpmPerMin.coerceIn(0, 180),
     activityOverloadCount = activityOverloadCount.coerceIn(0, 500),
     avgRecoveryDropBpm = avgRecoveryDropBpm?.coerceIn(-100, 180),
-    sleepAwakeningCount = sleepAwakeningCount.coerceIn(0, 200),
+    sleepAwakeningCount = sleepAwakeningCount.coerceIn(0, 500),
     recoveryScore = recoveryScore?.coerceIn(0, 100),
     hourlyBpmBucketsJson = hourlyBpmBucketsJson.take(8192),
     sourceDevicesJson = sourceDevicesJson.take(1024),
-    watchModel = watchModel.take(128),
+    watchModel = watchModel.take(64),
 )
 
 private fun BiometricDailySummaryItem.toRemoteEntity(

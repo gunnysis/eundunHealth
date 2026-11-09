@@ -562,12 +562,22 @@ def audit_stale_tech_in_text(file_rel: str, text: str) -> list[dict[str, Any]]:
 
 
 def audit_wear_version_in_text(file_rel: str, text: str, expected_wear_code: str) -> list[dict[str, Any]]:
-    """문서 텍스트에서 wearVersionCode=<숫자> 표기가 SSoT(version.properties)와 일치하는지 검사한다."""
+    """문서 텍스트(현재 상태 구역)에서 wearVersionCode 표기가 SSoT(version.properties)와 일치하는지 검사한다.
+
+    append-only 이력 구역(docs/CHANGELOG.md, operations-snapshot.md §13, README.md '## 구현 현황')은
+    과거 릴리스 기록 보존을 위해 스캔 대상에서 제외한다(INC-2026-06-16-27 원칙).
+    """
     findings: list[dict[str, Any]] = []
-    if not expected_wear_code:
+    if not expected_wear_code or file_rel == "docs/CHANGELOG.md":
         return findings
 
-    for m in re.finditer(r"wearVersionCode\s*=\s*`?(\d+)`?", text):
+    scan_text = text
+    if file_rel == "docs/ops/operations-snapshot.md":
+        scan_text = text.split("## 13.", 1)[0]
+    elif file_rel == "README.md":
+        scan_text = text.split("### 마일스톤 진행", 1)[0].split("## 구현 현황", 1)[0]
+
+    for m in re.finditer(r"wearVersionCode\s*=\s*`?(\d+)`?", scan_text):
         doc_wc = m.group(1)
         if doc_wc != expected_wear_code:
             findings.append({
@@ -579,6 +589,23 @@ def audit_wear_version_in_text(file_rel: str, text: str, expected_wear_code: str
                 "severity": "high",
                 "note": "문서 내 wearVersionCode 표기가 version.properties 와 불일치합니다.",
             })
+
+    if file_rel == "docs/conventions/versioning.md":
+        wear_row_match = re.search(
+            r"\|\s*\*\*Wear OS 워치 앱 \(`:wear`\)\*\*\s*\|[^|]*현행\s*`([^`]+)`\s*/\s*`(\d+)`",
+            scan_text,
+        )
+        if wear_row_match and wear_row_match.group(2) != expected_wear_code:
+            findings.append({
+                "file": file_rel,
+                "locator": "§1 독립 버전 체계 표 (:wear)",
+                "doc_says": f"wearVersionCode={wear_row_match.group(2)}",
+                "ground_truth": f"wearVersionCode={expected_wear_code}",
+                "kind": "wear-version",
+                "severity": "high",
+                "note": "versioning.md §1 표의 :wear 현행 wearVersionCode 가 version.properties 와 불일치합니다.",
+            })
+
     return findings
 
 

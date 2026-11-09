@@ -7,7 +7,7 @@
 | 도메인 | SSoT | 의미 |
 |---|---|---|
 | **Android 모바일 앱 (`:app`)** | 루트 `version.properties` (`versionName`+`versionCode`, 현행 `0.8.0` / `45`) | 모바일 앱 릴리즈 및 백엔드 최소 지원 버전(`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE`) 기준 |
-| **Wear OS 워치 앱 (`:wear`)** | 루트 `version.properties` (`versionName`+`wearVersionCode`, 현행 `0.8.0` / `10001`) | Wear OS 6.0+ (API 36) 전용 APK/AAB 버전 코드 (모바일 `versionCode`와 충돌하지 않는 `10001+` 대역) |
+| **Wear OS 워치 앱 (`:wear`)** | 루트 `version.properties` (`versionName`+`wearVersionCode`, 현행 `0.8.0` / `10002`) | Wear OS 6.0+ (API 36) 전용 APK/AAB 버전 코드 (모바일 `versionCode`와 충돌하지 않는 `10001+` 대역) |
 | **백엔드 API** | `backend/app/__init__.py:__version__` (`1.0.0`) | API 표면. 앱과 **독립** 진화·배포 |
 
 이력의 SSoT 는 `docs/CHANGELOG.md` 하나다 — build/문서에 이력을 복제하지 않는다.
@@ -24,7 +24,7 @@
 - 양의 정수, **단조증가 필수**, **최대 2,100,000,000**, 재사용 불가(Play).
 - 본 프로젝트는 **명시 정수 + 수동 증가**(릴리즈마다 `:app` `versionCode` +1, `:wear` 릴리즈마다 `wearVersionCode` +1). 같은 `versionName` 재업로드(빌드 교체) 시 `versionName` 유지하고 `versionCode` 만 증가 — 이 워크플로 때문에 versionName 도출 공식은 채택하지 않는다.
 - bump 은 `scripts/bump-version.sh` 가 (로컬) 단조성을 가드한다.
-- **Play 업로드 단조성 가드 (INC-2026-06-19-28)**: 저장소-로컬 +1 만으로는 Play 에 이미 올라간 값과의 충돌을 못 막는다 — Play 는 **모든 트랙**의 versionCode 재사용·하향을 "이미 사용된 버전 코드" 로 거부하는데 저장소는 Play 상태를 직접 모른다. `docs/ops/play-upload-ledger.md` 의 `LAST_UPLOADED_VERSION_CODE=`(현행 `44`) 에 이미 업로드된 최고값을 기록하고, `scripts/check-version-monotonic.sh` 가 빌드/번프 전에 `versionCode > 그 값` 및 `wearVersionCode` 정합성을 검증한다(`preflight-release.sh`·`bump-version.sh`·`.githooks/pre-commit` 배선). **업로드 성공 시마다 원장 PR 생성/병합 필수**. Android Studio "Generate Signed Bundle" 마법사는 가드를 우회하므로 **출시 빌드는 preflight 경로**로.
+- **Play 업로드 단조성 가드 (INC-2026-06-19-28)**: 저장소-로컬 +1 만으로는 Play 에 이미 올라간 값과의 충돌을 못 막는다 — Play 는 **모든 트랙**의 versionCode 재사용·하향을 "이미 사용된 버전 코드" 로 거부하는데 저장소는 Play 상태를 직접 모른다. `docs/ops/play-upload-ledger.md` 의 `LAST_UPLOADED_VERSION_CODE=`(현행 `44`) 및 `LAST_UPLOADED_WEAR_VERSION_CODE=`(현행 `10002`) 에 이미 업로드된 최고값을 기록하고, `scripts/check-version-monotonic.sh` 가 빌드/번프 전에 단조성 및 `wearVersionCode` 정합성을 검증한다(`preflight-release.sh`·`bump-version.sh`·`.githooks/pre-commit` 배선). **업로드 성공 시마다 원장 PR 생성/병합 필수**. Android Studio "Generate Signed Bundle" 마법사는 가드를 우회하므로 **출시 빌드는 preflight 경로**로.
 
 ## 4. bump 절차 (앱)
 
@@ -46,7 +46,7 @@ bash scripts/bump-version.sh --dry-run 0.7.4  # 변경 미적용, 계획만 출�
 
 ## 6. 프론트엔드 표시
 
-모바일 `ProfileHubScreen` 하단 `AccountAndVersionFooter` 가 `BuildConfig.VERSION_NAME (VERSION_CODE)` 를 muted 로 표시(`"버전 0.8.0 (45)"`), 워치 `WearEnvironmentStatusScreen` 이 `"v0.8.0 (10001) · API 36"` 을 표시한다. `BuildConfig` 는 컴파일 상수라 Context 불필요하고 정상 배포 앱에선 설치본과 동일값이다. 설치본 값이 별도로 필요해지면 `PackageInfoCompat.getLongVersionCode()`(androidx.core, API 28 deprecation 회피)로 교체.
+모바일 `ProfileHubScreen` 하단 `AccountAndVersionFooter` 가 `BuildConfig.VERSION_NAME (VERSION_CODE)` 를 muted 로 표시(`"버전 0.8.0 (45)"`), 워치 `WearEnvironmentStatusScreen` 이 `"v0.8.0 (10002) · API 36"` 을 표시한다. `BuildConfig` 는 컴파일 상수라 Context 불필요하고 정상 배포 앱에선 설치본과 동일값이다. 설치본 값이 별도로 필요해지면 `PackageInfoCompat.getLongVersionCode()`(androidx.core, API 28 deprecation 회피)로 교체.
 
 ## 7. drift 방지
 

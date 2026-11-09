@@ -22,9 +22,9 @@ cd backend && .venv/Scripts/ruff.exe check --select N --ignore N818 --statistics
 ```
 기대: 0 errors. **주의**: `--select N` 단독 시 N818 (의도된 ignore, `AppException` 네이밍 유지) 가 false 위반 1건으로 출력됨. 항상 `--ignore N818` 명시 또는 그냥 `--statistics app/` (config-driven, 전체 룰셋).
 
-### 3. Kotlin detekt naming 측정
+### 3. Kotlin detekt naming 측정 (3 모듈)
 ```bash
-./gradlew :app:detektDebug -q
+./gradlew :core:wear-contract:detektMain :app:detektDebug :wear:detektDebug -q
 ```
 build/reports/detekt/detekt.html 의 naming 카테고리 확인. baseline 외 신규 위반 0 기대. fail 시 `baseline.xml` vs `baseline-debug.xml` drift 가 원인 가능 — `detekt-baseline-drift.md` 메모리 참조.
 

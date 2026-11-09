@@ -1,10 +1,7 @@
 #!/bin/bash
-# Warm up Gradle daemons for both Android app and backend
-echo "Starting Android Gradle daemon..."
+# Warm up Gradle daemon for the 3-module Android/Wear project (:core:wear-contract, :app, :wear)
+echo "Starting Android/Wear Gradle daemon..."
 cd "C:/programming/apps/eundunHealth" && ./gradlew --daemon --quiet help 2>/dev/null &
 
-echo "Starting Backend Gradle daemon..."
-cd "C:/programming/apps/eundunHealth/backend" && ./gradlew --daemon --quiet help 2>/dev/null &
-
 wait
-echo "Gradle daemons ready."
+echo "Gradle daemon ready."

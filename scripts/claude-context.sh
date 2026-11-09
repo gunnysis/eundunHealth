@@ -19,7 +19,8 @@ echo "=== Modified Screens ==="
 git diff --name-only 2>/dev/null | grep -E "ui/" | head -10
 
 echo "=== Key Versions ==="
-grep -E "^(kotlin|agp|ktor|composeBom|sentry)" gradle/libs.versions.toml 2>/dev/null | head -10
+grep -E "^(versionName|versionCode|wearVersionCode)=" version.properties 2>/dev/null
+grep -E "^(kotlin|agp|wearComposeM3|composeBom|sentry)" gradle/libs.versions.toml 2>/dev/null | head -10
 
 echo "=== Pending Phase 5 Verifications ==="
 # 최근 7일 main 머지 commit 중 INC 등재 있고 "검증 완료" 라인 부재인 항목 찾기

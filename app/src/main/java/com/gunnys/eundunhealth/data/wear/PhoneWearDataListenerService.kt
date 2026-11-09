@@ -39,15 +39,15 @@ class PhoneWearDataListenerService : WearableListenerService() {
             withTimeoutOrNull(INGEST_TIMEOUT_MS) {
                 wearBiometricRepository
                     .ingestFromWatchEnvelope(rawBytes)
-                    .onSuccess { ingestedCount ->
+                    .onSuccess { ingestedDates ->
                         val sourceNodeId = messageEvent.sourceNodeId
-                        if (ingestedCount > 0 && sourceNodeId.isNotBlank()) {
+                        if (ingestedDates.isNotEmpty() && sourceNodeId.isNotBlank()) {
                             runCatching {
                                 Wearable.getMessageClient(this@PhoneWearDataListenerService)
                                     .sendMessage(
                                         sourceNodeId,
                                         WearContractConstants.SYNC_ACK_MESSAGE_PATH,
-                                        ingestedCount.toString().encodeToByteArray(),
+                                        ingestedDates.joinToString(",").encodeToByteArray(),
                                     )
                                     .await()
                             }

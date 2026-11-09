@@ -582,11 +582,30 @@ private fun WearOsWatchIntegrationRow(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Wear OS 워치 상시 생체·마음 분석",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "Wear OS 워치 상시 생체·마음 분석",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    state.latestWatchRecoveryScore?.let { score ->
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                        ) {
+                            Text(
+                                text = "회복 ${score}점",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = state.watchStatusMessage,
                     style = MaterialTheme.typography.bodySmall,

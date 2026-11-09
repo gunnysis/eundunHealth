@@ -80,10 +80,15 @@ class BiometricService:
             if prev is None or item.captured_at_epoch_ms >= prev.captured_at_epoch_ms:
                 deduped_by_date[item.record_date] = item
 
-        entities: list[BiometricDailySummary] = []
-        for item in deduped_by_date.values():
-            entity = await self.repo.upsert_daily_summary(user_id=user_id, item=item)
-            entities.append(entity)
+        sorted_items = sorted(
+            deduped_by_date.values(),
+            key=lambda x: x.record_date,
+            reverse=True,
+        )
+        entities = await self.repo.upsert_daily_summaries_batch(
+            user_id=user_id,
+            items=sorted_items,
+        )
         await self.db.commit()
         return BiometricSyncResponse(
             upserted_count=len(entities),

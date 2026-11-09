@@ -48,7 +48,7 @@ WHERE (table_name, column_name) IN ( {{columns_tuple}} );
 ```
 | Check | Result | Detail |
 |---|---|---|
-| schema_bootstrap | ✓ / ✗ | `Schema bootstrap complete (tables=9)` 또는 에러 |
+| schema_bootstrap | ✓ / ✗ | `Schema bootstrap complete (tables=10)` 또는 에러 |
 | <table.col> | ✓ / ✗ | <type>, NULL/NOT NULL, default <default> |
 | Sentry <since> | ✓ / ✗ | 0 new issues / <count> issues + links |
 ```
