@@ -282,6 +282,8 @@ DOC_COPIES: list[str] = [
     "docs/ops/operations-snapshot.md",
     "docs/TRD.md",
     "docs/PRD.md",
+    "docs/SPEC.md",
+    "docs/conventions/versioning.md",
     "docs/CHANGELOG.md",
 ]
 
@@ -314,6 +316,19 @@ def audit_app_version_in_text(file_rel: str, text: str, expected_name: str, expe
                 "severity": "high",
                 "note": "README 상단 versionCode 배지가 version.properties 와 불일치합니다.",
             })
+        stage_match = re.search(r"-\s*\*\*현재 단계\*\*\s*—\s*\*\*v([^\s(]+)\s*\(versionCode\s*(\d+)", text)
+        if stage_match:
+            doc_n, doc_c = stage_match.group(1), stage_match.group(2)
+            if doc_n != expected_name or doc_c != expected_code:
+                findings.append({
+                    "file": file_rel,
+                    "locator": "소개 > 현재 단계 서술",
+                    "doc_says": f"v{doc_n} (versionCode {doc_c})",
+                    "ground_truth": f"v{expected_name} (versionCode {expected_code})",
+                    "kind": "version",
+                    "severity": "high",
+                    "note": "README '현재 단계' 본문 서술이 version.properties 와 불일치합니다.",
+                })
 
     # 2. docs/ops/operations-snapshot.md
     elif file_rel == "docs/ops/operations-snapshot.md":
@@ -396,8 +411,8 @@ def audit_app_version_in_text(file_rel: str, text: str, expected_name: str, expe
 
     # 5. docs/PRD.md
     elif file_rel == "docs/PRD.md":
-        # **제품 버전:** v0.7.3 (versionCode 44)
-        prd_match = re.search(r"\*\*제품 버전:\*\*\s*v([^\s]+)\s*\(versionCode\s*(\d+)\)", text)
+        # **제품 버전:** v0.7.3 (versionCode 44...)
+        prd_match = re.search(r"\*\*제품 버전:\*\*\s*v([^\s]+)\s*\(versionCode\s*(\d+)", text)
         if prd_match:
             doc_n, doc_c = prd_match.group(1), prd_match.group(2)
             if doc_n != expected_name or doc_c != expected_code:
@@ -409,6 +424,39 @@ def audit_app_version_in_text(file_rel: str, text: str, expected_name: str, expe
                     "kind": "version",
                     "severity": "high",
                     "note": "PRD 상단 제품 버전 서술이 version.properties 와 불일치합니다.",
+                })
+
+    # 6. docs/SPEC.md
+    elif file_rel == "docs/SPEC.md":
+        spec_match = re.search(r"모바일\s*`:app`\(`versionCode=(\d+)`", text)
+        if spec_match and spec_match.group(1) != expected_code:
+            findings.append({
+                "file": file_rel,
+                "locator": "상단 Wear OS 6 & 3모듈 아키텍처 (:app versionCode)",
+                "doc_says": f"versionCode={spec_match.group(1)}",
+                "ground_truth": f"versionCode={expected_code}",
+                "kind": "version",
+                "severity": "high",
+                "note": "SPEC.md 상단 모바일 :app versionCode 서술이 version.properties 와 불일치합니다.",
+            })
+
+    # 7. docs/conventions/versioning.md
+    elif file_rel == "docs/conventions/versioning.md":
+        conv_match = re.search(
+            r"\|\s*\*\*Android 모바일 앱 \(`:app`\)\*\*\s*\|[^|]*현행\s*`([^`]+)`\s*/\s*`(\d+)`",
+            text,
+        )
+        if conv_match:
+            doc_n, doc_c = conv_match.group(1), conv_match.group(2)
+            if doc_n != expected_name or doc_c != expected_code:
+                findings.append({
+                    "file": file_rel,
+                    "locator": "§1 독립 버전 체계 표 (:app)",
+                    "doc_says": f"{doc_n}/{doc_c}",
+                    "ground_truth": f"{expected_name}/{expected_code}",
+                    "kind": "version",
+                    "severity": "high",
+                    "note": "versioning.md §1 표의 현행 버전이 version.properties 와 불일치합니다.",
                 })
 
     return findings
@@ -451,7 +499,7 @@ def audit_python_runtime(facts: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def audit_api_routes_count(file_rel: str, text: str, expected_total: int) -> list[dict[str, Any]]:
-    """CLAUDE.md 나 TRD 의 엔드포인트 총 개수 서술을 검사한다."""
+    """CLAUDE.md 나 README.md 의 엔드포인트 총 개수 서술을 검사한다."""
     findings: list[dict[str, Any]] = []
     if file_rel == "CLAUDE.md":
         m = re.search(r"API Endpoints \(총 (\d+) =", text)
@@ -464,6 +512,18 @@ def audit_api_routes_count(file_rel: str, text: str, expected_total: int) -> lis
                 "kind": "endpoint-count",
                 "severity": "med",
                 "note": f"CLAUDE.md 엔드포인트 총수 서술({m.group(1)}개)이 실제 라우터 합계({expected_total}개)와 불일치합니다.",
+            })
+    elif file_rel == "README.md":
+        m = re.search(r"### API 엔드포인트 \((\d+)\s*개", text)
+        if m and int(m.group(1)) != expected_total:
+            findings.append({
+                "file": file_rel,
+                "locator": m.group(0),
+                "doc_says": f"총 {m.group(1)}개",
+                "ground_truth": f"총 {expected_total}개",
+                "kind": "endpoint-count",
+                "severity": "med",
+                "note": f"README.md API 엔드포인트 총수 서술({m.group(1)}개)이 실제 라우터 합계({expected_total}개)와 불일치합니다.",
             })
     return findings
 

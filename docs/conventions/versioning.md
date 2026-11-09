@@ -6,8 +6,8 @@
 
 | 도메인 | SSoT | 의미 |
 |---|---|---|
-| **Android 모바일 앱 (`:app`)** | 루트 `version.properties` (`versionName`+`versionCode`, 현행 `0.7.3` / `44`) | 모바일 앱 릴리즈 및 백엔드 최소 지원 버전(`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE`) 기준 |
-| **Wear OS 워치 앱 (`:wear`)** | 루트 `version.properties` (`versionName`+`wearVersionCode`, 현행 `0.7.3` / `10001`) | Wear OS 6.0+ (API 36) 전용 APK/AAB 버전 코드 (모바일 `versionCode`와 충돌하지 않는 `10001+` 대역) |
+| **Android 모바일 앱 (`:app`)** | 루트 `version.properties` (`versionName`+`versionCode`, 현행 `0.8.0` / `45`) | 모바일 앱 릴리즈 및 백엔드 최소 지원 버전(`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE`) 기준 |
+| **Wear OS 워치 앱 (`:wear`)** | 루트 `version.properties` (`versionName`+`wearVersionCode`, 현행 `0.8.0` / `10001`) | Wear OS 6.0+ (API 36) 전용 APK/AAB 버전 코드 (모바일 `versionCode`와 충돌하지 않는 `10001+` 대역) |
 | **백엔드 API** | `backend/app/__init__.py:__version__` (`1.0.0`) | API 표면. 앱과 **독립** 진화·배포 |
 
 이력의 SSoT 는 `docs/CHANGELOG.md` 하나다 — build/문서에 이력을 복제하지 않는다.
@@ -15,7 +15,7 @@
 ## 2. semver 2.0.0 정책
 
 - `MAJOR.MINOR.PATCH`. **PATCH**=버그픽스/핫픽스, **MINOR**=user-facing 신기능, **MAJOR**=호환성 깨짐.
-- **앱**: 현재 `0.x`(Google Play 프로덕션 정식 출시 완료, 현행 `0.7.3`). **Play 프로덕션 1.0 마일스톤 시점에 1.0.0** 으로 승격.
+- **앱**: 현재 `0.x`(Google Play 프로덕션 정식 출시 완료, 저장소 현행 `0.8.0` / 모바일 Play 프로덕션 `0.7.3`). **Play 프로덕션 1.0 마일스톤 시점에 1.0.0** 으로 승격.
 - **백엔드**: 이미 prod 운영 → `1.0.0` 에서 시작.
 - 앱엔 literal public API 가 없으므로 "호환성 계약" = user-facing 동작 + `minSdk`/설치 요건으로 해석.
 
@@ -46,7 +46,7 @@ bash scripts/bump-version.sh --dry-run 0.7.4  # 변경 미적용, 계획만 출�
 
 ## 6. 프론트엔드 표시
 
-모바일 `ProfileHubScreen` 하단 `AccountAndVersionFooter` 가 `BuildConfig.VERSION_NAME (VERSION_CODE)` 를 muted 로 표시(`"버전 0.7.3 (44)"`), 워치 `WearEnvironmentStatusScreen` 이 `"v0.7.3 (10001) · API 36"` 을 표시한다. `BuildConfig` 는 컴파일 상수라 Context 불필요하고 정상 배포 앱에선 설치본과 동일값이다. 설치본 값이 별도로 필요해지면 `PackageInfoCompat.getLongVersionCode()`(androidx.core, API 28 deprecation 회피)로 교체.
+모바일 `ProfileHubScreen` 하단 `AccountAndVersionFooter` 가 `BuildConfig.VERSION_NAME (VERSION_CODE)` 를 muted 로 표시(`"버전 0.8.0 (45)"`), 워치 `WearEnvironmentStatusScreen` 이 `"v0.8.0 (10001) · API 36"` 을 표시한다. `BuildConfig` 는 컴파일 상수라 Context 불필요하고 정상 배포 앱에선 설치본과 동일값이다. 설치본 값이 별도로 필요해지면 `PackageInfoCompat.getLongVersionCode()`(androidx.core, API 28 deprecation 회피)로 교체.
 
 ## 7. drift 방지
 

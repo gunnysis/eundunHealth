@@ -1,6 +1,6 @@
 # 배포 전 준비도 — 2026-10-16 (📜 v0.3.1 시점 아카이브 기록)
 
-> **⚠️ 아카이브 안내**: 본 문서는 **2026-10-16 `v0.3.1/36` 출시 시점의 1회성 검증 증적 기록**입니다. 현행 프로덕션 상태(`v0.7.3/44`, `:wear` `wearVersionCode=10001`, PostgreSQL 18.4 Drop & Recreate 스키마, Azure AI Foundry `gpt-5.4-mini`) 및 최신 출시 전 프리플라이트 절차는 [operations-snapshot.md](./operations-snapshot.md)와 `scripts/preflight-release.sh`를 단일 진실 공급원(SSoT)으로 참조하십시오.
+> **⚠️ 아카이브 안내**: 본 문서는 **2026-10-16 `v0.3.1/36` 출시 시점의 1회성 검증 증적 및 배포 게이트·롤백 설계 기준 기록**입니다. 현행 프로덕션 상태(`v0.8.0/45`, `:wear` `wearVersionCode=10001`, 백엔드 `eundunhealth-api--0000070` / `8968394`, PostgreSQL 18.4 10개 정규 테이블 Drop & Recreate 스키마, Azure AI Foundry `gpt-5.4-mini`) 및 최신 출시 전 프리플라이트 절차는 [operations-snapshot.md](./operations-snapshot.md)와 `scripts/preflight-release.sh`를 단일 진실 공급원(SSoT)으로 참조하십시오.
 
 릴리스 후보: Android `0.3.1` / versionCode `36` (당시 Play 프로덕션 `0.3.0` / `35` 다음 값)
 

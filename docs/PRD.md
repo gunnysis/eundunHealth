@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 제품 요구사항 문서 (PRD)
 
 **문서 버전:** v4.0 (2026-11-09 — Wear OS 6 상시 생체·마음 상태 5차원 분석 런타임(`:wear` ↔ `:app` ↔ `/v2/biometrics/*`) · v0.7.3 Strict Mandatory Update · 스마일 트레이닝 INTRO/COMPLETED 제거 무중단 직행 · Wear OS 6 3모듈 Foundation & PROP-06 반영 · v0.7.2 비주얼 대시보드 · v0.7.1 콜드 스타트 핫픽스 · v0.7.0 스마일 v2 & PG 18 반영)
-**제품 버전:** v0.8.0 (versionCode 45) — 앱 업데이트 감지 및 강제 안내 시스템 고도화(`Strict Mandatory Update`: Google Play In-App Updates `2.1.0` + `ON_START` 포그라운드 재검증 + 버전 SSoT 자동화, `minimumSupportedVersionCode = 44`), 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편, 체성분 직접 입력 0.1 정밀도 보존, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (100K TPM) 전환, 콜드 스타트 크래시(`EUNDUNHEALTH-H`) 핫픽스 및 5계층 심층 방어·AGP 거버넌스 적용, 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`).
+**제품 버전:** v0.8.0 (versionCode 45, `wearVersionCode = 10001`) — Wear OS 6 상시 전 구간 5차원 생체·마음 상태 런타임(`:core:wear-contract` + `:wear` + `:app` Room v4 + 운영 Azure `/v2/biometrics/*` 10번째 정규 테이블 `biometric_daily_summaries`, `eundunhealth-api--0000070` / `8968394`), 앱 업데이트 감지 및 강제 안내 시스템 고도화(`Strict Mandatory Update`: Google Play In-App Updates `2.1.0` + `ON_START` 포그라운드 재검증 + 버전 SSoT 자동화, `minimumSupportedVersionCode = 45`), 진행(`ProgressHubScreen`) 및 프로필(`ProfileHubScreen`) 비주얼 대시보드·간소화 개편, 체성분 직접 입력 0.1 정밀도 보존, Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (100K TPM) 전환, 콜드 스타트 크래시(`EUNDUNHEALTH-H`) 핫픽스 및 5계층 심층 방어·AGP 거버넌스 적용, 스마일 트레이닝 v2(`2,000ms × 3회` 단일 스펙, `READY` 1.0초 자동 시작, `/v2/smile-training/*`), PostgreSQL 18 Drop & Recreate 스키마 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()`).
 **패키지:** `com.gunnys.eundunhealth`
 **구현 상태 추적:** [CHANGELOG.md](./CHANGELOG.md) / [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -393,7 +393,7 @@ Splash
 | 목표 설정 (체중·체지방) + 진행 차트 | v0.3 |
 | 배지 9종 (마일스톤 4 + 목표 달성 2 추가) | v0.3 |
 
-### v0.2.0 ~ v0.7.3+에서 추가 완료 (2026-09 ~ 2026-11)
+### v0.2.0 ~ v0.8.0에서 추가 완료 (2026-09 ~ 2026-11)
 
 | 영역 | 도입 버전 | 비고 |
 |------|----------|------|
@@ -410,7 +410,7 @@ Splash
 | 진행·프로필 허브 비주얼 대시보드 개편 & AI 식단 `gpt-5.4-mini` 전환 | v0.7.2 (2026-10-29) | `ProgressHubScreen`/`ProfileHubScreen` 비주얼 대시보드 및 중복 메뉴 제거, 체성분 직접 입력 `0.1` 정밀도 수정, Azure AI Foundry `gpt-5.4-mini` (`100K TPM`, OpenAI Strict JSON Schema) 적용 |
 | 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update`) | v0.7.3 (2026-10-29) | Google Play In-App Updates `2.1.0`(`PlayInAppUpdateChecker`) + 백엔드 `/app-compatibility` 이중 채널 강제 업데이트 감지, `ON_START` 포그라운드 재검증, `ErrorContent` 스토어 이동 CTA, 버전 SSoT(`44`) 자동화 |
 | 스마일 트레이닝 무중단 직행(`INTRO`/`COMPLETED` 제거) & Wear OS 6 3모듈 Foundation | 2026-11-06 | 스마일 트레이닝 `READY -> ACTIVE -> NavigateBack` 직행 및 Compose BOM `2026.09.00` 현대화, `:app` + `:wear`(`minSdk=36`, Wear Compose M3 `1.7.1` `WearEnvironmentStatusScreen`) + `:core:wear-contract`(Pure JVM 17) Foundation 구축 |
-| Wear OS 6 상시 전 구간 5차원 생체·마음 상태 런타임 & `/v2/biometrics/*` API (`PROP-06`) | 2026-11-09 | `:core:wear-contract` 5차원 분석기(`ContinuousBiometricAnalyzer`) + GZIP/SHA-256 코덱, `:wear` 24/7 `PassiveMonitoringClient` + `MeasureClient` + `WearBiometricDatabase`, `:app` `EundunDatabase` v4 + `PhoneWearDataListenerService` + 진행/프로필 허브 대시보드, 백엔드 10번째 정규 테이블 `biometric_daily_summaries` 및 `/v2/biometrics/*` 3개 API 구현 |
+| Wear OS 6 상시 전 구간 5차원 생체·마음 상태 런타임 & `/v2/biometrics/*` API (`PROP-06`) | v0.8.0 (2026-11-09) | `:core:wear-contract` 5차원 분석기(`ContinuousBiometricAnalyzer`) + GZIP/SHA-256 코덱, `:wear` 24/7 `PassiveMonitoringClient` + `MeasureClient` + `WearBiometricDatabase` + Play Console 내부 테스트(`10001`), `:app` `EundunDatabase` v4 + `PhoneWearDataListenerService` + 진행/프로필 허브 대시보드, 백엔드 10번째 정규 테이블 `biometric_daily_summaries` 및 `/v2/biometrics/*` 3개 API 운영 배포(`eundunhealth-api--0000070`) |
 
 ### 향후 확장 후보 (Product Proposals)
 
@@ -419,11 +419,11 @@ Splash
 | 제안 ID | 기능명 | 목표 버전 | 설명 | 상세 기획 |
 |:---:|---|:---:|---|:---:|
 | **PROP-01** | **휴식일 자유 다중 지정 (Flexible Multi-Rest Days)** | `v0.6.0` (구현 완료) | 주 1~6일 자유로운 휴식일 멀티 선택 및 $N$일 기준 동적 주간 완료율 | [plans/logs/android.md](plans/logs/android.md) |
-| **PROP-02** | 식단 섭취 체크 및 영양 리포트 | `v0.8.0+` | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 | [proposals/README.md](proposals/README.md) |
-| **PROP-03** | 맞춤 추천 고도화 (점진적 과부하) | `v0.8.0+` | 운동 이력 기반 AI 운동 루틴 및 중량/볼륨 추천 | [proposals/README.md](proposals/README.md) |
+| **PROP-02** | 식단 섭취 체크 및 영양 리포트 | `v0.9.0+` | 끼니별 완료 체크 및 주간 칼로리/탄단지 통계 | [proposals/README.md](proposals/README.md) |
+| **PROP-03** | 맞춤 추천 고도화 (점진적 과부하) | `v0.9.0+` | 운동 이력 기반 AI 운동 루틴 및 중량/볼륨 추천 | [proposals/README.md](proposals/README.md) |
 | **PROP-04** | ~~적응형 동적 분할 루틴 엔진 (Adaptive Split Engine)~~ | 기각 | 실제 운동 일수($N$)에 적응하는 전신/2분할/3분할 매트릭스 처방 (Deferred/Rejected) | [rejections/2026-10-27-adaptive-split-engine.md](proposals/rejections/2026-10-27-adaptive-split-engine.md) |
 | **PROP-05** | **UI/UX 개선 종합 기획** | `v0.6.1` (구현 완료) | 브랜드·디자인 기반, 오늘 탭 Today Hero, 운동 가이드 모드, 진행·식단·프로필 허브, 온보딩·첫 경험 개선 | [plans/logs/android.md](plans/logs/android.md) |
-| **PROP-06** | **Google Wear OS (API 36) 상시 전 구간 5차원 생체·마음 상태 런타임 & Azure `/v2/biometrics/*` 통합 아키텍처** | `2026-11-09` (구현 완료) | `:core:wear-contract` 5차원 분석기·GZIP 코덱 + `:wear` 24/7 `PassiveMonitoringClient`/`MeasureClient` + `:app` Room v4·Data Layer + 백엔드 `biometric_daily_summaries` 10번째 정규 테이블 및 `/v2/biometrics/*` 3개 API 구현 완료 | [2026-11-09-wear-os-continuous-biometric-azure-plan.md](plans/2026-11-09-wear-os-continuous-biometric-azure-plan.md) · [plans/logs/android.md](plans/logs/android.md) |
+| **PROP-06** | **Google Wear OS (API 36) 상시 전 구간 5차원 생체·마음 상태 런타임 & Azure `/v2/biometrics/*` 통합 아키텍처** | `v0.8.0` (구현 완료) | `:core:wear-contract` 5차원 분석기·GZIP 코덱 + `:wear` 24/7 `PassiveMonitoringClient`/`MeasureClient` + `:app` Room v4·Data Layer + 백엔드 `biometric_daily_summaries` 10번째 정규 테이블 및 `/v2/biometrics/*` 3개 API 운영 배포 완료 | [plans/logs/android.md](plans/logs/android.md) · [plans/logs/backend.md](plans/logs/backend.md) |
 | - | 사용자 정의 루틴 | 백로그 | 자동 생성된 plan을 사용자가 직접 편집 | - |
 | - | 추가 배지 / 시즌 챌린지 | 백로그 | 시즌별 한정 배지, 친구 간 챌린지 | - |
 | - | 소셜 기능 | 백로그 | 친구 추가, 운동 현황 공유 | - |

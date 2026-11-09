@@ -290,6 +290,19 @@ class TestAuditAppVersionInText:
         assert len(findings) == 1
         assert findings[0]["doc_says"] == "v0.7.2/43"
 
+    def test_readme_stage_narrative_drift_detected(self):
+        text = "- **현재 단계** — **v0.7.3 (versionCode 44, `wearVersionCode=10001`)**\n"
+        findings = audit_app_version_in_text("README.md", text, "0.8.0", "45")
+        assert len(findings) == 1
+        assert findings[0]["locator"] == "소개 > 현재 단계 서술"
+
+    def test_spec_and_versioning_drift_detected(self):
+        spec_text = "모바일 `:app`(`versionCode=44`, `EundunDatabase` v4)"
+        assert len(audit_app_version_in_text("docs/SPEC.md", spec_text, "0.8.0", "45")) == 1
+
+        conv_text = "| **Android 모바일 앱 (`:app`)** | 루트 `version.properties` (`versionName`+`versionCode`, 현행 `0.7.3` / `44`) |"
+        assert len(audit_app_version_in_text("docs/conventions/versioning.md", conv_text, "0.8.0", "45")) == 1
+
 
 class TestAuditBackendApiVersionInText:
     def test_clean_match(self):

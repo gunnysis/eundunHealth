@@ -1,12 +1,12 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 > **문서 버전:** v2.3 (현행 아키텍처 정본, 2026-11-09 최신화)  
-> **현재 상태:** 저장소 최신 릴리스 **v0.8.0/45 (Wear `:wear` `wearVersionCode=10001` 상시 생체·마음 상태 5차원 런타임 및 `/v2/biometrics/*` · 직전 Play 프로덕션 `v0.7.3/44` `completed` 100%, 원장 PR #226)**, 백엔드 활성 리비전 **`eundunhealth-api--0000069` (`6357981`)**  
+> **현재 상태:** 저장소 최신 릴리스 **v0.8.0/45 (Wear `:wear` `wearVersionCode=10001` 상시 생체·마음 상태 5차원 런타임 Play Console 내부 테스트·게시 개요 제출 및 `/v2/biometrics/*` 운영 배포 · 모바일 Play 프로덕션 현행 `v0.7.3/44` `completed` 100%, 원장 PR #226)**, 백엔드 활성 리비전 **`eundunhealth-api--0000070` (`8968394`)**  
 > **패키지 명:** `com.gunnys.eundunhealth`  
 > **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
 > [!IMPORTANT]
-> 본 TRD는 v0.1.0 초기 설계(Ktor, Supabase Auth, Exposed, Alembic) 이후 전면 현대화된 현행 프로덕션 아키텍처(**FastAPI 0.162.0 / Python 3.14**, **Microsoft Entra External ID CIAM**, **Azure PostgreSQL 18.4 Flexible Server**, **온디바이스 스마일 트레이닝 v2 (무중단 직행)**, **Google Wear OS 6.0 (API 36) 3모듈(`:app`, `:wear`, `:core:wear-contract`) Foundation**, **Azure AI Foundry gpt-5.4-mini (GlobalStandard)**, **Sentry 풀스택 분산 추적**)를 기준으로 작성된 **기술 사양 단일 진실 공급원(SSoT)**입니다.  
+> 본 TRD는 v0.1.0 초기 설계(Ktor, Supabase Auth, Exposed, Alembic) 이후 전면 현대화된 현행 프로덕션 아키텍처(**FastAPI 0.162.0 / Python 3.14**, **Microsoft Entra External ID CIAM**, **Azure PostgreSQL 18.4 Flexible Server (10개 정규 테이블)**, **온디바이스 스마일 트레이닝 v2 (무중단 직행)**, **Google Wear OS 6.0 (API 36) 3모듈(`:app`, `:wear`, `:core:wear-contract`) 상시 생체·마음 상태 5차원 런타임**, **Azure AI Foundry gpt-5.4-mini (GlobalStandard)**, **Sentry 풀스택 분산 추적**)를 기준으로 작성된 **기술 사양 단일 진실 공급원(SSoT)**입니다.  
 > 과거 v1.0 초기 설계 기록은 각 섹션 하단의 `<details>` 아카이브 블록에 안전하게 보존되어 있습니다.
 
 ---
@@ -15,7 +15,7 @@
 
 ### 0.1. 핵심 아키텍처 전환 요약
 
-| 영역 | 초기 설계 (TRD v1.0) | 현행 아키텍처 (v0.7.3 & Wear OS 3모듈 Foundation) | 전환 사유 및 기술 이점 |
+| 영역 | 초기 설계 (TRD v1.0) | 현행 아키텍처 (v0.8.0 & Wear OS 6 3모듈 런타임) | 전환 사유 및 기술 이점 |
 | :--- | :--- | :--- | :--- |
 | **Backend 런타임** | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.162.0 (Python 3.14)** + uvicorn 0.54.0 | 비동기 고성능 처리, Pydantic v2 선언적 검증, AI SDK 통합 용이성 |
 | **Backend API 버전** | (미정) | **`1.0.0`** (앱 버전과 분리된 독립 SSoT) | 모바일 클라이언트와 백엔드 배포 라이프사이클 디커플링 |
@@ -27,7 +27,7 @@
 | **AI 식단 생성** | 미포함 | **Azure AI Foundry `gpt-5.4-mini` (100K TPM)** | AsyncOpenAI + Strict JSON Schema(`json_schema`), 명시적 동의 헤더 및 킬 스위치 보장 |
 | **온디바이스 비전 AI** | 미포함 | **CameraX 1.6.2 + ML Kit Face Detection 17.1.0** | 온디바이스 스마일 트레이닝 v2 (단일 규격 2s×3회, 1s 자동 시작, 무중단 직행, 무저장/무전송) |
 | **클라이언트 UI/디자인** | Material 3 기본 테마 | **Modern Forest & Mint (36슬롯) + Wear Compose M3 (`1.7.1`)** | 13 시맨틱 토큰(`EundunExtendedColors`), UDF 14 ViewModel, 워치 29토큰 테마, DayNight 깜빡임 제거 |
-| **멀티모듈 아키텍처** | 단일 `:app` 모듈 | **3모듈 (`:app` + `:wear` + `:core:wear-contract`)** | 모바일(Min SDK 26), Wear OS 6+(Min SDK 36), 순수 JVM 17 공유 계약(`KST_ZONE`) 분리 |
+| **멀티모듈 아키텍처** | 단일 `:app` 모듈 | **3모듈 (`:app` + `:wear` + `:core:wear-contract`)** | 모바일(Min SDK 26), Wear OS 6+(Min SDK 36, 24/7 Health Services), 순수 JVM 17 공유 계약(`KST_ZONE` + 5차원 생체 분석기 + GZIP 코덱) 분리 |
 | **운동 카탈로그** | RapidAPI ExerciseDB (영문) | **OSS ExerciseDB + 추천 46종 한국어 + 홈트 18종** | 한국어 번들 지문 대조, 무장비 내장 홈트 알고리즘(`HomeWeeklyPlanGenerator`) |
 | **주간 계획 계약** | `/weekly-plan` (v1 단순 덮어쓰기) | **`/v2/weekly-plan` (Gym/Home 모드, RestDays)** | 계획 불변성(중복 시 409), 손상 계획 복구(DELETE 204), 다중 휴식 요일 지원 |
 | **모니터링 & 트레이싱** | Sentry 단일 프로젝트 | **Sentry 프로젝트 분리 (Android ↔ Backend)** | R8 난독화 매핑 자동화, OkHttp 최외곽 분산 추적, 엔드투엔드 상관관계 ID |
@@ -46,6 +46,7 @@
 - **v0.7.2 (2026-10-29)**: **진행·프로필 허브 비주얼 대시보드 개편 & AI 식단 `gpt-5.4-mini` (100K TPM) 전환**. `ProgressHubScreen`/`ProfileHubScreen` 시각화 대시보드 및 중복 메뉴 제거, 체성분 직접 입력 `0.1` 정밀도 보존, `ep-eundunhealth-meal-ai` (`gpt-5.4-mini`, Strict JSON Schema) 배포(`eundunhealth-api--0000068`).
 - **v0.7.3 (2026-10-29)**: **앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update`)**. Google Play In-App Updates `2.1.0`(`PlayInAppUpdateChecker`) + 백엔드 `/app-compatibility` 이중 채널 강제 업데이트, `ON_START` 포그라운드 재검증, 버전 SSoT(`44`) 자동화 배포(`eundunhealth-api--0000069`, 원장 PR #226).
 - **Post-v0.7.3 Foundation (2026-11-04 ~ 2026-11-06)**: Android CLI `v1.1.16717390` + Studio `2026.2.2` 2-Tier 통합, 스마일 트레이닝 `INTRO`/`COMPLETED` 제거 무중단 직행 및 Compose BOM `2026.09.00` 신기술 전수 적용(`2f63aec`), AGP `9.5.1` 업그레이드(`4a3af8b`), **Google Wear OS 6.0 (API 36) 3모듈(`:app`, `:wear`, `:core:wear-contract`) Foundation 및 원형 M3 진단 UI 구축(`2a49cea`)**.
+- **v0.8.0 (2026-11-09)**: **Wear OS 6 상시 전 구간 5차원 생체·마음 상태 런타임(`:core:wear-contract` + `:wear` + `:app` Room v4) & 운영 Azure `/v2/biometrics/*` 10번째 정규 테이블 `biometric_daily_summaries` 배포**. Xiaomi Watch 5(`M2501W1`) 24/7 `PassiveMonitoringClient` + `MeasureClient` 수집, GZIP+SHA-256 Data Layer 코덱, 운영 Azure `eundunhealth-api--0000070`(`8968394`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=45`) 배포 및 Play Console Wear OS 내부 테스트(`10001`)·게시 개요 제출 완료.
 
 ---
 
@@ -53,22 +54,23 @@
 
 ### 1.1. 전체 시스템 구성도
 
-> **최신 아키텍처 기준 (v0.7.3 & Wear OS 3모듈 Foundation, 2026-11-06 반영)**:
-> 초기 v1.0 설계에서 **FastAPI (Python 3.14), Microsoft Entra External ID(CIAM), Azure PostgreSQL 18.4 Flexible Server, 온디바이스 스마일 트레이닝 v2(CameraX + ML Kit), Google Wear OS 6.0 (API 36) 3모듈 아키텍처, Azure AI Foundry(gpt-5.4-mini GlobalStandard), Sentry 풀스택 분산 추적**으로 전면 현대화된 엔드투엔드 토폴로지입니다.
+> **최신 아키텍처 기준 (v0.8.0 & Wear OS 6 3모듈 런타임, 2026-11-09 반영)**:
+> 초기 v1.0 설계에서 **FastAPI (Python 3.14), Microsoft Entra External ID(CIAM), Azure PostgreSQL 18.4 Flexible Server(10개 정규 테이블), 온디바이스 스마일 트레이닝 v2(CameraX + ML Kit), Google Wear OS 6.0 (API 36) 3모듈 상시 생체·마음 상태 아키텍처, Azure AI Foundry(gpt-5.4-mini GlobalStandard), Sentry 풀스택 분산 추적**으로 전면 현대화된 엔드투엔드 토폴로지입니다.
 
 #### [Mermaid 시스템 아키텍처 다이어그램]
 
 ```mermaid
 graph TB
-    subgraph Client["Client Layer (Android 네이티브 앱)"]
+    subgraph Client["Client Layer (Android & Wear OS 6 3모듈)"]
         direction TB
-        UI["Jetpack Compose UI<br/>(Material 3 / Forest & Mint / Pretendard Variable)"]
-        Domain["Domain & ViewModel<br/>(Clean Architecture / UDF / SideEffect Channel)"]
+        UI["Jetpack Compose UI (:app)<br/>(Material 3 / Forest & Mint / Pretendard Variable)"]
+        WearApp["Wear OS 6 App (:wear, Min SDK 36)<br/>(PassiveMonitoringClient + MeasureClient + 7일 SQLite<br/>+ Data Layer GZIP/SHA-256 송수신)"]
+        Domain["Domain & ViewModel & Shared Contract (:core:wear-contract)<br/>(Clean Architecture / UDF / 5차원 ContinuousBiometricAnalyzer)"]
         Vision["On-Device AI Engine<br/>(CameraX 1.6.2 + ML Kit Face Detection 17.1.0)<br/>스마일 트레이닝 v2 (단일 규격 2s×3회, 1.0s 자동 시작)"]
-        LocalDB["Local Storage (오프라인 우선)<br/>• Room DB v3 (eundunhealth.db: 계획/프로필/목표/배지)<br/>• Room DB v2 (smile_training.db: 세션 이력)<br/>• DataStore Preferences (설정/테마/리셋 플래그)"]
-        Worker["WorkManager (SmileSyncWorker)<br/>오프라인 세션 멱등 백그라운드 동기화"]
+        LocalDB["Local Storage (오프라인 우선)<br/>• Room DB v4 (eundunhealth.db: 계획/프로필/목표/배지/워치생체요약)<br/>• Room DB v2 (smile_training.db: 세션 이력)<br/>• DataStore Preferences (설정/테마/리셋 플래그)"]
+        Worker["WorkManager (SmileSyncWorker)<br/>스마일 세션 & 워치 생체 요약 멱등 백그라운드 동기화"]
         HC["Health Connect Client (1.1.0 stable)<br/>운동 완료 자동 연동 (READ_EXERCISE 단독)"]
-        MSAL["MSAL Android SDK (8.4.2 / 8.6.0)<br/>브라우저 위임 인증 (PKCE)"]
+        MSAL["MSAL Android SDK (8.6.0)<br/>브라우저 위임 인증 (PKCE)"]
         SentryApp["Sentry Android SDK (8.61.1)<br/>크래시 / ANR / R8 역난독화 매핑 / 성능 트레이싱"]
         Catalogs["Bundled Catalogs<br/>• 추천 운동 46종 한국어 번들 (korean_exercises.json v2)<br/>• 내장 무장비 홈트 18종 (HomeWeeklyPlanGenerator v2.0)"]
     end
@@ -83,7 +85,7 @@ graph TB
 
     subgraph AzureCloud["Azure Cloud Infrastructure (rg-eundunhealth-prod-krc, Korea Central)"]
         subgraph ACA["Azure Container Apps (eundunhealth-env)"]
-            API["eundunhealth-api (Container App)<br/>FastAPI 0.161.0 / Python 3.14 + uvicorn<br/>• /v2/weekly-plan, /v2/smile-training, /meals<br/>• 멱등 스키마 부트스트랩 (python -m app.schema_bootstrap)<br/>• Warm Baseline: minReplicas 1 / maxReplicas 3<br/>• System Managed Identity (AcrPull, KV Secrets User)"]
+            API["eundunhealth-api (Container App)<br/>FastAPI 0.162.0 / Python 3.14 + uvicorn<br/>• /v2/weekly-plan, /v2/smile-training, /v2/biometrics, /meals<br/>• 멱등 스키마 부트스트랩 (python -m app.schema_bootstrap)<br/>• Warm Baseline: minReplicas 1 / maxReplicas 3<br/>• System Managed Identity (AcrPull, KV Secrets User)"]
             Reaper["eundunhealth-reaper (Container Apps Job)<br/>주간 cron (0 18 * * 0 UTC = 매주 월 03:00 KST)<br/>고아 계정 데이터 안전망 청소 (reap_orphaned_accounts.py)<br/>• User-assigned Managed Identity (id-eundunhealth-reaper)"]
         end
 
@@ -92,17 +94,19 @@ graph TB
         LogAnalytics["Log Analytics Workspace (workspace-appsDOlM)<br/>Key Vault 감사(kv-audit) & ACA 콘솔/시스템 로그"]
 
         subgraph Database["Database Layer (Azure Flexible Server)"]
-            PG["Azure Database for PostgreSQL Flexible Server (healthapp)<br/>• Engine: PostgreSQL 18.4 (B1ms, 32GB, Korea Central)<br/>• 파라미터: io_method=worker, wal_compression=zstd, pg_stat_statements<br/>• Schema: 3NF 정규화 9개 도메인 테이블 (PostgreSQL 18 uuidv7 PK)<br/>• Pipeline: Drop & Recreate 전용 하드 리셋 (Zero-Legacy)"]
+            PG["Azure Database for PostgreSQL Flexible Server (healthapp)<br/>• Engine: PostgreSQL 18.4 (B1ms, 32GB, Korea Central)<br/>• 파라미터: io_method=worker, wal_compression=zstd, pg_stat_statements<br/>• Schema: 3NF 정규화 10개 정규 테이블 (PostgreSQL 18 uuidv7 PK)<br/>• Pipeline: Drop & Recreate 전용 하드 리셋 (Zero-Legacy)"]
         end
     end
 
     subgraph DevOps["CI / CD & Release Automation (GitHub Actions)"]
         GHA["GitHub Actions Workflows (Full SHA Pinned)<br/>• android.yml / release.yml (Google Play Production CD)<br/>• backend.yml (Entra OIDC 무암호 배포 & 런타임 스모크)"]
-        PlayStore["Google Play Console<br/>(Production Track 100% 출시)"]
+        PlayStore["Google Play Console<br/>(Mobile Production 100% & Wear OS Track)"]
     end
 
     %% Client Connections
     UI --> Domain
+    WearApp <-->|"Data Layer (GZIP+SHA-256)"| LocalDB
+    WearApp --> Domain
     Domain --> Vision
     Domain --> LocalDB
     Domain --> Worker

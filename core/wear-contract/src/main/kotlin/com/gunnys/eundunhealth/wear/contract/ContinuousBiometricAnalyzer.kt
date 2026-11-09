@@ -10,7 +10,7 @@ import kotlin.math.roundToInt
  * 워치 착용 전 구간(`PASSIVE` + `EXERCISE` + `ASLEEP` + `UNKNOWN`) 1분 버킷 시계열을 입력받아
  * 5차원 생체·마음 상태 일일 요약(`BiometricDailySummaryRecord`)을 산출하는 순수 Kotlin 분석 엔진.
  *
- * 설계 근거: `docs/plans/2026-11-09-wear-os-continuous-biometric-azure-plan.md` §2.3
+ * 설계 근거: `docs/plans/logs/android.md` (2026-11-09 entry — Wear OS 6 상시 생체·마음 상태 5차원 분석 런타임)
  */
 object ContinuousBiometricAnalyzer {
     private const val DEFAULT_RESTING_BPM = 70

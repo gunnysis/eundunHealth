@@ -13,7 +13,7 @@ private ACR 이미지를 MI 로 pull + Key Vault 시크릿을 MI 로 읽는 Cont
 2. **역할 부여** — UAI 에 `AcrPull`(ACR scope) + `Key Vault Secrets User`(KV scope). 공식 명령:
    `az role assignment create --assignee-object-id <UAI principalId> --assignee-principal-type ServicePrincipal --role AcrPull --scope <ACR id>` (KV 도 동일).
 3. **`--yaml` 로 잡 생성** — `az containerapp job create -n <job> -g <rg> --yaml <job>.yaml`. YAML 에 `identity.userAssignedIdentities`, `configuration.registries[].identity=<UAI id>`, `configuration.secrets[].keyVaultUrl + identity=<UAI id>` 를 둔다. (이 `registries[].identity`/`secrets[].identity` 형태는 공식 image-pull 문서의 Bicep 예시와 동일한 **IaC 정석** — 동시에 job CLI 의 `--registry-identity` 문제(E4)도 회피.)
-4. **갱신은 `--image` 만** — `az containerapp job update -n <job> -g <rg> --image <new>` (registry/secret/identity 는 YAML 로 박힌 기존 유지).
+4. **갱신은 `--yaml` 전체 정의 적용 (2026-09-01 개정)** — `az containerapp job update -n <job> -g <rg> --yaml <job>.yaml` (과거 `--image` 단독 업데이트는 시크릿/환경변수 정의 변경이 전파되지 않는 결함이 있어 `backend.yml`과 동일하게 `--yaml` 전체 적용을 표준으로 사용).
 5. **검증** — `az containerapp job start` → `az containerapp job execution list -o table` 가 `Succeeded`.
 
 > **왜 system-assigned 가 아니라 UAI?** job create 가 이미지를 **즉시 pull 검증**하는데 system MI 는 create 시점에 막 생겨 AcrPull 이 없어 실패한다(E2 chicken-egg). UAI 는 create 전에 만들어 역할을 줄 수 있어 이 순환을 끊는다.
