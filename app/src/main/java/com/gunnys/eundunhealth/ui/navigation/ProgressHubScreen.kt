@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -42,6 +43,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -53,10 +55,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -131,6 +135,9 @@ fun ProgressHubScreen(
             )
             WearBiometricMindProgressCard(
                 summary = uiState.latestWatchSummary,
+                isSyncing = uiState.isSyncingWatch,
+                syncMessage = uiState.watchSyncMessage,
+                onSyncNow = viewModel::syncWatchBiometricsNow,
             )
 
             SectionHeader(
@@ -984,11 +991,12 @@ private fun BadgeMiniChip(badge: BadgeMiniPreview) {
 @Composable
 private fun WearBiometricMindProgressCard(
     summary: BiometricDailySummaryRecord?,
+    isSyncing: Boolean = false,
+    syncMessage: String? = null,
+    onSyncNow: () -> Unit = {},
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) {},
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
@@ -996,46 +1004,85 @@ private fun WearBiometricMindProgressCard(
         shape = MaterialTheme.shapes.large,
     ) {
         if (summary == null) {
-            WearBiometricEmptyState()
+            WearBiometricEmptyState(
+                isSyncing = isSyncing,
+                syncMessage = syncMessage,
+                onSyncNow = onSyncNow,
+            )
         } else {
-            WearBiometricSummaryContent(summary = summary)
+            WearBiometricSummaryContent(
+                summary = summary,
+                isSyncing = isSyncing,
+                syncMessage = syncMessage,
+                onSyncNow = onSyncNow,
+            )
         }
     }
 }
 
 @Composable
-private fun WearBiometricEmptyState() {
-    Row(
+private fun WearBiometricEmptyState(
+    isSyncing: Boolean,
+    syncMessage: String?,
+    onSyncNow: () -> Unit,
+) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(
-            imageVector = Icons.Default.Watch,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(28.dp),
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "샤오미 워치 5 상시 생체·마음 분석 대기 중",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Watch,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp),
             )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "샤오미 워치 5 상시 생체·마음 분석 대기 중",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "워치를 착용하면 휴식·일상·운동·수면 전 구간 심박 변이와 마음 긴장·회복 점수가 자동 동기화됩니다.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (!syncMessage.isNullOrBlank()) {
             Text(
-                text = "워치를 착용하면 휴식·일상·운동·수면 전 구간 심박 변이와 마음 긴장·회복 점수가 자동 동기화됩니다.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = syncMessage,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
+        }
+        OutlinedButton(
+            onClick = onSyncNow,
+            enabled = !isSyncing,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+        ) {
+            Text(if (isSyncing) "동기화 요청 중..." else "워치 지금 동기화")
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WearBiometricSummaryContent(
     summary: BiometricDailySummaryRecord,
+    isSyncing: Boolean,
+    syncMessage: String?,
+    onSyncNow: () -> Unit,
 ) {
     val recoveryText = summary.recoveryScore?.let { "회복 ${it}점" } ?: "회복 산출 중"
     val restingText = summary.restingBpm?.let { "안정 ${it}BPM" } ?: "안정 측정 전"
@@ -1095,6 +1142,25 @@ private fun WearBiometricSummaryContent(
             WearMetricChip(hrrText)
             WearMetricChip("야간각성 ${summary.sleepAwakeningCount}회")
             WearMetricChip("${summary.totalSteps}보 · ${summary.activeCaloriesKcal.toInt()}kcal")
+        }
+
+        if (!syncMessage.isNullOrBlank()) {
+            Text(
+                text = syncMessage,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+
+        OutlinedButton(
+            onClick = onSyncNow,
+            enabled = !isSyncing,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+        ) {
+            Text(if (isSyncing) "동기화 요청 중..." else "워치 지금 동기화")
         }
     }
 }

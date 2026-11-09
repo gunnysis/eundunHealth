@@ -10,10 +10,22 @@
 set -euo pipefail
 
 DRY_RUN=0
-if [ "${1:-}" = "--dry-run" ]; then
-  DRY_RUN=1
-  shift
-fi
+MOBILE_ONLY=0
+while [ "$#" -gt 0 ]; do
+  case "${1}" in
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    --mobile-only)
+      MOBILE_ONLY=1
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
 NEW_NAME="${1:-}"
 if [ -z "${NEW_NAME}" ]; then
@@ -22,9 +34,9 @@ if [ -z "${NEW_NAME}" ]; then
 fi
 
 # 잉여 인자 거부 — `bump-version.sh 0.1.19 --dry-run` 처럼 플래그를 뒤에 붙이면
-# 조용히 무시되고 실제 적용되는 footgun 차단(2026-07-03 실측). --dry-run 은 버전 앞.
+# 조용히 무시되고 실제 적용되는 footgun 차단(2026-07-03 실측). --dry-run / --mobile-only 는 버전 앞.
 if [ "$#" -gt 1 ]; then
-  echo "ERROR: 인식할 수 없는 잉여 인자: '${2}'. --dry-run 은 버전 앞에 두세요: bash scripts/bump-version.sh --dry-run ${NEW_NAME}" >&2
+  echo "ERROR: 인식할 수 없는 잉여 인자: '${2}'. 플래그는 버전 앞에 두세요: bash scripts/bump-version.sh [--dry-run] [--mobile-only] ${NEW_NAME}" >&2
   exit 1
 fi
 
@@ -40,7 +52,13 @@ PROPS="${REPO_ROOT}/version.properties"
 
 OLD_NAME="$(grep -E '^versionName=' "${PROPS}" | cut -d= -f2 | tr -d '[:space:]')"
 OLD_CODE="$(grep -E '^versionCode=' "${PROPS}" | cut -d= -f2 | tr -d '[:space:]')"
+OLD_WEAR_CODE="$(grep -E '^wearVersionCode=' "${PROPS}" | cut -d= -f2 | tr -d '[:space:]')"
 NEW_CODE=$((OLD_CODE + 1))
+if [ "${MOBILE_ONLY}" = "1" ]; then
+  NEW_WEAR_CODE="${OLD_WEAR_CODE}"
+else
+  NEW_WEAR_CODE=$((OLD_WEAR_CODE + 1))
+fi
 
 if [ "${NEW_NAME}" = "${OLD_NAME}" ]; then
   echo "ERROR: 새 versionName 이 현재(${OLD_NAME})와 동일합니다." >&2
@@ -48,15 +66,20 @@ if [ "${NEW_NAME}" = "${OLD_NAME}" ]; then
   exit 1
 fi
 
-echo "versionName : ${OLD_NAME} -> ${NEW_NAME}"
-echo "versionCode : ${OLD_CODE} -> ${NEW_CODE}  (단조증가 OK, < 2,100,000,000)"
-echo "동기화 대상 : version.properties, backend(config.py, containerapp.yaml, docker-compose.yml),"
-echo "              scripts/verify_containerapp_deployment.py, README.md, docs/PRD.md, docs/TRD.md, docs/ops/operations-snapshot.md"
+echo "versionName     : ${OLD_NAME} -> ${NEW_NAME}"
+echo "versionCode     : ${OLD_CODE} -> ${NEW_CODE}  (단조증가 OK, < 2,100,000,000)"
+echo "wearVersionCode : ${OLD_WEAR_CODE} -> ${NEW_WEAR_CODE}"
+echo "동기화 대상     : version.properties, backend(config.py, containerapp.yaml, docker-compose.yml),"
+echo "                  scripts/verify_containerapp_deployment.py, README.md, docs/PRD.md, docs/TRD.md, docs/SPEC.md, docs/ops/operations-snapshot.md, docs/conventions/versioning.md"
 
-# Play 단조성 가드 — 새 versionCode 가 이미 업로드된 최고값(원장)보다 큰지 검증.
+# Play 단조성 가드 — 새 versionCode / wearVersionCode 가 이미 업로드된 최고값(원장)보다 큰지 검증.
 # 저장소가 Play 보다 뒤처져 NEW_CODE 가 이미 사용된 코드면 여기서 차단(INC-2026-06-19-28).
 # dry-run 에서도 검증되도록 조기 종료 이전에 둔다.
-bash "${REPO_ROOT}/scripts/check-version-monotonic.sh" "${NEW_CODE}"
+if [ "${MOBILE_ONLY}" = "1" ]; then
+  bash "${REPO_ROOT}/scripts/check-version-monotonic.sh" "${NEW_CODE}"
+else
+  bash "${REPO_ROOT}/scripts/check-version-monotonic.sh" "${NEW_CODE}" "${NEW_WEAR_CODE}"
+fi
 
 if [ "${DRY_RUN}" = "1" ]; then
   echo "[dry-run] 변경 미적용."
@@ -66,6 +89,9 @@ fi
 # 1) version.properties + 백엔드 최소 지원 버전 SSoT 동기화
 sed -i -E "s/^versionName=.*/versionName=${NEW_NAME}/" "${PROPS}"
 sed -i -E "s/^versionCode=.*/versionCode=${NEW_CODE}/" "${PROPS}"
+if [ "${MOBILE_ONLY}" != "1" ]; then
+  sed -i -E "s/^wearVersionCode=.*/wearVersionCode=${NEW_WEAR_CODE}/" "${PROPS}"
+fi
 
 CONFIG_PY="${REPO_ROOT}/backend/app/config.py"
 if [ -f "${CONFIG_PY}" ]; then
@@ -121,6 +147,10 @@ fi
 VER_F="${REPO_ROOT}/docs/conventions/versioning.md"
 if [ -f "${VER_F}" ]; then
   sed -i -E "/현재 기준 버전/ s#\`versionName=[0-9][0-9.]*\`, \`versionCode=[0-9]+\`#\`versionName=${NEW_NAME}\`, \`versionCode=${NEW_CODE}\`#" "${VER_F}"
+  if [ "${MOBILE_ONLY}" != "1" ]; then
+    sed -i -E "/현재 기준 버전/ s#\`wearVersionCode=[0-9]+\`#\`wearVersionCode=${NEW_WEAR_CODE}\`#" "${VER_F}"
+    sed -i -E "/\| \`:wear\` \|/ s#현행 \`[0-9][0-9.]*\` / \`[0-9]+\`#현행 \`${NEW_NAME}\` / \`${NEW_WEAR_CODE}\`#" "${VER_F}"
+  fi
 fi
 
 echo

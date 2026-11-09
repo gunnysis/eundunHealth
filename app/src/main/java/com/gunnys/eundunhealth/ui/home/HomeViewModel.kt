@@ -13,6 +13,7 @@ import com.gunnys.eundunhealth.domain.model.WeeklyPlan
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
+import com.gunnys.eundunhealth.domain.repository.WearBiometricRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
 import com.gunnys.eundunhealth.domain.usecase.CheckAndAwardBadgesUseCase
 import com.gunnys.eundunhealth.domain.usecase.CreateWeeklyPlanUseCase
@@ -108,6 +109,7 @@ class HomeViewModel @Inject constructor(
     private val checkBadges: CheckAndAwardBadgesUseCase,
     private val workoutRepo: WorkoutRepository,
     private val smileTrainingRepo: SmileTrainingRepository,
+    private val wearBiometricRepo: WearBiometricRepository? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -238,6 +240,9 @@ class HomeViewModel @Inject constructor(
         if (current is HomeUiState.Success) {
             // 이미 로드된 계획이 있으면 스켈레톤으로 갈아끼우지 않고 PullToRefresh 인디케이터만 즉시 활성화 (F-4)
             _uiState.value = current.copy(isRefreshing = true, toggleError = null)
+            viewModelScope.launch {
+                runCatching { wearBiometricRepo?.requestWatchSyncNow() }
+            }
         } else {
             _uiState.value = HomeUiState.Loading
         }

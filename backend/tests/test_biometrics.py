@@ -66,6 +66,8 @@ async def test_sync_get_and_delete_biometric_summaries(client):
     sync_body = sync_resp.json()
     assert sync_body["upsertedCount"] == 2
     assert len(sync_body["items"]) == 2
+    assert sync_body["items"][0]["recordDate"] == "2026-11-09"
+    assert sync_body["items"][1]["recordDate"] == "2026-11-08"
 
     # 동일 날짜(2026-11-09) 업데이트 재전송 시 행이 복제되지 않고 멱등 갱신되는지 확인
     updated_payload = {

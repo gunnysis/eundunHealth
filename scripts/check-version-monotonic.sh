@@ -58,8 +58,9 @@ verify_backend_ssot() {
   echo "versionCode SSoT 일치 OK: version.properties == backend/config.py == containerapp.yaml == docker-compose.yml == ${expected_code}."
 }
 
-# 검증 대상 versionCode: 인자로 주면 그 값, 없으면 version.properties 현재값.
+# 검증 대상 versionCode / wearVersionCode: 인자로 주면 그 값, 없으면 version.properties 현재값.
 EXPLICIT_CANDIDATE="${1:-}"
+EXPLICIT_WEAR_CANDIDATE="${2:-}"
 CANDIDATE="${EXPLICIT_CANDIDATE}"
 if [ -z "${CANDIDATE}" ]; then
   CANDIDATE="$(grep -E '^versionCode=' "${PROPS}" | head -1 | cut -d= -f2 | tr -d '[:space:]')"
@@ -70,7 +71,10 @@ if ! [[ "${CANDIDATE}" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
-WEAR_CANDIDATE="$(grep -E '^wearVersionCode=' "${PROPS}" | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)"
+WEAR_CANDIDATE="${EXPLICIT_WEAR_CANDIDATE}"
+if [ -z "${WEAR_CANDIDATE}" ]; then
+  WEAR_CANDIDATE="$(grep -E '^wearVersionCode=' "${PROPS}" | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)"
+fi
 if ! [[ "${WEAR_CANDIDATE}" =~ ^[0-9]+$ ]] || [ "${WEAR_CANDIDATE}" -le 0 ] || [ "${WEAR_CANDIDATE}" -gt 2100000000 ]; then
   echo "ERROR: version.properties 의 wearVersionCode 를 유효한 양의 정수(1..2100000000)로 해석하지 못했습니다: '${WEAR_CANDIDATE}'." >&2
   exit 1
@@ -123,4 +127,19 @@ if [ "${WEAR_CANDIDATE}" -le "${LAST}" ]; then
   exit 1
 fi
 
-echo "versionCode 단조성 OK: mobile=${CANDIDATE}, wear=${WEAR_CANDIDATE} > ${LAST} (Play 최고 업로드값, 원장 기준)."
+LAST_WEAR="$(grep -oE 'LAST_UPLOADED_WEAR_VERSION_CODE=[0-9]+' "${LEDGER}" | head -1 | cut -d= -f2 || true)"
+if [ -n "${LAST_WEAR}" ]; then
+  if [ -n "${EXPLICIT_WEAR_CANDIDATE}" ]; then
+    if [ "${WEAR_CANDIDATE}" -le "${LAST_WEAR}" ]; then
+      echo "ERROR: wearVersionCode ${WEAR_CANDIDATE} 는 이미 Play 에 업로드된 Wear 최고값 ${LAST_WEAR} 이하입니다 (최소 $((LAST_WEAR + 1)) 필요)." >&2
+      exit 1
+    fi
+  else
+    if [ "${WEAR_CANDIDATE}" -lt "${LAST_WEAR}" ]; then
+      echo "ERROR: wearVersionCode ${WEAR_CANDIDATE} 가 Play 에 업로드된 Wear 최고값 ${LAST_WEAR} 보다 작습니다 (하향 불가)." >&2
+      exit 1
+    fi
+  fi
+fi
+
+echo "versionCode 단조성 OK: mobile=${CANDIDATE} (> ${LAST}), wear=${WEAR_CANDIDATE} (>= ${LAST_WEAR:-${LAST}}, 원장 기준)."

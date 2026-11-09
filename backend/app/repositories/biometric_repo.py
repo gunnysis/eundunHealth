@@ -23,91 +23,113 @@ class BiometricRepository:
         item: BiometricDailySummaryItem,
     ) -> BiometricDailySummary:
         """`(user_id, record_date)` 자연키 기준으로 일일 생체 요약을 멱등 업서트한다."""
+        entities = await self.upsert_daily_summaries_batch(user_id=user_id, items=[item])
+        return entities[0]
+
+    async def upsert_daily_summaries_batch(
+        self,
+        user_id: str,
+        items: list[BiometricDailySummaryItem],
+    ) -> list[BiometricDailySummary]:
+        """단일 SELECT 프리페치 및 단일 flush로 일일 생체 요약 배치를 멱등 업서트한다."""
+        if not items:
+            return []
+
+        target_dates = [item.record_date for item in items]
         stmt = select(BiometricDailySummary).where(
             BiometricDailySummary.user_id == user_id,
-            BiometricDailySummary.record_date == item.record_date,
+            BiometricDailySummary.record_date.in_(target_dates),
         )
         result = await self.db.execute(stmt)
-        existing = result.scalar_one_or_none()
+        existing_by_date = {row.record_date: row for row in result.scalars().all()}
+
         now_utc = datetime.now(UTC)
-        captured_dt = datetime.fromtimestamp(item.captured_at_epoch_ms / 1000.0, tz=UTC)
-        devices_json = (
-            item.source_devices_json
-            if item.source_devices_json and item.source_devices_json != "[]"
-            else json.dumps([item.watch_model])
-        )
+        upserted: list[BiometricDailySummary] = []
 
-        if existing is None:
-            entity = BiometricDailySummary(
-                id=uuid.uuid7(),
-                user_id=user_id,
-                record_date=item.record_date,
-                zone_id=item.zone_id,
-                total_steps=item.total_steps,
-                active_calories_kcal=item.active_calories_kcal,
-                resting_bpm=item.resting_bpm,
-                avg_bpm=item.avg_bpm,
-                min_bpm=item.min_bpm,
-                max_bpm=item.max_bpm,
-                hrv_rmssd_ms=item.hrv_rmssd_ms,
-                total_monitored_minutes=item.total_monitored_minutes,
-                relaxed_zone_minutes=item.relaxed_zone_minutes,
-                normal_zone_minutes=item.normal_zone_minutes,
-                elevated_tension_minutes=item.elevated_tension_minutes,
-                high_load_minutes=item.high_load_minutes,
-                tension_episode_count=item.tension_episode_count,
-                tension_minutes=item.tension_minutes,
-                peak_tension_bpm=item.peak_tension_bpm,
-                rapid_delta_spike_count=item.rapid_delta_spike_count,
-                max_delta_bpm_per_min=item.max_delta_bpm_per_min,
-                activity_overload_count=item.activity_overload_count,
-                avg_recovery_drop_bpm=item.avg_recovery_drop_bpm,
-                sleep_awakening_count=item.sleep_awakening_count,
-                recovery_score=item.recovery_score,
-                hourly_bpm_buckets_json=item.hourly_bpm_buckets_json,
-                source_devices_json=devices_json,
-                client_captured_at=captured_dt,
-                updated_at=now_utc,
+        for item in items:
+            existing = existing_by_date.get(item.record_date)
+            captured_dt = datetime.fromtimestamp(item.captured_at_epoch_ms / 1000.0, tz=UTC)
+            devices_json = (
+                item.source_devices_json
+                if item.source_devices_json and item.source_devices_json != "[]"
+                else json.dumps([item.watch_model])
             )
-            self.db.add(entity)
-            await self.db.flush()
-            return entity
 
-        existing_captured_dt = existing.client_captured_at
-        if existing_captured_dt is not None:
-            if existing_captured_dt.tzinfo is None:
-                existing_captured_dt = existing_captured_dt.replace(tzinfo=UTC)
-            if captured_dt < existing_captured_dt:
-                return existing
+            if existing is None:
+                entity = BiometricDailySummary(
+                    id=uuid.uuid7(),
+                    user_id=user_id,
+                    record_date=item.record_date,
+                    zone_id=item.zone_id,
+                    total_steps=item.total_steps,
+                    active_calories_kcal=item.active_calories_kcal,
+                    resting_bpm=item.resting_bpm,
+                    avg_bpm=item.avg_bpm,
+                    min_bpm=item.min_bpm,
+                    max_bpm=item.max_bpm,
+                    hrv_rmssd_ms=item.hrv_rmssd_ms,
+                    total_monitored_minutes=item.total_monitored_minutes,
+                    relaxed_zone_minutes=item.relaxed_zone_minutes,
+                    normal_zone_minutes=item.normal_zone_minutes,
+                    elevated_tension_minutes=item.elevated_tension_minutes,
+                    high_load_minutes=item.high_load_minutes,
+                    tension_episode_count=item.tension_episode_count,
+                    tension_minutes=item.tension_minutes,
+                    peak_tension_bpm=item.peak_tension_bpm,
+                    rapid_delta_spike_count=item.rapid_delta_spike_count,
+                    max_delta_bpm_per_min=item.max_delta_bpm_per_min,
+                    activity_overload_count=item.activity_overload_count,
+                    avg_recovery_drop_bpm=item.avg_recovery_drop_bpm,
+                    sleep_awakening_count=item.sleep_awakening_count,
+                    recovery_score=item.recovery_score,
+                    hourly_bpm_buckets_json=item.hourly_bpm_buckets_json,
+                    source_devices_json=devices_json,
+                    client_captured_at=captured_dt,
+                    updated_at=now_utc,
+                )
+                self.db.add(entity)
+                existing_by_date[item.record_date] = entity
+                upserted.append(entity)
+                continue
 
-        existing.zone_id = item.zone_id
-        existing.total_steps = item.total_steps
-        existing.active_calories_kcal = item.active_calories_kcal
-        existing.resting_bpm = item.resting_bpm
-        existing.avg_bpm = item.avg_bpm
-        existing.min_bpm = item.min_bpm
-        existing.max_bpm = item.max_bpm
-        existing.hrv_rmssd_ms = item.hrv_rmssd_ms
-        existing.total_monitored_minutes = item.total_monitored_minutes
-        existing.relaxed_zone_minutes = item.relaxed_zone_minutes
-        existing.normal_zone_minutes = item.normal_zone_minutes
-        existing.elevated_tension_minutes = item.elevated_tension_minutes
-        existing.high_load_minutes = item.high_load_minutes
-        existing.tension_episode_count = item.tension_episode_count
-        existing.tension_minutes = item.tension_minutes
-        existing.peak_tension_bpm = item.peak_tension_bpm
-        existing.rapid_delta_spike_count = item.rapid_delta_spike_count
-        existing.max_delta_bpm_per_min = item.max_delta_bpm_per_min
-        existing.activity_overload_count = item.activity_overload_count
-        existing.avg_recovery_drop_bpm = item.avg_recovery_drop_bpm
-        existing.sleep_awakening_count = item.sleep_awakening_count
-        existing.recovery_score = item.recovery_score
-        existing.hourly_bpm_buckets_json = item.hourly_bpm_buckets_json
-        existing.source_devices_json = devices_json
-        existing.client_captured_at = captured_dt
-        existing.updated_at = now_utc
+            existing_captured_dt = existing.client_captured_at
+            if existing_captured_dt is not None:
+                if existing_captured_dt.tzinfo is None:
+                    existing_captured_dt = existing_captured_dt.replace(tzinfo=UTC)
+                if captured_dt < existing_captured_dt:
+                    upserted.append(existing)
+                    continue
+
+            existing.zone_id = item.zone_id
+            existing.total_steps = item.total_steps
+            existing.active_calories_kcal = item.active_calories_kcal
+            existing.resting_bpm = item.resting_bpm
+            existing.avg_bpm = item.avg_bpm
+            existing.min_bpm = item.min_bpm
+            existing.max_bpm = item.max_bpm
+            existing.hrv_rmssd_ms = item.hrv_rmssd_ms
+            existing.total_monitored_minutes = item.total_monitored_minutes
+            existing.relaxed_zone_minutes = item.relaxed_zone_minutes
+            existing.normal_zone_minutes = item.normal_zone_minutes
+            existing.elevated_tension_minutes = item.elevated_tension_minutes
+            existing.high_load_minutes = item.high_load_minutes
+            existing.tension_episode_count = item.tension_episode_count
+            existing.tension_minutes = item.tension_minutes
+            existing.peak_tension_bpm = item.peak_tension_bpm
+            existing.rapid_delta_spike_count = item.rapid_delta_spike_count
+            existing.max_delta_bpm_per_min = item.max_delta_bpm_per_min
+            existing.activity_overload_count = item.activity_overload_count
+            existing.avg_recovery_drop_bpm = item.avg_recovery_drop_bpm
+            existing.sleep_awakening_count = item.sleep_awakening_count
+            existing.recovery_score = item.recovery_score
+            existing.hourly_bpm_buckets_json = item.hourly_bpm_buckets_json
+            existing.source_devices_json = devices_json
+            existing.client_captured_at = captured_dt
+            existing.updated_at = now_utc
+            upserted.append(existing)
+
         await self.db.flush()
-        return existing
+        return upserted
 
     async def list_recent_by_user(
         self,

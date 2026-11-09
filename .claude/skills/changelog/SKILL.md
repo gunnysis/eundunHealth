@@ -169,112 +169,31 @@ main force push 금지이므로 별도 커밋이 유일한 선택.
 
 ## Examples
 
-### Example 1: Single File Change
+### Example 1: Release / Architecture Change Entry (`docs/CHANGELOG.md`)
 
 ```bash
 # 사용자 입력
-/changelog "빈 제목 검증 테스트 추가"
+/changelog "v0.8.0 Wear OS 6 상시 생체·마음 상태 런타임 및 /v2/biometrics/* 통합"
 
-# 생성된 엔트리
-## [001-create-ticket-api] - 2026-02-13 14:30
+# 생성된 엔트리 (docs/CHANGELOG.md 형식 준수)
+## [v0.8.0] — 2026-11-09 — Wear OS 6 상시 전 구간 5차원 생체·마음 상태 런타임 · `/v2/biometrics/*` 10번째 정규 테이블
 
-### 🎯 Prompts
-1. "TC-API-001에 빈 제목 검증 테스트 추가해줘"
-
-### ✅ Changes
-- **Added**: Empty title validation test (`__tests__/api/tickets.test.ts:95`)
-
-### 📁 Files Modified
-- `__tests__/api/tickets.test.ts` (+17, -0 lines)
-
----
-```
-
-### Example 2: Multi-File, Multi-Branch
-
-```bash
-# 사용자 입력
-/changelog "DB 설정 파일 3개 브랜치에 추가"
-
-# 생성된 엔트리
-## [chapter5.1-init] - 2026-02-13 10:15
-
-### 🎯 Prompts
-1. ".env 파일들을 3개 브랜치(chapter4.4.5, chapter5.1-SDD, chapter5.1-init)에 푸시해줘"
-2. "jest.setup.ts에서 ticketService mock 제거해"
-
-### ✅ Changes
-- **Modified**: `.env.local` - DB 인증 정보 추가
-- **Modified**: `.env.test` - DB 인증 정보 추가
-- **Added**: `.env.example` - 템플릿 생성
-- **Modified**: `jest.setup.ts` - ticketService mock 제거 (chapter5.1-init만)
-
-### 🌿 Branches Updated
-- `chapter4.4.5` (commit: a825f9c)
-- `chapter5.1-SDD` (commit: 2988021)
-- `chapter5.1-init` (commit: f6e7609, c512b3c)
-
-### 📁 Files Modified
-- `.env.local` (+1, -1 lines)
-- `.env.test` (+1, -1 lines)
-- `.env.example` (+4, -0 lines)
-- `jest.setup.ts` (+3, -1 lines)
-
----
-```
-
-### Example 3: With Test Results
-
-```bash
-# 사용자 입력
-/changelog "TC-API-001 전체 테스트 완료"
-
-# 생성된 엔트리
-## [001-create-ticket-api] - 2026-02-13 16:45
-
-### 🎯 Prompts
-1. "TC-API-001의 누락된 5개 테스트를 추가해줘"
-2. "npm test 실행해서 결과 보여줘"
-
-### ✅ Changes
-- **Added**: 빈 제목 검증 테스트 (`__tests__/api/tickets.test.ts:95`)
-- **Added**: 공백만 제목 검증 테스트 (`__tests__/api/tickets.test.ts:113`)
-- **Added**: 설명 1000자 초과 검증 테스트 (`__tests__/api/tickets.test.ts:149`)
-- **Added**: position 순서 검증 테스트 (`__tests__/api/tickets.test.ts:208`)
-- **Added**: startedAt/completedAt 초기값 검증 테스트 (`__tests__/api/tickets.test.ts:224`)
-
-### 📊 Test Results
-- Total: 11/11 passed (100%)
-- Coverage: TC-API-001 완료
-
-### 📁 Files Modified
-- `__tests__/api/tickets.test.ts` (+85, -0 lines)
-
----
+### ⌚ 영역 A — Wear OS 6 (`:wear`) & `:core:wear-contract`
+- **전 구간 5차원 분석 엔진**: `ContinuousBiometricAnalyzer` 및 `BiometricPayloadCodec`(GZIP + SHA-256) 구현 (`core/wear-contract/src/main/kotlin/...`)
+- **백엔드 10번째 정규 테이블**: `biometric_daily_summaries` 및 `/v2/biometrics/*` 3개 엔드포인트 추가 (`backend/app/routers/biometrics.py`)
 ```
 
 ## Handoffs
 
 이 스킬 실행 후 제안:
 
-1. **amend (미 push, 권장)**: changelog 를 직전 커밋에 합침
+1. **문서 일관성 감사 (`doc_audit.py`)**:
    ```bash
-   git add docs/CHANGELOG.md
-   git commit --amend --no-edit
-   git push
+   python scripts/agents/doc_audit.py --strict
    ```
 
-2. **별도 커밋 (이미 push 됨)**: amend 불가 시
+2. **테스트 실행**: 변경사항이 코드일 경우
    ```bash
-   git add docs/CHANGELOG.md
-   git commit -m "docs: changelog for [요약]
-
-   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
-   git push
-   ```
-
-3. **테스트 실행**: 변경사항이 코드일 경우
-   ```bash
-   ./gradlew :app:testDebugUnitTest    # Android
-   cd backend && .venv/Scripts/pytest   # Backend
+   ./gradlew :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest
+   cd backend && .venv/Scripts/pytest
    ```

@@ -361,6 +361,19 @@ class TestAuditWearVersionInText:
         assert len(findings) == 1
         assert findings[0]["kind"] == "wear-version"
 
+    def test_wear_version_preserves_append_only_history(self):
+        assert len(audit_wear_version_in_text("docs/CHANGELOG.md", "wearVersionCode=10001", "10002")) == 0
+        snap_text = "현재 wearVersionCode=10002\n## 13. 변경 이력\n| 2026-11-06 | wearVersionCode=10001 |"
+        assert len(audit_wear_version_in_text("docs/ops/operations-snapshot.md", snap_text, "10002")) == 0
+        readme_text = "현재 wearVersionCode=10002\n### 마일스톤 진행\n- [x] Foundation (wearVersionCode=10001)"
+        assert len(audit_wear_version_in_text("README.md", readme_text, "10002")) == 0
+
+    def test_wear_version_versioning_md_table_checked(self):
+        conv_text = "| **Wear OS 워치 앱 (`:wear`)** | 루트 `version.properties` (`versionName`+`wearVersionCode`, 현행 `0.8.0` / `10001`) |"
+        findings = audit_wear_version_in_text("docs/conventions/versioning.md", conv_text, "10002")
+        assert len(findings) == 1
+        assert findings[0]["locator"] == "§1 독립 버전 체계 표 (:wear)"
+
 
 class TestRenderReport:
     def test_renders_clean_report(self):

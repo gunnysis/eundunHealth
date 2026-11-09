@@ -10,20 +10,23 @@
 
 ## 기계 판독 마커 (가드가 grep)
 
-다음 한 줄이 **단일 출처**다. Play 업로드가 **성공**할 때마다 이 숫자를 그 versionCode 로 갱신한다.
+다음 두 줄이 모바일(`:app`)과 워치(`:wear`) 각각의 **단일 출처**다. Play 업로드가 **성공**할 때마다 해당 versionCode 로 갱신한다.
 
 ```
 LAST_UPLOADED_VERSION_CODE=44
+LAST_UPLOADED_WEAR_VERSION_CODE=10002
 ```
 
-> 규칙: 새 빌드의 versionCode 는 **항상 이 값보다 커야** 한다(= 최소 `이 값 + 1`).
-> `scripts/check-version-monotonic.sh` 가 `version.properties` 의 versionCode 와 위 값을 비교해
-> `≤` 이면 빌드/번프를 **fail-fast** 로 차단한다.
+> 규칙: 새 빌드의 versionCode / wearVersionCode 는 **항상 이 값보다 커야** 한다(= 최소 `이 값 + 1`).
+> `scripts/check-version-monotonic.sh` 가 `version.properties` 의 값과 위 마커를 비교해
+> 단조성 위반 시 빌드/번프를 **fail-fast** 로 차단한다.
 
 ## 업로드 이력 (확인된 값)
 
 | versionName | versionCode | 트랙 | 상태 | 비고 |
 |---|---|---|---|---|
+| 0.8.0 | 10002 | wear:production | **사용됨** | 2026-11-09 Wear OS 프로덕션 트랙 첫 출시 수동 업로드 (룰 13) |
+| 0.7.3 | 10001 | wear:internal | **사용됨** | 2026-11-06 Wear OS 내부 테스트 트랙 첫 수동 업로드 (룰 13) |
 | 0.7.3 | 44 | production | **사용됨** | 2026-10-29 release.yml 자동 갱신 (룰 13) |
 | 0.7.2 | 43 | production | **사용됨** | 2026-10-29 release.yml 자동 갱신 (룰 13) |
 | 0.7.1 | 42 | production | **사용됨** | 2026-10-29 release.yml 자동 갱신 (룰 13) |

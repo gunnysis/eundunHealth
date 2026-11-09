@@ -41,6 +41,7 @@ import androidx.wear.compose.material3.TitleCard
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.tooling.preview.devices.WearDevices
+import com.gunnys.eundunhealth.wear.BuildConfig
 import com.gunnys.eundunhealth.wear.R
 import com.gunnys.eundunhealth.wear.presentation.theme.EundunWearTheme
 
@@ -132,7 +133,10 @@ fun WearEnvironmentStatusScreen(
                             .minimumVerticalContentPadding(
                                 CardDefaults.minimumVerticalListContentPadding,
                             ),
-                        onSyncNow = onSyncNow,
+                        expandLabel = expandLabel,
+                        collapseLabel = collapseLabel,
+                        expandedStateDesc = expandedStateDesc,
+                        collapsedStateDesc = collapsedStateDesc,
                     )
                 }
 
@@ -335,8 +339,12 @@ private fun ZoneDistributionCard(
     biometricState: WearBiometricUiState,
     transformation: SurfaceTransformation,
     modifier: Modifier,
-    onSyncNow: () -> Unit,
+    expandLabel: String,
+    collapseLabel: String,
+    expandedStateDesc: String,
+    collapsedStateDesc: String,
 ) {
+    var isZoneExpanded by rememberSaveable { mutableStateOf(false) }
     val summary = biometricState.todaySummary
     val monitored = summary?.totalMonitoredMinutes ?: 0
     val relaxed = summary?.relaxedZoneMinutes ?: 0
@@ -350,9 +358,11 @@ private fun ZoneDistributionCard(
         summary?.avgRecoveryDropBpm?.let {
             if (it >= 0) "회복 -${it}BPM" else "회복 +${-it}BPM"
         } ?: "회복 대기"
+    val actionLabel = if (isZoneExpanded) collapseLabel else expandLabel
+    val stateDesc = if (isZoneExpanded) expandedStateDesc else collapsedStateDesc
 
     TitleCard(
-        onClick = onSyncNow,
+        onClick = { isZoneExpanded = !isZoneExpanded },
         title = {
             Text(
                 text = "착용 ${monitored}분 5차원 분석",
@@ -364,20 +374,21 @@ private fun ZoneDistributionCard(
             Text(
                 text = "이완 ${relaxed}분 · 일상 ${normal}분 · 긴장 ${elevated}분 · 운동 ${highLoad}분",
                 style = MaterialTheme.typography.bodyExtraSmall,
-                maxLines = 2,
+                maxLines = if (isZoneExpanded) 3 else 2,
                 overflow = TextOverflow.Ellipsis,
             )
         },
         transformation = transformation,
         modifier =
         modifier.semantics(mergeDescendants = true) {
-            onClick(label = "스마트폰 즉시 동기화", action = null)
+            stateDescription = stateDesc
+            onClick(label = actionLabel, action = null)
         },
     ) {
         Text(
             text = "급상승 ${rapidSpikes}회 · 긴장 ${tensionCount}회 · 각성 ${sleepAwakenings}회 · $hrrLabel",
-            style = MaterialTheme.typography.bodyExtraSmall,
-            maxLines = 2,
+            style = if (isZoneExpanded) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyExtraSmall,
+            maxLines = if (isZoneExpanded) 3 else 2,
             overflow = TextOverflow.Ellipsis,
         )
     }
@@ -437,8 +448,8 @@ internal fun WearEnvironmentStatusScreenPreview() {
         WearEnvironmentStatusScreen(
             spec =
             WearEnvironmentSpec(
-                versionName = "0.8.0",
-                wearVersionCode = 10002,
+                versionName = BuildConfig.VERSION_NAME,
+                wearVersionCode = BuildConfig.VERSION_CODE,
                 minSdkInt = 36,
                 targetSdkInt = 37,
                 runtimeSdkInt = 36,
@@ -455,8 +466,8 @@ internal fun WearEnvironmentStatusScreenSmallRoundPreview() {
         WearEnvironmentStatusScreen(
             spec =
             WearEnvironmentSpec(
-                versionName = "0.8.0",
-                wearVersionCode = 10002,
+                versionName = BuildConfig.VERSION_NAME,
+                wearVersionCode = BuildConfig.VERSION_CODE,
                 minSdkInt = 36,
                 targetSdkInt = 37,
                 runtimeSdkInt = 36,
@@ -477,8 +488,8 @@ internal fun WearEnvironmentStatusScreenLargeFontPreview() {
         WearEnvironmentStatusScreen(
             spec =
             WearEnvironmentSpec(
-                versionName = "0.8.0",
-                wearVersionCode = 10002,
+                versionName = BuildConfig.VERSION_NAME,
+                wearVersionCode = BuildConfig.VERSION_CODE,
                 minSdkInt = 36,
                 targetSdkInt = 37,
                 runtimeSdkInt = 36,

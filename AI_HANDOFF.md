@@ -1,5 +1,33 @@
 # Multi-AI Handoff Log
 
+## 2026-11-09 (Gemini -> Claude/User) 프로젝트 전체 시야 팩트체크·심층 감사 (`F-01 ~ F-08`) · Watch↔Phone↔Backend End-to-End 파이프라인 정밀화 · 모바일/워치 UI/UX & 접근성 리팩토링 · `:app` + `:wear` 통합 자동 배포(`release.yml` Dual-Track CD) · 레거시 전수 청산 완료
+
+**현재까지의 작업 상태 (Current Status):**
+- **1. Phase A — Watch ↔ Phone ↔ Backend End-to-End 파이프라인 근본 원인 해결 (`F-01`, `F-03`, `F-04`)**:
+  - [`WearBiometricRepository.kt`](app/src/main/java/com/gunnys/eundunhealth/domain/repository/WearBiometricRepository.kt), [`WearBiometricRepositoryImpl.kt`](app/src/main/java/com/gunnys/eundunhealth/data/repository/WearBiometricRepositoryImpl.kt), [`PhoneWearDataListenerService.kt`](app/src/main/java/com/gunnys/eundunhealth/data/wear/PhoneWearDataListenerService.kt), [`PhoneSyncCommandListenerService.kt`](wear/src/main/java/com/gunnys/eundunhealth/wear/sync/PhoneSyncCommandListenerService.kt):
+    - `F-01` 해결: `ingestFromWatchEnvelope` 반환 타입을 `Result<List<String>>`으로 변경하고, `PhoneWearDataListenerService`가 `SYNC_ACK_MESSAGE_PATH`로 수집 개수(`"1"`) 대신 실제 수집된 날짜 목록(`ingestedDates.joinToString(",")`, 예: `"2026-11-09"`)을 전송하도록 수정하여 워치 SQLite `synced_to_phone = 1` 마킹 누락 근본 원인을 해결.
+    - 워치 `PhoneSyncCommandListenerService.onMessageReceived`의 `SYNC_ACK_MESSAGE_PATH` 분기에서 `db.markSummariesSynced(syncedDates)`를 `runBlocking(ioDispatcher) { withTimeoutOrNull(8_000L) { ... } }`로 감싸 GMS 바인딩 해제 전 완료 보장.
+    - 백그라운드 콜드 기동 시 `authRepository.getCurrentUserId() ?: authRepository.restoreSession()` 폴백 추가 및 `ingestFromWatchEnvelope` 직후 `SmileSyncWorker.enqueueUnique(workManager)`와 함께 즉시 `runCatching { syncPendingSummaries(MAX_BATCH_DAYS) }` 실행, `requestWatchSyncNow()`에 `delay(600L)` 대기로 즉시 UI 반영.
+    - `F-03` 해결: `toApiItem()`의 `watchModel.take(64)`(백엔드 `max_length=64` 정합) 및 `sleepAwakeningCount.coerceIn(0, 500)` 방어 클램핑 정렬.
+  - [`biometric_repo.py`](backend/app/repositories/biometric_repo.py), [`biometric_service.py`](backend/app/services/biometric_service.py), [`test_biometrics.py`](backend/tests/test_biometrics.py):
+    - `F-04` 해결: `upsert_daily_summaries_batch` 도입으로 `SELECT ... WHERE user_id = :uid AND record_date IN (...)` 단일 프리페치 및 루프 종료 후 단일 `await self.db.flush()` 적용(30일 배치 기준 60회 DB 왕복 → 2회로 축소), `sync_daily_summaries` 응답 `record_date DESC` 결정론적 정렬 보장 (`pytest` 151/151 PASS).
+- **2. Phase B — 모바일(`:app`) & 워치(`:wear`) UI/UX · 레이아웃 · 접근성 리팩토링 (`F-02`, `F-05`)**:
+  - [`ProgressHubViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubViewModel.kt) & [`ProgressHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/navigation/ProgressHubScreen.kt): `WearBiometricMindProgressCard` 빈 상태 및 데이터 상태 모두에 48dp `"워치 지금 동기화"` `OutlinedButton`과 `LiveRegionMode.Polite` 상태 피드백 추가, `loadSummary()` 진입 시 백그라운드 `syncPendingSummaries()` 연동.
+  - [`HomeViewModel.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/HomeViewModel.kt) & [`HealthConnectCards.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/home/components/HealthConnectCards.kt): 홈 화면 Pull-to-Refresh 시 워치 즉시 동기화(`wearBiometricRepo?.requestWatchSyncNow()`) 트리거, `HealthConnectCards` 내 아이콘 TalkBack 중복 낭독 제거(`contentDescription = null`) 및 Wear OS 6 안내 문구 현행화.
+  - [`ProfileHubScreen.kt`](app/src/main/java/com/gunnys/eundunhealth/ui/profile/ProfileHubScreen.kt): `WearOsWatchIntegrationRow` 헤더에 `state.latestWatchRecoveryScore` 알약 배지(`"회복 ${score}점"`) 표시.
+  - [`WearBiometricViewModel.kt`](wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearBiometricViewModel.kt), [`MainActivity.kt`](wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/MainActivity.kt), [`WearEnvironmentStatusScreen.kt`](wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt): `init`과 `LifecycleStartEffect`의 중복 코루틴 실행을 `refreshJob` 단일화로 제거, `ZoneDistributionCard`의 중복 동기화 액션을 상세 확장/접기 토글로 개선, `@Preview` 3종의 버전을 `BuildConfig.VERSION_NAME`/`BuildConfig.VERSION_CODE` 동적 참조로 치환.
+- **3. Phase C — CI/CD 안정화 & `:app` + `:wear` 통합 자동 배포 파이프라인 (`F-06`, `F-07`)**:
+  - [`gradle.properties`](gradle.properties) & [`.github/workflows/android.yml`](.github/workflows/android.yml): Gradle 데몬 힙을 `-Xmx3072m -XX:MaxMetaspaceSize=768m`으로 상향하고 `android.yml`의 5회 분리 `./gradlew` 호출을 단일 호출로 통합하여 `:app:packageDebug` `IncrementalSplitterRunnable` 간헐적 경합 제거 및 CI 실행 시간 단축.
+  - [`docs/ops/play-upload-ledger.md`](docs/ops/play-upload-ledger.md), [`scripts/check-version-monotonic.sh`](scripts/check-version-monotonic.sh), [`scripts/update-upload-ledger.sh`](scripts/update-upload-ledger.sh), [`scripts/bump-version.sh`](scripts/bump-version.sh), [`.github/workflows/release.yml`](.github/workflows/release.yml):
+    - `LAST_UPLOADED_WEAR_VERSION_CODE=10002` 마커 및 Wear OS 업로드 이력(`10002` `wear:production`, `10001` `wear:internal`) 등재.
+    - `bump-version.sh` 실행 시 기본값으로 `versionCode (+1)`과 `wearVersionCode (+1)`을 동시 증가(`--mobile-only` 옵션 지원).
+    - `release.yml`에서 원장 대비 증가한 타겟(`upload_app` / `upload_wear`)을 자동 판별하여 모바일 `production` 트랙과 워치 `wear:production` 트랙을 각각 업로드하고 원장 PR에 두 버전 코드를 원자적으로 기록.
+- **4. Phase D — `doc_audit.py` 정밀화 및 레거시 전수 청산 (`F-08`)**:
+  - [`scripts/agents/doc_audit.py`](scripts/agents/doc_audit.py) & [`scripts/agents/test_doc_audit.py`](scripts/agents/test_doc_audit.py): `audit_wear_version_in_text`에서 append-only 이력 구역(`docs/CHANGELOG.md`, `operations-snapshot.md §13`, `README.md ### 마일스톤 진행`)을 제외하여 `2026-11-06` Foundation 당시 `wearVersionCode=10001` 역사 기록을 보존하고, `docs/conventions/versioning.md` §1 표의 `:wear` 행 검사를 추가 (`test_doc_audit.py` 56/56 PASS, `doc_audit.py --strict` 0건).
+  - 레거시 파일 정리: `scripts/warm-gradle.sh`(죽은 Ktor `backend/gradlew` 제거), `scripts/claude-context.sh`, `scripts/prompts/{new-screen,bug-fix}.md`, `scripts/agents/requirements.txt`(`pytest==9.2.0`), `.claude/commands/{verify-deploy,naming-audit}.md`, `.claude/skills/changelog/SKILL.md` 정합화 및 `backend/scratch/` 잔여물 삭제.
+
+---
+
 ## 2026-11-09 (Gemini -> Claude/User) Wear OS 6 (API 36, Xiaomi Watch 5 `M2501W1`) 상시 생체·마음 상태 5차원 분석 런타임(`:core:wear-contract` + `:wear` + `:app`) · 운영 Azure `/v2/biometrics/*`(`eundunhealth-api--0000070`) 배포 · Xiaomi Watch 5 실기기 검증(`watch-dev`) · 멀티 에이전트 전수 감사 후 근본 원인 해결 및 원형 UI/UX·접근성·성능 리팩토링 완료
 
 **현재까지의 작업 상태 (Current Status):**

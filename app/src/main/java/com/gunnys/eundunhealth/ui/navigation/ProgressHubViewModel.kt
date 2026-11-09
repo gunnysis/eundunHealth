@@ -12,6 +12,7 @@ import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.Statistics
 import com.gunnys.eundunhealth.domain.model.UserProfile
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
+import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.BadgeRepository
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
@@ -65,6 +66,8 @@ data class ProgressHubUiState(
     val badgePreviews: List<BadgeMiniPreview> = emptyList(),
     val smileStats: SmileSummaryStats = SmileSummaryStats(),
     val latestWatchSummary: BiometricDailySummaryRecord? = null,
+    val isSyncingWatch: Boolean = false,
+    val watchSyncMessage: String? = null,
     val isLoading: Boolean = true,
 )
 
@@ -107,6 +110,37 @@ class ProgressHubViewModel @Inject constructor(
         }
     }
 
+    fun syncWatchBiometricsNow() {
+        val repo = wearBiometricRepo ?: return
+        if (_uiState.value.isSyncingWatch) return
+        _uiState.update {
+            it.copy(
+                isSyncingWatch = true,
+                watchSyncMessage = "워치 및 서버 동기화 요청 중...",
+            )
+        }
+        viewModelScope.launch {
+            repo.requestWatchSyncNow()
+                .onSuccess { msg ->
+                    _uiState.update {
+                        it.copy(
+                            isSyncingWatch = false,
+                            watchSyncMessage = msg,
+                        )
+                    }
+                }
+                .onFailure { err ->
+                    err.toReportedAppError()
+                    _uiState.update {
+                        it.copy(
+                            isSyncingWatch = false,
+                            watchSyncMessage = "워치 동기화 요청 실패 — 다시 시도해 주세요",
+                        )
+                    }
+                }
+        }
+    }
+
     fun loadSummary() = viewModelScope.launch {
         _uiState.update { it.copy(isLoading = true) }
 
@@ -115,6 +149,7 @@ class ProgressHubViewModel @Inject constructor(
         val goalsDeferred = async { goalRepo.getGoals().getOrNull() }
         val profileDeferred = async { userRepo.getProfile().getOrNull() }
         val badgesDeferred = async { badgeRepo?.getEarnedBadges()?.getOrNull() }
+        launch { runCatching { wearBiometricRepo?.syncPendingSummaries() } }
 
         val currentRead = currentWeekDeferred.await()
         val stats = statsDeferred.await()

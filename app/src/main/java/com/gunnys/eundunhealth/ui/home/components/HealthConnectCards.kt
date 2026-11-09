@@ -35,7 +35,7 @@ internal fun HealthConnectPromptCard(onRequest: () -> Unit) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.FitnessCenter, "Health Connect")
+            Icon(Icons.Default.FitnessCenter, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 "Health Connect로 운동 달성을 자동 추적",
@@ -52,7 +52,7 @@ internal fun HealthConnectPromptCard(onRequest: () -> Unit) {
     }
 }
 
-// Health Connect 미설치/비활성 — 갤럭시 워치·삼성 헬스 기록은 Health Connect 경유로만
+// Health Connect 미설치/비활성 — 스마트워치·피트니스 앱 운동 세션 기록은 Health Connect 경유로
 // 들어오므로, 설치를 유도해 자동 추적 온보딩을 완성한다.
 @Composable
 internal fun HealthConnectUnavailableCard() {
@@ -65,10 +65,10 @@ internal fun HealthConnectUnavailableCard() {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.FitnessCenter, "Health Connect")
+            Icon(Icons.Default.FitnessCenter, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                "Health Connect를 설치하면 갤럭시 워치·삼성 헬스 운동 기록을 자동으로 가져옵니다",
+                "Health Connect를 설치하면 스마트워치·피트니스 앱 운동 기록을 자동으로 가져옵니다",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodySmall,
             )

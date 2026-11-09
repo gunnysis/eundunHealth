@@ -33,9 +33,15 @@ class PhoneSyncCommandListenerService(
             WearContractConstants.SYNC_ACK_MESSAGE_PATH -> {
                 val ackText = messageEvent.data.toString(StandardCharsets.UTF_8)
                 val syncedDates = ackText.split(',').map { it.trim() }.filter { it.isNotBlank() }
-                WearBiometricDatabase
-                    .getInstance(applicationContext)
-                    .markSummariesSynced(syncedDates)
+                if (syncedDates.isNotEmpty()) {
+                    runBlocking(ioDispatcher) {
+                        withTimeoutOrNull(8_000L) {
+                            WearBiometricDatabase
+                                .getInstance(applicationContext)
+                                .markSummariesSynced(syncedDates)
+                        }
+                    }
+                }
             }
         }
     }

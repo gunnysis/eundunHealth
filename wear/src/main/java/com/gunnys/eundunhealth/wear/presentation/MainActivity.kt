@@ -35,7 +35,6 @@ class MainActivity : ComponentActivity() {
                 rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestMultiplePermissions(),
                 ) {
-                    biometricViewModel.refreshPermissionsAndState()
                     biometricViewModel.onForegroundStart()
                 }
 

@@ -74,9 +74,6 @@ jobs:
           SENTRY_DSN=
           EOF
 
-      - name: Spotless check (3 modules)
-        run: ./gradlew :core:wear-contract:spotlessCheck :app:spotlessCheck :wear:spotlessCheck
-
       - name: Check AGP 10 compatibility & 3-module invariants
         run: |
           bash scripts/check-agp10-compat.sh
@@ -101,20 +98,18 @@ jobs:
           fi
           echo "No collectAsState anti-pattern found."
 
-      - name: Detekt (3 modules)
-        run: ./gradlew :core:wear-contract:detektMain :app:detektDebug :wear:detektDebug
-
-      - name: Unit tests (3 modules)
-        run: ./gradlew :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest
-
-      - name: Build debug APKs (:app & :wear)
-        run: ./gradlew :app:assembleDebug :wear:assembleDebug
-
+      # 단일 Gradle 호출로 통합 — 5회 분리 호출 시 힙 압박 및 :app:packageDebug IncrementalSplitterRunnable
+      # 레이스 위험을 제거하고 러너 실행 시간을 단축한다 (repository-gate.yml 과 동일 패턴).
       # 이 저장소의 릴리스 사고는 전부 R8 에서만 재현됐다 — 룰 12(2026-06-15 빈 운동계획,
-      # Gson 래퍼 keep 누락)·INC-2026-07-02-29. debug 빌드와 단위 테스트는 R8 을 타지 않으므로
-      # 이 스텝이 없으면 minify/keep/`-dontwarn` 설정 회귀가 **출시 빌드에서야** 드러난다.
-      - name: Build release (R8) — 룰 12 회귀 가드 (:app & :wear)
-        run: ./gradlew :app:assembleRelease :wear:assembleRelease
+      # Gson 래퍼 keep 누락)·INC-2026-07-02-29 회귀 가드(:app:assembleRelease :wear:assembleRelease) 포함.
+      - name: Run 3-module quality gates & builds (:core:wear-contract, :app, :wear)
+        run: |
+          ./gradlew \
+            :core:wear-contract:spotlessCheck :app:spotlessCheck :wear:spotlessCheck \
+            :core:wear-contract:detektMain :app:detektDebug :wear:detektDebug \
+            :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest \
+            :app:assembleDebug :wear:assembleDebug \
+            :app:assembleRelease :wear:assembleRelease
 
       - name: Upload debug APK artifact
         if: github.event_name == 'pull_request'
