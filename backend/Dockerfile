@@ -1,6 +1,13 @@
-# Linux/amd64 digest verified on 2026-10-27. Update only through the Docker
+# Linux/amd64 digest verified on 2026-11-09. Update only through the Docker
 # dependency workflow so a base-image change is reviewed and reproducible.
-FROM python:3.14-slim@sha256:4b20ddacd9adac0002725db940785e17c19d0c3ed1843f31e57418988effc58c
+FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
+
+# OS 보안 패치 — base 이미지 재빌드보다 먼저 발표된 Debian security fixed CVE
+# (예: zlib1g CVE-2026-76844 / CVE-2026-85091 등)를 빌드 시점에 반영해
+# Trivy(CRITICAL/HIGH, ignore-unfixed=true) 게이트 차단을 예방한다.
+RUN apt-get update -qq \
+ && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 

@@ -1,8 +1,19 @@
+from pathlib import Path
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.main import app
 from app.routers.health import get_session_factory
+
+
+def test_dockerfile_security_hardening_invariants():
+    dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(encoding="utf-8")
+    assert "FROM python:3.14-slim@sha256:" in dockerfile
+    assert "apt-get update" in dockerfile and "apt-get upgrade -y" in dockerfile
+    assert "rm -rf /var/lib/apt/lists/*" in dockerfile
+    assert "pip uninstall -y pip setuptools wheel" in dockerfile
+    assert "USER appuser" in dockerfile
 
 
 @pytest.mark.asyncio
