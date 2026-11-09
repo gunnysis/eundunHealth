@@ -94,6 +94,7 @@ if [ -n "$CHANGED_PY" ]; then
     [ -x "$RUFF" ] || RUFF="ruff"
 
     echo "$CHANGED_PY" | sed 's|^backend/||' | xargs "$RUFF" check
+    echo "$CHANGED_PY" | sed 's|^backend/||' | xargs "$RUFF" format --check
 fi
 
 # ---------- 4) requirements*.txt cp949 디코드 가드 ----------

@@ -119,9 +119,7 @@ class BiometricRepository:
 
     async def delete_all_by_user(self, user_id: str) -> int:
         """사용자의 모든 일일 생체 요약을 삭제하고 삭제된 행 수를 반환한다."""
-        result = await self.db.execute(
-            delete(BiometricDailySummary).where(BiometricDailySummary.user_id == user_id)
-        )
+        result = await self.db.execute(delete(BiometricDailySummary).where(BiometricDailySummary.user_id == user_id))
         return int(result.rowcount or 0)  # type: ignore[attr-defined]
 
     async def list_all_user_ids(self) -> list[str]:

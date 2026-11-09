@@ -20,7 +20,7 @@ def _extract_watch_model(source_devices_json: str) -> str:
         parsed = json.loads(source_devices_json)
         if isinstance(parsed, list) and parsed and isinstance(parsed[0], str):
             return parsed[0][:64]
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         pass
     return "Xiaomi Watch 5 (M2501W1)"
 
