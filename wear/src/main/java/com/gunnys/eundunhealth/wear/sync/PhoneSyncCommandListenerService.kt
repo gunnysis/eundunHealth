@@ -6,10 +6,9 @@ import com.gunnys.eundunhealth.wear.contract.WearContractConstants
 import com.gunnys.eundunhealth.wear.data.WearBiometricDatabase
 import com.gunnys.eundunhealth.wear.sensor.WearHealthSensorGateway
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.charset.StandardCharsets
 
 /**
@@ -18,16 +17,17 @@ import java.nio.charset.StandardCharsets
  */
 @Suppress("InjectDispatcher")
 class PhoneSyncCommandListenerService(
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : WearableListenerService() {
-    private val serviceScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         when (messageEvent.path) {
             WearContractConstants.SYNC_REQUEST_MESSAGE_PATH -> {
-                serviceScope.launch {
-                    WearHealthSensorGateway.flushPassiveBatches(applicationContext)
-                    WearDataLayerSender.syncRecentSummariesToPhone(applicationContext)
+                runBlocking(ioDispatcher) {
+                    withTimeoutOrNull(8_000L) {
+                        WearHealthSensorGateway.flushPassiveBatches(applicationContext)
+                        WearDataLayerSender.syncRecentSummariesToPhone(applicationContext)
+                    }
                 }
             }
             WearContractConstants.SYNC_ACK_MESSAGE_PATH -> {

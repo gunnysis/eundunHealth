@@ -198,6 +198,61 @@ object BiometricPayloadCodec {
         }
     }
 
+    fun decodeHourlyBucketsJson(rawJson: String?): List<HourlyBiometricBucket> {
+        val trimmed = rawJson?.trim().orEmpty()
+        if (trimmed.length <= 2 || !trimmed.startsWith("[") || !trimmed.endsWith("]")) {
+            return emptyList()
+        }
+        val pattern =
+            """\{\s*"hour"\s*:\s*(\d+)\s*,""" +
+                """\s*"avgBpm"\s*:\s*(\d+)\s*,""" +
+                """\s*"maxBpm"\s*:\s*(\d+)\s*,""" +
+                """\s*"dominantContext"\s*:\s*"([^"]+)"\s*,""" +
+                """\s*"monitoredMinutes"\s*:\s*(\d+)\s*\}"""
+        return Regex(pattern)
+            .findAll(trimmed)
+            .mapNotNull(::parseHourlyBucketMatch)
+            .toList()
+    }
+
+    private fun parseHourlyBucketMatch(match: MatchResult): HourlyBiometricBucket? {
+        val hour = match.groupValues[1].toIntOrNull()
+        val avgBpm = match.groupValues[2].toIntOrNull()
+        val maxBpm = match.groupValues[3].toIntOrNull()
+        val context = WearActivityContext.fromWireName(match.groupValues[4])
+        val minutes = match.groupValues[5].toIntOrNull()
+        val hasValidNumbers = hour != null && minutes != null && avgBpm != null && maxBpm != null
+        return if (hasValidNumbers && hour in 0..23 && minutes in 0..60) {
+            HourlyBiometricBucket(
+                hour = hour,
+                avgBpm = avgBpm,
+                maxBpm = maxBpm,
+                dominantContext = context,
+                monitoredMinutes = minutes,
+            )
+        } else {
+            null
+        }
+    }
+
+    fun decodeSourceDevicesJson(rawJson: String?): List<String> {
+        val trimmed = rawJson?.trim().orEmpty()
+        if (trimmed.length <= 2 || !trimmed.startsWith("[") || !trimmed.endsWith("]")) {
+            return emptyList()
+        }
+        val stringRegex = Regex(""""((?:\\.|[^"\\])*)"""")
+        return stringRegex
+            .findAll(trimmed)
+            .map { match ->
+                match.groupValues[1]
+                    .replace("\\\"", "\"")
+                    .replace("\\\\", "\\")
+                    .trim()
+            }.filter { it.isNotBlank() }
+            .distinct()
+            .toList()
+    }
+
     private fun parseKeyValueLines(raw: String): Map<String, String> = raw
         .lines()
         .mapNotNull { line ->

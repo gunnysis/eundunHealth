@@ -93,6 +93,8 @@ if [ -f "${README_F}" ]; then
   # shields.io 배지(versionName + versionCode 양쪽) — 과거 공백형 치환이 놓치던 곳
   sed -i -E "s#(badge/versionName-)[0-9][0-9.]*(-)#\1${NEW_NAME}\2#" "${README_F}"
   sed -i -E "s#(badge/versionCode-)[0-9]+(-)#\1${NEW_CODE}\2#" "${README_F}"
+  sed -i -E "/현재 단계:/ s#\`v[0-9][0-9.]*\`#\`v${NEW_NAME}\`#" "${README_F}"
+  sed -i -E "/현재 버전:/ s#\`versionName=[0-9][0-9.]*\`, \`versionCode=[0-9]+\`#\`versionName=${NEW_NAME}\`, \`versionCode=${NEW_CODE}\`#" "${README_F}"
 fi
 SNAP_F="${REPO_ROOT}/docs/ops/operations-snapshot.md"
 if [ -f "${SNAP_F}" ]; then
@@ -109,6 +111,16 @@ fi
 TRD_F="${REPO_ROOT}/docs/TRD.md"
 if [ -f "${TRD_F}" ]; then
   sed -i -E "/\| \`MINIMUM_SUPPORTED_ANDROID_VERSION_CODE\` \|/ s#\| \`[0-9]+\` \|#| \`${NEW_CODE}\` |#" "${TRD_F}"
+  sed -i -E "/^\*\*현재 상태:\*\*/ s#v[0-9][0-9.]* \(versionCode [0-9]+#v${NEW_NAME} (versionCode ${NEW_CODE}#" "${TRD_F}"
+  sed -i -E "/VERSION_NAME=.*VERSION_CODE=/ s#VERSION_NAME=[0-9][0-9.]*#VERSION_NAME=${NEW_NAME}#; /VERSION_NAME=.*VERSION_CODE=/ s#VERSION_CODE=[0-9]+#VERSION_CODE=${NEW_CODE}#" "${TRD_F}"
+fi
+SPEC_F="${REPO_ROOT}/docs/SPEC.md"
+if [ -f "${SPEC_F}" ]; then
+  sed -i -E "/^\*\*현재 버전:\*\*/ s#\`v[0-9][0-9.]*\` \(\`versionCode=[0-9]+\`#\`v${NEW_NAME}\` (\`versionCode=${NEW_CODE}\`#" "${SPEC_F}"
+fi
+VER_F="${REPO_ROOT}/docs/conventions/versioning.md"
+if [ -f "${VER_F}" ]; then
+  sed -i -E "/현재 기준 버전/ s#\`versionName=[0-9][0-9.]*\`, \`versionCode=[0-9]+\`#\`versionName=${NEW_NAME}\`, \`versionCode=${NEW_CODE}\`#" "${VER_F}"
 fi
 
 echo

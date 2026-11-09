@@ -7,7 +7,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 워치 재부팅(`BOOT_COMPLETED`) 또는 앱 업데이트(`MY_PACKAGE_REPLACED`) 직후
@@ -24,11 +26,15 @@ class PassiveMonitoringBootReceiver(
         }
         val pendingResult = goAsync()
         val appContext = context.applicationContext
-        CoroutineScope(SupervisorJob() + ioDispatcher).launch {
+        val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
+        scope.launch {
             try {
-                WearHealthSensorGateway.ensurePassiveMonitoringRegistered(appContext)
+                withTimeoutOrNull(8_000L) {
+                    WearHealthSensorGateway.ensurePassiveMonitoringRegistered(appContext)
+                }
             } finally {
                 pendingResult.finish()
+                scope.cancel()
             }
         }
     }

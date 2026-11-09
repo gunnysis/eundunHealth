@@ -7,19 +7,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalScrollCaptureInProgress
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumnDefaults
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumnState
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
 import androidx.wear.compose.material3.AppScaffold
+import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CardDefaults
+import androidx.wear.compose.material3.FilledTonalButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.ListHeaderDefaults
 import androidx.wear.compose.material3.MaterialTheme
@@ -60,16 +70,24 @@ fun WearEnvironmentStatusScreen(
             scrollState = columnState,
             scrollIndicator = {
                 if (!scrollCaptureInProgress) {
-                    ScrollIndicator(state = columnState)
+                    ScrollIndicator(
+                        state = columnState,
+                        modifier =
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .clearAndSetSemantics {},
+                    )
                 }
             },
         ) { contentPadding ->
             TransformingLazyColumn(
                 state = columnState,
                 contentPadding = contentPadding,
+                flingBehavior = TransformingLazyColumnDefaults.snapFlingBehavior(columnState),
+                rotaryScrollableBehavior = RotaryScrollableDefaults.snapBehavior(columnState),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                item(key = "header") {
+                item(key = "header", contentType = "header") {
                     ListHeader(
                         transformation = SurfaceTransformation(transformationSpec),
                         modifier =
@@ -78,7 +96,7 @@ fun WearEnvironmentStatusScreen(
                             .transformedHeight(this, transformationSpec)
                             .minimumVerticalContentPadding(
                                 ListHeaderDefaults.minimumTopListContentPadding,
-                            ),
+                            ).semantics { heading() },
                     ) {
                         Text(
                             text = stringResource(R.string.wear_diag_header),
@@ -87,7 +105,7 @@ fun WearEnvironmentStatusScreen(
                     }
                 }
 
-                item(key = "live_biometric_card") {
+                item(key = "live_biometric_card", contentType = "hero_card") {
                     LiveBiometricCard(
                         biometricState = biometricState,
                         transformation = SurfaceTransformation(transformationSpec),
@@ -103,7 +121,7 @@ fun WearEnvironmentStatusScreen(
                     )
                 }
 
-                item(key = "zone_distribution_card") {
+                item(key = "zone_distribution_card", contentType = "telemetry_card") {
                     ZoneDistributionCard(
                         biometricState = biometricState,
                         transformation = SurfaceTransformation(transformationSpec),
@@ -118,8 +136,8 @@ fun WearEnvironmentStatusScreen(
                     )
                 }
 
-                item(key = "sync_action_card") {
-                    SyncActionCard(
+                item(key = "sync_action_card", contentType = "action_button") {
+                    SyncActionButton(
                         biometricState = biometricState,
                         transformation = SurfaceTransformation(transformationSpec),
                         modifier =
@@ -127,14 +145,14 @@ fun WearEnvironmentStatusScreen(
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec)
                             .minimumVerticalContentPadding(
-                                CardDefaults.minimumVerticalListContentPadding,
+                                ButtonDefaults.minimumVerticalListContentPadding,
                             ),
                         onRequestPermissions = onRequestPermissions,
                         onSyncNow = onSyncNow,
                     )
                 }
 
-                item(key = "env_card") {
+                item(key = "env_card", contentType = "diag_card") {
                     val envActionLabel = if (isEnvExpanded) collapseLabel else expandLabel
                     val envStateDesc = if (isEnvExpanded) expandedStateDesc else collapsedStateDesc
 
@@ -194,7 +212,7 @@ fun WearEnvironmentStatusScreen(
                     }
                 }
 
-                item(key = "status_card") {
+                item(key = "status_card", contentType = "diag_card") {
                     val statusActionLabel = if (isStatusExpanded) collapseLabel else expandLabel
                     val statusStateDesc = if (isStatusExpanded) expandedStateDesc else collapsedStateDesc
 
@@ -252,11 +270,13 @@ private fun LiveBiometricCard(
     onSyncNow: () -> Unit,
 ) {
     val summary = biometricState.todaySummary
-    val bpmText = biometricState.liveBpm?.let { "$it BPM" } ?: "-- BPM"
+    val bpmText = biometricState.liveBpm?.let { "$it BPM" } ?: "측정 대기"
     val recoveryText = summary?.recoveryScore?.let { "회복 ${it}점" } ?: "회복 산출 중"
-    val restingText = summary?.restingBpm?.let { "안정 $it" } ?: "안정 --"
+    val restingText = summary?.restingBpm?.let { "안정 ${it}BPM" } ?: "안정 측정 전"
     val steps = summary?.totalSteps ?: 0
     val cal = summary?.activeCaloriesKcal?.toInt() ?: 0
+    val clickActionLabel =
+        if (!biometricState.hasPermissions) "센서 권한 허용하기" else "스마트폰 즉시 동기화"
 
     TitleCard(
         onClick = {
@@ -267,20 +287,45 @@ private fun LiveBiometricCard(
             }
         },
         title = {
-            Text(text = "$bpmText · $recoveryText")
+            Text(
+                text = bpmText,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        time = {
+            Text(
+                text = recoveryText,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+            )
         },
         subtitle = {
             Text(
                 text = "${biometricState.currentContextKoreanLabel} · $restingText",
                 style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         },
+        colors =
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
         transformation = transformation,
-        modifier = modifier,
+        modifier =
+        modifier.semantics(mergeDescendants = true) {
+            onClick(label = clickActionLabel, action = null)
+        },
     ) {
         Text(
             text = "${biometricState.sensorStatusText} · ${steps}보 · ${cal}kcal",
             style = MaterialTheme.typography.bodyExtraSmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -300,47 +345,60 @@ private fun ZoneDistributionCard(
     val highLoad = summary?.highLoadMinutes ?: 0
     val rapidSpikes = summary?.rapidDeltaSpikeCount ?: 0
     val tensionCount = summary?.tensionEpisodeCount ?: 0
-    val hrrLabel = summary?.avgRecoveryDropBpm?.let { "회복폭 -${it}BPM" } ?: "회복폭 대기"
+    val sleepAwakenings = summary?.sleepAwakeningCount ?: 0
+    val hrrLabel =
+        summary?.avgRecoveryDropBpm?.let {
+            if (it >= 0) "회복 -${it}BPM" else "회복 +${-it}BPM"
+        } ?: "회복 대기"
 
     TitleCard(
         onClick = onSyncNow,
         title = {
-            Text(text = "착용 ${monitored}분 전 구간 분석")
+            Text(
+                text = "착용 ${monitored}분 5차원 분석",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         },
         subtitle = {
             Text(
                 text = "이완 ${relaxed}분 · 일상 ${normal}분 · 긴장 ${elevated}분 · 운동 ${highLoad}분",
                 style = MaterialTheme.typography.bodyExtraSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         },
         transformation = transformation,
-        modifier = modifier,
+        modifier =
+        modifier.semantics(mergeDescendants = true) {
+            onClick(label = "스마트폰 즉시 동기화", action = null)
+        },
     ) {
         Text(
-            text = "급상승 ${rapidSpikes}회 · 지속긴장 ${tensionCount}회 · $hrrLabel",
+            text = "급상승 ${rapidSpikes}회 · 긴장 ${tensionCount}회 · 각성 ${sleepAwakenings}회 · $hrrLabel",
             style = MaterialTheme.typography.bodyExtraSmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
 @Composable
-private fun SyncActionCard(
+private fun SyncActionButton(
     biometricState: WearBiometricUiState,
     transformation: SurfaceTransformation,
     modifier: Modifier,
     onRequestPermissions: () -> Unit,
     onSyncNow: () -> Unit,
 ) {
-    val summary = biometricState.todaySummary
     val actionTitle =
         when {
             !biometricState.hasPermissions -> "센서 권한 허용하기"
             biometricState.isSyncing -> "동기화 진행 중..."
             else -> "스마트폰 즉시 동기화"
         }
-    val sleepAwakenings = summary?.sleepAwakeningCount ?: 0
 
-    TitleCard(
+    FilledTonalButton(
         onClick = {
             if (!biometricState.hasPermissions) {
                 onRequestPermissions()
@@ -348,23 +406,28 @@ private fun SyncActionCard(
                 onSyncNow()
             }
         },
-        title = {
-            Text(text = actionTitle)
+        enabled = !biometricState.isSyncing,
+        transformation = transformation,
+        modifier =
+        modifier.semantics(mergeDescendants = true) {
+            stateDescription = biometricState.syncStatusMessage
+            liveRegion = LiveRegionMode.Polite
         },
-        subtitle = {
+        label = {
             Text(
-                text = biometricState.syncStatusMessage,
-                style = MaterialTheme.typography.bodyExtraSmall,
+                text = actionTitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         },
-        transformation = transformation,
-        modifier = modifier,
-    ) {
-        Text(
-            text = "야간 각성 ${sleepAwakenings}회 · 24시간 자동 감시",
-            style = MaterialTheme.typography.bodyExtraSmall,
-        )
-    }
+        secondaryLabel = {
+            Text(
+                text = biometricState.syncStatusMessage,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+    )
 }
 
 @Preview(device = WearDevices.LARGE_ROUND, showSystemUi = true)
@@ -374,7 +437,7 @@ internal fun WearEnvironmentStatusScreenPreview() {
         WearEnvironmentStatusScreen(
             spec =
             WearEnvironmentSpec(
-                versionName = "0.7.3",
+                versionName = "0.8.0",
                 wearVersionCode = 10001,
                 minSdkInt = 36,
                 targetSdkInt = 37,
@@ -392,7 +455,7 @@ internal fun WearEnvironmentStatusScreenSmallRoundPreview() {
         WearEnvironmentStatusScreen(
             spec =
             WearEnvironmentSpec(
-                versionName = "0.7.3",
+                versionName = "0.8.0",
                 wearVersionCode = 10001,
                 minSdkInt = 36,
                 targetSdkInt = 37,
@@ -414,7 +477,7 @@ internal fun WearEnvironmentStatusScreenLargeFontPreview() {
         WearEnvironmentStatusScreen(
             spec =
             WearEnvironmentSpec(
-                versionName = "0.7.3",
+                versionName = "0.8.0",
                 wearVersionCode = 10001,
                 minSdkInt = 36,
                 targetSdkInt = 37,

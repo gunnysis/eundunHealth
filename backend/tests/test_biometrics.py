@@ -120,3 +120,62 @@ async def test_biometric_sync_rejects_out_of_range_values(client):
         },
     )
     assert bad_score_resp.status_code == 422
+
+    # BPM 역전 (minBpm > maxBpm) 및 zone 합계 > 1440 검증
+    bad_bpm_resp = await client.post(
+        "/v2/biometrics/sync",
+        json={
+            "summaries": [
+                {
+                    "recordDate": "2026-11-09",
+                    "capturedAtEpochMs": 1762680000000,
+                    "minBpm": 110,
+                    "maxBpm": 80,
+                }
+            ]
+        },
+    )
+    assert bad_bpm_resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_biometric_sync_deduplicates_same_date_in_batch_and_ignores_stale_capture(client):
+    """동일 배치 내 중복 recordDate가 포함되어도 최신 capturedAtEpochMs로 병합되고, 과거 스냅샷은 무시되는지 검증."""
+    dup_batch_payload = {
+        "summaries": [
+            {
+                "recordDate": "2026-11-09",
+                "capturedAtEpochMs": 1762680000000,
+                "totalSteps": 3000,
+                "recoveryScore": 70,
+            },
+            {
+                "recordDate": "2026-11-09",
+                "capturedAtEpochMs": 1762687200000,
+                "totalSteps": 6500,
+                "recoveryScore": 84,
+            },
+        ]
+    }
+    resp = await client.post("/v2/biometrics/sync", json=dup_batch_payload)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["upsertedCount"] == 1
+    assert body["items"][0]["totalSteps"] == 6500
+    assert body["items"][0]["recoveryScore"] == 84
+
+    # 더 오래된 capturedAtEpochMs 요청이 들어와도 최신 데이터를 덮어쓰지 않아야 함
+    stale_payload = {
+        "summaries": [
+            {
+                "recordDate": "2026-11-09",
+                "capturedAtEpochMs": 1762670000000,
+                "totalSteps": 1000,
+                "recoveryScore": 50,
+            }
+        ]
+    }
+    stale_resp = await client.post("/v2/biometrics/sync", json=stale_payload)
+    assert stale_resp.status_code == 200
+    assert stale_resp.json()["items"][0]["totalSteps"] == 6500
+    assert stale_resp.json()["items"][0]["recoveryScore"] == 84

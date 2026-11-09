@@ -233,14 +233,14 @@ AGP 9.5.1 · Gradle 9.8.2 · KSP 2.3.12 · Sentry Gradle Plugin 6.24.0 · Detekt
 
 ## Backend API
 
-> **현재 백엔드 엔드포인트 SSoT:** 총 27개 (인증 필요 22개 + 공개 5개).  
+> **현재 백엔드 엔드포인트 SSoT:** 총 30개 (인증 필요 25개 + 공개 5개).  
 > 모든 인증 API는 `Authorization: Bearer <Entra_CIAM_JWT>` 헤더와 `scp`=`access_as_user` 클레임을 필수로 검증합니다.
 
 | 분류 | Method | Path | 인증 | 설명 및 주요 파라미터 |
 | :--- | :--- | :--- | :---: | :--- |
 | **System** | `GET` | `/health` | X | 라이브니스 프로브 (DB Ping 검증, `status: healthy`) |
 | | `GET` | `/health/ready` | X | 레디니스 프로브 (DB 및 필수 환경 설정 점검) |
-| | `GET` | `/app-compatibility?version_code=` | X | 앱 버전 호환성 체크 (`minimumSupportedVersionCode: 44`) |
+| | `GET` | `/app-compatibility?version_code=` | X | 앱 버전 호환성 체크 (`minimumSupportedVersionCode: 45`) |
 | **Profile** | `GET` | `/profile` | **O** | 현재 사용자 프로필 및 다중 휴식 요일(`rest_days`) 조회 |
 | | `PUT` | `/profile` | **O** | 신체 정보 갱신 (키·몸무게·체지방률·골격근량, 시계열 이력 자동 기록) |
 | | `GET` | `/profile/history?limit=` | **O** | 신체 스펙 변경 시계열 히스토리 조회 (최대 50건) |
@@ -256,6 +256,9 @@ AGP 9.5.1 · Gradle 9.8.2 · KSP 2.3.12 · Sentry Gradle Plugin 6.24.0 · Detekt
 | | `GET` | `/v2/smile-training/sessions?limit=` | **O** | 최근 스마일 트레이닝 세션 이력 조회 |
 | | `GET` | `/v2/smile-training/statistics` | **O** | 스마일 트레이닝 연속 훈련일(Streak) 및 누적 통계 |
 | | `DELETE` | `/v2/smile-training/sessions` | **O** | 스마일 트레이닝 세션 전체 이력 초기화 (`204 No Content`) |
+| **Biometrics (Wear)** | `POST` | `/v2/biometrics/sync` | **O** | 워치 일일 생체·마음 상태 요약 배치(최대 30일) 멱등 업서트 |
+| | `GET` | `/v2/biometrics/daily?days=` | **O** | 최근 `days`일치(기본 14, 최대 90) 워치 일일 생체 요약 조회 |
+| | `DELETE` | `/v2/biometrics/daily` | **O** | 워치 일일 생체 요약 기록 전체 단독 삭제 |
 | **Meal Plan** | `POST` | `/meals/generate` | **O** | Azure AI Foundry `gpt-5.4-mini` 주간 맞춤 식단 생성 (사전 동의 필수) |
 | | `GET` | `/meals/current` | **O** | 현재 주의 AI 생성 식단 조회 |
 | **Badges & Goals** | `GET` | `/badges` | **O** | 획득 배지 목록 및 해금 일시 조회 |
@@ -292,15 +295,22 @@ AGP 9.5.1 · Gradle 9.8.2 · KSP 2.3.12 · Sentry Gradle Plugin 6.24.0 · Detekt
 
 ```text
 core/wear-contract/src/main/kotlin/com/gunnys/eundunhealth/wear/contract/
-└── WearTimeConstants.kt               # :app·:wear 공유 타임존 상수 (KST_ZONE = Asia/Seoul)
+├── WearTimeConstants.kt               # :app·:wear 공유 타임존 상수 (KST_ZONE = Asia/Seoul)
+├── BiometricSummaryContract.kt        # 5차원 생체·마음 상태 DTO 및 Data Layer 경로 상수
+├── ContinuousBiometricAnalyzer.kt     # 24/7 5차원 연속 생체 분석기 (순수 Kotlin)
+└── BiometricPayloadCodec.kt           # GZIP + SHA-256 봉투 직렬화·무결성 코덱
 
 wear/src/main/java/com/gunnys/eundunhealth/wear/
+├── data/WearBiometricDatabase.kt      # 워치 온디바이스 SQLite (1분 버킷 + 일일 요약)
+├── sensor/                            # WearHealthSensorGateway, EundunPassiveListenerService, PassiveMonitoringBootReceiver
+├── sync/                              # WearDataLayerSender, PhoneSyncCommandListenerService
 └── presentation/
-    ├── MainActivity.kt                    # Wear OS 6 단일 Activity (ComponentActivity + EundunWearTheme)
-    ├── WearEnvironmentSpec.kt             # 워치 런타임/빌드/타임존 스펙 SSoT (@Immutable)
-    ├── WearEnvironmentStatusScreen.kt     # Wear OS 6 환경 준비 상태 진단 UI (AppScaffold → ScreenScaffold → TransformingLazyColumn)
+    ├── MainActivity.kt                # Wear OS 6 단일 Activity (ComponentActivity + EundunWearTheme)
+    ├── WearBiometricViewModel.kt      # 워치 실시간 측정·일일 분석·폰 동기화 ViewModel
+    ├── WearEnvironmentSpec.kt         # 워치 런타임/빌드/타임존 스펙 SSoT (@Immutable)
+    ├── WearEnvironmentStatusScreen.kt # Wear OS 6 5차원 생체 대시보드 & 환경 진단 UI
     └── theme/
-        └── WearTheme.kt                   # OLED 순수 블랙(#000000) & 에메랄드 민트 29개 컬러 토큰 (EundunWearColorScheme + EundunWearTheme)
+        └── WearTheme.kt               # OLED 순수 블랙(#000000) & 에메랄드 민트 29개 컬러 토큰
 
 app/src/main/java/com/gunnys/eundunhealth/
 ├── EundunHealthApplication.kt         # Application (Hilt + Sentry 초기화 + WorkManager Configuration.Provider)
@@ -308,10 +318,11 @@ app/src/main/java/com/gunnys/eundunhealth/
 ├── data/
 │   ├── auth/AuthRepositoryImpl.kt     # MSAL Android OIDC 브라우저 위임 세션 및 토큰 관리
 │   ├── healthconnect/                 # Health Connect 1.1.0 운동 세션 감지 및 데이터 소스
-│   ├── local/                         # Room DB (eundunhealth.db v3, smile_training.db v2)
+│   ├── local/                         # Room DB (eundunhealth.db v4, smile_training.db v2)
 │   ├── preferences/                   # DataStore Preferences (테마, 리셋 플래그)
 │   ├── remote/                        # Retrofit2 + OkHttp3 (OpenAPI 생성 API 클라이언트, Interceptor, ExerciseDbApi)
-│   ├── sync/SmileSyncWorker.kt        # WorkManager 기반 스마일 세션 백그라운드 동기화
+│   ├── sync/SmileSyncWorker.kt        # WorkManager 기반 스마일 세션·워치 생체 요약 백그라운드 동기화
+│   ├── wear/PhoneWearDataListenerService.kt # 워치 Data Layer 일일 요약 GZIP 봉투 수신 서비스
 │   └── repository/                    # Clean Architecture 도메인 Repository 구현체
 ├── di/                                # Hilt Modules (NetworkModule, DatabaseModule, AuthModule, SmileTrainingModule)
 ├── domain/
@@ -321,12 +332,12 @@ app/src/main/java/com/gunnys/eundunhealth/
 └── ui/
     ├── auth/AuthGateScreen.kt         # 단일 인증 관문 (브라우저 위임, 인라인 에러 배너)
     ├── navigation/MainAppShell.kt     # 최상위 4대 탭 적응형 스캐폴드 셸 (오늘/식단/진행/프로필)
-    ├── navigation/ProgressHubScreen.kt # 진행 허브 (12주 히트맵, Vico 차트, 배지 컬렉션, 스마일 진입)
+    ├── navigation/ProgressHubScreen.kt # 진행 허브 (워치 5차원 생체·마음 리포트, 4주 추세, 배지, 스마일 진입)
     ├── home/                          # 오늘 탭 (TodayHeroCard, 퀵 액션, 스마트 코칭, 요일별 운동 카드)
     ├── workout/                       # 운동 상세 및 단계별 운동 가이드 모드
     ├── mealplan/                      # 식단 탭 (AI 맞춤 주간 식단 생성 및 조회)
     ├── smile/SmileTrainingScreen.kt   # 온디바이스 스마일 트레이닝 v2 (READY -> ACTIVE -> NavigateBack)
-    ├── profile/ProfileHubScreen.kt    # 프로필 탭 (신체 정보 수정, 휴식 요일, 1-Tap 3버튼 테마 세그먼트)
+    ├── profile/ProfileHubScreen.kt    # 프로필 탭 (신체 정보, 휴식 요일, 워치 동기화/삭제, 1-Tap 3버튼 테마 세그먼트)
     ├── onboarding/                    # 온보딩 신체 정보 하이브리드 입력 피커
     ├── update/                        # 강제 업데이트 게이트 (MandatoryUpdateScreen, UpdateGateViewModel)
     └── theme/                         # Modern Forest & Mint 36슬롯, Pretendard Variable 가변 폰트
@@ -336,24 +347,25 @@ app/src/main/java/com/gunnys/eundunhealth/
 
 ```text
 backend/
-├── Dockerfile                         # Python 3.14-slim 기반 경량 컨테이너
+├── Dockerfile                         # Python 3.14-slim 기반 경량 컨테이너 (OS CVE 자가치유 + pip 제거)
 ├── requirements.txt                   # pip-compile SHA-256 해시 락 무결성 보장
 ├── sql/
 │   ├── 01_cleanup_drop_all.sql        # 하드 리셋 전용 스키마 정리 스크립트
-│   └── 02_schema_create_all.sql       # 3NF 정규화 9개 테이블 (DEFAULT uuidv7() PK)
+│   └── 02_schema_create_all.sql       # 3NF 정규화 10개 테이블 (DEFAULT uuidv7() PK)
 └── app/
     ├── main.py                        # FastAPI 앱 진입점 (Lifespan, CORS, Sentry 미들웨어, /privacy, /account-deletion)
-    ├── config.py                      # Pydantic BaseSettings 환경변수 단일 진실 공급원 (MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44)
+    ├── config.py                      # Pydantic BaseSettings 환경변수 단일 진실 공급원 (MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=45)
     ├── database.py                    # SQLAlchemy 2.0 비동기 엔진 및 asyncpg 세션 풀 (3+2)
     ├── dependencies.py                # Entra CIAM JWT 서명/클레임(oid, scp) 검증 의존성
-    ├── schema_bootstrap.py            # 기동 시 멱등 스키마 테이블 검증 모듈
-    ├── models/                        # SQLAlchemy 2.0 9개 도메인 ORM 모델
+    ├── schema_bootstrap.py            # 기동 시 10개 테이블 멱등 스키마 검증 모듈
+    ├── models/                        # SQLAlchemy 2.0 10개 도메인 ORM 모델
     ├── schemas/                       # Pydantic v2 직렬화 및 엄격한 입력값 검증 DTO
-    ├── services/                      # 비즈니스 서비스 (Account, Plan, Meal, Smile, Badge)
-    └── routers/                       # 9개 도메인 APIRouter 파일 (main.py 포함 총 27개 엔드포인트)
+    ├── services/                      # 비즈니스 서비스 (Account, Plan, Meal, Smile, Biometric, Badge)
+    └── routers/                       # 10개 도메인 APIRouter 파일 (main.py 포함 총 30개 엔드포인트)
         ├── account.py                 # DELETE /account (회원 탈퇴 & Graph 영구 파기)
         ├── app_compatibility.py       # GET /app-compatibility (최소 지원 버전 강제 게이트)
         ├── badge.py                   # /badges/* (배지 조회 및 수여)
+        ├── biometrics.py              # /v2/biometrics/* (워치 일일 생체 요약 배치 업서트, 조회, 단독 삭제)
         ├── goal.py                    # /goals (목표 체중/체지방률 관리)
         ├── health.py                  # /health, /health/ready
         ├── meal_plan.py               # /meals/* (AI 식단 생성 및 조회)

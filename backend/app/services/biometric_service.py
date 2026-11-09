@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC
+from datetime import UTC, date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -74,8 +74,14 @@ class BiometricService:
         req: BiometricSyncRequest,
     ) -> BiometricSyncResponse:
         """일일 생체 요약 배치를 `(user_id, record_date)` 기준으로 멱등 업서트한다."""
-        entities: list[BiometricDailySummary] = []
+        deduped_by_date: dict[date, BiometricDailySummaryItem] = {}
         for item in req.summaries:
+            prev = deduped_by_date.get(item.record_date)
+            if prev is None or item.captured_at_epoch_ms >= prev.captured_at_epoch_ms:
+                deduped_by_date[item.record_date] = item
+
+        entities: list[BiometricDailySummary] = []
+        for item in deduped_by_date.values():
             entity = await self.repo.upsert_daily_summary(user_id=user_id, item=item)
             entities.append(entity)
         await self.db.commit()

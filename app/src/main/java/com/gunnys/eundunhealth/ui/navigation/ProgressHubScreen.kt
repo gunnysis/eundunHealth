@@ -48,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -338,7 +339,9 @@ private fun WeeklyMiniDayStampsBar(dayStamps: List<Boolean?>) {
     Surface(
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics {},
     ) {
         Row(
             modifier = Modifier
@@ -505,11 +508,12 @@ private fun MiniWeeklySparkBars(
     rates: List<Float>,
     fallbackRate: Float,
 ) {
-    val displayRates = if (rates.isNotEmpty()) {
-        val padded = List((4 - rates.size).coerceAtLeast(0)) { 0f } + rates.takeLast(4)
-        padded
-    } else {
-        listOf(0f, 0f, 0f, fallbackRate.coerceIn(0f, 1f))
+    val displayRates = remember(rates, fallbackRate) {
+        if (rates.isNotEmpty()) {
+            List((4 - rates.size).coerceAtLeast(0)) { 0f } + rates.takeLast(4)
+        } else {
+            listOf(0f, 0f, 0f, fallbackRate.coerceIn(0f, 1f))
+        }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -919,9 +923,11 @@ private fun BadgeCollectionShowcaseCard(
             )
 
             if (state.badgePreviews.isNotEmpty()) {
-                val sortedPreviews = state.badgePreviews
-                    .sortedByDescending { it.earned }
-                    .take(5)
+                val sortedPreviews = remember(state.badgePreviews) {
+                    state.badgePreviews
+                        .sortedByDescending { it.earned }
+                        .take(5)
+                }
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -980,7 +986,9 @@ private fun WearBiometricMindProgressCard(
     summary: BiometricDailySummaryRecord?,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {},
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
@@ -1025,14 +1033,16 @@ private fun WearBiometricEmptyState() {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WearBiometricSummaryContent(
     summary: BiometricDailySummaryRecord,
 ) {
     val recoveryText = summary.recoveryScore?.let { "회복 ${it}점" } ?: "회복 산출 중"
-    val restingText = summary.restingBpm?.let { "안정 ${it}BPM" } ?: "안정 --"
-    val hrrText = summary.avgRecoveryDropBpm?.let { "운동후 회복 -${it}BPM" } ?: "운동후 회복 대기"
+    val restingText = summary.restingBpm?.let { "안정 ${it}BPM" } ?: "안정 측정 전"
+    val avgBpmText = summary.avgBpm?.let { "평균 ${it}BPM" } ?: "평균 측정 전"
+    val hrrText = summary.avgRecoveryDropBpm?.let { drop ->
+        if (drop >= 0) "운동후 회복 -${drop}BPM" else "운동후 회복 +${-drop}BPM"
+    } ?: "운동후 회복 대기"
 
     Column(
         modifier = Modifier
@@ -1062,7 +1072,7 @@ private fun WearBiometricSummaryContent(
                 )
             }
             Text(
-                text = "$restingText · 평균 ${summary.avgBpm ?: "--"}BPM",
+                text = "$restingText · $avgBpmText",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

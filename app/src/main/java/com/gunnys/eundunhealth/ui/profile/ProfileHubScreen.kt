@@ -60,6 +60,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,9 +68,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -442,12 +447,14 @@ private fun BodyStatPill(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RestDayVisualStrip(restDays: List<Int>) {
-    val normalized = normalizeRestDays(restDays).toSet()
-    val workoutDays = TOTAL_DAYS_IN_WEEK - normalized.size
-    val restDayNames = normalized.joinToString("·") { DAY_SHORT_LABELS[it - 1] }
+    val (workoutDays, restDayNames, normalized) = remember(restDays) {
+        val norm = normalizeRestDays(restDays).toSet()
+        val wDays = TOTAL_DAYS_IN_WEEK - norm.size
+        val names = norm.joinToString("·") { DAY_SHORT_LABELS[it - 1] }
+        Triple(wDays, names, norm)
+    }
 
     Surface(
         shape = MaterialTheme.shapes.medium,
@@ -467,7 +474,10 @@ private fun RestDayVisualStrip(restDays: List<Int>) {
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                modifier = Modifier.clearAndSetSemantics {},
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 DAY_SHORT_LABELS.forEachIndexed { index, dayLabel ->
                     val isRest = (index + 1) in normalized
                     Box(
@@ -581,6 +591,9 @@ private fun WearOsWatchIntegrationRow(
                     text = state.watchStatusMessage,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics {
+                        liveRegion = LiveRegionMode.Polite
+                    },
                 )
             }
         }
@@ -591,7 +604,9 @@ private fun WearOsWatchIntegrationRow(
             OutlinedButton(
                 onClick = onSyncWatchBiometrics,
                 enabled = !state.isSyncingWatch,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp),
             ) {
                 Text(if (state.isSyncingWatch) "동기화 중..." else "워치 지금 동기화")
             }
@@ -599,8 +614,12 @@ private fun WearOsWatchIntegrationRow(
                 TextButton(
                     onClick = onRequestDeleteWatchBiometrics,
                     enabled = !state.isSyncingWatch,
+                    modifier = Modifier.heightIn(min = 48.dp),
                 ) {
-                    Text("워치 기록 삭제")
+                    Text(
+                        text = "워치 기록 삭제",
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
             }
         }
@@ -861,24 +880,24 @@ private fun AppearanceSettingsCard(
     }
 }
 
+private val THEME_MODE_OPTIONS = listOf(
+    Triple(ThemeMode.SYSTEM, "자동", Icons.Default.SettingsBrightness),
+    Triple(ThemeMode.LIGHT, "라이트", Icons.Default.LightMode),
+    Triple(ThemeMode.DARK, "다크", Icons.Default.DarkMode),
+)
+
 @Composable
 private fun ThemeModeSegmentedRow(
     selectedMode: ThemeMode,
     onSelectMode: (ThemeMode) -> Unit,
 ) {
-    val options = listOf(
-        Triple(ThemeMode.SYSTEM, "자동", Icons.Default.SettingsBrightness),
-        Triple(ThemeMode.LIGHT, "라이트", Icons.Default.LightMode),
-        Triple(ThemeMode.DARK, "다크", Icons.Default.DarkMode),
-    )
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        options.forEach { (mode, label, icon) ->
+        THEME_MODE_OPTIONS.forEach { (mode, label, icon) ->
             val selected = selectedMode == mode
             Surface(
                 onClick = { onSelectMode(mode) },
@@ -895,8 +914,11 @@ private fun ThemeModeSegmentedRow(
                 },
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 40.dp)
-                    .semantics { role = Role.RadioButton },
+                    .heightIn(min = 48.dp)
+                    .semantics {
+                        role = Role.RadioButton
+                        this.selected = selected
+                    },
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),

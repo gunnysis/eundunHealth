@@ -101,57 +101,97 @@ class WearBiometricDatabase private constructor(
         bpm: Int,
         sampleEpochMs: Long = System.currentTimeMillis(),
         overrideContext: WearActivityContext? = null,
+    ): BiometricDailySummaryRecord? = recordHeartRateSamplesBatch(
+        samples = listOf(bpm to sampleEpochMs),
+        overrideContext = overrideContext,
+    )
+
+    @Synchronized
+    fun recordHeartRateSamplesBatch(
+        samples: List<Pair<Int, Long>>,
+        overrideContext: WearActivityContext? = null,
     ): BiometricDailySummaryRecord? {
-        val clampedBpm = bpm.coerceIn(25, 260)
-        val epochMinute = sampleEpochMs / 60_000L
-        val recordDate = Instant.ofEpochMilli(sampleEpochMs).atZone(KST_ZONE).toLocalDate().toString()
+        if (samples.isEmpty()) return null
         val activeContext = overrideContext ?: getCurrentActivityContext()
+        val affectedDates = linkedSetOf<String>()
+        var latestBpm = 0
+        var latestEpochMs = 0L
 
         val db = writableDatabase
         db.beginTransaction()
         try {
-            val existing = queryMinuteBucket(db, epochMinute)
-            if (existing == null) {
-                val cv =
-                    ContentValues().apply {
-                        put("epoch_minute", epochMinute)
-                        put("record_date", recordDate)
-                        put("avg_bpm", clampedBpm)
-                        put("max_bpm", clampedBpm)
-                        put("min_bpm", clampedBpm)
-                        put("steps_delta", 0)
-                        put("activity_context", activeContext.name)
-                    }
-                db.insertWithOnConflict("minute_biometric_buckets", null, cv, SQLiteDatabase.CONFLICT_REPLACE)
-            } else {
-                val mergedAvg = ((existing.avgBpm + clampedBpm) / 2.0).roundToInt().coerceIn(25, 260)
-                val mergedMax = max(existing.maxBpm, clampedBpm)
-                val mergedMin = min(existing.minBpm, clampedBpm)
-                val resolvedContext =
-                    if (activeContext != WearActivityContext.UNKNOWN) activeContext else existing.activityContext
-                val cv =
-                    ContentValues().apply {
-                        put("avg_bpm", mergedAvg)
-                        put("max_bpm", max(mergedAvg, mergedMax))
-                        put("min_bpm", min(mergedAvg, mergedMin))
-                        put("activity_context", resolvedContext.name)
-                    }
-                db.update(
-                    "minute_biometric_buckets",
-                    cv,
-                    "epoch_minute = ?",
-                    arrayOf(epochMinute.toString()),
+            for ((rawBpm, sampleEpochMs) in samples) {
+                val clampedBpm = rawBpm.coerceIn(30, 220)
+                val recordDate = Instant.ofEpochMilli(sampleEpochMs).atZone(KST_ZONE).toLocalDate().toString()
+                affectedDates.add(recordDate)
+                if (sampleEpochMs >= latestEpochMs) {
+                    latestEpochMs = sampleEpochMs
+                    latestBpm = clampedBpm
+                }
+                upsertMinuteHeartRateSample(
+                    db = db,
+                    epochMinute = sampleEpochMs / 60_000L,
+                    recordDate = recordDate,
+                    clampedBpm = clampedBpm,
+                    activeContext = activeContext,
                 )
             }
-            upsertMeta(db, KEY_LAST_HEART_RATE_BPM, clampedBpm.toString())
-            upsertMeta(db, KEY_LAST_SAMPLE_EPOCH_MS, sampleEpochMs.toString())
-            pruneExpiredRows(db, sampleEpochMs)
-            val summary = recomputeAndPersistDailySummary(db, recordDate, sampleEpochMs)
+
+            upsertMeta(db, KEY_LAST_HEART_RATE_BPM, latestBpm.toString())
+            upsertMeta(db, KEY_LAST_SAMPLE_EPOCH_MS, latestEpochMs.toString())
+            pruneExpiredRows(db, latestEpochMs)
+
+            var latestSummary: BiometricDailySummaryRecord? = null
+            for (date in affectedDates) {
+                latestSummary = recomputeAndPersistDailySummary(db, date, latestEpochMs)
+            }
             db.setTransactionSuccessful()
-            return summary
+            return latestSummary
         } finally {
             db.endTransaction()
         }
+    }
+
+    private fun upsertMinuteHeartRateSample(
+        db: SQLiteDatabase,
+        epochMinute: Long,
+        recordDate: String,
+        clampedBpm: Int,
+        activeContext: WearActivityContext,
+    ) {
+        val existing = queryMinuteBucket(db, epochMinute)
+        if (existing == null) {
+            val cv =
+                ContentValues().apply {
+                    put("epoch_minute", epochMinute)
+                    put("record_date", recordDate)
+                    put("avg_bpm", clampedBpm)
+                    put("max_bpm", clampedBpm)
+                    put("min_bpm", clampedBpm)
+                    put("steps_delta", 0)
+                    put("activity_context", activeContext.name)
+                }
+            db.insertWithOnConflict("minute_biometric_buckets", null, cv, SQLiteDatabase.CONFLICT_REPLACE)
+            return
+        }
+        val mergedAvg = ((existing.avgBpm + clampedBpm) / 2.0).roundToInt().coerceIn(30, 220)
+        val mergedMax = max(existing.maxBpm, clampedBpm)
+        val mergedMin = min(existing.minBpm, clampedBpm)
+        val resolvedContext =
+            if (activeContext != WearActivityContext.UNKNOWN) activeContext else existing.activityContext
+        val cv =
+            ContentValues().apply {
+                put("avg_bpm", mergedAvg)
+                put("max_bpm", max(mergedAvg, mergedMax))
+                put("min_bpm", min(mergedAvg, mergedMin))
+                put("activity_context", resolvedContext.name)
+            }
+        db.update(
+            "minute_biometric_buckets",
+            cv,
+            "epoch_minute = ?",
+            arrayOf(epochMinute.toString()),
+        )
     }
 
     @Synchronized
@@ -169,9 +209,16 @@ class WearBiometricDatabase private constructor(
             val newCalories =
                 if (activeCaloriesKcal != null) max(prevCalories, activeCaloriesKcal.coerceAtLeast(0.0)) else prevCalories
 
-            val stepsDelta = (newSteps - prevSteps).coerceIn(0, 300)
+            val rawDelta = newSteps - prevSteps
+            val stepsDelta =
+                if (prevSteps == 0 && rawDelta > 300) {
+                    // 앱 최초 기동 시 당일 누적 걸음 수(예: 5211보)가 한 번에 들어오는 경우 단일 분 버킷 스파이크 방지
+                    0
+                } else {
+                    rawDelta.coerceIn(0, 300)
+                }
             if (stepsDelta > 0) {
-                addStepsDeltaToMinuteBucket(db, sampleEpochMs / 60_000L, stepsDelta)
+                addStepsDeltaToMinuteBucket(db, recordDate, sampleEpochMs / 60_000L, stepsDelta)
             }
 
             val cv =
@@ -250,18 +297,55 @@ class WearBiometricDatabase private constructor(
     @Synchronized
     fun getLastSyncEpochMs(): Long? = queryMeta(readableDatabase, KEY_LAST_SYNC_EPOCH_MS)?.toLongOrNull()
 
-    private fun addStepsDeltaToMinuteBucket(db: SQLiteDatabase, epochMinute: Long, stepsDelta: Int) {
-        val existingBucket = queryMinuteBucket(db, epochMinute) ?: return
+    private fun addStepsDeltaToMinuteBucket(
+        db: SQLiteDatabase,
+        recordDate: String,
+        epochMinute: Long,
+        stepsDelta: Int,
+    ) {
+        val targetBucket =
+            queryMinuteBucket(db, epochMinute)
+                ?: queryRecentMinuteBucketForDate(db, recordDate, epochMinute - 5L, epochMinute)
+                ?: return
         val cv =
             ContentValues().apply {
-                put("steps_delta", existingBucket.stepsDelta + stepsDelta)
+                put("steps_delta", targetBucket.stepsDelta + stepsDelta)
             }
         db.update(
             "minute_biometric_buckets",
             cv,
             "epoch_minute = ?",
-            arrayOf(epochMinute.toString()),
+            arrayOf(targetBucket.epochMinute.toString()),
         )
+    }
+
+    private fun queryRecentMinuteBucketForDate(
+        db: SQLiteDatabase,
+        recordDate: String,
+        minEpochMinute: Long,
+        maxEpochMinute: Long,
+    ): MinuteBiometricBucket? {
+        db
+            .rawQuery(
+                """
+                SELECT epoch_minute, avg_bpm, max_bpm, min_bpm, steps_delta, activity_context
+                FROM minute_biometric_buckets
+                WHERE record_date = ? AND epoch_minute BETWEEN ? AND ?
+                ORDER BY epoch_minute DESC
+                LIMIT 1
+                """.trimIndent(),
+                arrayOf(recordDate, minEpochMinute.toString(), maxEpochMinute.toString()),
+            ).use { cursor ->
+                if (!cursor.moveToFirst()) return null
+                return MinuteBiometricBucket(
+                    epochMinute = cursor.getLong(0),
+                    avgBpm = cursor.getInt(1),
+                    maxBpm = cursor.getInt(2),
+                    minBpm = cursor.getInt(3),
+                    stepsDelta = cursor.getInt(4),
+                    activityContext = WearActivityContext.fromWireName(cursor.getString(5)),
+                )
+            }
     }
 
     private fun recomputeAndPersistDailySummary(

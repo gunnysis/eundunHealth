@@ -57,10 +57,12 @@ class ProfileHubViewModel @Inject constructor(
         viewModelScope.launch {
             val mode = themePreferences.themeMode.first()
             val dynamicColor = runSuspendCatching { themePreferences.dynamicColorEnabled.first() }.getOrDefault(false)
-            _uiState.value = _uiState.value.copy(
-                themeMode = mode,
-                dynamicColorEnabled = dynamicColor,
-            )
+            _uiState.update {
+                it.copy(
+                    themeMode = mode,
+                    dynamicColorEnabled = dynamicColor,
+                )
+            }
         }
     }
 
@@ -141,20 +143,25 @@ class ProfileHubViewModel @Inject constructor(
 
     fun refreshHealthConnectStatus() = viewModelScope.launch {
         val available = healthRepository.isAvailable()
-        _uiState.value = _uiState.value.copy(
-            isHealthConnectLoading = false,
-            isHealthConnectAvailable = available,
-            hasHealthPermission = available && healthRepository.hasPermissions(),
-        )
+        val hasPerm = available && healthRepository.hasPermissions()
+        _uiState.update {
+            it.copy(
+                isHealthConnectLoading = false,
+                isHealthConnectAvailable = available,
+                hasHealthPermission = hasPerm,
+            )
+        }
     }
 
     fun refreshDefaultWorkoutPlanMode() = viewModelScope.launch {
         userRepository.getProfile()
             .onSuccess { profile ->
-                _uiState.value = _uiState.value.copy(
-                    profile = profile,
-                    defaultWorkoutPlanMode = profile?.defaultWorkoutPlanMode,
-                )
+                _uiState.update {
+                    it.copy(
+                        profile = profile,
+                        defaultWorkoutPlanMode = profile?.defaultWorkoutPlanMode,
+                    )
+                }
             }
             .onFailure {
                 it.toReportedAppError()
@@ -164,37 +171,43 @@ class ProfileHubViewModel @Inject constructor(
     fun updateDefaultWorkoutPlanMode(mode: WorkoutPlanMode?) = viewModelScope.launch {
         if (_uiState.value.isUpdatingDefaultPlanMode) return@launch
         val previous = _uiState.value.defaultWorkoutPlanMode
-        _uiState.value = _uiState.value.copy(
-            defaultWorkoutPlanMode = mode,
-            isUpdatingDefaultPlanMode = true,
-            defaultPlanModeError = null,
-        )
+        _uiState.update {
+            it.copy(
+                defaultWorkoutPlanMode = mode,
+                isUpdatingDefaultPlanMode = true,
+                defaultPlanModeError = null,
+            )
+        }
         userRepository.updateDefaultWorkoutPlanMode(mode)
             .onSuccess { updatedProfile ->
-                _uiState.value = _uiState.value.copy(
-                    profile = updatedProfile,
-                    defaultWorkoutPlanMode = updatedProfile.defaultWorkoutPlanMode,
-                    isUpdatingDefaultPlanMode = false,
-                    defaultPlanModeError = null,
-                )
+                _uiState.update {
+                    it.copy(
+                        profile = updatedProfile,
+                        defaultWorkoutPlanMode = updatedProfile.defaultWorkoutPlanMode,
+                        isUpdatingDefaultPlanMode = false,
+                        defaultPlanModeError = null,
+                    )
+                }
             }
             .onFailure { err ->
                 val appErr = err.toReportedAppError()
-                _uiState.value = _uiState.value.copy(
-                    defaultWorkoutPlanMode = previous,
-                    isUpdatingDefaultPlanMode = false,
-                    defaultPlanModeError = appErr,
-                )
+                _uiState.update {
+                    it.copy(
+                        defaultWorkoutPlanMode = previous,
+                        isUpdatingDefaultPlanMode = false,
+                        defaultPlanModeError = appErr,
+                    )
+                }
             }
     }
 
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch {
         themePreferences.setThemeMode(mode)
-        _uiState.value = _uiState.value.copy(themeMode = mode)
+        _uiState.update { it.copy(themeMode = mode) }
     }
 
     fun setDynamicColorEnabled(enabled: Boolean) = viewModelScope.launch {
         themePreferences.setDynamicColorEnabled(enabled)
-        _uiState.value = _uiState.value.copy(dynamicColorEnabled = enabled)
+        _uiState.update { it.copy(dynamicColorEnabled = enabled) }
     }
 }

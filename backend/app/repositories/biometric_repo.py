@@ -39,7 +39,7 @@ class BiometricRepository:
 
         if existing is None:
             entity = BiometricDailySummary(
-                id=uuid.uuid4(),
+                id=uuid.uuid7(),
                 user_id=user_id,
                 record_date=item.record_date,
                 zone_id=item.zone_id,
@@ -72,6 +72,13 @@ class BiometricRepository:
             self.db.add(entity)
             await self.db.flush()
             return entity
+
+        existing_captured_dt = existing.client_captured_at
+        if existing_captured_dt is not None:
+            if existing_captured_dt.tzinfo is None:
+                existing_captured_dt = existing_captured_dt.replace(tzinfo=UTC)
+            if captured_dt < existing_captured_dt:
+                return existing
 
         existing.zone_id = item.zone_id
         existing.total_steps = item.total_steps

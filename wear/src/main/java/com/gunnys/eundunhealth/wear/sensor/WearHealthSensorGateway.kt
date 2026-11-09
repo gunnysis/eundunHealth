@@ -20,7 +20,6 @@ import androidx.health.services.client.data.PassiveListenerConfig
 import androidx.health.services.client.data.UserActivityState
 import com.gunnys.eundunhealth.wear.contract.WearActivityContext
 import com.gunnys.eundunhealth.wear.contract.WearContractConstants
-import com.gunnys.eundunhealth.wear.data.WearBiometricDatabase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -157,7 +156,6 @@ object WearHealthSensorGateway {
         }
 
         val measureClient = HealthServices.getClient(appContext).measureClient
-        val db = WearBiometricDatabase.getInstance(appContext)
         val callback =
             object : MeasureCallback {
                 override fun onAvailabilityChanged(
@@ -174,7 +172,7 @@ object WearHealthSensorGateway {
                     val isAcquiring = availability == DataTypeAvailability.ACQUIRING
                     trySend(
                         LiveHeartRateReading(
-                            bpm = db.getLastRecordedHeartRateBpm(),
+                            bpm = null,
                             isAcquiring = isAcquiring,
                             statusText = status,
                         ),
@@ -188,9 +186,8 @@ object WearHealthSensorGateway {
                             .lastOrNull()
                             ?.value
                             ?.roundToInt()
-                            ?.takeIf { it in 25..260 }
+                            ?.takeIf { it in 30..220 }
                     if (latestBpm != null) {
-                        db.recordHeartRateSample(latestBpm)
                         trySend(
                             LiveHeartRateReading(
                                 bpm = latestBpm,
