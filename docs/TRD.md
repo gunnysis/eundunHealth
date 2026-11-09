@@ -71,7 +71,7 @@ graph TB
         Worker["WorkManager (SmileSyncWorker)<br/>스마일 세션 & 워치 생체 요약 멱등 백그라운드 동기화"]
         HC["Health Connect Client (1.1.0 stable)<br/>운동 완료 자동 연동 (READ_EXERCISE 단독)"]
         MSAL["MSAL Android SDK (8.6.0)<br/>브라우저 위임 인증 (PKCE)"]
-        SentryApp["Sentry Android SDK (8.62.0)<br/>크래시 / ANR / R8 역난독화 매핑 / 성능 트레이싱"]
+        SentryApp["Sentry Android SDK (8.63.0)<br/>크래시 / ANR / R8 역난독화 매핑 / 성능 트레이싱"]
         Catalogs["Bundled Catalogs<br/>• 추천 운동 46종 한국어 번들 (korean_exercises.json v2)<br/>• 내장 무장비 홈트 18종 (HomeWeeklyPlanGenerator v2.0)"]
     end
 
@@ -264,8 +264,8 @@ graph TB
 | **테스트 디바이스** | **Samsung Galaxy Phone (Android 14 / One UI 6.1)** | Health Connect 및 실제 카메라 센서 실기기 검증 |
 | **빌드 자동화 도구** | **Gradle 9.8.2** (Android) / **pip-compile** (Backend) | Gradle Hash Verification (`gradle/verification-metadata.xml`) |
 | **Android 빌드 플러그인** | **AGP 9.5.1** | Kotlin 내장 툴체인, `detekt-cli` + `androidComponents` 통합 |
-| **코드 정적 분석 & 포맷터** | **Detekt 1.23.8 + Spotless 8.10.4 + ktlint 1.5.0** | 빌드 파이프라인 무결성 게이트 강제 |
-| **모니터링 / 에러 추적** | **Sentry** (Android `8.62.0` / Backend `2.74.0`) | R8 ProGuard 매핑 자동 업로드 및 풀스택 분산 추적 |
+| **코드 정적 분석 & 포맷터** | **Detekt 1.23.8 + Spotless 8.11.0 + ktlint 1.5.0** | 빌드 파이프라인 무결성 게이트 강제 |
+| **모니터링 / 에러 추적** | **Sentry** (Android `8.63.0` / Backend `2.74.0`) | R8 ProGuard 매핑 자동 업로드 및 풀스택 분산 추적 |
 | **형상 관리 & CI/CD** | **Git + GitHub Actions** | Entra OIDC 무암호 Azure 배포 및 Google Play 내부/프로덕션 트랙 자동 릴리스 |
 
 ### 2.2. 클라이언트 개발 언어 및 프레임워크 (`:app`, `:wear`, `:core:wear-contract`)
@@ -1071,7 +1071,7 @@ Android 앱과 FastAPI 백엔드의 성능 트랜잭션과 에러를 독립된 �
 | 구분 | Android 프로젝트 | Backend 프로젝트 |
 | :--- | :--- | :--- |
 | **프로젝트 식별자** | `gunnys / eundunhealth` | `gunnys / eundunhealth-backend` |
-| **SDK 버전** | **Sentry Android 8.62.0** (Gradle 플러그인 6.25.0) | **sentry-sdk (Python) 2.74.0** |
+| **SDK 버전** | **Sentry Android 8.63.0** (Gradle 플러그인 6.26.0) | **sentry-sdk (Python) 2.74.0** |
 | **초기화 방식** | `SentryInitProvider` 비활성화(`tools:node="remove"`) 후 `EundunHealthApplication.onCreate()`에서 DSN 검사 후 수동 초기화 | FastAPI 기동 시 `sentry_sdk.init` |
 | **트레이스 샘플링** | Development: 100% / Production: 20% | Development: 100% / Production: 20% |
 | **크래시 / ANR 감지** | NDK 크래시, Java/Kotlin 미처리 예외, ANR 감시 | ASGI 미들웨어 미처리 5xx 예외 자동 수집 |
@@ -1173,7 +1173,7 @@ python backend/scripts/seed_edge_cases.py
 ```text
 eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Python 하이브리드)
 ├── app/                               # 모바일 Android 네이티브 앱 (:app 모듈, Min SDK 26)
-│   ├── build.gradle.kts               # AGP 9.5.1 + Kotlin 2.4.21 + R8 + Sentry 6.25.0
+│   ├── build.gradle.kts               # AGP 9.5.1 + Kotlin 2.4.21 + R8 + Sentry 6.26.0
 │   └── src/
 │       ├── main/
 │       │   ├── java/com/gunnys/eundunhealth/
@@ -1280,7 +1280,7 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 | 변수 키 | 필수 여부 | 설명 및 설정 가이드 |
 | :--- | :---: | :--- |
 | `BACKEND_BASE_URL` | 필수 | 백엔드 API 호스트 URL (`https://api.eundunhealth.com/` 또는 `http://10.0.2.2:8080/`) |
-| `eundunhealth-app_SENTRY_DSN` | 필수 | Sentry Android DSN (공식 Sentry Gradle 플러그인 6.25.0용) |
+| `eundunhealth-app_SENTRY_DSN` | 필수 | Sentry Android DSN (공식 Sentry Gradle 플러그인 6.26.0용) |
 | `ENTRA_API_SCOPE` | 선택 | Entra 백엔드 접근 권한 스코프 (`api://<backend_client_id>/access_as_user`) |
 | `RELEASE_STORE_PASSWORD` | 릴리스 필수 | 릴리스 서명 키스토어 비밀번호 (CI GitHub Secrets 주입) |
 | `RELEASE_KEY_ALIAS` | 릴리스 필수 | 서명 키 별칭 (`eundunhealth_sign_key`) |
@@ -1367,4 +1367,4 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 | **BADGE-02** | 배지 컬렉션 조회 | `BadgeScreen` → `GET /badges` (달성 배지 활성화 및 미달성 흑백 처리) |
 | **ETC-01** | 다크/라이트 테마 제어 | `ThemePreferences` (DataStore) 인라인 1-Tap 3단 세그먼트 선택 (`SYSTEM`/`LIGHT`/`DARK`) + DayNight 점멸 제거 |
 | **ETC-02** | 데이터 로딩 스켈레톤 UI | `SkeletonUi.kt` (ShimmerBox 애니메이션 효과) |
-| **ETC-03** | 풀스택 에러 모니터링 | Sentry Android 8.62.0 (R8 난독화 매핑) + Sentry Backend 2.74.0 (분산 추적) |
+| **ETC-03** | 풀스택 에러 모니터링 | Sentry Android 8.63.0 (R8 난독화 매핑) + Sentry Backend 2.74.0 (분산 추적) |
