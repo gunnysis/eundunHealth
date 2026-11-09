@@ -15,7 +15,7 @@
 >
 > **PostgreSQL 18 하드 리셋 & 스키마 라이프사이클 현대화 (2026-10-29, v0.7.0 / v0.7.1):** Azure PostgreSQL 18.4 Flexible Server 도입과 함께 과거 Alembic 마이그레이션 체계를 완전 폐기하고 **Drop & Recreate 전용 하드 리셋 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()` PK)** 및 `python -m app.schema_bootstrap` 멱등 부트스트랩으로 전환하여 Zero-Legacy 스키마 거버넌스를 확립했다.
 >
-> **Wear OS 6 (API 36) 상시 5차원 생체·마음 상태 런타임 & 3모듈 아키텍처 (2026-11-06 ~ 2026-11-09, v0.8.0, `PROP-06`):** 모바일 `:app`(`versionCode=45`, `EundunDatabase` v4 + `PhoneWearDataListenerService` + 진행/프로필 허브 워치 상시 생체 대시보드), 스마트워치 `:wear`(`wearVersionCode=10001`, `minSdk=36`, Wear Compose Material 3 `1.7.1`, `PassiveMonitoringClient` 24/7 백그라운드 + `MeasureClient` 실시간 심박 + `WearBiometricDatabase`, Play Console 내부 테스트 등록 및 게시 개요 제출 완료), 순수 JVM 17 공유 계약 `:core:wear-contract`(`ContinuousBiometricAnalyzer` 5차원 분석 엔진 + `BiometricPayloadCodec` GZIP/SHA-256 코덱) 및 백엔드 `/v2/biometrics/*` 3개 API(10번째 정규 테이블 `biometric_daily_summaries`, 운영 리비전 `eundunhealth-api--0000070` / `8968394`)로 통합되었다.
+> **Wear OS 6 (API 36) 상시 5차원 생체·마음 상태 런타임 & 3모듈 아키텍처 (2026-11-06 ~ 2026-11-09, v0.8.0, `PROP-06`):** 모바일 `:app`(`versionCode=45`, `EundunDatabase` v4 + `PhoneWearDataListenerService` + 진행/프로필 허브 워치 상시 생체 대시보드), 스마트워치 `:wear`(`wearVersionCode=10002`, `minSdk=36`, Wear Compose Material 3 `1.7.1`, `PassiveMonitoringClient` 24/7 백그라운드 + `MeasureClient` 실시간 심박 + `WearBiometricDatabase`, Play Console 내부 테스트 등록 및 게시 개요 제출 완료), 순수 JVM 17 공유 계약 `:core:wear-contract`(`ContinuousBiometricAnalyzer` 5차원 분석 엔진 + `BiometricPayloadCodec` GZIP/SHA-256 코덱) 및 백엔드 `/v2/biometrics/*` 3개 API(10번째 정규 테이블 `biometric_daily_summaries`, 운영 리비전 `eundunhealth-api--0000070` / `8968394`)로 통합되었다.
 
 ## 프로젝트 개요
 

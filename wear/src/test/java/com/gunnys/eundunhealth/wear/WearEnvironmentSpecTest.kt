@@ -21,7 +21,7 @@ class WearEnvironmentSpecTest {
         val spec =
             WearEnvironmentSpec(
                 versionName = "0.7.3",
-                wearVersionCode = 10001,
+                wearVersionCode = 10002,
                 runtimeSdkInt = 36,
             )
 
@@ -38,7 +38,7 @@ class WearEnvironmentSpecTest {
         val unsupportedSpec =
             WearEnvironmentSpec(
                 versionName = "0.7.3",
-                wearVersionCode = 10001,
+                wearVersionCode = 10002,
                 runtimeSdkInt = 35,
                 minSdkInt = 36,
                 targetSdkInt = 37,

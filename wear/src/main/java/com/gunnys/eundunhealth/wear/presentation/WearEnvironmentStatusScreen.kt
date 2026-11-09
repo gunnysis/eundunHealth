@@ -438,7 +438,7 @@ internal fun WearEnvironmentStatusScreenPreview() {
             spec =
             WearEnvironmentSpec(
                 versionName = "0.8.0",
-                wearVersionCode = 10001,
+                wearVersionCode = 10002,
                 minSdkInt = 36,
                 targetSdkInt = 37,
                 runtimeSdkInt = 36,
@@ -456,7 +456,7 @@ internal fun WearEnvironmentStatusScreenSmallRoundPreview() {
             spec =
             WearEnvironmentSpec(
                 versionName = "0.8.0",
-                wearVersionCode = 10001,
+                wearVersionCode = 10002,
                 minSdkInt = 36,
                 targetSdkInt = 37,
                 runtimeSdkInt = 36,
@@ -478,7 +478,7 @@ internal fun WearEnvironmentStatusScreenLargeFontPreview() {
             spec =
             WearEnvironmentSpec(
                 versionName = "0.8.0",
-                wearVersionCode = 10001,
+                wearVersionCode = 10002,
                 minSdkInt = 36,
                 targetSdkInt = 37,
                 runtimeSdkInt = 36,

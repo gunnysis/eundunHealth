@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
 > **문서 버전:** v2.3 (현행 아키텍처 정본, 2026-11-09 최신화)  
-> **현재 상태:** 저장소 최신 릴리스 **v0.8.0/45 (Wear `:wear` `wearVersionCode=10001` 상시 생체·마음 상태 5차원 런타임 Play Console 내부 테스트·게시 개요 제출 및 `/v2/biometrics/*` 운영 배포 · 모바일 Play 프로덕션 현행 `v0.7.3/44` `completed` 100%, 원장 PR #226)**, 백엔드 활성 리비전 **`eundunhealth-api--0000070` (`8968394`)**  
+> **현재 상태:** 저장소 최신 릴리스 **v0.8.0/45 (Wear `:wear` `wearVersionCode=10002` 상시 생체·마음 상태 5차원 런타임 Play Console 내부 테스트·게시 개요 제출 및 `/v2/biometrics/*` 운영 배포 · 모바일 Play 프로덕션 현행 `v0.7.3/44` `completed` 100%, 원장 PR #226)**, 백엔드 활성 리비전 **`eundunhealth-api--0000070` (`8968394`)**  
 > **패키지 명:** `com.gunnys.eundunhealth`  
 > **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -1098,7 +1098,7 @@ Android 앱과 FastAPI 백엔드의 성능 트랜잭션과 에러를 독립된 �
 - **Compile / Target SDK:** 37 (Android 17) / **Min SDK:** `:app` 26 (Android 8.0) · `:wear` 36 (Wear OS 6.0)
 - **빌드 도구:** Gradle 9.8.2 + AGP 9.5.1 (Kotlin 2.4.21 내장)
 - **자바 런타임:** Eclipse Temurin 17 (Java 17 바이트코드)
-- **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.8.0`, `VERSION_CODE=45`, `WEAR_VERSION_CODE=10001`)
+- **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.8.0`, `VERSION_CODE=45`, `WEAR_VERSION_CODE=10002`)
 
 #### [주요 CLI 명령어]
 ```bash
@@ -1218,7 +1218,7 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 │       │       └── values/wear.xml    # eundun_phone_companion Capability 선언
 │       └── test/                      # JUnit 4, MockK 단위 테스트 (14 ViewModels, DI 빌더, 빌드 계약)
 ├── wear/                              # Google Wear OS 6.0+ 워치 앱 (:wear 모듈, Min SDK 36)
-│   ├── build.gradle.kts               # AGP 9.5.1 + Wear Compose M3 1.7.1 + wearVersionCode=10001
+│   ├── build.gradle.kts               # AGP 9.5.1 + Wear Compose M3 1.7.1 + wearVersionCode=10002
 │   └── src/
 │       ├── main/
 │       │   ├── java/com/gunnys/eundunhealth/wear/presentation/

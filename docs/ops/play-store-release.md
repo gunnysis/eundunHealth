@@ -1,6 +1,6 @@
 # Play Store 출시 가이드 — 내부 테스팅 + 프로덕션 출시
 
-> 작성일: 2026-05-24 / 최근 갱신: 2026-11-09 (Wear OS 6 `:wear` `wear-release.aab` `wearVersionCode=10001` 전용 출시 트랙 & 건강 앱·데이터 안전 선언 반영 + 빌드 경로 = preflight)
+> 작성일: 2026-05-24 / 최근 갱신: 2026-11-09 (Wear OS 6 `:wear` `wear-release.aab` `wearVersionCode=10002` 전용 출시 트랙 & 건강 앱·데이터 안전 선언 반영 + 빌드 경로 = preflight)
 > 대상: `com.gunnys.eundunhealth` (Application ID — 모바일 `:app` & 워치 `:wear` 공유)
 > 출시 빌드: versionCode/versionName/wearVersionCode SSoT = 루트 `version.properties` (직접값 박제 금지 — 현재 값은 `version.properties` 또는 `operations-snapshot.md §1` 에서 확인). 빌드는 **`bash scripts/preflight-release.sh`** (룰 2 — 3모듈 게이트 + `:app`/`:wear` AAB/APK + Sentry 매핑 일괄). 산출물은 `app/build/outputs/bundle/release/app-release.aab` 및 `wear/build/outputs/bundle/release/wear-release.aab` 단일 위치.
 
