@@ -4,6 +4,19 @@
 
 ## Recent (last 90 days)
 
+### 2026-11-09 — Wear OS 6 상시 생체·마음 상태 백엔드(`/v2/biometrics/*`) · PostgreSQL 18 10번째 정규 테이블 `biometric_daily_summaries` · Dockerfile Trivy 보안 자가치유 가드 및 운영 배포 (`eundunhealth-api--0000070`, PR #233 `05f44f2` · PR #234 `8968394`)
+
+- **Commit**: `05f44f2` (PR #233) & `8968394` (PR #234; 백엔드 운영 배포 run `42596583922` / 활성 리비전 `eundunhealth-api--0000070` / 이미지 `8968394` `@sha256:3acf47cf54e152a528e3fc0beeebeaeb6bd3f7e4fa1f2d697c562054138bb7e7`)
+- **Why**: ① 워치(`:wear`)와 모바일(`:app`)에서 산출된 5차원 생체·마음 상태 일일 요약을 수용·조회·즉시 파기할 수 있는 백엔드 도메인 테이블과 REST API 계약이 필요했으며, ② Debian 13.7 베이스 이미지(`python:3.14-slim`)의 신규 OS CVE 4건(`CVE-2026-109518` `apt`/`libapt-pkg7.0`, `CVE-2026-76844`/`CVE-2026-85091` `zlib1g`)으로 인해 `Backend CI/CD` Trivy 이미지 스캔(`run 42575120394`)이 차단된 근본 원인을 해결하고 재발 방지 테스트를 구축해야 했다.
+- **What**:
+  - **10번째 정규 테이블 `public.biometric_daily_summaries` (`02_schema_create_all.sql` & `biometric_summary.py`)**: `(user_id, record_date)` 복합 UNIQUE 키 및 `idx_biometric_daily_summaries_user_date_desc` 인덱스, 생리학적·시간합(`zone_relaxed_minutes + zone_normal_minutes + zone_elevated_tension_minutes + zone_high_load_minutes = total_monitored_minutes <= 1440`) 포함 21개 `CHECK` 제약 정의.
+  - **`/v2/biometrics/*` 3개 엔드포인트 (총 30개 라우트 = 25 JWT + 5 공개)**: `POST /v2/biometrics/sync` (`captured_at_epoch_ms` 단조 증가 가드 기반 멱등 배치 Upsert, 최대 31일), `GET /v2/biometrics/daily?days=14`, `DELETE /v2/biometrics/daily` (단독 즉시 파기) 및 `account_service._purge_app_data`·`smile_training_repo.reap_orphaned_data` 연동, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=45` 상향.
+  - **100건 시더·12개 SAVEPOINT 제약 검증 & 배포 사후 프로브 확장**: `seed_edge_cases.py`에 `biometric_daily_summaries` 시딩 및 12번째 음수 제약(`ck_biometric_zone_sum_matches_total`) 검증 추가, `verify_containerapp_deployment.py`에 `GET /v2/biometrics/daily` 보호 라우트 마운트 검증 추가.
+  - **`backend/Dockerfile` Trivy OS CVE 자가치유 복원 & 단위 테스트 가드 (`PR #234`)**: 베이스 이미지를 `python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f`로 갱신하고 `apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends` 레이어를 복원했으며, `test_health.py`에 `test_dockerfile_security_hardening_invariants` 회귀 가드를 추가.
+- **Outcome**: 백엔드 `pytest` 150/150 PASS (`ruff` / `mypy` / `bandit` / `pip-audit` 0건), Trivy `CRITICAL,HIGH` 취약점 0건(`exit 0`), 운영 Azure Container App `eundunhealth-api--0000070` 및 `eundunhealth-reaper` 동기 배포·검증 완료 (`run 42596583922`).
+- **Files touched**: `backend/{Dockerfile,containerapp.yaml,openapi.json}`, `backend/sql/{01_cleanup_drop_all.sql,02_schema_create_all.sql}`, `backend/app/{config.py,main.py,models/biometric_summary.py,schemas/biometrics.py,repositories/biometric_repo.py,services/biometric_service.py,routers/biometrics.py,services/account_service.py,repositories/smile_training_repo.py}`, `backend/scripts/seed_edge_cases.py`, `backend/tests/{test_biometrics.py,test_health.py,test_v2_reset.py}`, `scripts/{verify_containerapp_deployment.py,test_verify_containerapp_deployment.py}`
+- **설계 원문**: `2026-11-09-wear-os-continuous-biometric-azure-plan.md` (본 entry 및 `docs/plans/logs/android.md` 로 흡수, git rm)
+
 ### 2026-10-29 — Azure AI Foundry 식단 생성 모델 `gpt-5.4-mini` (100K TPM) 전환 & OpenAI Strict Structured Outputs 적용 (v0.7.2, commit `db8b4f8`)
 
 - **Commit**: `db8b4f8` (PR #218 머지; 백엔드 배포 run `40838433732` / 활성 리비전 `eundunhealth-api--0000068` / 이미지 `db8b4f8`)

@@ -4,6 +4,18 @@
 
 ## Recent (last 90 days)
 
+### 2026-11-09 — `Backend CI/CD` Trivy 이미지 스캔 실패(`run 42575120394`) 근본 원인 해결 (`backend/Dockerfile` OS 보안 패치 자가치유 복원 & `test_dockerfile_security_hardening_invariants` 회귀 가드, PR #234 `8968394`)
+
+- **Commit**: `8968394` (PR #234; `Backend CI/CD` run `42596583922` 배포 성공 → `eundunhealth-api--0000070`)
+- **Why**: PR #233(`05f44f2`) `main` 병합 후 트리거된 `Backend CI/CD` (`run 42575120394` / job `129021521936`)의 `Trivy 이미지 스캔 (CRITICAL/HIGH 차단)` 단계가 Debian 13.7 베이스 이미지(`python:3.14-slim@sha256:4b20ddac...`)의 신규 수정 가능(Fixed) `HIGH` OS CVE 4건(`apt`·`libapt-pkg7.0` `CVE-2026-109518` `3.0.3 -> 3.0.4`, `zlib1g` `CVE-2026-76844`·`CVE-2026-85091` `1:1.3.dfsg+really1.3.1-1+b1 -> +deb13u1`)으로 인해 `exit code 1`로 차단되었다. 근본 원인은 Dependabot Docker digest bump 과정에서 `CLAUDE.md`에 명시된 `apt-get upgrade` 자가치유 레이어가 `backend/Dockerfile`에서 누락되어 있었기 때문이었다.
+- **What**:
+  - `backend/Dockerfile`의 베이스 이미지를 최신 `python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f`로 갱신하고 `RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*` 자가치유 단계를 복원.
+  - `backend/tests/test_health.py`에 `test_dockerfile_security_hardening_invariants` 단위 테스트를 신설하여 SHA-256 다이제스트 핀 고정, `apt-get upgrade -y`, 비루트 `USER appuser` 불변식이 향후 Docker PR에서 실수로 제거되지 않도록 CI 단계에서 강제.
+- **Outcome**: 로컬 및 CI `aquasec/trivy:0.70.0` 스캔 결과 `CRITICAL,HIGH` 취약점 0건(`exit 0`), `Backend CI/CD` run `42596583922` 전 단계 통과 및 `eundunhealth-api--0000070` 운영 배포 완결.
+- **Files touched**: `backend/Dockerfile`, `backend/tests/test_health.py`
+
+---
+
 ### 2026-11-04 — 전역 워크스테이션 & eundunHealth Android CLI (`v1.1.16717390`) + Android Studio Live Integration 2-Tier 통합
 
 - **Why**: IDE 인메모리 엔진(PSI 정적 분석, Compose `@Preview` 렌더링, Google Maven 버전 조회)과 터미널 CLI 간 단절을 해소하고, WSL2 Ubuntu ↔ Windows 호스트 Studio IPC 브리지 및 R8 Full Mode / Cold-Start UI 레이아웃 자동 검증을 구축해야 했다.

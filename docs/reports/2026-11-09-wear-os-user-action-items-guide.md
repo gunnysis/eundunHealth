@@ -2,25 +2,25 @@
 
 > **작성일**: 2026-11-09 (KST)
 > **대상 기기**: Xiaomi Watch 5 (`모델: M2501W1` / `펌웨어: OS3.0.3.70.WO61WMIXM` / Wear OS 6.0 API 36) + Android 스마트폰 + 운영 Azure (`rg-eundunhealth-prod-krc`)
-> **연관 설계서**: [`docs/plans/2026-11-09-wear-os-continuous-biometric-azure-plan.md`](../plans/2026-11-09-wear-os-continuous-biometric-azure-plan.md)
+> **연관 설계 원장**: [`docs/plans/logs/android.md`](../plans/logs/android.md) · [`docs/plans/logs/backend.md`](../plans/logs/backend.md)
 > **목적**: 에이전트가 임의로 우회할 수 없는 **개발자(사용자) 고유 권한 작업(GitHub 운영 승인 게이트, Google Play Console 정책 선언/양식 요소 추가, Xiaomi Watch 5 실기기 설정 및 권한 허용)** 을 외부 이동 중/귀가 후 상황에 맞춰 가장 빠르고 정확하게 실행할 수 있도록 단계별 화면 경로와 복사·붙여넣기(Copy-Paste) 템플릿으로 정리한 실행 매뉴얼입니다.
 
 ---
 
 ## 0. 한눈에 보는 실행 순서 & 현재 위치(외부 vs 귀가 후) 매트릭스
 
-현재 외부에 계신 상황에서도 **Action 1 ~ Action 3은 웹 브라우저(GitHub / Google Play Console)만으로 즉시 수행 가능**하며, **Action 4(워치 실기기 확인)는 운영 배포 후 워치에서 직접 받거나 귀가 후 무선 ADB로 확인**하실 수 있습니다.
+**Action 1 ~ Action 3(GitHub Actions 운영 Azure 배포 승인 및 Google Play Console 게시 개요 제출)은 2026-11-09 전수 완료**되었으며, **Action 4(워치 실기기 확인)는 워치 Play 스토어(내부 테스트) 또는 귀가 후 무선 ADB로 확인**하실 수 있습니다.
 
 ```mermaid
 flowchart LR
-    subgraph Now["🌐 지금 외부에서 바로 가능 (웹/콘솔)"]
-        A1["Action 1\n운영 Azure 백엔드 배포\n& DB 10번째 테이블 자동 생성\n(GitHub Actions 승인)"]
+    subgraph Now["🌐 웹/콘솔 작업 (2026-11-09 전수 완료)"]
+        A1["✅ Action 1 (완료)\n운영 Azure 백엔드 배포\n(eundunhealth-api--0000070\n& DB 10번째 테이블 생성)"]
         A2["✅ Action 2 (완료)\nPlay Console\n건강 앱 선언 & 데이터 안전\n(2026-11-09 적용 완료)"]
-        A3["✅ Action 3 (완료)\nPlay Console\nWear OS 양식 요소·옵트인\n& 10001 AAB 등록 완료"]
+        A3["✅ Action 3 (완료)\nPlay Console\nWear OS 양식 요소·옵트인\n& 10001 AAB 게시 개요 제출"]
         A1 --> A2 --> A3
     end
 
-    subgraph Watch["⌚ 운영 배포 직후 또는 귀가 후 (Xiaomi Watch 5)"]
+    subgraph Watch["⌚ 실기기 확인 (Xiaomi Watch 5)"]
         A4["Action 4\nXiaomi Watch 5 (M2501W1)\n권한 '항상 허용' + 배터리 설정\n+ 폰↔워치↔Azure E2E 확인"]
     end
 
@@ -29,20 +29,20 @@ flowchart LR
 
 | 순서 | 작업 항목 | 수행 장소 / 도구 | 소요 시간 | 진행 상태 / 외부 가능 여부 | 필수 시점 |
 | :---: | :--- | :--- | :---: | :---: | :--- |
-| **Action 1** | **운영 Azure 백엔드(`/v2/biometrics/*`) 배포 및 `biometric_daily_summaries` 테이블 부트스트랩** | Git Push + GitHub 웹/앱 (`backend-production` 승인) | 약 5분 | ⏳ **대기 (즉시 가능)** | 모바일/워치 클라우드 동기화 전 |
-| **Action 2** | **Google Play Console `건강 앱` 및 `데이터 안전` 섹션 갱신** | [Google Play Console](https://play.google.com/console) 웹 | 완료 | ✅ **완료 (2026-11-09 적용 완료)** | Play 스토어 신규 버전 제출 전 |
-| **Action 3** | **Google Play Console `Wear OS` 양식 요소(Form Factor) 추가·옵트인 및 AAB(`10001`) 등록** | [Google Play Console](https://play.google.com/console) 웹 | 완료 | ✅ **완료 (2026-11-09 5개 항목 등록 완료)** | Play 스토어로 워치 앱 배포 시 |
-| **Action 4** | **Xiaomi Watch 5 (`M2501W1`) 실기기 설정·권한 허용 및 E2E 동기화 확인** | Xiaomi Watch 5 + 스마트폰 | 약 3분 | ⏳ **운영 배포 후 외부에서도 가능** *(또는 귀가 후 ADB)* | 최종 실기기 검증 시 |
+| **Action 1** | **운영 Azure 백엔드(`/v2/biometrics/*`) 배포 및 `biometric_daily_summaries` 테이블 부트스트랩** | Git Push + GitHub 웹/앱 (`backend-production` 승인) | 완료 | ✅ **완료 (`run 42596583922` → `eundunhealth-api--0000070`, `8968394`)** | 모바일/워치 클라우드 동기화 전 |
+| **Action 2** | **Google Play Console `건강 앱` 및 `데이터 안전` 섹션 갱신** | [Google Play Console](https://play.google.com/console) 웹 | 완료 | ✅ **완료 (2026-11-09 적용 및 심사 제출 완료)** | Play 스토어 신규 버전 제출 전 |
+| **Action 3** | **Google Play Console `Wear OS` 양식 요소(Form Factor) 추가·옵트인 및 AAB(`10001`) 등록** | [Google Play Console](https://play.google.com/console) 웹 | 완료 | ✅ **완료 (2026-11-09 5개 항목 게시 개요 제출 완료)** | Play 스토어로 워치 앱 배포 시 |
+| **Action 4** | **Xiaomi Watch 5 (`M2501W1`) 실기기 설정·권한 허용 및 E2E 동기화 확인** | Xiaomi Watch 5 + 스마트폰 | 약 3분 | ⏳ **운영 배포 완료 — 외부/귀가 후 언제든 가능** | 최종 실기기 검증 시 |
 
 ---
 
-## Action 1. 운영 Azure (`rg-eundunhealth-prod-krc`) 백엔드 배포 및 DB 스키마 적용 방법
+## Action 1. ✅ [완료 — 2026-11-09 배포] 운영 Azure (`rg-eundunhealth-prod-krc`) 백엔드 배포 및 DB 스키마 적용 방법 (기록 보존)
 
-> [!IMPORTANT]
-> **무중단 배포 제약 불필요 (단독 개발자 운영 환경)**:
-> 현재 앱의 실사용자가 개발자 본인이므로 배포 중 일시 중단이나 DB 초기화(Drop & Recreate 하드 리셋)가 발생해도 무방합니다.
-> - **기본 자동 적용**: 새 백엔드 컨테이너가 기동될 때 [`backend/entrypoint.sh`](../../backend/entrypoint.sh)가 [`python -m app.schema_bootstrap`](../../backend/app/schema_bootstrap.py)을 실행하여 운영 PostgreSQL 18.4(`healthapp`)에 10번째 정규 테이블 `public.biometric_daily_summaries`와 인덱스 2종을 자동 생성합니다.
-> - **Clean-Slate 하드 리셋 (선택)**: 필요 시 `hard_reset_db.py`로 10개 정규 테이블 전체를 즉시 Drop & Recreate + 100건 시딩 검증할 수도 있습니다.
+> [!TIP]
+> **2026-11-09 운영 배포 완료 (`Backend CI/CD` run [`42596583922`](https://github.com/gunnysis/eundunHealth/actions/runs/42596583922))**:
+> - **활성 리비전**: `eundunhealth-api--0000070` (트래픽 100%, 이미지 `eundunhealthacr.azurecr.io/eundunhealth-api:8968394`, digest `sha256:3acf47cf54e152a528e3fc0beeebeaeb6bd3f7e4fa1f2d697c562054138bb7e7`)
+> - **Reaper Job**: `eundunhealth-reaper` 동일 다이제스트 동기화 완료
+> - **DB 부트스트랩 & 사후 검증**: PostgreSQL 18.4(`healthapp`)에 10번째 정규 테이블 `public.biometric_daily_summaries` 자동 생성, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=45` 및 `GET /v2/biometrics/daily` 보호 라우트(`401`/`403` `probe-auth-guard-ok`) 검증 통과.
 
 ### 1-1. 실행 절차 (Step-by-Step)
 
@@ -64,7 +64,7 @@ flowchart LR
 3. **자동 검증 결과 확인 (`verify_containerapp_deployment.py`)**:
    - 승인 후 약 2~3분 뒤 `deploy` Job의 마지막 단계인 **`Verify Container App deployment invariants`** 가 자동으로 다음 항목을 검증하고 초록불(PASS)로 종료되는지 확인합니다:
      - `eundunhealth-api` 리비전 교체 및 `eundunhealth-reaper` Job 이미지 태그 일치
-     - `/health` (`200`), `/health/ready` (`200`), `/app-compatibility` (`minimumSupportedVersionCode == 44`)
+     - `/health` (`200`), `/health/ready` (`200`), `/app-compatibility` (`minimumSupportedVersionCode == 45`)
      - **신규 검증**: `GET /v2/biometrics/daily` 호출 시 `404`가 아닌 **`401`/`403`(라우터 정상 마운트 및 Entra JWT 보호 작동)** 반환 확인
 
 4. **(선택) 운영 DB 10개 정규 테이블 Clean-Slate 하드 리셋 명령**:
@@ -91,6 +91,85 @@ flowchart LR
    - ✅ **스트레스 관리, 이완, 정신적 민첩성 (Stress management, relaxation, mental acuity)** *(또는 웰니스/자기관리 항목)*
 4. **절대 체크하면 안 되는 카테고리 (X — 의료기기 심사 대상 방지)**:
    - ❌ 질병 또는 상태 관리 / 의학적 참고 및 교육 / 의료기기 연결 앱은 **체크하지 마십시오.** (은둔헬스는 비의료 웰니스 앱입니다.)
+5. **개별 권한 사용 방법 서술란 복붙용 문구 (필수 입력 항목)**:
+   - **① '생체 신호 센서' — `android.permission.BODY_SENSORS` 권한을 사용하는 방법 설명**:
+     ```text
+     [한국어]
+     Wear OS 워치 컴패니언 앱(:wear)에서 사용자의 명시적 동의 하에 AndroidX Health Services(PassiveMonitoringClient 및 MeasureClient)를 통해 워치 착용 중 온디바이스 생체 신호 센서(광학 심박 센서 및 착용 감지 상태)에 접근하는 데 사용합니다. 수집된 센서 신호는 워치 내부에서 안정시 심박수, 심박 구간(4-Zone) 분포, 일상 활동 및 비의료 웰니스 자기관리 참고용 회복 추세 지표를 산출하는 데에만 사용되며, 의학적 진단 용도로 사용되지 않습니다. 원시 분 단위 센서 버킷은 워치 외부로 전송되지 않으며, 사용자는 앱 내 '진행' 및 '프로필' 탭에서 언제든 동기화된 요약 데이터를 단독 삭제하거나 권한을 철회할 수 있습니다.
+
+     [English]
+     Used in our Wear OS companion app (:wear) with explicit user consent to access on-device body sensors (optical heart rate sensor and off-body detection state) via AndroidX Health Services (PassiveMonitoringClient and MeasureClient). Sensor signals are processed on-device solely to calculate resting heart rate, 4-zone time distribution, and daily wellness/self-care recovery trend summaries in the app's Progress tab, and are never used for medical diagnosis. Raw minute-level buckets never leave the watch, and users can independently delete synced summaries at any time inside the app.
+     ```
+     *(글자 수 제한이 500자 이하로 짧을 때 — 한국어 단독 요약본)*:
+     ```text
+     Wear OS 워치 컴패니언 앱(:wear)에서 사용자의 명시적 동의 하에 AndroidX Health Services(PassiveMonitoringClient 및 MeasureClient)로 워치 착용 여부 및 온디바이스 광학 심박 센서에 접근하기 위해 사용합니다. 측정된 신호는 앱 내 '진행' 탭에서 비의료 웰니스 및 자기관리 참고용 일일 심박 구간 분포와 회복 추세 요약을 제공하는 데만 사용되며, 의학적 진단에 사용되지 않습니다. 원시 분 단위 데이터는 워치 외부로 나가지 않으며 사용자는 앱 내에서 언제든 요약 기록을 즉시 삭제할 수 있습니다.
+     ```
+
+   - **② '심박수' — `android.permission.health.READ_HEART_RATE` 권한을 사용하는 방법 설명**:
+     ```text
+     [한국어]
+     Wear OS 6(API 36+)의 세분화된 건강 권한 체계에 따라, 워치 컴패니언 앱(:wear)에서 AndroidX Health Services(DataType.HEART_RATE_BPM)를 통해 실시간 심박수(MeasureClient) 및 착용 중 백그라운드 심박수 추세(PassiveMonitoringClient)를 읽어오기 위해 사용합니다. 읽어들인 심박수(BPM)는 워치 대시보드와 스마트폰 앱의 '진행' 탭에서 사용자의 일일 안정시 심박수(P20), 4단계 심박 구간 시간 분포, 급격한 심박 변화 횟수, 활동 후 심박 회복(HRR) 등 비의료 피트니스·마음 긴장 관리 지표를 시각화하는 데 사용됩니다. 제3자와 공유하거나 광고 목적으로 사용하지 않으며, 사용자는 앱 내에서 언제든 워치 생체 요약 기록을 단독 삭제(DELETE /v2/biometrics/daily)할 수 있습니다.
+
+     [English]
+     Required on Wear OS 6 (API 36+) granular health permissions to read real-time heart rate (MeasureClient) and continuous heart rate trends (PassiveMonitoringClient, DataType.HEART_RATE_BPM) on our Wear OS companion app (:wear). Heart rate BPM data is used exclusively to display non-medical fitness and stress/tension self-care metrics—such as resting BPM, 4-zone heart rate distribution, rapid delta spikes, and post-activity heart rate recovery (HRR)—on the watch dashboard and the phone app's Progress tab. Data is never shared with third parties or used for advertising, and users can delete all synced summaries at any time in the app.
+     ```
+     *(글자 수 제한이 500자 이하로 짧을 때 — 한국어 단독 요약본)*:
+     ```text
+     Wear OS 6(API 36+)의 세분화된 건강 권한 정책에 따라 워치 컴패니언 앱(:wear)에서 AndroidX Health Services(DataType.HEART_RATE_BPM)로 실시간 심박수 및 착용 중 심박 추세를 읽기 위해 사용합니다. 측정된 심박수(BPM)는 워치 화면과 스마트폰 앱 '진행' 탭에서 안정시 심박수, 4단계 심박 구간 시간 분포, 활동 후 심박 회복(HRR), 일일 마음 긴장·회복 점수 등 비의료 피트니스 및 웰니스 자기관리를 시각화하는 데만 사용되며, 앱 내에서 언제든 기록을 삭제할 수 있습니다.
+     ```
+
+   - **③ '백그라운드의 건강 데이터' — `android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND` 권한을 사용하는 방법 설명**:
+     ```text
+     [한국어]
+     사용자가 워치 화면을 켜두지 않은 일상·휴식·수면 착용 중에도 AndroidX Health Services의 PassiveMonitoringClient(EundunPassiveListenerService)를 통해 백그라운드에서 심박수 및 걸음·칼로리 변화 배치를 끊김 없이 수신하기 위해 사용합니다. 포그라운드 측정만으로는 하루 전체의 적응형 안정시 심박수(P20), 전 구간 4단계 심박 분포(이완·일상·긴장 주의·고부하), 활동 후 심박 회복(HRR), 수면 중 심박 안정도 및 일일 자율신경 회복 점수(0~100점)를 산출할 수 없으므로 백그라운드 건강 데이터 읽기가 필수적입니다. 모든 원시 분 단위 버킷은 워치 내부에서만 집계되며, 사용자는 언제든 권한을 변경하거나 앱 내에서 동기화된 일일 요약 데이터를 즉시 삭제할 수 있습니다.
+
+     [English]
+     Used in our Wear OS companion app (:wear) to continuously receive batched heart rate, step, and calorie updates in the background via AndroidX Health Services PassiveMonitoringClient (EundunPassiveListenerService) while the user wears the watch during daily routines, rest, and sleep with the screen off. Foreground-only reading cannot compute full-day adaptive resting heart rate (P20), 4-zone heart rate time distribution, post-activity heart rate recovery (HRR), sleep heart rate stability, or the daily recovery score (0-100) shown in the Progress tab. Raw minute-level buckets remain on the watch, and users can revoke this permission or delete synced summaries at any time inside the app.
+     ```
+     *(글자 수 제한이 500자 이하로 짧을 때 — 한국어 단독 요약본)*:
+     ```text
+     사용자가 워치 화면을 켜두지 않은 일상·휴식·수면 착용 중에도 AndroidX Health Services(PassiveMonitoringClient / EundunPassiveListenerService)로 백그라운드 심박·활동 배치를 수신하기 위해 사용합니다. 포그라운드 측정만으로는 하루 전체의 안정시 심박수(P20), 4단계 심박 구간 시간 분포, 활동 후 심박 회복(HRR), 일일 회복 점수(0~100점) 리포트를 산출할 수 없어 백그라운드 읽기가 필수적이며, 사용자는 앱 내에서 언제든 요약 기록을 삭제할 수 있습니다.
+     ```
+
+   - **④ '활동 감지' — `android.permission.ACTIVITY_RECOGNITION` 권한을 사용하는 방법 설명**:
+     ```text
+     [한국어]
+     Wear OS 워치 컴패니언 앱(:wear)에서 사용자의 명시적 동의 하에 AndroidX Health Services(PassiveMonitoringClient)로부터 일일 걸음 수(DataType.STEPS_DAILY), 활동 칼로리(DataType.CALORIES_DAILY) 및 착용 중 활동 맥락(UserActivityState: 휴식·일상 이동·운동·수면 상태)을 감지하기 위해 사용합니다. 활동 맥락을 함께 인식해야 운동 중 자연스러운 심박 상승을 마음 긴장(스트레스) 에피소드로 오탐하지 않고, 활동 종료 후 심박 회복 속도(HRR)와 일일 활동량 요약을 정확하게 산출할 수 있습니다. 사용자는 언제든 권한을 철회하거나 앱 내에서 동기화된 요약 기록을 즉시 삭제할 수 있습니다.
+
+     [English]
+     Used in our Wear OS companion app (:wear) with explicit user consent to detect daily steps (DataType.STEPS_DAILY), active calories (DataType.CALORIES_DAILY), and user activity states (UserActivityState: rest, passive movement, exercise, and sleep) via AndroidX Health Services PassiveMonitoringClient. Recognizing activity context prevents natural exercise-induced heart rate elevation from being misclassified as stress/tension episodes and enables accurate calculation of post-activity heart rate recovery (HRR) and daily activity summaries. Users can revoke this permission or delete synced summaries at any time inside the app.
+     ```
+     *(글자 수 제한이 500자 이하로 짧을 때 — 한국어 단독 요약본)*:
+     ```text
+     워치 컴패니언 앱(:wear)에서 AndroidX Health Services로 일일 걸음 수(STEPS_DAILY)와 착용 중 활동 맥락(휴식·이동·운동·수면 상태)을 감지하기 위해 사용합니다. 이를 통해 운동 중 자연스러운 심박 상승을 스트레스/긴장 상태로 오탐하지 않고 활동 후 심박 회복(HRR)과 일일 활동 요약을 정확히 산출하며, 사용자는 앱 내에서 언제든 요약 기록을 삭제할 수 있습니다.
+     ```
+
+   - **⑤ '운동' — `android.permission.health.READ_EXERCISE` 권한을 사용하는 방법 설명**:
+     ```text
+     [한국어]
+     스마트폰 앱(:app)에서 사용자의 명시적 동의 하에 Android Health Connect에 기록된 운동 세션(ExerciseSessionRecord) 이력을 읽어오기 위해 사용합니다. 읽어온 운동 세션 기록은 앱 내 '홈', '진행(기록·통계)' 화면에서 사용자의 일일 홈트레이닝 루틴 달성 여부, 주간 운동 시간·칼로리 통계 및 연속 달성 배지 현황을 통합 표시하는 데에만 사용됩니다. 데이터는 제3자에게 공유되거나 광고 목적으로 사용되지 않으며, 사용자는 언제든 Health Connect 연동을 해제하거나 앱 내 기록을 삭제할 수 있습니다.
+
+     [English]
+     Used in the mobile app (:app) with explicit user consent to read exercise session records (ExerciseSessionRecord) from Android Health Connect. Exercise history is used solely to display daily home-workout routine completion, weekly workout duration/calorie statistics, and streak badge progress on the Home and Progress (History/Statistics) screens. Data is never shared with third parties or used for advertising, and users can disconnect Health Connect or delete their records at any time.
+     ```
+     *(글자 수 제한이 500자 이하로 짧을 때 — 한국어 단독 요약본)*:
+     ```text
+     스마트폰 앱(:app)에서 사용자의 명시적 동의 하에 Android Health Connect의 운동 세션(ExerciseSessionRecord) 이력을 읽어와 앱 내 홈·기록·통계 화면에서 일일 홈트레이닝 달성 여부와 주간 운동 통계를 통합 표시하기 위해 사용합니다. 제3자 공유나 광고에 사용되지 않으며 언제든 연동을 해제하거나 삭제할 수 있습니다.
+     ```
+
+   - **⑥ '단계(걸음 수)' — `android.permission.health.READ_STEPS` 권한을 사용하는 방법 설명**:
+     > 💡 *(참고: 과거 Play Console 버전 이력 또는 Health Connect/Wear 건강 권한 설문 항목으로 인해 `READ_STEPS` 설명란이 함께 표시되는 경우 아래 문구를 그대로 입력하시면 됩니다.)*
+     ```text
+     [한국어]
+     사용자의 명시적 동의 하에 일일 걸음 수(Steps) 데이터를 읽어와 앱 내 '진행' 및 일일 활동 요약 카드에서 사용자의 하루 신체 활동량(총 걸음 수)과 심박·활동 회복 추세를 함께 표시하기 위해 사용합니다. 걸음 수 데이터는 비의료 피트니스 및 일상 활동량 확인 목적으로만 사용되며, 제3자에게 공유하거나 광고에 사용하지 않고 사용자가 앱 내에서 언제든 동기화된 요약 기록을 단독 삭제할 수 있습니다.
+
+     [English]
+     Used with explicit user consent to read daily step count data so the app can display daily physical activity volume (total steps) alongside heart rate and recovery trend summaries in the Progress tab. Step data is used strictly for non-medical fitness and daily activity tracking, is never shared with third parties or used for advertising, and can be deleted by the user at any time inside the app.
+     ```
+     *(글자 수 제한이 500자 이하로 짧을 때 — 한국어 단독 요약본)*:
+     ```text
+     사용자의 명시적 동의 하에 일일 걸음 수 데이터를 읽어와 앱 내 '진행' 탭의 일일 활동 요약 카드에서 하루 총 걸음 수와 신체 활동 추세를 표시하기 위해 사용합니다. 비의료 피트니스 확인 목적으로만 사용되며 사용자가 앱 내에서 언제든 기록을 삭제할 수 있습니다.
+     ```
 
 ### 2-2. [앱 콘텐츠 > 데이터 안전(Data safety)] 설정 방법
 
@@ -124,14 +203,14 @@ flowchart LR
 ## Action 3. ✅ [완료 — 2026-11-09 적용] Google Play Console — `Wear OS` 양식 요소(Form Factor) 추가·옵트인 및 AAB(`10001`) 배포
 
 > [!TIP]
-> **2026-11-09 Play Console `[게시 개요]` 5대 항목 검증 완료**:
+> **2026-11-09 Play Console `[게시 개요]` 5대 항목 등록 및 심사 제출 완료**:
 > 1. `기본 스토어 등록정보 — Wear OS 스크린샷 변경` ✅
 > 2. `앱 콘텐츠 > 데이터 보안 — 데이터 보안 설문지 작성` ✅
 > 3. `앱 콘텐츠 > 건강 앱 — 건강 앱 선언 완료` ✅
 > 4. `고급 설정 > 폼 팩터 — 고급 설정에서 Wear OS by Google 폼 팩터가 선택으로 설정되었습니다.` ✅
 > 5. `고급 설정 > 폼 팩터 — Wear OS의 전용 출시 트랙 사용 시작` (`wearVersionCode = 10001`) ✅
 >
-> 위 5개 항목이 `[게시 개요]`에 모두 들어와 있으면 **Play Console의 Wear OS 정책·양식 요소·트랙 설정은 100% 완벽하게 끝난 상태**입니다. 우측의 **`[검토를 위해 변경사항 전송]`(또는 `[변경사항 게시]`)** 버튼만 눌러 최종 제출하시면 됩니다.
+> 위 5개 항목이 `[게시 개요]`를 통해 최종 제출 완료되었습니다. 향후 재검토 및 감사 증적을 위해 절차와 설정 원문을 보존합니다.
 
 ### 3-1. Play Console에서 Wear OS 양식 요소 활성화 (최초 1회 — 최신 Play Console UI 기준)
 

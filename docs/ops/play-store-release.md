@@ -1,10 +1,10 @@
 # Play Store 출시 가이드 — 내부 테스팅 + 프로덕션 출시
 
-> 작성일: 2026-05-24 / 최근 갱신: 2026-06-11 (프로덕션 출시 절차 추가 + Data safety #106 정합 + 빌드 경로 = preflight)
-> 대상: `com.gunnys.eundunhealth` (Application ID)
-> 출시 빌드: versionCode/versionName SSoT = 루트 `version.properties` (직접값 박제 금지 — 현재 값은 `version.properties` 또는 `operations-snapshot.md §1` 에서 확인). 빌드는 **`bash scripts/preflight-release.sh`** (룰 2 — 게이트 + AAB/APK + Sentry 매핑 일괄). 산출물은 `app/build/outputs/bundle/release/app-release.aab` 단일 위치(Android Studio "Generate Signed Bundle/APK" 출력 경로도 동일하게 설정됨).
+> 작성일: 2026-05-24 / 최근 갱신: 2026-11-09 (Wear OS 6 `:wear` `wear-release.aab` `wearVersionCode=10001` 전용 출시 트랙 & 건강 앱·데이터 안전 선언 반영 + 빌드 경로 = preflight)
+> 대상: `com.gunnys.eundunhealth` (Application ID — 모바일 `:app` & 워치 `:wear` 공유)
+> 출시 빌드: versionCode/versionName/wearVersionCode SSoT = 루트 `version.properties` (직접값 박제 금지 — 현재 값은 `version.properties` 또는 `operations-snapshot.md §1` 에서 확인). 빌드는 **`bash scripts/preflight-release.sh`** (룰 2 — 3모듈 게이트 + `:app`/`:wear` AAB/APK + Sentry 매핑 일괄). 산출물은 `app/build/outputs/bundle/release/app-release.aab` 및 `wear/build/outputs/bundle/release/wear-release.aab` 단일 위치.
 
-이 문서는 Play Store 등록·업로드 절차를 정리한다. 자동화 가능한 부분(게이트·빌드·ProGuard mapping → Sentry 업로드)은 `preflight-release.sh` 가 수행하고, **Console UI 작업·정책 게이트·의사결정**만 남는다. 경로: **내부 테스팅(§6) → 프로덕션(§6.5)**. 첫 프로덕션은 내부 테스트보다 요건이 많으므로 §6.5 의 게이트(비공개 졸업·App access·콘텐츠 등급)를 먼저 확인할 것.
+이 문서는 Play Store 등록·업로드 절차를 정리한다. 자동화 가능한 부분(게이트·빌드·ProGuard mapping → Sentry 업로드)은 `preflight-release.sh` 가 수행하고, **Console UI 작업·정책 게이트·의사결정**만 남는다. 경로: **내부 테스팅(§6) → 프로덕션(§6.5)**. 첫 프로덕션은 내부 테스트보다 요건이 많으므로 §6.5 의 게이트(비공개 졸업·App access·콘텐츠 등급)를 먼저 확인할 것. Wear OS 6 전용 트랙·건강 앱 선언 상세 가이드는 [`docs/reports/2026-11-09-wear-os-user-action-items-guide.md`](../reports/2026-11-09-wear-os-user-action-items-guide.md)를 함께 참조한다.
 
 ---
 
@@ -12,9 +12,11 @@
 
 | 파일 | 경로 | 용도 |
 |------|------|------|
-| **AAB (Play Store)** | `app/build/outputs/bundle/release/app-release.aab` | Play Console **App Bundle** 업로드 슬롯 |
-| APK (사이드로드/검증) | `app/build/outputs/apk/release/app-release.apk` | adb install 또는 외부 배포 |
-| ProGuard mapping | `app/build/outputs/mapping/release/mapping.txt` | Sentry로 **자동 업로드 완료** (sentry-gradle plugin) |
+| **AAB (`:app`, Play Store 모바일)** | `app/build/outputs/bundle/release/app-release.aab` | Play Console 모바일 **App Bundle** 업로드 슬롯 (`versionCode < 10000`) |
+| **AAB (`:wear`, Play Store Wear OS)** | `wear/build/outputs/bundle/release/wear-release.aab` | Play Console **Wear OS 전용** 트랙 App Bundle 슬롯 (`wearVersionCode >= 10000`, 현행 `10001`) |
+| APK (`:app`, 사이드로드/검증) | `app/build/outputs/apk/release/app-release.apk` | 모바일 adb install 또는 Cold-Start 스모크 |
+| APK (`:wear`, 사이드로드/검증) | `wear/build/outputs/apk/release/wear-release.apk` | 워치 무선 ADB install 또는 에뮬레이터 스모크 |
+| ProGuard mapping | `{app,wear}/build/outputs/mapping/release/mapping.txt` | Sentry로 **자동 업로드 완료** (sentry-gradle plugin) |
 
 **재빌드 명령 (룰 2 — 권장)** — version bump(`bash scripts/bump-version.sh <ver>`) 후 또는 코드 변경 시:
 ```bash
@@ -56,7 +58,8 @@ $APKSIGNER = (Get-ChildItem "$SDK\build-tools\*\apksigner.bat" | Sort-Object Las
 | **사용자 ID** | ✅ | ❌ | 백엔드 DB(Azure PostgreSQL) | 운동 기록 연결 |
 | **신체 활동(키/몸무게/체지방률/근육량/휴식일/기본 운동 환경)** | ✅ | ❌ | 백엔드 DB + 동의 후 AI 식단 생성 시 Azure AI Foundry | 앱 기능·개인 맞춤 목적. 식단 생성 직전 명시 동의, 전송 중 암호화, 삭제 요청 지원 |
 | **스마일 트레이닝 요약 기록(수행시간/완료 반복횟수/수행시각)** | ✅ | ❌ | 백엔드 DB + 단말 내부 DB (`smile_training.db`) | **카메라 이미지·영상·생체 템플릿은 저장·전송하지 않음**(온디바이스 실시간 판정 후 즉시 폐기). 요약 수치만 저장, 단독 삭제 및 계정 삭제 지원 |
-| **건강·피트니스(Health Connect 읽기)** | ✅ | ❌ | **READ 권한 1개(`READ_EXERCISE` 운동 세션 단독)** **읽기 전용**(쓰기 없음). ⚠️ #106(v0.1.12)에서 체중·체지방 HC 읽기 제거(6→4), 2026-10-16 '오늘의 활동' 제거로 걸음·칼로리·심박수 회수(4→1) | 운동 세션→완료 날짜만 백엔드 전송(원본 세션 미저장). **신체 4지표(키·몸무게·체지방·골격근)는 HC 아닌 사용자 직접 입력**. Data safety 폼은 실제 권한(`READ_EXERCISE` 1종)과 정확히 일치해야 함(검수 가드). 상세 privacy-policy.md §1 |
+| **건강·피트니스(모바일 `:app` Health Connect 읽기)** | ✅ | ❌ | **READ 권한 1개(`READ_EXERCISE` 운동 세션 단독)** **읽기 전용**(쓰기 없음). ⚠️ #106(v0.1.12)에서 체중·체지방 HC 읽기 제거(6→4), 2026-10-16 '오늘의 활동' 제거로 걸음·칼로리·심박수 회수(4→1) | 운동 세션→완료 날짜만 백엔드 전송(원본 세션 미저장). **신체 4지표(키·몸무게·체지방·골격근)는 HC 아닌 사용자 직접 입력**. 상세 `privacy-policy.md §1` 및 `health-connect-permissions.md` |
+| **건강·피트니스(워치 `:wear` Wear OS 6 생체·활동 일일 요약)** | ✅ | ❌ | Wear OS 6 `androidx.health:health-services-client` 온디바이스 센서(`BODY_SENSORS`, `READ_HEART_RATE`, `READ_HEALTH_DATA_IN_BACKGROUND`, `ACTIVITY_RECOGNITION`)로 워치 내부 집계 후 일일 요약만 `/v2/biometrics/*`(`biometric_daily_summaries`)에 저장 | 원시 분 단위 버킷은 워치 외부 미전송(7일 롤링 후 파기). 비의료 웰니스·자기관리 참고 목적이며 앱 내 단독 즉시 삭제(`DELETE /v2/biometrics/daily`) 및 계정 탈퇴 시 영구 파기 지원 |
 | **앱 충돌/성능 진단 (Sentry)** | ✅ | ❌ (3rd party 처리) | 익명 crash + transaction | 사용자 PII 자동 스크럽됨 |
 | **광고 ID / IDFA / 위치** | ❌ | ❌ | 미사용 | |
 
