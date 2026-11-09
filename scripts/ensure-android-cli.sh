@@ -80,6 +80,18 @@ ensure_android_cli() {
         fi
     done
 
+    # 4) Linux CI (ubuntu-latest 등) 자가치유 부트스트랩: 로컬 후보가 없을 때 공식 Linux x86_64 바이너리 자동 설치
+    if [ "$(uname -s 2>/dev/null || true)" = "Linux" ] && command -v curl >/dev/null 2>&1; then
+        local target_bin="${HOME:-/tmp}/.local/bin/android"
+        mkdir -p "$(dirname "$target_bin")"
+        echo "[ensure-android-cli] Linux 환경에서 Android CLI 미설치 감지 → 공식 바이너리 자동 부트스트랩 중..." >&2
+        if curl -fsSL "https://dl.google.com/android/cli/latest/linux_x86_64/android" -o "$target_bin" && chmod +x "$target_bin"; then
+            export ANDROID_CLI="$target_bin"
+            echo "[ensure-android-cli] 공식 Linux Android CLI 부트스트랩 완료: $ANDROID_CLI" >&2
+            return 0
+        fi
+    fi
+
     {
         echo "ERROR: Android CLI (android / android.exe) 를 찾지 못했습니다."
         echo "  설치 안내: https://d.android.com/tools/agents"
