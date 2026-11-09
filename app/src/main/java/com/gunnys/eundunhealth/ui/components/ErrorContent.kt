@@ -1,6 +1,8 @@
 package com.gunnys.eundunhealth.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -18,15 +22,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.ui.navigation.openPlayStoreListing
+import com.gunnys.eundunhealth.ui.theme.EundunHealthTheme
 
 /**
  * 화면 전체 영역에 표시되는 에러 표시 컴포넌트.
@@ -51,12 +58,30 @@ fun ErrorContent(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(
-            imageVector = if (isUpdateRequired) Icons.Default.SystemUpdate else Icons.Default.ErrorOutline,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = if (isUpdateRequired) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-        )
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isUpdateRequired) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (isUpdateRequired) Icons.Default.SystemUpdate else Icons.Default.ErrorOutline,
+                contentDescription = null,
+                modifier = Modifier.size(36.dp),
+                tint = if (isUpdateRequired) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onErrorContainer
+                },
+            )
+        }
         Spacer(Modifier.height(16.dp))
         Text(
             text = error.userMessage,
@@ -68,17 +93,25 @@ fun ErrorContent(
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = { openPlayStoreListing(context) },
-                modifier = Modifier.heightIn(min = 48.dp),
+                modifier = Modifier.heightIn(min = 52.dp),
+                shape = RoundedCornerShape(16.dp),
             ) {
-                Text("Google Play에서 업데이트")
+                Text(
+                    text = "Google Play에서 업데이트",
+                    fontWeight = FontWeight.Bold,
+                )
             }
         } else if (onRetry != null) {
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = onRetry,
-                modifier = Modifier.heightIn(min = 48.dp),
+                modifier = Modifier.heightIn(min = 52.dp),
+                shape = RoundedCornerShape(16.dp),
             ) {
-                Text("다시 시도")
+                Text(
+                    text = "다시 시도",
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
@@ -87,7 +120,7 @@ fun ErrorContent(
 @Preview(showBackground = true)
 @Composable
 private fun ErrorContentPreview() {
-    MaterialTheme {
+    EundunHealthTheme {
         ErrorContent(
             error = AppError.Network("네트워크 연결을 확인해주세요"),
             onRetry = {},

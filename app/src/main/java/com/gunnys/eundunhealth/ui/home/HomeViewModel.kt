@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.CurrentWeekPlanRead
+import com.gunnys.eundunhealth.domain.model.KST_ZONE
 import com.gunnys.eundunhealth.domain.model.PlanSource
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.WeeklyPlan
@@ -32,10 +33,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
-
-private val KST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
 
 @Immutable
 sealed class HomeSideEffect {
@@ -395,6 +393,7 @@ class HomeViewModel @Inject constructor(
         applyDayCompletion(current, date, newCompleted, emitUndoOnUncomplete = true)
     }
 
+    @Suppress("UnreachableCode")
     fun undoUncomplete(date: LocalDate) {
         val current = _uiState.value
         if (current !is HomeUiState.Success) return

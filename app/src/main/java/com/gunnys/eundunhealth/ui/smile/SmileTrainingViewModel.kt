@@ -7,9 +7,9 @@ import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.data.smile.MlKitFaceModuleManager
 import com.gunnys.eundunhealth.data.smile.MlKitModuleState
 import com.gunnys.eundunhealth.domain.model.AppError
-import com.gunnys.eundunhealth.domain.model.SmileSessionRecord
-import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
+import com.gunnys.eundunhealth.domain.model.KST_ZONE
 import com.gunnys.eundunhealth.domain.model.SmileTrainingSpec
+import com.gunnys.eundunhealth.domain.model.runSuspendCatching
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.smile.FrameSignal
@@ -20,25 +20,22 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
-private val KST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
-
 @Immutable
 enum class SmileSessionPhase {
-    INTRO,
     PERMISSION_RATIONALE,
     PERMISSION_BLOCKED,
     MODEL_PREPARING,
@@ -46,7 +43,6 @@ enum class SmileSessionPhase {
     READY,
     ACTIVE,
     REP_SUCCESS,
-    COMPLETED,
 }
 
 @Immutable
@@ -61,6 +57,9 @@ sealed interface SmileTrainingSideEffect {
     data object TriggerRepSuccessHaptic : SmileTrainingSideEffect
 
     @Immutable
+    data object NavigateBack : SmileTrainingSideEffect
+
+    @Immutable
     data class AnnounceAccessibility(val message: String) : SmileTrainingSideEffect
 
     @Immutable
@@ -69,7 +68,7 @@ sealed interface SmileTrainingSideEffect {
 
 @Immutable
 data class SmileTrainingUiState(
-    val phase: SmileSessionPhase = SmileSessionPhase.INTRO,
+    val phase: SmileSessionPhase = SmileSessionPhase.MODEL_PREPARING,
     val isPaused: Boolean = false,
     val readyAlignmentProgress: Float = 0f,
     val targetReps: Int = SmileTrainingSpec.TARGET_REPS,
@@ -82,15 +81,20 @@ data class SmileTrainingUiState(
     val guideMessage: String = "얼굴을 가이드 타원 안에 맞춰주세요",
     val modelDownloadPercent: Int? = null,
     val modelUnavailableReason: String? = null,
-    val sessionDurationSec: Int = 0,
-    val summaryStats: SmileSummaryStats = SmileSummaryStats(),
-    val recentSessions: List<SmileSessionRecord> = emptyList(),
     val isSavingSession: Boolean = false,
-    val isDeletingHistory: Boolean = false,
     val showExitConfirmDialog: Boolean = false,
-    val showDeleteConfirmDialog: Boolean = false,
     val error: AppError? = null,
-)
+) {
+    val heldTenthsSec: Int
+        get() = (heldDurationMs / TENTHS_SECOND_MS).toInt()
+
+    val targetTenthsSec: Int
+        get() = (targetHoldDurationMs / TENTHS_SECOND_MS).toInt()
+
+    private companion object {
+        const val TENTHS_SECOND_MS = 100L
+    }
+}
 
 @HiltViewModel
 class SmileTrainingViewModel @Inject constructor(
@@ -112,30 +116,38 @@ class SmileTrainingViewModel @Inject constructor(
     private var repTransitionJob: Job? = null
     private var modelPrepareJob: Job? = null
     private var hasSavedCurrentSession: Boolean = false
+    private var hasInitializedEntry: Boolean = false
 
     init {
-        observeRepositoryData()
         triggerOpportunisticSync()
-    }
-
-    private fun observeRepositoryData() {
-        viewModelScope.launch {
-            repository.observeSummaryStats().collectLatest { stats ->
-                _uiState.update { it.copy(summaryStats = stats) }
-            }
-        }
-        viewModelScope.launch {
-            repository.observeSessions().collectLatest { records ->
-                _uiState.update { it.copy(recentSessions = records.take(MAX_RECENT_HISTORY)) }
-            }
-        }
     }
 
     private fun triggerOpportunisticSync() {
         viewModelScope.launch {
-            runCatching { repository.refreshRemoteHistoryIfEmpty() }
-            runCatching { repository.syncPendingSessions() }
+            runSuspendCatching { repository.refreshRemoteHistoryIfEmpty() }
+            runSuspendCatching { repository.retryBlockedSessions() }
+            runSuspendCatching { repository.syncPendingSessions() }
         }
+    }
+
+    /**
+     * 스마일 트레이닝 화면 진입 즉시 카메라 하드웨어 및 권한 보유 여부를 판정하여
+     * 중간 인트로 페이지 없이 곧바로 카메라 준비(`prepareModelAndProceed`) 또는 권한 안내로 진입한다.
+     */
+    fun onInitialEntry(hasCameraHardware: Boolean, hasCameraPermission: Boolean) {
+        if (hasInitializedEntry) return
+        hasInitializedEntry = true
+        if (!hasCameraHardware) {
+            _uiState.update {
+                it.copy(
+                    phase = SmileSessionPhase.MODEL_UNAVAILABLE,
+                    modelUnavailableReason = "이 기기에서 사용 가능한 카메라를 찾을 수 없습니다.",
+                    error = null,
+                )
+            }
+            return
+        }
+        onStartClicked(hasCameraPermission = hasCameraPermission)
     }
 
     fun onStartClicked(hasCameraPermission: Boolean) {
@@ -341,7 +353,8 @@ class SmileTrainingViewModel @Inject constructor(
         )
         _uiState.update { current ->
             current.copy(
-                phase = SmileSessionPhase.INTRO,
+                phase = SmileSessionPhase.MODEL_UNAVAILABLE,
+                modelUnavailableReason = message,
                 isPaused = false,
                 readyAlignmentProgress = 0f,
                 currentRep = 0,
@@ -422,17 +435,10 @@ class SmileTrainingViewModel @Inject constructor(
                 val safeDurationSec = elapsedSec.coerceAtLeast(1)
                 val safeCompletedReps = snapshot.currentRep.coerceAtLeast(1)
 
-                _uiState.update {
-                    it.copy(
-                        phase = SmileSessionPhase.COMPLETED,
-                        sessionDurationSec = safeDurationSec,
-                        error = null,
-                    )
-                }
                 _sideEffect.trySend(
                     SmileTrainingSideEffect.AnnounceAccessibility("모든 미소 연습을 완료했습니다!"),
                 )
-                saveCompletedSessionAutomatically(
+                completeSessionAndReturn(
                     durationSec = safeDurationSec,
                     completedReps = safeCompletedReps,
                 )
@@ -462,87 +468,46 @@ class SmileTrainingViewModel @Inject constructor(
         }
     }
 
-    private fun saveCompletedSessionAutomatically(
+    private fun completeSessionAndReturn(
         durationSec: Int,
         completedReps: Int,
     ) {
         if (hasSavedCurrentSession) return
         hasSavedCurrentSession = true
+        repTransitionJob?.cancel()
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingSession = true, error = null) }
-            repository.saveCompletedSession(
-                durationSec = durationSec,
-                completedReps = completedReps,
-            ).onSuccess {
-                runCatching { themePreferences.markSmileShortcutDismissed(LocalDate.now(KST_ZONE)) }
+            val saveResult = withContext(NonCancellable) {
+                repository.saveCompletedSession(
+                    durationSec = durationSec,
+                    completedReps = completedReps,
+                ).also { result ->
+                    if (result.isSuccess) {
+                        runSuspendCatching {
+                            themePreferences.markSmileShortcutDismissed(LocalDate.now(KST_ZONE))
+                        }
+                    }
+                }
+            }
+            saveResult.onSuccess {
                 _uiState.update { it.copy(isSavingSession = false) }
                 viewModelScope.launch {
-                    runCatching { repository.syncPendingSessions() }
+                    runSuspendCatching { repository.syncPendingSessions() }
                 }
+                _sideEffect.trySend(SmileTrainingSideEffect.NavigateBack)
             }.onFailure { throwable ->
                 hasSavedCurrentSession = false
                 val appErr = throwable.toReportedAppError()
-                _uiState.update { it.copy(isSavingSession = false, error = appErr) }
-            }
-        }
-    }
-
-    fun retrySaveCompletedSession() {
-        val state = _uiState.value
-        if (state.phase != SmileSessionPhase.COMPLETED || state.isSavingSession) return
-        saveCompletedSessionAutomatically(
-            durationSec = state.sessionDurationSec.coerceAtLeast(1),
-            completedReps = state.currentRep.coerceAtLeast(1),
-        )
-    }
-
-    fun retryBlockedSync() {
-        viewModelScope.launch {
-            repository.retryBlockedSessions()
-                .onSuccess { count ->
-                    if (count > 0) {
-                        _sideEffect.trySend(
-                            SmileTrainingSideEffect.ShowSnackbar("동기화 보류 기록 ${count}건을 다시 전송합니다."),
-                        )
-                        runCatching { repository.syncPendingSessions() }
-                    }
-                }
-                .onFailure { throwable ->
-                    val appErr = throwable.toReportedAppError()
-                    _uiState.update { it.copy(error = appErr) }
-                }
-        }
-    }
-
-    fun requestDeleteAllHistory() {
-        _uiState.update { it.copy(showDeleteConfirmDialog = true) }
-    }
-
-    fun dismissDeleteAllHistoryDialog() {
-        _uiState.update { it.copy(showDeleteConfirmDialog = false) }
-    }
-
-    fun confirmDeleteAllHistory() {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    showDeleteConfirmDialog = false,
-                    isDeletingHistory = true,
-                    error = null,
-                )
-            }
-            repository.deleteAllSessions()
-                .onSuccess {
-                    _uiState.update { it.copy(isDeletingHistory = false) }
-                    _sideEffect.trySend(
-                        SmileTrainingSideEffect.ShowSnackbar("모든 스마일 트레이닝 기록이 삭제되었습니다."),
+                _uiState.update {
+                    it.copy(
+                        phase = SmileSessionPhase.MODEL_UNAVAILABLE,
+                        modelUnavailableReason = appErr.userMessage,
+                        isSavingSession = false,
+                        error = appErr,
                     )
                 }
-                .onFailure { throwable ->
-                    val appErr = throwable.toReportedAppError()
-                    _uiState.update { it.copy(isDeletingHistory = false, error = appErr) }
-                }
+            }
         }
     }
 
@@ -558,21 +523,22 @@ class SmileTrainingViewModel @Inject constructor(
             SmileSessionPhase.READY -> {
                 if (state.isPaused || state.currentRep > 0) {
                     _uiState.update { it.copy(showExitConfirmDialog = true) }
+                    false
                 } else {
-                    resetToIntro()
+                    modelPrepareJob?.cancel()
+                    repTransitionJob?.cancel()
+                    true
                 }
-                false
             }
             SmileSessionPhase.PERMISSION_RATIONALE,
             SmileSessionPhase.PERMISSION_BLOCKED,
             SmileSessionPhase.MODEL_PREPARING,
             SmileSessionPhase.MODEL_UNAVAILABLE,
-            SmileSessionPhase.COMPLETED,
             -> {
-                resetToIntro()
-                false
+                modelPrepareJob?.cancel()
+                repTransitionJob?.cancel()
+                true
             }
-            SmileSessionPhase.INTRO -> true
         }
     }
 
@@ -583,12 +549,6 @@ class SmileTrainingViewModel @Inject constructor(
     fun confirmAbortActiveSession() {
         modelPrepareJob?.cancel()
         repTransitionJob?.cancel()
-        resetToIntro()
-    }
-
-    fun resetToIntro() {
-        modelPrepareJob?.cancel()
-        repTransitionJob?.cancel()
         evaluator.reset()
         accumulatedActiveMs = 0L
         activeSegmentStartedMs = null
@@ -596,7 +556,6 @@ class SmileTrainingViewModel @Inject constructor(
         hasSavedCurrentSession = false
         _uiState.update { current ->
             current.copy(
-                phase = SmileSessionPhase.INTRO,
                 isPaused = false,
                 readyAlignmentProgress = 0f,
                 currentRep = 0,
@@ -605,19 +564,14 @@ class SmileTrainingViewModel @Inject constructor(
                 targetHoldDurationMs = SmileTrainingSpec.HOLD_DURATION_MS,
                 isInSmileState = false,
                 isFaceAligned = false,
-                sessionDurationSec = 0,
                 showExitConfirmDialog = false,
                 error = null,
             )
         }
-    }
-
-    fun clearError() {
-        _uiState.update { it.copy(error = null) }
+        _sideEffect.trySend(SmileTrainingSideEffect.NavigateBack)
     }
 
     companion object {
         const val REP_REST_DELAY_MS = 1200L
-        private const val MAX_RECENT_HISTORY = 10
     }
 }

@@ -6,6 +6,7 @@ import androidx.work.WorkManager
 import com.gunnys.eundunhealth.data.local.EundunDatabase
 import com.gunnys.eundunhealth.data.local.SmileTrainingDatabase
 import com.gunnys.eundunhealth.data.local.dao.SmileSessionDao
+import com.gunnys.eundunhealth.data.local.dao.WearBiometricDao
 import com.gunnys.eundunhealth.data.local.dao.WeeklyPlanDao
 import dagger.Module
 import dagger.Provides
@@ -33,10 +34,14 @@ object DatabaseModule {
         Room.databaseBuilder(context, EundunDatabase::class.java, "eundun_db")
             // 승인된 v2 cutover 경계에서만 v2 cache를 폐기한다. v3 이후에는 명시 migration 필수.
             .fallbackToDestructiveMigrationFrom(dropAllTables = true, 2)
+            .addMigrations(EundunDatabase.MIGRATION_3_4)
             .build()
 
     @Provides
     fun provideWeeklyPlanDao(db: EundunDatabase): WeeklyPlanDao = db.weeklyPlanDao()
+
+    @Provides
+    fun provideWearBiometricDao(db: EundunDatabase): WearBiometricDao = db.wearBiometricDao()
 
     @Provides
     @Singleton

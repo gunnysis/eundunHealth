@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,9 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -58,6 +56,7 @@ import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.onboarding.OnboardingScreen
 import com.gunnys.eundunhealth.ui.smile.SmileTrainingScreen
 import com.gunnys.eundunhealth.ui.splash.SplashScreen
+import com.gunnys.eundunhealth.ui.theme.MotionTokens
 
 @Composable
 fun AppNavigation(
@@ -68,19 +67,11 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val sessionState by authViewModel.sessionState.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
 
     // 앱을 강제 종료하지 않고 홈 화면에서 재진입(Warm Start)할 때도 최신 버전 여부를 재검증한다.
-    DisposableEffect(lifecycleOwner, authViewModel) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) {
-                authViewModel.onAppForegrounded()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+    LifecycleStartEffect(authViewModel) {
+        authViewModel.onAppForegrounded()
+        onStopOrDispose {}
     }
 
     when (val s = sessionState) {
@@ -92,16 +83,9 @@ fun AppNavigation(
                 // 유지되므로 UpdateRequiredScreen 이 계속 앱 진입을 차단한다.
             }
             var resumeTick by remember { mutableIntStateOf(0) }
-            DisposableEffect(lifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
-                        resumeTick++
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                }
+            LifecycleResumeEffect(Unit) {
+                resumeTick++
+                onPauseOrDispose {}
             }
             LaunchedEffect(s, resumeTick) {
                 authViewModel.launchImmediateUpdateIfAvailable(updateLauncher)
@@ -179,14 +163,20 @@ fun AppNavigation(
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Up,
-                    animationSpec = tween(durationMillis = 300),
-                ) + fadeIn(animationSpec = tween(durationMillis = 250))
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.DurationMedium,
+                        easing = MotionTokens.EmphasizedDecelerate,
+                    ),
+                ) + fadeIn(animationSpec = MotionTokens.standardFade())
             },
             exitTransition = {
                 slideOutOfContainer(
                     AnimatedContentTransitionScope.SlideDirection.Down,
-                    animationSpec = tween(durationMillis = 250),
-                ) + fadeOut(animationSpec = tween(durationMillis = 200))
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.DurationMedium,
+                        easing = MotionTokens.StandardEasing,
+                    ),
+                ) + fadeOut(animationSpec = tween(durationMillis = MotionTokens.DurationShort))
             },
         ) {
             SmileTrainingScreen(
@@ -237,7 +227,7 @@ fun UpdateRequiredScreen(
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = { openPlayStoreListing(context, playPackageUri) },
-                modifier = Modifier.heightIn(min = 48.dp),
+                modifier = Modifier.heightIn(min = 52.dp),
             ) {
                 Text("Google Play에서 업데이트")
             }

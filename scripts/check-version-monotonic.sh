@@ -70,8 +70,19 @@ if ! [[ "${CANDIDATE}" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
+WEAR_CANDIDATE="$(grep -E '^wearVersionCode=' "${PROPS}" | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)"
+if ! [[ "${WEAR_CANDIDATE}" =~ ^[0-9]+$ ]] || [ "${WEAR_CANDIDATE}" -le 0 ] || [ "${WEAR_CANDIDATE}" -gt 2100000000 ]; then
+  echo "ERROR: version.properties 의 wearVersionCode 를 유효한 양의 정수(1..2100000000)로 해석하지 못했습니다: '${WEAR_CANDIDATE}'." >&2
+  exit 1
+fi
+if [ "${WEAR_CANDIDATE}" -eq "${CANDIDATE}" ]; then
+  echo "ERROR: Play 멀티-AAB 규약 위반 — 모바일 versionCode(${CANDIDATE})와 워치 wearVersionCode(${WEAR_CANDIDATE})가 동일합니다." >&2
+  exit 1
+fi
+
 if [ "${CHECK_SSOT_ONLY}" = "1" ]; then
   verify_backend_ssot "${CANDIDATE}"
+  echo "wearVersionCode SSoT 확인 OK: wearVersionCode=${WEAR_CANDIDATE} (!= mobile versionCode=${CANDIDATE})."
   exit 0
 fi
 
@@ -107,4 +118,9 @@ if [ "${CANDIDATE}" -le "${LAST}" ]; then
   exit 1
 fi
 
-echo "versionCode 단조성 OK: ${CANDIDATE} > ${LAST} (Play 최고 업로드값, 원장 기준)."
+if [ "${WEAR_CANDIDATE}" -le "${LAST}" ]; then
+  echo "ERROR: wearVersionCode ${WEAR_CANDIDATE} 는 Play 에 업로드된 모바일 최고값 ${LAST} 이하입니다 (폼팩터 간 버전 코드 충돌 위험)." >&2
+  exit 1
+fi
+
+echo "versionCode 단조성 OK: mobile=${CANDIDATE}, wear=${WEAR_CANDIDATE} > ${LAST} (Play 최고 업로드값, 원장 기준)."

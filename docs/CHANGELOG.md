@@ -4,6 +4,31 @@
 
 ---
 
+## [v0.8.0] — 2026-11-09 — Wear OS 6 상시 전 구간 5차원 생체·마음 상태 런타임 · `/v2/biometrics/*` 10번째 정규 테이블 · AGP 9.5.1 · 스마일 트레이닝 무중단 직행 · Android CLI 2-Tier 통합 · 결정론적 문서 감사 린터
+
+### ⌚ 영역 A-1 — Wear OS 6 (API 36, Xiaomi Watch 5 `M2501W1`) 상시 전 구간(All-State) 5차원 생체·마음 상태 런타임 & 운영 Azure `/v2/biometrics/*` 구현 (2026-11-09)
+- **전 구간(All-State) 5차원 생체·마음 상태 분석 엔진 (`:core:wear-contract`)**: 비활동(`PASSIVE`) 구간만 분석하던 한계를 제거하고 착용 중 모든 상태(`PASSIVE`, `EXERCISE`, `ASLEEP`, `UNKNOWN`)의 1분 단위 버킷(`MinuteBiometricSample`)을 연속 수집·분석하는 `ContinuousBiometricAnalyzer`와 결정론적 GZIP + SHA-256 전송 코덱(`BiometricPayloadCodec`), 공유 계약(`BiometricSummaryContract`)을 순수 JVM 17 모듈로 구현했다(단위 테스트 `ContinuousBiometricAnalyzerTest`·`BiometricPayloadCodecTest` 통과).
+  - **5차원 지표**: ① 기저 안정 심박(`restingBpm`, 하위 20% 퍼센타일) 및 일일 평균/최소/최대 심박 ② 전 구간 4-Zone 시간 분포(`relaxedZoneMinutes` + `normalZoneMinutes` + `elevatedTensionMinutes` + `highLoadMinutes == totalMonitoredMinutes` 불변식) ③ 상태 무관 급격한 심박 변화(`rapidDeltaSpikeCount`, `|ΔBPM/min| >= 22`, `maxDeltaBpmPerMin`) ④ 지속 마음 긴장 에피소드(`tensionEpisodeCount`, `tensionMinutes`, `peakTensionBpm`) ⑤ 고부하 과부하(`activityOverloadCount`)·운동 후 2분 심박 회복력(`avgRecoveryDropBpm`, HRR)·수면 중 각성 스파이크(`sleepAwakeningCount`)·자율신경 회복 점수(`recoveryScore` 0~100).
+- **Wear OS 6 (`:wear`) 하이브리드 24/7 센서 수집 & 원형 대시보드 (`OS3.0.3.70.WO61WMIXM` 최적화)**: `WearHealthSensorGateway`(`PassiveMonitoringClient` + 100 BPM 하드웨어 코프로세서 `PassiveGoal` 웨이크업 + 포그라운드 `MeasureClient` 실시간 BPM + 동기화 직전 `flushAsync()`), `EundunPassiveListenerService`, `PassiveMonitoringBootReceiver`, `WearBiometricDatabase`(7일 롤링 SQLite `minute_biometric_buckets` + `daily_biometric_summaries`), `WearDataLayerSender`, `PhoneSyncCommandListenerService`, `WearBiometricViewModel`을 구현하고 `WearEnvironmentStatusScreen`을 실시간 BPM·착용 맥락 배지·5차원 회복 점수·권한/동기화 액션 원형 대시보드로 고도화했다.
+- **Backend (`/v2/biometrics/*`) & PostgreSQL 18 10번째 정규 테이블 (`public.biometric_daily_summaries`)**: `02_schema_create_all.sql` 및 `BiometricDailySummary` ORM 모델에 10번째 정규 테이블 `biometric_daily_summaries`(`DEFAULT uuidv7()` PK, `(user_id, record_date)` UNIQUE, 4-Zone 시간합 일치 등 21개 `CHECK` 제약)를 추가하고, `POST /v2/biometrics/sync`(`captured_at_epoch_ms` 단조 가드 멱등 Upsert), `GET /v2/biometrics/daily`, `DELETE /v2/biometrics/daily`(단독 즉시 파기) 3개 API를 신설했다(총 30개 엔드포인트 = 25 JWT + 5 공개). `account_service._purge_app_data`·`reap_orphaned_data`·`seed_edge_cases.py`(10개 테이블 100건 시딩 + 12개 SAVEPOINT 제약 검증)·`verify_containerapp_deployment.py`(`/v2/biometrics/daily` 보호 라우트 마운트 실측) 및 `backend/openapi.json`을 동기화했다.
+- **모바일 (`:app`) Room `EundunDatabase` v4 (`MIGRATION_3_4`) & 진행·프로필 허브 통합**: `WearBiometricSummaryEntity`·`WearBiometricDao`·`4.json` 스키마·`DefaultLocalDataWiper`(`dagger.Lazy<WearBiometricDao>` 지연 초기화)·`PhoneWearDataListenerService`·`WearBiometricRepositoryImpl`·`SmileSyncWorker`(오프라인 요약 자동 업로드 및 원격 복원)를 구현하고, `ProgressHubScreen`(5차원 생체·마음 상태 분석 카드, 4-Zone 분포 바, 급상승/긴장/회복 지표) 및 `ProfileHubScreen`(워치 연결 노드 상태, 지금 동기화, 단독 삭제 제어)에 통합했다. `CLAUDE.md` 룰 17 및 사용자 필수 실행 매뉴얼(`docs/reports/2026-11-09-wear-os-user-action-items-guide.md`)을 수립했다.
+
+### ⌚ 영역 A-0 — Google Wear OS 6.0 (API 36) 3모듈(`:app`, `:wear`, `:core:wear-contract`) Foundation 구축 (`2a49cea`, 2026-11-06)
+- **3모듈 경량 계약 스켈레톤 (`AC-01 ~ AC-05`, `AC-09`)**: `:core:wear-contract` 순수 JVM(`org.jetbrains.kotlin.jvm`, JDK 17) 모듈에 `WearTimeConstants.kt`(`KST_ZONE`) SSoT를 배치하고, `:wear` 모듈(`applicationId = "com.gunnys.eundunhealth"`, `minSdk = 36`, `targetSdk = 37`, `wearVersionCode = 10001`)을 신설했다. 양쪽 모듈의 `res/values/wear.xml`(`eundun_phone_companion`, `eundun_wear_companion`) 및 R8 리소스 축소기 대응 `res/raw/keep_wear_capabilities.xml`(`tools:keep="@array/android_wear_capabilities"`)을 추가해 Release APK 내 Capability 배열 보존을 보장한다.
+- **Wear Compose Material 3 (`1.7.1`) 원형 진단 UI & 29토큰 브랜드 테마 (`AC-06`, `AC-07`)**: `WearTheme.kt`에 모바일 Modern Forest & Mint와 정렬된 29개 전체 M3 컬러 토큰(Pure Black `#000000` OLED 배경, WCAG AAA 대비 최대 12.3:1)을 정의하고, `WearEnvironmentStatusScreen.kt`(`AppScaffold` → `ScreenScaffold` + `LocalScrollCaptureInProgress` 가드 → `TransformingLazyColumn` + `SurfaceTransformation`, Progressive Disclosure 확장 토글, TalkBack `stateDescription` 시맨틱, `bodyExtraSmall` 기반 192dp Small Round `1.24f` 베젤 무손실 레이아웃, 마음·생체 측정 연결 전 Foundation 진단 안내)를 구현했다. `Wear_OS_Large_Round_API_36` 에뮬레이터 콜드 부트 스모크 및 `LARGE_ROUND`/`SMALL_ROUND`/`1.24f` 대배율 프리뷰 렌더링을 검증했다.
+- **3모듈 공급망·정적 분석·CI 가드 확장 (`AC-08`, `AC-10`)**: `scripts/check-agp10-compat.sh`, `AgpBuildContractTest.kt`, `ProguardKeepRulesTest.kt`, `WearEnvironmentSpecTest.kt`, `.githooks/pre-commit`, `.github/workflows/android.yml`, `scripts/android-cli-check.sh`(`--module app|wear`, `previews wear --render`), `scripts/agents/doc_audit.py`(`wearVersionCode=10001` 및 3모듈 합산 `@Test` 266건 검증), `scripts/smoke-cold-start.sh`, `wear/gradle.lockfile`, `core/wear-contract/gradle.lockfile`을 3모듈 기준으로 확장했다.
+
+### 😊 영역 B — 스마일 트레이닝 무중단 직행(`INTRO`·`COMPLETED` 완전 제거) & Compose BOM `2026.09.00` 현대화 (`2f63aec`, 2026-11-06)
+- **Zero-Tab-Overhead 무중단 루프**: `SmileSessionPhase.INTRO`(`SmileIntroContent.kt`)와 완료 후 정적 `COMPLETED` 화면을 완전히 삭제하여, 4대 진입점 터치 즉시 `READY`(1.0초 얼굴 정렬 자동 시작) → `ACTIVE`(2초 × 3회) → `withContext(NonCancellable)` 저장 직후 이전 화면으로 자동 복귀(`NavigateBack`, 에러 시 `SaveErrorOverlayDialog`)하도록 개편했다.
+- **Compose BOM `2026.09.00` 신기술 전수 적용 & 전역 M3 통일**: `Modifier.keepScreenOn()`, `ProcessCameraProvider.awaitInstance(context)` + `awaitCancellation()`, `LifecycleStartEffect`/`LifecycleResumeEffect`, `TextAutoSize.StepBased`, 폴더블 안전 타원 클램프(`ovalHeight <= size.height * 0.44f`), `ContextExt.kt`(`findActivity()`) 및 `TimeConstants.kt`(`KST_ZONE`, `formatDurationKorean`) SSoT 통합을 완료했다.
+
+### 🛠️ 영역 C — AGP `9.5.1` 업그레이드 · Android CLI (`v1.1.16717390`) 하이브리드 통합 · 결정론적 `doc_audit.py` 전환 (`2026-11-02 ~ 2026-11-06`)
+- **AGP `9.5.0 → 9.5.1` 정식 안정판 업그레이드 (`4a3af8b`)**: 멀티 플랫폼(`linux`/`osx`/`windows`) `aapt2-9.5.1-16666295` SHA-256 해시 및 락파일을 동기화했다.
+- **Android CLI `v1.1.16717390` + Android Studio `2026.2.2` 통합 (`scripts/android-cli-check.sh`, `scripts/ensure-android-cli.sh`)**: 단일 파일 K2 Analysis API 진단(`inspect`), `@Preview` 렌더링(`previews`), Release APK 해부(`apk`, `preflight-release.sh` 연동)를 자동화했다.
+- **결정론적 문서 감사 린터(`scripts/agents/doc_audit.py`) 구축**: 외부 Claude Agent SDK 및 시크릿 의존성을 완전히 제거하고 Python 3.12+ stdlib 단독으로 0.05초 만에 6대 핵심 문서의 SSoT 불변식을 검증하도록 `.github/workflows/doc-audit.yml`을 경량화했다.
+
+---
+
 ## [v0.7.3] — 2026-10-29 — 앱 업데이트 감지 및 강제 안내 시스템 고도화 (`Strict Mandatory Update`) · Google Play In-App Updates (`2.1.0`) · 포그라운드(`ON_START`) 재검증 · 버전 SSoT 자동화
 
 > **2026-10-29 `v0.7.3` (`versionCode=44`, `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`) 프로덕션 릴리스.** 신규 버전 출시 후에도 구버전 앱 재실행 시 업데이트 안내가 뜨지 않던 5대 구조적 원인을 해결하여, 콜드 스타트와 포그라운드 재진입(`Lifecycle.Event.ON_START`) 모두에서 백엔드 `/app-compatibility`와 단말 Google Play In-App Updates SDK(`com.google.android.play:app-update-ktx:2.1.0`)를 이중(OR) 점검해 예외 없이 강제 업데이트(`UpdateRequiredScreen` 및 `AppUpdateType.IMMEDIATE` 네이티브 시트)로 전환하도록 고도화했다(설계: `docs/plans/logs/android.md`).
@@ -164,10 +189,6 @@
 
 ### 🔢 버전
 - versionName 0.3.1 → **0.4.0**, versionCode 36 → **37**. Play 업로드 성공 후 release workflow가 원장을 `LAST_UPLOADED_VERSION_CODE=37`로 갱신했다.
-
----
-
-## [Unreleased]
 
 ### 🧹 '오늘의 활동' 제거 및 Health Connect 권한 최소화 (4 → 1)
 - 홈 화면의 `TodayActivityCard` 및 관련 도메인/데이터 계층(`DailyActivity`, `GetTodayActivityUseCase`, `HealthConnectMappers`)과 전용 단위 테스트 2종을 완전 제거했다.

@@ -18,12 +18,26 @@ _java_ok() { [ -x "$1/bin/java" ] || [ -f "$1/bin/java.exe" ]; }
 # 후보의 major 버전을 출력 (예: 17, 21). java 가 없으면 빈 문자열.
 _java_major() {
     _java_ok "$1" || return 0
-    "$1/bin/java" -version 2>&1 | sed -nE 's/.*version "([0-9]+).*/\1/p' | head -1
+    local bin="$1/bin/java"
+    [ -x "$bin" ] || bin="$1/bin/java.exe"
+    "$bin" -version 2>&1 | sed -nE 's/.*version "([0-9]+).*/\1/p' | head -1
+}
+
+_export_java_home() {
+    export JAVA_HOME="$1"
+    # WSL2 에서 Windows 바이너리(android.exe 등)를 호출할 때 경로 자동 변환을 위해 WSLENV 에 JAVA_HOME/p 추가
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+        case ":${WSLENV:-}:" in
+            *:JAVA_HOME/p:*) ;;
+            *) export WSLENV="${WSLENV:+${WSLENV}:}JAVA_HOME/p" ;;
+        esac
+    fi
 }
 
 ensure_java() {
     # 1) 이미 유효한 JAVA_HOME / PATH 면 개발자의 선택을 존중하고 그대로 사용.
     if [ -n "${JAVA_HOME:-}" ] && _java_ok "$JAVA_HOME"; then
+        _export_java_home "$JAVA_HOME"
         return 0
     fi
     if command -v java >/dev/null 2>&1; then
@@ -37,13 +51,17 @@ ensure_java() {
         "/c/Program Files/Eclipse Adoptium/jdk-17"*
         "/c/Program Files/Java/jdk-17"*
         "/c/Program Files/Android/Android Studio/jbr"
+        "/mnt/c/Program Files/Microsoft/jdk-17"*
+        "/mnt/c/Program Files/Eclipse Adoptium/jdk-17"*
+        "/mnt/c/Program Files/Java/jdk-17"*
+        "/mnt/c/Program Files/Android/Android Studio/jbr"
         "${laa}/Programs/Android Studio/jbr"
     )
     local c
     # 패스 1: 정확히 JDK 17 인 후보.
     for c in "${candidates[@]}"; do
         if [ "$(_java_major "$c")" = "17" ]; then
-            export JAVA_HOME="$c"
+            _export_java_home "$c"
             echo "[ensure-java] 셸에 JAVA_HOME 없음 → JDK 17 자동 탐지: $JAVA_HOME" >&2
             return 0
         fi
@@ -51,7 +69,7 @@ ensure_java() {
     # 패스 2: 17 이 전혀 없으면 아무 유효 JDK (경고).
     for c in "${candidates[@]}"; do
         if _java_ok "$c"; then
-            export JAVA_HOME="$c"
+            _export_java_home "$c"
             echo "[ensure-java] WARNING: JDK 17 미발견 → 비-17 JDK 사용(호환 리스크): $JAVA_HOME" >&2
             return 0
         fi

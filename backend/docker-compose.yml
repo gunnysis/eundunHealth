@@ -35,7 +35,7 @@ services:
       SENTRY_DSN: ""
       ENVIRONMENT: development
       # version.properties의 최신 versionCode와 SSoT 동기화 (scripts/bump-version.sh 자동 관리)
-      MINIMUM_SUPPORTED_ANDROID_VERSION_CODE: 44
+      MINIMUM_SUPPORTED_ANDROID_VERSION_CODE: 45
     depends_on:
       db:
         condition: service_healthy

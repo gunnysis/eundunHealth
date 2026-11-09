@@ -24,6 +24,7 @@ _PG_UUIDV7_TABLES: tuple[str, ...] = (
     "meal_plans",
     "meal_plan_items",
     "smile_training_sessions",
+    "biometric_daily_summaries",
 )
 
 

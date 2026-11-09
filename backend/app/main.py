@@ -21,6 +21,7 @@ from app.routers import (
     account,
     app_compatibility,
     badge,
+    biometrics,
     goal,
     health,
     legal,
@@ -177,4 +178,5 @@ app.include_router(badge.router)
 app.include_router(account.router)
 app.include_router(goal.router)
 app.include_router(smile_training.router)
+app.include_router(biometrics.router)
 app.include_router(legal.router)

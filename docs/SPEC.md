@@ -1,27 +1,29 @@
 # eundunHealth 기능 명세서
 
-> **문서 버전:** v2.1 (현행 아키텍처 정본, 2026-10-29 최신화)  
-> **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스를 거쳐 **v0.7.0 (스마일 트레이닝 v2 및 PostgreSQL 18.4 하드 리셋)**, **v0.7.1 (콜드 스타트 크래시 핫픽스)** 및 **v0.7.2 (진행·프로필 허브 비주얼 대시보드 개편 및 AI 식단 `gpt-5.4-mini` 100K TPM 전환)** 프로덕션 배포 완료. 자세한 기술 아키텍처는 [TRD.md](./TRD.md) 참조.
+> **문서 버전:** v2.3 (현행 아키텍처 정본, 2026-11-09 최신화)  
+> **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스를 거쳐 **v0.7.0 (스마일 트레이닝 v2 및 PostgreSQL 18.4 하드 리셋)**, **v0.7.1 (콜드 스타트 크래시 핫픽스)**, **v0.7.2 (진행·프로필 허브 비주얼 대시보드 개편 및 AI 식단 `gpt-5.4-mini` 100K TPM 전환)**, **v0.7.3 (구 버전(≤43) 전수 차단 Strict Mandatory Update)** 프로덕션 배포 및 **2026-11-09 (Wear OS 6 상시 전 구간 5차원 생체·마음 상태 런타임 `:core:wear-contract` + `:wear` + `:app` + 백엔드 `/v2/biometrics/*` 10번째 정규 테이블 `biometric_daily_summaries`)** 구현 완료. 자세한 기술 아키텍처는 [TRD.md](./TRD.md) 참조.
 >
 > **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트 `eundunhealthciam`, 브라우저 위임). IdP는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계 기록이며** — 현행은 `AuthGateScreen` 단일화 및 Microsoft Graph API `DELETE /users/{oid}` 계정 탈퇴 파이프라인(`DELETE /account`)으로 완전 일원화되었다.
 > 
 > **AI 식단 생성 및 운동 한국어 현지화 (2026-09~10, v0.3.0~v0.3.1 / v0.7.2):** 주간 식단 자동 생성 기능은 Azure AI Foundry(`gpt-5.4-mini` `GlobalStandard` 100K TPM — v0.3.0 초기 `DeepSeek-V3.2`에서 v0.7.2 업그레이드)를 통해 구현되었다. 프론트엔드는 `MealPlanScreen` Compose UI와 Hilt+Retrofit(전용 130s read timeout) 통신을 사용하고, 백엔드는 FastAPI에서 `AsyncOpenAI` + OpenAI Strict JSON Schema(`json_schema`, `strict: True`)·Pydantic JSON 검증·`X-AI-Data-Processing-Consent: true` 국외 이전 사전 동의 헤더 강제 및 `MEAL_AI_ENABLED` 킬스위치를 채택했다(v0.3.1 / v0.7.2). 운동 카탈로그 46종(이름·수행 방법·팁) 및 근육/부위/장비 라벨도 한국어로 전면 현지화되었다(`ExerciseLocalization`).
 >
-> **적응형 메뉴트리 및 온디바이스 스마일 트레이닝 v2 (2026-10, v0.4.0~v0.5.0 / v0.7.0):** 로그인 후 탐색은 `오늘·식단·진행·프로필` 4개 최상위 목적지(`MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`)로 개편되었다(v0.4.0). `오늘` 탭(상단 퀵 액션 칩·스마트 코칭 카드), `운동 가이드` 완료 요약 화면, `진행` 허브 최상단에서 진입하는 **스마일 트레이닝 v2**(`SmileTrainingScreen`, v0.5.0 / v0.7.0)는 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 영상·사진을 저장하거나 전송하지 않고 기기 메모리에서만 단일 표준 규격(`2.0초 미소 유지 × 3회 반복`, 1.0초 얼굴 정렬 자동 시작)의 실시간 미소 근육 운동을 코칭하며, 오프라인 우선 Room(`SmileTrainingDatabase` v2) + `WorkManager`(`SmileSyncWorker`)와 백엔드 `smile_training_sessions` 테이블(`/v2/smile-training/*` 4개 API)로 세션 요약 및 연속일 통계를 동기화한다.
+> **적응형 메뉴트리 및 온디바이스 스마일 트레이닝 v2 (2026-10~11, v0.4.0~v0.5.0 / v0.7.0 / 2026-11-06):** 로그인 후 탐색은 `오늘·식단·진행·프로필` 4개 최상위 목적지(`MainAppShell`, `ProgressHubScreen`, `ProfileHubScreen`)로 개편되었다(v0.4.0). `오늘` 탭(상단 퀵 액션 칩·스마트 코칭 카드), `운동 가이드` 완료 요약 화면, `진행` 허브 최상단에서 진입하는 **스마일 트레이닝 v2**(`SmileTrainingScreen`, v0.5.0 / v0.7.0 / 2026-11-06)는 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 영상·사진을 저장하거나 전송하지 않고 기기 메모리에서만 단일 표준 규격(`2.0초 미소 유지 × 3회 반복`)의 실시간 미소 근육 운동을 코칭한다. 2026-11-06(`2f63aec`)에서 정적 `INTRO`·`COMPLETED` 단계를 제거하여 진입 즉시 `READY`(1.0초 얼굴 정렬 자동 시작) → `ACTIVE`(3회 완료 시 `NonCancellable` Room 저장 후 즉시 `NavigateBack`) 무중단 직행 플로우로 동작하며, 오프라인 우선 Room(`SmileTrainingDatabase` v2) + `WorkManager`(`SmileSyncWorker`)와 백엔드 `smile_training_sessions` 테이블(`/v2/smile-training/*` 4개 API)로 세션 요약 및 연속일 통계를 동기화한다.
 >
 > **적응형 주간 운동 계획 v2 및 휴식 요일 자유 다중 지정 (`restDays`, 2026-10-27, v0.6.0):** 주간 운동 계획이 `/v2/weekly-plan` 계약과 `planMode`(`gym` / `home`) 필수 스키마, 그리고 프로필 다중 휴식 요일 `restDays`(`INTEGER[]`, 주 1~6일 자유 선택, Zero-Legacy 전환)로 전환되었다. 사용자는 매주 월요일(KST) 첫 진입 시 `헬스장`(ExerciseDB 기반) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `prescriptionUnit = REPS | SECONDS`) 환경을 직접 선택해 계획을 생성하거나, 프로필 허브의 `기본 운동 환경`(`PUT /v2/profile/default-workout-plan-mode`)을 설정해 주간 자동 생성을 사용할 수 있다. 비휴식일(1~6일)에는 대근육 우선순위 큐(`[PUSH → LEGS → PULL → CARDIO → MIXED → CARDIO]`)가 순환 배치되며, 주중 계획은 불변(동일 주 재생성 시 409 `weekly_plan_exists`)이고 손상된 계획 복구만 명시적 `DELETE /v2/weekly-plan`으로 허용한다.
 >
-> **UI/UX 전면 리뉴얼 및 브랜드 시스템 (2026-10-28, v0.6.1, `PROP-05`):** Material 3 테마를 기반으로 한 **Modern Forest & Mint (36슬롯)** 시맨틱 컬러 팔레트(`EundunExtendedColors`), Pretendard Variable 가변 폰트, `TodayHeroCard`, 단계별 운동 가이드, 하이브리드 바디 피커, 12개 UDF ViewModel 및 DayNight 테마 전환 깜빡임 방지가 적용되었다.
+> **UI/UX 전면 리뉴얼 및 브랜드 시스템 (2026-10-28, v0.6.1, `PROP-05`):** Material 3 테마를 기반으로 한 **Modern Forest & Mint (36슬롯)** 시맨틱 컬러 팔레트(`EundunExtendedColors`), Pretendard Variable 가변 폰트, `TodayHeroCard`, 단계별 운동 가이드, 하이브리드 바디 피커, 14개 UDF ViewModel 및 DayNight 테마 전환 깜빡임 방지가 적용되었다.
 >
 > **PostgreSQL 18 하드 리셋 & 스키마 라이프사이클 현대화 (2026-10-29, v0.7.0 / v0.7.1):** Azure PostgreSQL 18.4 Flexible Server 도입과 함께 과거 Alembic 마이그레이션 체계를 완전 폐기하고 **Drop & Recreate 전용 하드 리셋 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()` PK)** 및 `python -m app.schema_bootstrap` 멱등 부트스트랩으로 전환하여 Zero-Legacy 스키마 거버넌스를 확립했다.
+>
+> **Wear OS 6 (API 36) 상시 5차원 생체·마음 상태 런타임 & 3모듈 아키텍처 (2026-11-06 ~ 2026-11-09, `PROP-06`):** 모바일 `:app`(`versionCode=44`, `EundunDatabase` v4 + `PhoneWearDataListenerService` + 진행/프로필 허브 워치 상시 생체 대시보드), 스마트워치 `:wear`(`wearVersionCode=10001`, `minSdk=36`, Wear Compose Material 3 `1.7.1`, `PassiveMonitoringClient` 24/7 백그라운드 + `MeasureClient` 실시간 심박 + `WearBiometricDatabase`), 순수 JVM 17 공유 계약 `:core:wear-contract`(`ContinuousBiometricAnalyzer` 5차원 분석 엔진 + `BiometricPayloadCodec` GZIP/SHA-256 코덱) 및 백엔드 `/v2/biometrics/*` 3개 API(10번째 정규 테이블 `biometric_daily_summaries`)로 통합되었다.
 
 ## 프로젝트 개요
 
-**은둔헬스(eundunHealth)** 는 사용자의 신체 정보와 운동 환경(`헬스장` / `홈트레이닝`)을 기반으로 맞춤 주간 운동 계획과 AI 주간 식단 가이드를 생성하고, 운동 달성을 추적하는 Android 앱입니다.
+**은둔헬스(eundunHealth)** 는 사용자의 신체 정보와 운동 환경(`헬스장` / `홈트레이닝`)을 기반으로 맞춤 주간 운동 계획과 AI 주간 식단 가이드를 생성하고, 운동 달성 및 Wear OS 6 스마트워치 상시 생체·마음 상태 추세를 추적하는 Android + Wear OS 6 멀티모듈 앱입니다.
 
-- **패키지**: `com.gunnys.eundunhealth`
-- **최소 SDK**: 26 (Android 8.0 Oreo)
-- **대상 SDK**: 37 (Android 17)
+- **패키지**: `com.gunnys.eundunhealth` (`:app`, `:wear` 동일 `applicationId` 공유)
+- **최소 SDK**: `:app` 26 (Android 8.0 Oreo) / `:wear` 36 (Wear OS 6.0 / Android 16)
+- **대상 SDK**: 37 (Android 17, `:app` & `:wear`)
 - **백엔드**: FastAPI (Python 3.14) — 비동기 고성능 REST API
 - **운동 데이터**: OSS ExerciseDB(`oss.exercisedb.dev`, 무인증) + 앱 내 46종 한국어 현지화 사전(`ExerciseLocalization`) + 홈트레이닝 내장 18종 무장비 카탈로그(`HomeWeeklyPlanGenerator`).
 - **AI 식단**: Azure AI Foundry (`gpt-5.4-mini`, Korea Central `hub-eundunhealth-prod`, `GlobalStandard` 100K TPM).
@@ -33,31 +35,35 @@
 
 > 버전 단일 진실 공급원(SSoT): Android = `gradle/libs.versions.toml`, Backend = `backend/requirements.txt` (요약: `CLAUDE.md` Key Technical Details / `README.md` 기술 스택).
 
-### Android (클라이언트)
+### Android & Wear OS (클라이언트 3모듈)
 
 | 기술 | 용도 |
 | ------ | ------ |
-| Kotlin (2.4.21 내장) | 언어 |
-| Jetpack Compose (BOM) + Material 3 | UI 프레임워크 (Modern Forest & Mint 36슬롯 + Pretendard Variable) |
-| Hilt | 의존성 주입 |
-| Room + WorkManager | 로컬 데이터베이스 (오프라인 캐시) 및 백그라운드 동기화 |
-| CameraX + ML Kit Face Detection | 온디바이스 전면 카메라 미소 검출 (무저장·무전송) |
-| Retrofit + OkHttp | 백엔드 API 통신 |
-| Coil 3 | 이미지/GIF 로딩 |
-| DataStore | 설정 영속화 (테마/리셋 플래그) |
-| MSAL Android | 인증 (Entra External ID OIDC/PKCE 브라우저 위임) |
+| Kotlin (2.4.21 내장) | 언어 (`:app`, `:wear`, `:core:wear-contract`) |
+| Jetpack Compose (BOM 2026.09.00) + Material 3 | `:app` UI 프레임워크 (Modern Forest & Mint 36슬롯 + Pretendard Variable) |
+| Wear Compose Material 3 (1.7.1) + Foundation (1.7.1) | `:wear` 원형 워치 UI (`AppScaffold`, `ScreenScaffold`, `TransformingLazyColumn`, 29슬롯 OLED 다크 토큰) |
+| Wear Health Services (`1.1.0-rc01`) + Play Services Wearable (`19.0.0`) | `:wear` 24/7 상시 생체 수집(`PassiveMonitoringClient` + `MeasureClient`) 및 `:wear`↔`:app` 양방향 Data Layer 동기화 |
+| `:core:wear-contract` (Pure JVM 17) | `:app`·`:wear` 공유 계약 (`WearTimeConstants.KST_ZONE`, `ContinuousBiometricAnalyzer` 5차원 분석기, `BiometricPayloadCodec` GZIP+SHA-256 코덱) |
+| Hilt (2.60.1) | 의존성 주입 (`:app`) |
+| Room (2.8.5) + WorkManager (2.12.0) | 로컬 데이터베이스 (`EundunDatabase` v4, `SmileTrainingDatabase` v2) 및 백그라운드 동기화 (`SmileSyncWorker`) |
+| CameraX (1.6.2) + ML Kit Face Detection (17.1.0) | 온디바이스 전면 카메라 미소 검출 (무저장·무전송) |
+| Retrofit (3.0.0) + OkHttp (5.5.1) + OpenAPI Generator (7.26.0) | 백엔드 API 통신 및 정적 타입 안전한 클라이언트 코드젠 |
+| Coil 3 (3.6.3) | 이미지/GIF 로딩 |
+| DataStore (1.3.0) | 설정 영속화 (테마/리셋 플래그) |
+| MSAL Android (8.6.0) | 인증 (Entra External ID OIDC/PKCE 브라우저 위임) |
 | Health Connect (1.1.0) | 활동 자동 추적 (운동 세션 읽기 단독) |
-| Sentry Android SDK | 크래시/ANR/네트워크 분산 추적 모니터링 |
-| Navigation Compose | 최상위 4대 목적지 라우팅 |
-| Vico (compose-m3) | 통계·목표 차트 시각화 |
+| Google Play In-App Updates (2.1.0) | 강제 업데이트 체크 및 Play 스토어 인앱 업데이트 연동 |
+| Sentry Android SDK (8.61.1) | 크래시/ANR/네트워크 분산 추적 모니터링 |
+| Navigation Compose (2.10.2) | 최상위 4대 목적지 라우팅 (`:app`) |
+| Vico (3.3.1, compose-m3) | 통계·목표 차트 시각화 |
 
 ### Backend (서버)
 
 | 기술 | 용도 |
 | ------ | ------ |
-| FastAPI 0.161.0 (Python 3.14) + uvicorn | 비동기 고성능 HTTP 서버 |
+| FastAPI 0.162.0 / Starlette 1.10.0 (Python 3.14) + uvicorn | 비동기 고성능 HTTP 서버 |
 | SQLAlchemy 2.0 async + asyncpg 0.32.0 | 비동기 ORM 및 연결 풀 관리 |
-| PostgreSQL 18 DDL (`02_schema_create_all.sql`) | 엄격한 3NF 9개 도메인 테이블 생성 (Zero-Legacy Drop & Recreate) |
+| PostgreSQL 18 DDL (`02_schema_create_all.sql`) | 엄격한 3NF 10개 도메인 테이블 생성 (`biometric_daily_summaries` 포함, Zero-Legacy Drop & Recreate) |
 | `python -m app.schema_bootstrap` | 기동 시 멱등 스키마 테이블 검증 |
 | PyJWT (JWKS, RS256) | Entra CIAM 액세스 토큰 서명/클레임(`oid`, `scp`) 검증 |
 | OpenAI Python SDK (`AsyncOpenAI`) + Tenacity | AI 식단 생성 (Azure AI Foundry gpt-5.4-mini (GlobalStandard)) |
@@ -65,7 +71,7 @@
 
 ### 빌드 도구
 
-AGP 9.4.1 · Gradle 9.8.2 · KSP 2.0.21-1.0.28 · Sentry Gradle Plugin · Detekt 1.23.8 · Spotless 8.10.4 — 버전은 `gradle/libs.versions.toml` 참조.
+AGP 9.5.1 · Gradle 9.8.2 · KSP 2.3.12 · Sentry Gradle Plugin 6.24.0 · Detekt 1.23.8 · Spotless 8.10.4 — 버전은 `gradle/libs.versions.toml` 참조.
 
 ### 인프라
 
@@ -234,7 +240,7 @@ AGP 9.4.1 · Gradle 9.8.2 · KSP 2.0.21-1.0.28 · Sentry Gradle Plugin · Detekt
 | :--- | :--- | :--- | :---: | :--- |
 | **System** | `GET` | `/health` | X | 라이브니스 프로브 (DB Ping 검증, `status: healthy`) |
 | | `GET` | `/health/ready` | X | 레디니스 프로브 (DB 및 필수 환경 설정 점검) |
-| | `GET` | `/app-compatibility?version_code=` | X | 앱 버전 호환성 체크 (`minimumSupportedVersionCode: 41`) |
+| | `GET` | `/app-compatibility?version_code=` | X | 앱 버전 호환성 체크 (`minimumSupportedVersionCode: 44`) |
 | **Profile** | `GET` | `/profile` | **O** | 현재 사용자 프로필 및 다중 휴식 요일(`rest_days`) 조회 |
 | | `PUT` | `/profile` | **O** | 신체 정보 갱신 (키·몸무게·체지방률·골격근량, 시계열 이력 자동 기록) |
 | | `GET` | `/profile/history?limit=` | **O** | 신체 스펙 변경 시계열 히스토리 조회 (최대 50건) |
@@ -282,37 +288,48 @@ AGP 9.4.1 · Gradle 9.8.2 · KSP 2.0.21-1.0.28 · Sentry Gradle Plugin · Detekt
 
 ## 프로젝트 구조
 
-### Android (`com.gunnys.eundunhealth`)
+### Android & Wear OS (`com.gunnys.eundunhealth`)
 
 ```text
+core/wear-contract/src/main/kotlin/com/gunnys/eundunhealth/wear/contract/
+└── WearTimeConstants.kt               # :app·:wear 공유 타임존 상수 (KST_ZONE = Asia/Seoul)
+
+wear/src/main/java/com/gunnys/eundunhealth/wear/
+└── presentation/
+    ├── MainActivity.kt                    # Wear OS 6 단일 Activity (ComponentActivity + EundunWearTheme)
+    ├── WearEnvironmentSpec.kt             # 워치 런타임/빌드/타임존 스펙 SSoT (@Immutable)
+    ├── WearEnvironmentStatusScreen.kt     # Wear OS 6 환경 준비 상태 진단 UI (AppScaffold → ScreenScaffold → TransformingLazyColumn)
+    └── theme/
+        └── WearTheme.kt                   # OLED 순수 블랙(#000000) & 에메랄드 민트 29개 컬러 토큰 (EundunWearColorScheme + EundunWearTheme)
+
 app/src/main/java/com/gunnys/eundunhealth/
-├── EundunHealthApplication.kt         # Application (Hilt + Sentry 초기화)
+├── EundunHealthApplication.kt         # Application (Hilt + Sentry 초기화 + WorkManager Configuration.Provider)
 ├── MainActivity.kt                    # Single Activity (Modern Forest & Mint 테마, Health Connect 권한)
 ├── data/
 │   ├── auth/AuthRepositoryImpl.kt     # MSAL Android OIDC 브라우저 위임 세션 및 토큰 관리
 │   ├── healthconnect/                 # Health Connect 1.1.0 운동 세션 감지 및 데이터 소스
 │   ├── local/                         # Room DB (eundunhealth.db v3, smile_training.db v2)
 │   ├── preferences/                   # DataStore Preferences (테마, 리셋 플래그)
-│   ├── remote/                        # Retrofit2 + OkHttp3 (EundunApi, Interceptor, DTO)
+│   ├── remote/                        # Retrofit2 + OkHttp3 (OpenAPI 생성 API 클라이언트, Interceptor, ExerciseDbApi)
 │   ├── sync/SmileSyncWorker.kt        # WorkManager 기반 스마일 세션 백그라운드 동기화
 │   └── repository/                    # Clean Architecture 도메인 Repository 구현체
-├── di/                                # Hilt Modules (NetworkModule, DatabaseModule, RepositoryModule)
+├── di/                                # Hilt Modules (NetworkModule, DatabaseModule, AuthModule, SmileTrainingModule)
 ├── domain/
 │   ├── model/                         # WeeklyPlan, DayPlan, Exercise, SmileTraining, UserProfile
 │   ├── repository/                    # 도메인 인터페이스 계약
-│   └── usecase/                       # HomeWeeklyPlanGenerator, CheckBadges, SyncSmileSessions
+│   └── usecase/                       # HomeWeeklyPlanGenerator, ExerciseLocalization, WeeklyPlanGenerator
 └── ui/
     ├── auth/AuthGateScreen.kt         # 단일 인증 관문 (브라우저 위임, 인라인 에러 배너)
-    ├── main/MainAppShell.kt           # 최상위 4대 탭 바텀 네비게이션 셸 (오늘/식단/진행/프로필)
-    ├── today/                         # 오늘 탭 (TodayHeroCard, 퀵 액션, 스마트 코칭)
+    ├── navigation/MainAppShell.kt     # 최상위 4대 탭 적응형 스캐폴드 셸 (오늘/식단/진행/프로필)
+    ├── navigation/ProgressHubScreen.kt # 진행 허브 (12주 히트맵, Vico 차트, 배지 컬렉션, 스마일 진입)
+    ├── home/                          # 오늘 탭 (TodayHeroCard, 퀵 액션, 스마트 코칭, 요일별 운동 카드)
     ├── workout/                       # 운동 상세 및 단계별 운동 가이드 모드
-    ├── meal/                          # 식단 탭 (AI 맞춤 주간 식단 생성 및 조회)
-    ├── progress/                      # 진행 탭 (12주 통계, Vico 차트, 배지 컬렉션, 스마일 진입)
-    ├── smile/SmileTrainingScreen.kt   # 온디바이스 스마일 트레이닝 v2 (CameraX + ML Kit)
-    ├── profile/                       # 프로필 탭 (신체 정보 수정, 휴식 요일, 환경 설정)
+    ├── mealplan/                      # 식단 탭 (AI 맞춤 주간 식단 생성 및 조회)
+    ├── smile/SmileTrainingScreen.kt   # 온디바이스 스마일 트레이닝 v2 (READY -> ACTIVE -> NavigateBack)
+    ├── profile/ProfileHubScreen.kt    # 프로필 탭 (신체 정보 수정, 휴식 요일, 1-Tap 3버튼 테마 세그먼트)
     ├── onboarding/                    # 온보딩 신체 정보 하이브리드 입력 피커
-    ├── theme/                         # Modern Forest & Mint 36슬롯, Pretendard Variable 가변 폰트
-    └── navigation/                    # Compose Navigation 4대 목적지 라우트 계약
+    ├── update/                        # 강제 업데이트 게이트 (MandatoryUpdateScreen, UpdateGateViewModel)
+    └── theme/                         # Modern Forest & Mint 36슬롯, Pretendard Variable 가변 폰트
 ```
 
 ### Backend (`backend/app`)
@@ -321,28 +338,28 @@ app/src/main/java/com/gunnys/eundunhealth/
 backend/
 ├── Dockerfile                         # Python 3.14-slim 기반 경량 컨테이너
 ├── requirements.txt                   # pip-compile SHA-256 해시 락 무결성 보장
-├── schema/
+├── sql/
 │   ├── 01_cleanup_drop_all.sql        # 하드 리셋 전용 스키마 정리 스크립트
 │   └── 02_schema_create_all.sql       # 3NF 정규화 9개 테이블 (DEFAULT uuidv7() PK)
 └── app/
-    ├── main.py                        # FastAPI 앱 진입점 (Lifespan, CORS, Sentry 미들웨어)
-    ├── config.py                      # Pydantic BaseSettings 환경변수 단일 진실 공급원
+    ├── main.py                        # FastAPI 앱 진입점 (Lifespan, CORS, Sentry 미들웨어, /privacy, /account-deletion)
+    ├── config.py                      # Pydantic BaseSettings 환경변수 단일 진실 공급원 (MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44)
     ├── database.py                    # SQLAlchemy 2.0 비동기 엔진 및 asyncpg 세션 풀 (3+2)
     ├── dependencies.py                # Entra CIAM JWT 서명/클레임(oid, scp) 검증 의존성
     ├── schema_bootstrap.py            # 기동 시 멱등 스키마 테이블 검증 모듈
     ├── models/                        # SQLAlchemy 2.0 9개 도메인 ORM 모델
     ├── schemas/                       # Pydantic v2 직렬화 및 엄격한 입력값 검증 DTO
     ├── services/                      # 비즈니스 서비스 (Account, Plan, Meal, Smile, Badge)
-    └── routers/                       # 8개 도메인 APIRouter (총 27개 엔드포인트)
+    └── routers/                       # 9개 도메인 APIRouter 파일 (main.py 포함 총 27개 엔드포인트)
         ├── account.py                 # DELETE /account (회원 탈퇴 & Graph 영구 파기)
-        ├── system.py                  # /health, /health/ready, /app-compatibility
-        ├── profile.py                 # /profile, /profile/history, default-workout-plan-mode
-        ├── weekly_plan_v2.py          # /v2/weekly-plan/* (생성, 조회, 토글, 통계, 삭제)
-        ├── smile_training.py          # /v2/smile-training/* (세션 등록, 조회, 통계, 초기화)
-        ├── meals.py                   # /meals/* (AI 식단 생성 및 조회)
-        ├── badges.py                  # /badges/* (배지 조회 및 수여)
-        ├── goals.py                   # /goals (목표 체중/체지방률 관리)
-        └── legal.py                   # /privacy, /account-deletion
+        ├── app_compatibility.py       # GET /app-compatibility (최소 지원 버전 강제 게이트)
+        ├── badge.py                   # /badges/* (배지 조회 및 수여)
+        ├── goal.py                    # /goals (목표 체중/체지방률 관리)
+        ├── health.py                  # /health, /health/ready
+        ├── meal_plan.py               # /meals/* (AI 식단 생성 및 조회)
+        ├── profile.py                 # /profile, /profile/history, /v2/profile/default-workout-plan-mode
+        ├── smile_training.py          # /v2/smile-training/* (세션 등록, 조회, 통계, 전체 초기화)
+        └── weekly_plan.py             # /v2/weekly-plan/* (생성, 조회, 직전 주, 토글, 히스토리, 통계, 삭제)
 ```
 
 ---
@@ -381,7 +398,7 @@ backend/
 | 서비스 | 용도 | 키 및 설정 위치 |
 | :--- | :--- | :--- |
 | **Microsoft Entra External ID** | OIDC/PKCE 브라우저 위임 인증 | `app/src/{debug,release}/res/raw/auth_config_ciam.json` (client_id, authority) + `ENTRA_API_SCOPE` |
-| **Microsoft Graph API (v1.0)** | 회원 탈퇴 시 계정 영구 삭제 (`DELETE /users/{oid}`) | Azure Key Vault (`entra-client-id`, `entra-client-secret`, `entra-tenant-id`) |
+| **Microsoft Graph API (v1.0)** | 회원 탈퇴 시 계정 영구 삭제 (`DELETE /users/{oid}`) | Azure Key Vault (`entra-backend-client-id`, `entra-backend-client-secret`, `entra-tenant-id`) |
 | **OSS ExerciseDB** | 헬스장 모드 7개 부위 운동 데이터 카탈로그 | `https://oss.exercisedb.dev/api/v1/` (무인증 오픈 API, 키 불필요) |
 | **Azure AI Foundry** | AI 맞춤 주간 식단 생성 (`gpt-5.4-mini` `GlobalStandard` 100K TPM) | Azure Key Vault (`deepseek-endpoint`, `deepseek-key`) |
 | **Sentry.io** | 풀스택 에러 모니터링 및 APM 트레이싱 | Android: `local.properties` or CI 시크릿 / Backend: Key Vault `sentry-dsn-backend` |

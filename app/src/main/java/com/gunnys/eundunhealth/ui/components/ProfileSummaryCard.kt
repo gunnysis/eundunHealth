@@ -18,6 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.TOTAL_DAYS_IN_WEEK
 import com.gunnys.eundunhealth.domain.model.normalizeRestDays
+import com.gunnys.eundunhealth.ui.theme.EundunHealthTheme
 
 @Composable
 fun ProfileSummaryCard(
@@ -103,7 +104,7 @@ private fun SummaryEntry(
 @Preview(showBackground = true)
 @Composable
 private fun ProfileSummaryCardPreview() {
-    MaterialTheme {
+    EundunHealthTheme {
         ProfileSummaryCard(
             height = 175f,
             weight = 70.5f,

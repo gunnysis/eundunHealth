@@ -6,6 +6,7 @@ import com.gunnys.eundunhealth.data.smile.MlKitModuleState
 import com.gunnys.eundunhealth.domain.model.SmileSessionRecord
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.SmileSyncStatus
+import com.gunnys.eundunhealth.domain.model.formatDurationKorean
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.SyncBatchOutcome
 import com.gunnys.eundunhealth.domain.smile.FrameSignal
@@ -16,7 +17,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -29,6 +32,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SmileTrainingViewModelTest {
@@ -52,11 +56,21 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
+    fun `initial entry without camera hardware transitions to MODEL_UNAVAILABLE`() = runTest {
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.onInitialEntry(hasCameraHardware = false, hasCameraPermission = true)
+        assertEquals(SmileSessionPhase.MODEL_UNAVAILABLE, vm.uiState.value.phase)
+        assertTrue(vm.uiState.value.modelUnavailableReason!!.contains("카메라"))
+    }
+
+    @Test
     fun `start without camera permission transitions to PERMISSION_RATIONALE`() = runTest {
         val vm = createViewModel()
         advanceUntilIdle()
 
-        vm.onStartClicked(hasCameraPermission = false)
+        vm.onInitialEntry(hasCameraHardware = true, hasCameraPermission = false)
         assertEquals(SmileSessionPhase.PERMISSION_RATIONALE, vm.uiState.value.phase)
 
         vm.onCameraPermissionResult(isGranted = false, shouldShowRationale = false)
@@ -64,11 +78,11 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
-    fun `start with permission checks ML Kit module and transitions to READY`() = runTest {
+    fun `initial entry with permission checks ML Kit module and transitions directly to READY without INTRO`() = runTest {
         val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
         advanceUntilIdle()
 
-        vm.onStartClicked(hasCameraPermission = true)
+        vm.onInitialEntry(hasCameraHardware = true, hasCameraPermission = true)
         advanceUntilIdle()
 
         assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
@@ -139,9 +153,13 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
-    fun `full active session flow completes 3 reps and automatically saves and transitions to COMPLETED`() = runTest {
+    fun `full active session flow completes 3 reps, saves session, and emits NavigateBack without completion page`() = runTest {
         val fakeRepo = FakeSmileTrainingRepository()
         val vm = createViewModel(repository = fakeRepo, moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        val effects = mutableListOf<SmileTrainingSideEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.sideEffect.collect { effects.add(it) }
+        }
         advanceUntilIdle()
 
         vm.onStartClicked(hasCameraPermission = true)
@@ -150,7 +168,7 @@ class SmileTrainingViewModelTest {
         vm.beginActiveExercise()
         assertEquals(SmileSessionPhase.ACTIVE, vm.uiState.value.phase)
 
-        // Complete rep 1 (2000ms target hold: 1000 -> 1350 -> 1700 -> 2050 -> 2400 -> 2750 -> 3000ms)
+        // Complete rep 1 (2000ms target hold)
         completeOneStandardRep(vm, startTimeMs = 1000L)
         assertEquals(SmileSessionPhase.REP_SUCCESS, vm.uiState.value.phase)
         assertEquals(1, vm.uiState.value.currentRep)
@@ -166,12 +184,12 @@ class SmileTrainingViewModelTest {
         advanceTimeBy(SmileTrainingViewModel.REP_REST_DELAY_MS + 100L)
         assertEquals(SmileSessionPhase.ACTIVE, vm.uiState.value.phase)
 
-        // Complete rep 3 -> directly transitions to COMPLETED and saves session without REFLECTION phase
+        // Complete rep 3 -> saves session and emits NavigateBack without stopping at a COMPLETED page
         completeOneStandardRep(vm, startTimeMs = 9000L)
         advanceUntilIdle()
 
-        assertEquals(SmileSessionPhase.COMPLETED, vm.uiState.value.phase)
         assertEquals(3, vm.uiState.value.currentRep)
+        assertTrue(effects.contains(SmileTrainingSideEffect.NavigateBack))
         val saved = fakeRepo.observeSessions().first()
         assertEquals(1, saved.size)
         assertEquals(3, saved.first().completedReps)
@@ -180,8 +198,27 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
+    fun `local save failure on session completion falls back to MODEL_UNAVAILABLE with inline AppError`() = runTest {
+        val failingRepo = FakeSmileTrainingRepository(shouldFailSave = true)
+        val vm = createViewModel(repository = failingRepo, moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        advanceUntilIdle()
+
+        vm.beginActiveExercise(nowElapsedMs = 0L)
+        completeOneStandardRep(vm, startTimeMs = 0L)
+        advanceTimeBy(SmileTrainingViewModel.REP_REST_DELAY_MS + 100L)
+        completeOneStandardRep(vm, startTimeMs = 4000L)
+        advanceTimeBy(SmileTrainingViewModel.REP_REST_DELAY_MS + 100L)
+        completeOneStandardRep(vm, startTimeMs = 8000L)
+        advanceUntilIdle()
+
+        assertEquals(SmileSessionPhase.MODEL_UNAVAILABLE, vm.uiState.value.phase)
+        assertNotNull(vm.uiState.value.error)
+    }
+
+    @Test
     fun `pause or lifecycle ON_STOP during ACTIVE preserves completed reps and resumes cleanly`() = runTest {
-        val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        val fakeRepo = FakeSmileTrainingRepository()
+        val vm = createViewModel(repository = fakeRepo, moduleManager = FakeModuleManager(MlKitModuleState.Available))
         advanceUntilIdle()
 
         vm.beginActiveExercise(nowElapsedMs = 0L)
@@ -208,26 +245,30 @@ class SmileTrainingViewModelTest {
         completeOneStandardRep(vm, startTimeMs = 9000L)
         advanceUntilIdle()
 
-        assertEquals(SmileSessionPhase.COMPLETED, vm.uiState.value.phase)
         assertEquals(3, vm.uiState.value.currentRep)
+        assertEquals(1, fakeRepo.observeSessions().first().size)
     }
 
     @Test
-    fun `onCameraError transitions back to INTRO with inline AppError`() = runTest {
+    fun `onCameraError transitions to MODEL_UNAVAILABLE with inline AppError`() = runTest {
         val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
         advanceUntilIdle()
 
         vm.beginActiveExercise(nowElapsedMs = 0L)
         vm.onCameraError("카메라를 시작할 수 없습니다.")
 
-        assertEquals(SmileSessionPhase.INTRO, vm.uiState.value.phase)
+        assertEquals(SmileSessionPhase.MODEL_UNAVAILABLE, vm.uiState.value.phase)
         assertNotNull(vm.uiState.value.error)
         assertEquals("카메라를 시작할 수 없습니다.", vm.uiState.value.error?.userMessage)
     }
 
     @Test
-    fun `back request during ACTIVE shows exit confirm dialog instead of immediately popping`() = runTest {
+    fun `back request during ACTIVE shows exit confirm dialog and confirmAbort emits NavigateBack`() = runTest {
         val vm = createViewModel()
+        val effects = mutableListOf<SmileTrainingSideEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.sideEffect.collect { effects.add(it) }
+        }
         advanceUntilIdle()
 
         vm.beginActiveExercise(nowElapsedMs = 0L)
@@ -237,8 +278,10 @@ class SmileTrainingViewModelTest {
         assertTrue(vm.uiState.value.showExitConfirmDialog)
 
         vm.confirmAbortActiveSession()
-        assertEquals(SmileSessionPhase.INTRO, vm.uiState.value.phase)
+        advanceUntilIdle()
+
         assertFalse(vm.uiState.value.showExitConfirmDialog)
+        assertTrue(effects.contains(SmileTrainingSideEffect.NavigateBack))
     }
 
     @Test
@@ -262,7 +305,20 @@ class SmileTrainingViewModelTest {
     }
 
     @Test
-    fun `paused interval is excluded from final sessionDurationSec`() = runTest {
+    fun `back request during initial READY before any rep returns true to pop screen immediately`() = runTest {
+        val vm = createViewModel(moduleManager = FakeModuleManager(MlKitModuleState.Available))
+        advanceUntilIdle()
+
+        vm.onStartClicked(hasCameraPermission = true)
+        advanceUntilIdle()
+        assertEquals(SmileSessionPhase.READY, vm.uiState.value.phase)
+
+        val shouldPop = vm.onBackOrExitRequested()
+        assertTrue(shouldPop)
+    }
+
+    @Test
+    fun `paused interval is excluded from saved session durationSec`() = runTest {
         val fakeRepo = FakeSmileTrainingRepository()
         val vm = createViewModel(repository = fakeRepo, moduleManager = FakeModuleManager(MlKitModuleState.Available))
         advanceUntilIdle()
@@ -279,11 +335,11 @@ class SmileTrainingViewModelTest {
         completeOneStandardRep(vm, startTimeMs = 604_000L)
         advanceUntilIdle()
 
-        assertEquals(SmileSessionPhase.COMPLETED, vm.uiState.value.phase)
+        val savedDurationSec = fakeRepo.observeSessions().first().first().durationSec
         // Active time was ~2.1s + ~6.1s = ~8s, NOT 606s!
         assertTrue(
-            "Expected active duration under 20s, got ${vm.uiState.value.sessionDurationSec}",
-            vm.uiState.value.sessionDurationSec in 6..15,
+            "Expected active duration under 20s, got $savedDurationSec",
+            savedDurationSec in 6..15,
         )
     }
 
@@ -322,11 +378,13 @@ class SmileTrainingViewModelTest {
         ): MlKitModuleState = result
     }
 
-    private class FakeSmileTrainingRepository : SmileTrainingRepository {
+    private class FakeSmileTrainingRepository(
+        private val shouldFailSave: Boolean = false,
+    ) : SmileTrainingRepository {
         private val sessionsFlow = MutableStateFlow<List<SmileSessionRecord>>(emptyList())
         private val statsFlow = MutableStateFlow(SmileSummaryStats())
 
-        override fun observeSessions(): Flow<List<SmileSessionRecord>> = sessionsFlow
+        override fun observeSessions(limit: Int): Flow<List<SmileSessionRecord>> = sessionsFlow
 
         override fun observeSummaryStats(): Flow<SmileSummaryStats> = statsFlow
 
@@ -335,6 +393,9 @@ class SmileTrainingViewModelTest {
             completedReps: Int,
             occurredAtEpochMs: Long,
         ): Result<SmileSessionRecord> {
+            if (shouldFailSave) {
+                return Result.failure(IOException("disk full"))
+            }
             val record = SmileSessionRecord(
                 id = "session-${sessionsFlow.value.size + 1}",
                 userId = "user-1",

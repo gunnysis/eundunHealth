@@ -40,6 +40,7 @@ RESET_TABLES: tuple[str, ...] = (
     "meal_plan_items",
     "meal_plans",
     "smile_training_sessions",
+    "biometric_daily_summaries",
     "badges",
     "goals",
     "weekly_plans",

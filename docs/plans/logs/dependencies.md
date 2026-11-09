@@ -4,6 +4,17 @@
 
 ## Recent (last 90 days)
 
+### 2026-11-06 — v0.7.0~v0.7.3 및 Wear OS 6 3모듈 Foundation 공급망·의존성 업그레이드 (2026-10-29 ~ 2026-11-06)
+
+- **Android & Wear OS (`gradle/libs.versions.toml`)**:
+  - **AGP `9.3.2` → `9.4.1` → `9.5.0` → `9.5.1`** + **Gradle `9.8.1` → `9.8.2`** (룰 15 6단계 호환성 검증 및 `aapt2-9.5.1-16666295-{windows,linux,osx}.jar` SHA-256 검증 메타데이터 동기화).
+  - **Wear OS 6 (API 36) 신규 의존성 추가**: `androidx.wear.compose:compose-material3:1.7.1`, `compose-foundation:1.7.1`, `compose-navigation:1.7.1`, `androidx.wear:wear-tooling-preview:1.0.0` (`gradle.lockfile`, `app/gradle.lockfile`, `wear/gradle.lockfile`, `core/wear-contract/gradle.lockfile` 3모듈 락파일 및 `gradle/verification-metadata.xml` 완비).
+  - **핵심 라이브러리 갱신 및 미사용 의존성 정리**: `com.google.android.play:app-update(-ktx):2.1.0` 신설(v0.7.3 강제 업데이트), `okhttp 5.5.1`, `coil 3.6.3`, `msal 8.6.0`, `sentry-android 8.61.1`, `openapi-generator 7.26.0`, `spotless 8.10.4` 갱신 및 미사용 `material3Adaptive`·`hilt-navigation-compose` 카탈로그 항목 제거.
+- **Backend (`backend/requirements.in` / `requirements-dev.in`)**:
+  - `fastapi==0.162.0`, `starlette==1.10.0`, `sentry-sdk[fastapi]==2.73.0`, `psycopg[binary]==3.3.3` 등 최신 안정판 갱신 및 Python 3.14 `--generate-hashes --allow-unsafe` 락파일(`requirements.txt`, `requirements-dev.txt`) 동기화.
+  - PostgreSQL 엔진 및 로컬/CI 컨테이너 이미지를 **PostgreSQL 18** (`postgres:18-alpine` digest 고정, 운영 Flexible Server `18.4`)로 업그레이드하고 레거시 `alembic` 의존성을 제거.
+- **검증**: 3모듈 Gradle `--write-locks --write-verification-metadata sha256`, WSL2 Ubuntu Linux CI 패리티 검증(`check-agp10-compat.sh`, `:wear:assembleDebug`), Backend `pip install --require-hashes` & `pytest` 147/147 PASS.
+
 ### 2026-10-27 — v0.6.1 재현 가능한 의존성·공급망 강화
 
 - Android는 Kotlin 2.4.21, KSP 2.3.12, Gradle 9.8.1, Compose BOM 2026.09.00, Core KTX 1.19.1, Navigation 2.10.2, DataStore 1.3.0, Sentry Gradle plugin 6.24.0으로 갱신하고 AGP 9.3.2/JDK 17을 유지했다.

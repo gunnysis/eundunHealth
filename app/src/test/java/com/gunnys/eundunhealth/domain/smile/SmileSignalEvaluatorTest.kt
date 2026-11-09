@@ -94,6 +94,36 @@ class SmileSignalEvaluatorTest {
     }
 
     @Test
+    fun `evaluateReadyFrame tolerates brief jitter within 150ms grace window and resets when exceeded`() {
+        val evaluator = SmileSignalEvaluator()
+
+        evaluator.evaluateReadyFrame(signal(t = 0L), allowAutoStart = true)
+        evaluator.evaluateReadyFrame(signal(t = 300L), allowAutoStart = true)
+        val aligned600 = evaluator.evaluateReadyFrame(signal(t = 600L), allowAutoStart = true)
+        assertEquals(0.60f, aligned600.alignmentProgress, 0.001f)
+
+        // Brief 100ms jitter (<= 150ms grace) preserves 60% progress
+        val briefJitter = evaluator.evaluateReadyFrame(signal(t = 700L, yawDeg = 25f), allowAutoStart = true)
+        assertTrue(briefJitter.isFaceAligned)
+        assertEquals(0.60f, briefJitter.alignmentProgress, 0.001f)
+
+        // Recovering alignment at t=900ms (+200ms) and t=1100ms (+200ms) completes the remaining 400ms to reach 100%
+        evaluator.evaluateReadyFrame(signal(t = 900L), allowAutoStart = true)
+        val recovered = evaluator.evaluateReadyFrame(signal(t = 1100L), allowAutoStart = true)
+        assertEquals(1.0f, recovered.alignmentProgress, 0.001f)
+        assertTrue(recovered.shouldAutoStart)
+
+        // Prolonged misalignment (> 150ms) resets progress to 0%
+        evaluator.resetReadyAlignment()
+        evaluator.evaluateReadyFrame(signal(t = 2000L), allowAutoStart = true)
+        evaluator.evaluateReadyFrame(signal(t = 2300L), allowAutoStart = true)
+        evaluator.evaluateReadyFrame(signal(t = 2500L), allowAutoStart = true)
+        val prolongedMiss = evaluator.evaluateReadyFrame(signal(t = 2700L, faceCount = 0), allowAutoStart = true)
+        assertFalse(prolongedMiss.isFaceAligned)
+        assertEquals(0f, prolongedMiss.alignmentProgress, 0.001f)
+    }
+
+    @Test
     fun `completes rep when monotonic hold duration reaches 2000ms and tolerates single noisy frame via EMA and window`() {
         val evaluator = SmileSignalEvaluator(targetReps = 2)
 

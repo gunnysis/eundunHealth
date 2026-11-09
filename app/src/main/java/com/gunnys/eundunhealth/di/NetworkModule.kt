@@ -4,6 +4,7 @@ import com.gunnys.eundunhealth.BuildConfig
 import com.gunnys.eundunhealth.api.generated.api.AccountApi
 import com.gunnys.eundunhealth.api.generated.api.AppCompatibilityApi
 import com.gunnys.eundunhealth.api.generated.api.BadgesApi
+import com.gunnys.eundunhealth.api.generated.api.BiometricsApi
 import com.gunnys.eundunhealth.api.generated.api.GoalsApi
 import com.gunnys.eundunhealth.api.generated.api.MealsApi
 import com.gunnys.eundunhealth.api.generated.api.ProfileApi
@@ -121,6 +122,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideSmileTrainingApi(@Named("backend") retrofit: Retrofit): SmileTrainingApi = retrofit.create(SmileTrainingApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideBiometricsApi(@Named("backend") retrofit: Retrofit): BiometricsApi = retrofit.create(BiometricsApi::class.java)
 
     @Provides
     @Singleton

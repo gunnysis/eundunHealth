@@ -121,5 +121,18 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
+
+        <!-- Wear OS 6 (:wear) Data Layer 일일 생체·마음 상태 요약 수신 서비스 -->
+        <service
+            android:name=".data.wear.PhoneWearDataListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/eundunhealth/v1/biometric/daily_summary_gzip" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

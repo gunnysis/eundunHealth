@@ -18,6 +18,16 @@ object MotionTokens {
         stiffness = Spring.StiffnessMediumLow,
     )
 
+    fun <T> quickSpring() = spring<T>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMedium,
+    )
+
+    fun <T> progressSpring() = spring<T>(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
+
     fun <T> checkBounceSpring() = spring<T>(
         dampingRatio = Spring.DampingRatioLowBouncy,
         stiffness = Spring.StiffnessMedium,

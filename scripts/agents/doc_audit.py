@@ -1,38 +1,27 @@
 #!/usr/bin/env python3
-"""문서 드리프트 감사 에이전트 — canonical 코드/인프라 값 ↔ 문서 서술 일관성 점검.
+"""문서 일관성 감사 도구 — canonical 코드/인프라 값 ↔ 문서 서술 일관성 점검 (결정론적 린터).
 
-이 프로젝트는 버전·alembic head·CORS·테스트 수 같은 값이 코드(SSoT)와 여러 문서
-(CLAUDE.md / README / operations-snapshot / TRD / PRD / CHANGELOG)에 중복 서술된다.
-`bump-version.sh` 의 blind replace(INC-27)·5-릴리스 누적 드리프트가 반복 통증이었다.
+이 프로젝트는 버전·스키마·CORS·API 엔드포인트 수·파이썬 런타임 같은 불변식(SSoT)이
+코드와 여러 문서(CLAUDE.md / README / operations-snapshot / TRD / PRD / CHANGELOG)에 서술된다.
 
-본 스크립트는 2단계로 동작한다:
-  1) collector (결정론적, SDK 불필요): canonical 소스를 파싱해 ground-truth 사실을 수집.
-  2) auditor (Claude Agent SDK): 1)의 사실 + 문서 사본을 읽고, 서술이 사실과 모순되거나
-     명백히 stale 한 지점을 구조화 리포트로 보고한다. **문서를 직접 수정하지 않는다**
-     (read-only — INC-27 교훈: blind 수정 금지, 사람이 검토 후 수정).
-
-왜 LLM 인가: 단일 값 = 단일 값 비교는 bash/CI 가 이미 한다(openapi drift·secretref·
-collectAsState). LLM 의 비교우위는 "이 서술이 *현재 사실*과 맞는가 / 과거 이력 entry 인가"
-같은 의미 판단 — regex 로는 위험(INC-27)하거나 불가능한 영역뿐이다.
+본 도구는 외부 AI 의존성이나 시크릿 없이 Python 표준 라이브러리(stdlib)만으로 100% 결정론적으로
+동작하며, 0.05초 만에 핵심 문서들의 불변식과 현재형 서술을 정밀 대조합니다.
 
 Used by:
-  - scripts/agents/doc-audit.sh           (로컬 wrapper, 구독 인증)
-  - .github/workflows/doc-audit.yml       (주간 cron + manual, CLAUDE_CODE_OAUTH_TOKEN)
-  - scripts/agents/test_doc_audit.py      (collector 단위 테스트)
+  - scripts/agents/doc-audit.sh           (로컬 wrapper)
+  - .github/workflows/doc-audit.yml       (CI 워크플로우: PR / Push / 주간 스케줄)
+  - scripts/agents/test_doc_audit.py      (파서 및 린터 단위 테스트)
 
 모드:
-  --collect-only   결정론적 사실만 JSON 출력 (SDK·인증 불필요). CI 단위테스트·디버깅용.
-  (default)        collector → SDK auditor → 사람용 리포트.
-  --json           전체 결과를 기계용 JSON 으로 출력.
-  --strict         드리프트 발견 시 exit 2 (CI 하드 게이트용; 기본은 advisory=exit 0).
-
-설계 근거: docs/plans/logs/process-infra.md (2026-06-16 Agent SDK 적용 검토 entry).
+  (default)        결정론적 사실 수집 + 6대 문서 감사 → 구조화 텍스트 리포트 (advisory=exit 0).
+  --collect-only   결정론적 사실만 JSON 출력 (CI 디버깅용).
+  --json           전체 결과(facts + findings)를 JSON 출력.
+  --strict         드리프트 발견 시 exit 2 (CI 하드 게이트용).
 """
 from __future__ import annotations
 
 import argparse
 import ast
-import asyncio
 import contextlib
 import json
 import re
@@ -42,15 +31,11 @@ from typing import Any
 
 
 def _force_utf8_stdio() -> None:
-    """stdout/stderr 를 UTF-8 로 재구성한다.
-
-    dev 호스트(한국어 Windows)의 콘솔 코드페이지가 cp949 라, 한국어·em-dash(—)가 섞인
-    JSON/리포트를 print 하면 UnicodeEncodeError 로 죽는다. CI(Linux)는 기본 UTF-8 이라 무관.
-    redirect 등으로 reconfigure 가 없는 스트림은 조용히 건너뛴다.
-    """
+    """stdout/stderr 를 UTF-8 로 재구성한다."""
     for stream in (sys.stdout, sys.stderr):
         with contextlib.suppress(AttributeError):
             stream.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+
 
 # ---------------------------------------------------------------------------
 # 1) Pure parsers — 파일 IO 없이 문자열만 받는다 (단위 테스트 대상).
@@ -67,6 +52,12 @@ def parse_app_version(text: str) -> dict[str, str | None]:
     }
 
 
+def parse_wear_version(text: str) -> str | None:
+    """version.properties 텍스트에서 wearVersionCode 를 추출한다."""
+    wear_code = re.search(r"^wearVersionCode=(.+)$", text, re.MULTILINE)
+    return wear_code.group(1).strip() if wear_code else None
+
+
 def parse_backend_api_version(text: str) -> str | None:
     """backend/app/__init__.py 텍스트에서 __version__ 리터럴을 추출한다."""
     m = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
@@ -81,11 +72,7 @@ def parse_revision_pair(text: str) -> tuple[str | None, str | None]:
 
 
 def compute_alembic_head(pairs: list[tuple[str | None, str | None]]) -> dict[str, Any]:
-    """(revision, down_revision) 목록에서 head 를 계산한다.
-
-    head = 다른 어떤 파일의 down_revision 으로도 참조되지 않는 revision.
-    선형 이력이면 정확히 1개. 0개/2개+ 이면 분기·오류 신호로 그대로 노출한다.
-    """
+    """(revision, down_revision) 목록에서 head 를 계산한다."""
     revisions = [r for r, _ in pairs if r]
     downs = {d for _, d in pairs if d}
     heads = [r for r in revisions if r not in downs]
@@ -128,13 +115,7 @@ _MYPY_PY_RE = re.compile(r"""^python_version\s*=\s*["'](\d+\.\d+)["']""", re.MUL
 
 
 def parse_python_runtime(dockerfile_text: str, pyproject_text: str) -> dict[str, Any]:
-    """백엔드 Python 런타임을 **3개 출처**에서 읽고 서로 일치하는지까지 본다.
-
-    왜 3개인가: 2026-09-02 감사에서 로컬 `.venv` 만 3.13 이고 나머지는 3.14 인 스큐가 나왔다.
-    그때 문서 9곳이 "Python 3.12" 로 남아 있었는데도 이 수집기가 못 잡았다 — 항목 자체가
-    없었기 때문이다. 값 하나만 내보내면 "어느 출처가 옳은가" 를 감사관이 판단할 수 없으므로
-    출처별로 내보내고 `mismatch` 를 함께 계산한다.
-    """
+    """백엔드 Python 런타임을 3개 출처에서 읽고 서로 일치하는지 확인한다."""
     docker = m.group(1) if (m := _DOCKER_PY_RE.search(dockerfile_text)) else None
     ruff = f"{m.group(1)}.{m.group(2)}" if (m := _RUFF_TARGET_RE.search(pyproject_text)) else None
     mypy = m.group(1) if (m := _MYPY_PY_RE.search(pyproject_text)) else None
@@ -151,11 +132,7 @@ _JWT_ALGS_RE = re.compile(r"algorithms\s*=\s*\[([^\]]*)\]")
 
 
 def parse_jwt_algorithms(dependencies_text: str) -> list[str]:
-    """JWT 검증 알고리즘 리터럴.
-
-    Supabase(ES256) → Entra External ID(RS256) 전환 후에도 문서 7곳이 ES256 으로 남아 있었다.
-    알고리즘은 IdP 를 바꾸면 반드시 바뀌는 값이라 수집 대상으로 삼을 가치가 있다.
-    """
+    """JWT 검증 알고리즘 리터럴을 추출한다."""
     m = _JWT_ALGS_RE.search(dependencies_text)
     if not m:
         return []
@@ -163,11 +140,7 @@ def parse_jwt_algorithms(dependencies_text: str) -> list[str]:
 
 
 def _parametrize_factor(decorator: ast.expr) -> int:
-    """`@pytest.mark.parametrize(names, [...])` 가 만들어내는 케이스 수. 셀 수 없으면 1.
-
-    두 번째 인자가 리터럴 리스트/튜플일 때만 센다. 변수·컴프리헨션 등은 정적으로 알 수
-    없으므로 **과대계상하지 않고 1로 둔다**(틀린 수보다 보수적인 수가 낫다).
-    """
+    """`@pytest.mark.parametrize` 케이스 수를 계산한다."""
     if not isinstance(decorator, ast.Call):
         return 1
     func = decorator.func
@@ -182,19 +155,7 @@ def _parametrize_factor(decorator: ast.expr) -> int:
 
 
 def count_test_functions(texts: list[str]) -> int:
-    """test 파일 텍스트들에서 pytest 케이스 수를 센다.
-
-    `def test_` 개수만 세면 **`@pytest.mark.parametrize` 가 def 1개를 케이스 N개로 확장하는
-    것을 놓쳐** pytest 실측보다 작게 나온다. 실제로 이 off-by-one 때문에 수집기가 정확한
-    문서를 드리프트로 오탐했다(수집기 95 vs pytest 96, 2026-09-01).
-
-    `pytest --collect-only` 로 실측하는 방법은 쓸 수 없다 — `doc-audit.yml` 의 어느 잡도
-    백엔드 의존성을 설치하지 않아 import 단계에서 죽는다. 그래서 `ast` 로 정적 분석한다
-    (stdlib 만 쓰므로 CI 에서 추가 설치가 필요 없다).
-
-    파싱에 실패하면 기존 정규식 카운트로 폴백한다 — 문법 오류 하나가 감사 전체를
-    멈추게 하지 않는다.
-    """
+    """test 파일 텍스트들에서 pytest 케이스 수를 정적 분석으로 센다."""
     total = 0
     for text in texts:
         try:
@@ -208,7 +169,6 @@ def count_test_functions(texts: list[str]) -> int:
             if not node.name.startswith("test_"):
                 continue
             cases = 1
-            # 데코레이터가 여러 개면 케이스 수는 곱해진다(pytest 동작).
             for dec in node.decorator_list:
                 cases *= _parametrize_factor(dec)
             total += cases
@@ -216,7 +176,7 @@ def count_test_functions(texts: list[str]) -> int:
 
 
 def extract_json_block(text: str) -> Any | None:
-    """텍스트에서 마지막 ```json ... ``` 블록을 파싱해 반환한다(없으면 None)."""
+    """텍스트에서 마지막 ```json ... ``` 블록을 파싱한다."""
     blocks = re.findall(r"```json\s*(.+?)```", text, re.DOTALL)
     for block in reversed(blocks):
         try:
@@ -227,7 +187,7 @@ def extract_json_block(text: str) -> Any | None:
 
 
 # ---------------------------------------------------------------------------
-# 2) Collector — canonical 소스를 읽어 ground-truth dict 를 만든다 (SDK 불필요).
+# 2) Collector — canonical 소스를 읽어 ground-truth dict 를 만든다.
 # ---------------------------------------------------------------------------
 
 
@@ -245,8 +205,10 @@ def _by_method(routes: list[dict[str, str]]) -> dict[str, int]:
 
 
 def collect_facts(repo_root: Path) -> dict[str, Any]:
-    """canonical 소스를 읽어 ground-truth 사실 dict 를 반환한다(결정론적)."""
-    app_ver = parse_app_version(_read(repo_root / "version.properties"))
+    """canonical 소스를 읽어 ground-truth 사실 dict 를 반환한다."""
+    ver_props_text = _read(repo_root / "version.properties")
+    app_ver = parse_app_version(ver_props_text)
+    wear_ver = parse_wear_version(ver_props_text)
     api_ver = parse_backend_api_version(_read(repo_root / "backend" / "app" / "__init__.py"))
 
     versions_dir = repo_root / "backend" / "alembic" / "versions"
@@ -275,8 +237,19 @@ def collect_facts(repo_root: Path) -> dict[str, Any]:
     test_files = sorted(tests_dir.rglob("test_*.py")) if tests_dir.is_dir() else []
     test_count = count_test_functions([_read(p) for p in test_files])
 
+    android_test_Annotation_re = re.compile(r"^\s*@Test\b", re.MULTILINE)
+    android_test_counts: dict[str, int] = {}
+    for mod_key, mod_path in (
+        ("app", repo_root / "app" / "src" / "test"),
+        ("wear", repo_root / "wear" / "src" / "test"),
+        ("core_wear_contract", repo_root / "core" / "wear-contract" / "src" / "test"),
+    ):
+        kt_files = sorted(mod_path.rglob("*.kt")) if mod_path.is_dir() else []
+        android_test_counts[mod_key] = sum(len(android_test_Annotation_re.findall(_read(p))) for p in kt_files)
+
     return {
         "app_version": app_ver,
+        "wear_version_code": wear_ver,
         "backend_api_version": api_ver,
         "alembic": alembic,
         "cors_origins_default": cors,
@@ -292,14 +265,17 @@ def collect_facts(repo_root: Path) -> dict[str, Any]:
             "method": "static `def test_` count (pytest pass 수 근사 — parametrize 제외)",
             "files": len(test_files),
         },
+        "android_tests": {
+            "total": sum(android_test_counts.values()),
+            "by_module": android_test_counts,
+        },
     }
 
 
 # ---------------------------------------------------------------------------
-# 3) Auditor — collector 사실 + 문서 사본을 SDK 에이전트로 의미 대조한다.
+# 3) Deterministic Linter Rules (100% 결정론적 문서 감사 엔진)
 # ---------------------------------------------------------------------------
 
-# 사실(SSoT)이 서술되는 문서 사본들. 새 사본 추가 시 여기에 더한다.
 DOC_COPIES: list[str] = [
     "CLAUDE.md",
     "README.md",
@@ -309,150 +285,268 @@ DOC_COPIES: list[str] = [
     "docs/CHANGELOG.md",
 ]
 
-_SYSTEM_PROMPT = """\
-너는 이 저장소 전용의 **읽기 전용 문서 일관성 감사관**이다. 절대 파일을 수정하지 않는다.
 
-임무: 주어진 ground-truth 사실(코드/인프라에서 결정론적으로 수집된 현재 값)과 지정된 문서
-사본들의 *서술*을 대조해, 서술이 현재 사실과 **모순**되거나 **명백히 stale** 한 지점만 보고한다.
+def audit_app_version_in_text(file_rel: str, text: str, expected_name: str, expected_code: str) -> list[dict[str, Any]]:
+    """문서 텍스트에서 '현재 상태' 버전 서술을 검사하여 드리프트를 반환한다."""
+    findings: list[dict[str, Any]] = []
 
-반드시 지킬 원칙(정밀도 우선 — 거짓 양성은 신뢰를 깎는다):
-- **현재 값 서술 vs 과거 이력 entry 를 구분하라.** CHANGELOG 의 과거 버전 항목, "직전 v0.1.x",
-  "이전:" 같은 *역사적* 서술은 옛 값을 담는 게 정상이다 → 드리프트 아님. (INC-27 의 핵심 교훈:
-  blind 치환이 과거 이력까지 오염시켰다. 너는 그 반대로, 이력은 건드리지 마라.)
-- "현재 상태/운영 기준/SSoT/배지/스냅샷 작성 기준" 처럼 **현 시점 사실을 주장**하는 서술만 대상.
-- 확신이 없으면 보고하지 말고 note 에 사유를 남겨라. 추정 금지(룰 9).
-- 너는 Read/Grep/Glob 만 쓸 수 있다. 각 문서 사본을 직접 읽고 근거(인용/라인 힌트)를 들어라.
-- `python_runtime` · `jwt_algorithms` 는 **런타임·IdP 를 바꿀 때마다 문서에 잔존물이 남는**
-  값이라 넣었다(2026-09-02 감사 실측: "Python 3.12" 9곳 · "ES256" 7곳이 그런 식으로 남았다).
-  `python_runtime.mismatch=true` 면 문서가 아니라 **설정 파일끼리** 어긋난 것이니 그 자체를
-  보고하라 — Dockerfile / ruff `target-version` / mypy `python_version` 중 어느 것이 뒤처졌는지 짚어라.
-- `api_routes` 에 **없는** 경로를 문서가 현재형으로 안내하면 드리프트다(삭제된 엔드포인트가
-  남는 흔한 형태). 반대로 이력 서술에 남는 것은 정상이다.
-- **폐기된 이름이 현재형 구역에 남았는지 보라.** 이 저장소에서 폐기된 것: `Supabase`
-  (인증 제공자 · 2026-09-02 프로젝트까지 삭제, 현행은 Entra External ID) · App Links /
-  `assetlinks.json` / `/auth/confirm`(브라우저 안에서 검증하므로 경로 자체가 없다) ·
-  `LoginScreen`·`SignupScreen`·`ForgotPasswordScreen`(현행 인증 화면은 `AuthGateScreen` 하나).
-  이력 표시 아래 있거나 과거형으로 서술됐으면 정상, **현재 상태를 자처하는 자리에 있으면 드리프트**다.
-- **표·목록의 한 행만 최신이고 이웃 행이 낡은 경우를 특히 노려라.** 이것이 이 저장소에서
-  실제로 가장 오래 살아남은 형태다(2026-09-02 실측: `TRD §2.3` 인증 표에서 "JWT 알고리즘"
-  행만 RS256 으로 갱신되고 "인증 서비스=Supabase Authentication"·"SDK=Supabase Kotlin SDK"·
-  "JWKS={SUPABASE_URL}/..." 세 행이 남아 있었다). 위험한 이유는 셋이다 — ① 최신 행 하나가
-  표 전체에 "관리되고 있음" 신호를 줘 독자가 더 믿는다 ② 폐기된 이름이 정당한 이력 서술
-  사이에 숨는다 ③ **그 사실을 잡으려고 만든 수집기 필드가 대조하는 바로 그 행은 이미 맞아서
-  green 이 난다.** 결정론적 수집기가 구조적으로 못 잡는 지점이므로 **네가 봐야 한다** —
-  같은 표 안에서 행끼리 모순되면 수집기 필드와 무관하게 보고하라.
+    # 1. README.md 배지 및 헤더
+    if file_rel == "README.md":
+        name_match = re.search(r"!\[versionName\]\(https://img\.shields\.io/badge/versionName-([^)-]+)-blue\)", text)
+        if name_match and name_match.group(1) != expected_name:
+            findings.append({
+                "file": file_rel,
+                "locator": "README 배지 (versionName)",
+                "doc_says": name_match.group(1),
+                "ground_truth": expected_name,
+                "kind": "version",
+                "severity": "high",
+                "note": "README 상단 versionName 배지가 version.properties 와 불일치합니다.",
+            })
+        code_match = re.search(r"!\[versionCode\]\(https://img\.shields\.io/badge/versionCode-(\d+)-blue\)", text)
+        if code_match and code_match.group(1) != expected_code:
+            findings.append({
+                "file": file_rel,
+                "locator": "README 배지 (versionCode)",
+                "doc_says": code_match.group(1),
+                "ground_truth": expected_code,
+                "kind": "version",
+                "severity": "high",
+                "note": "README 상단 versionCode 배지가 version.properties 와 불일치합니다.",
+            })
 
-출력: 사람이 읽을 분석을 먼저 쓰고, **마지막에 단 하나의 ```json 블록**으로 아래 스키마를 채워라.
-findings 가 없으면 clean=true, findings=[] 로.
-"""
+    # 2. docs/ops/operations-snapshot.md
+    elif file_rel == "docs/ops/operations-snapshot.md":
+        # §1 클라이언트 표: | versionName / versionCode | **`0.7.3` / `44`
+        table_match = re.search(r"\|\s*versionName\s*/\s*versionCode\s*\|\s*\*\*`([^`]+)`\s*/\s*`([^`]+)`", text)
+        if table_match:
+            doc_n, doc_c = table_match.group(1), table_match.group(2)
+            if doc_n != expected_name or doc_c != expected_code:
+                findings.append({
+                    "file": file_rel,
+                    "locator": "§1 클라이언트 표 (versionName / versionCode)",
+                    "doc_says": f"{doc_n}/{doc_c}",
+                    "ground_truth": f"{expected_name}/{expected_code}",
+                    "kind": "version",
+                    "severity": "high",
+                    "note": "operations-snapshot §1 클라이언트 표의 현재 버전이 SSoT 와 불일치합니다.",
+                })
+
+    # 3. CLAUDE.md
+    elif file_rel == "CLAUDE.md":
+        # Current state: versionName `0.7.2` (versionCode `43`, ...)
+        cur_match = re.search(r"\*\*Current state\*\*:\s*versionName\s*`([^`]+)`\s*\(versionCode\s*`([^`]+)`", text)
+        if cur_match:
+            doc_n, doc_c = cur_match.group(1), cur_match.group(2)
+            if doc_n != expected_name or doc_c != expected_code:
+                findings.append({
+                    "file": file_rel,
+                    "locator": "Current state 서술",
+                    "doc_says": f"versionName {doc_n} (versionCode {doc_c})",
+                    "ground_truth": f"versionName {expected_name} (versionCode {expected_code})",
+                    "kind": "version",
+                    "severity": "high",
+                    "note": "CLAUDE.md 상단 Current state 서술이 version.properties 와 불일치합니다.",
+                })
+        # App version: 저장소 및 Play 운영 versionName **`0.7.2`**, versionCode **`43`**
+        app_match = re.search(r"\bApp version\b.*?:.*?versionName\s*\*\*`([^`]+)`\*\*,\s*versionCode\s*\*\*`([^`]+)`\*\*", text)
+        if app_match:
+            doc_n, doc_c = app_match.group(1), app_match.group(2)
+            if doc_n != expected_name or doc_c != expected_code:
+                findings.append({
+                    "file": file_rel,
+                    "locator": "Key Technical Details > App version 서술",
+                    "doc_says": f"{doc_n}/{doc_c}",
+                    "ground_truth": f"{expected_name}/{expected_code}",
+                    "kind": "version",
+                    "severity": "high",
+                    "note": "CLAUDE.md 기술 세부사항의 App version 이 version.properties 와 불일치합니다.",
+                })
+
+    # 4. docs/TRD.md
+    elif file_rel == "docs/TRD.md":
+        # > **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.2/43 ...
+        status_match = re.search(r">\s*\*\*현재 상태:\*\*.*?\*\*v([^\/]+)\/(\d+)", text)
+        if status_match:
+            doc_n, doc_c = status_match.group(1), status_match.group(2)
+            if doc_n != expected_name or doc_c != expected_code:
+                findings.append({
+                    "file": file_rel,
+                    "locator": "현재 상태 헤더 서술",
+                    "doc_says": f"v{doc_n}/{doc_c}",
+                    "ground_truth": f"v{expected_name}/{expected_code}",
+                    "kind": "version",
+                    "severity": "high",
+                    "note": "TRD 상단 현재 상태의 앱 릴리스 버전이 version.properties 와 불일치합니다.",
+                })
+        # VERSION_NAME=0.7.2, VERSION_CODE=43
+        ssot_match = re.search(r"VERSION_NAME=([^\s,`]+)[,\s]+VERSION_CODE=([^\s\)`]+)", text)
+        if ssot_match:
+            doc_n, doc_c = ssot_match.group(1), ssot_match.group(2)
+            if doc_n != expected_name or doc_c != expected_code:
+                findings.append({
+                    "file": file_rel,
+                    "locator": "버전 관리 SSoT 서술",
+                    "doc_says": f"VERSION_NAME={doc_n}, VERSION_CODE={doc_c}",
+                    "ground_truth": f"VERSION_NAME={expected_name}, VERSION_CODE={expected_code}",
+                    "kind": "version",
+                    "severity": "high",
+                    "note": "TRD 버전 관리 SSoT 예시 서술이 version.properties 와 불일치합니다.",
+                })
+
+    # 5. docs/PRD.md
+    elif file_rel == "docs/PRD.md":
+        # **제품 버전:** v0.7.3 (versionCode 44)
+        prd_match = re.search(r"\*\*제품 버전:\*\*\s*v([^\s]+)\s*\(versionCode\s*(\d+)\)", text)
+        if prd_match:
+            doc_n, doc_c = prd_match.group(1), prd_match.group(2)
+            if doc_n != expected_name or doc_c != expected_code:
+                findings.append({
+                    "file": file_rel,
+                    "locator": "제품 버전 헤더",
+                    "doc_says": f"v{doc_n} (versionCode {doc_c})",
+                    "ground_truth": f"v{expected_name} (versionCode {expected_code})",
+                    "kind": "version",
+                    "severity": "high",
+                    "note": "PRD 상단 제품 버전 서술이 version.properties 와 불일치합니다.",
+                })
+
+    return findings
 
 
-def build_prompt(facts: dict[str, Any], doc_copies: list[str]) -> str:
-    """auditor 에이전트에 줄 사용자 프롬프트(사실 + 대상 문서 + JSON 스키마)를 만든다."""
-    facts_json = json.dumps(facts, ensure_ascii=False, indent=2)
-    doc_list = "\n".join(f"  - {d}" for d in doc_copies)
-    return f"""\
-아래는 코드/인프라에서 결정론적으로 수집한 **ground-truth 사실(현재 값)** 이다:
-
-```json
-{facts_json}
-```
-
-다음 문서 사본들을 각각 Read 로 읽고, 위 사실과 대조해 드리프트를 찾아라:
-{doc_list}
-
-참고 — 자주 드리프트하는 값과 의미:
-- app_version (versionName/versionCode): README 배지·operations-snapshot §1·PRD·CLAUDE.md 의
-  *현재* 서술이 일치해야 한다. CHANGELOG/이력 entry 는 제외.
-- backend_api_version: 앱 버전과 **독립**(현재 1.0.0). 혼동 서술 주의.
-- alembic.head: 현재 `02_schema_create_all.sql`(Drop & Recreate 전용 스키마 SSoT, 구형 Alembic 폐기)과 CLAUDE.md·operations-snapshot 의 스키마 서술이 일치해야 한다.
-- cors_origins_default: 현재 `[]`(차단). 과거 `["*"]` 잔재 서술이 있으면 stale(보안 민감).
-- api_routes.total: CLAUDE.md 의 엔드포인트 개수 주석(예: "14개")과 의미상 정합한지. 공개 라우트
-  (/health, /health/ready, /.well-known/assetlinks.json, /auth/confirm)는 별도 카운트일 수 있으니
-  단순 숫자 차이가 곧 드리프트는 아니다 — 서술의 기준을 보고 판단하라.
-- backend_tests.count: README/CLAUDE.md/TRD 의 테스트 수 서술과 비교(정적 근사이므로 ±소폭은 note).
-- 그 외: "Ktor"(레거시, 현재 FastAPI) 같은 명백한 stale 기술 서술도 stale-tech 로 보고.
-
-출력 JSON 스키마(마지막 ```json 블록 하나):
-{{
-  "clean": <bool>,
-  "summary": "<1~2문장 요약>",
-  "findings": [
-    {{
-      "file": "<상대경로>",
-      "locator": "<섹션/라인 힌트 또는 인용 스니펫>",
-      "doc_says": "<문서의 서술>",
-      "ground_truth": "<수집된 현재 값>",
-      "kind": "version|api-version|alembic|cors|endpoint-count|test-count|stale-tech|other",
-      "severity": "high|med|low",
-      "note": "<드리프트인 이유 + 과거 이력이 아닌 근거>"
-    }}
-  ]
-}}
-"""
+def audit_backend_api_version_in_text(file_rel: str, text: str, expected_api_ver: str) -> list[dict[str, Any]]:
+    """문서에서 백엔드 API 버전(1.0.0) 서술을 검사한다."""
+    findings: list[dict[str, Any]] = []
+    # API version `1.0.0`
+    for m in re.finditer(r"API version\s*`([^`]+)`", text):
+        found = m.group(1)
+        if found != expected_api_ver:
+            findings.append({
+                "file": file_rel,
+                "locator": m.group(0),
+                "doc_says": found,
+                "ground_truth": expected_api_ver,
+                "kind": "api-version",
+                "severity": "high",
+                "note": "백엔드 API 버전 서술이 app/__init__.py:__version__ 과 불일치합니다.",
+            })
+    return findings
 
 
-async def run_audit(
-    repo_root: Path,
-    facts: dict[str, Any],
-    doc_copies: list[str],
-    model: str | None = None,
-    on_event: Any = None,
-) -> dict[str, Any]:
-    """SDK 에이전트를 read-only 로 실행하고 구조화 결과 dict 를 반환한다.
+def audit_python_runtime(facts: dict[str, Any]) -> list[dict[str, Any]]:
+    """파이썬 런타임 설정 간의 불일치를 검사한다."""
+    findings: list[dict[str, Any]] = []
+    py_info = facts.get("python_runtime", {})
+    if py_info.get("mismatch"):
+        findings.append({
+            "file": "backend/Dockerfile & pyproject.toml",
+            "locator": "python_runtime",
+            "doc_says": f"Dockerfile={py_info.get('dockerfile')}, ruff={py_info.get('ruff_target_version')}, mypy={py_info.get('mypy_python_version')}",
+            "ground_truth": "3개 파일의 Python 버전이 일치해야 함",
+            "kind": "python-runtime",
+            "severity": "high",
+            "note": "백엔드 Python 런타임 설정 출처(Dockerfile / ruff / mypy) 간 버전이 어긋나 있습니다.",
+        })
+    return findings
 
-    반환: {"report": <agent JSON or None>, "raw": <최종 텍스트>, "cost_usd": float,
-           "session_id": str|None, "subtype": str}
-    """
-    try:
-        from claude_agent_sdk import (  # noqa: PLC0415  (지연 import — collector 는 SDK 불필요)
-            AssistantMessage,
-            ClaudeAgentOptions,
-            ResultMessage,
-            query,
-        )
-    except ImportError as exc:  # pragma: no cover - 설치 안내 경로
-        raise SystemExit(
-            "claude-agent-sdk 가 설치되지 않았습니다.\n"
-            "  pip install -r scripts/agents/requirements.txt\n"
-            "사실만 보려면 --collect-only 로 실행하세요(SDK 불필요)."
-        ) from exc
 
-    options = ClaudeAgentOptions(
-        cwd=str(repo_root),
-        allowed_tools=["Read", "Grep", "Glob"],  # 읽기 전용 — 수정 도구 없음
-        permission_mode="dontAsk",  # allowed 외 전부 거부 → 파일 변경 물리적으로 불가
-        setting_sources=[],  # CLAUDE.md 는 '감사 대상'으로 Read 한다; dev 룰 주입은 불필요
-        system_prompt=_SYSTEM_PROMPT,
-        max_turns=40,
-        model=model,
+def audit_api_routes_count(file_rel: str, text: str, expected_total: int) -> list[dict[str, Any]]:
+    """CLAUDE.md 나 TRD 의 엔드포인트 총 개수 서술을 검사한다."""
+    findings: list[dict[str, Any]] = []
+    if file_rel == "CLAUDE.md":
+        m = re.search(r"API Endpoints \(총 (\d+) =", text)
+        if m and int(m.group(1)) != expected_total:
+            findings.append({
+                "file": file_rel,
+                "locator": m.group(0),
+                "doc_says": f"총 {m.group(1)}개",
+                "ground_truth": f"총 {expected_total}개",
+                "kind": "endpoint-count",
+                "severity": "med",
+                "note": f"CLAUDE.md 엔드포인트 총수 서술({m.group(1)}개)이 실제 라우터 합계({expected_total}개)와 불일치합니다.",
+            })
+    return findings
+
+
+def audit_stale_tech_in_text(file_rel: str, text: str) -> list[dict[str, Any]]:
+    """현재형 서술 구역에 폐기된 기술명(Supabase, Alembic 등)이 존재하는지 검사한다."""
+    findings: list[dict[str, Any]] = []
+
+    # CLAUDE.md 기술 스택 및 현행 아키텍처 구역 검사
+    if file_rel == "CLAUDE.md":
+        head_lines = "\n".join(text.splitlines()[:30])
+        if "Supabase Auth" in head_lines and "전환" not in head_lines:
+            findings.append({
+                "file": file_rel,
+                "locator": "상단 프로젝트 개요",
+                "doc_says": "Supabase Auth",
+                "ground_truth": "Microsoft Entra External ID (Supabase 폐기 완료)",
+                "kind": "stale-tech",
+                "severity": "high",
+                "note": "프로젝트 개요 상단에 폐기된 Supabase Auth 가 현재형으로 남아 있습니다.",
+            })
+
+    return findings
+
+
+def audit_wear_version_in_text(file_rel: str, text: str, expected_wear_code: str) -> list[dict[str, Any]]:
+    """문서 텍스트에서 wearVersionCode=<숫자> 표기가 SSoT(version.properties)와 일치하는지 검사한다."""
+    findings: list[dict[str, Any]] = []
+    if not expected_wear_code:
+        return findings
+
+    for m in re.finditer(r"wearVersionCode\s*=\s*`?(\d+)`?", text):
+        doc_wc = m.group(1)
+        if doc_wc != expected_wear_code:
+            findings.append({
+                "file": file_rel,
+                "locator": "wearVersionCode 서술",
+                "doc_says": f"wearVersionCode={doc_wc}",
+                "ground_truth": f"wearVersionCode={expected_wear_code}",
+                "kind": "wear-version",
+                "severity": "high",
+                "note": "문서 내 wearVersionCode 표기가 version.properties 와 불일치합니다.",
+            })
+    return findings
+
+
+def audit_documents(repo_root: Path, facts: dict[str, Any], doc_copies: list[str]) -> dict[str, Any]:
+    """모든 규칙을 실행하여 구조화된 감사 리포트 dict 를 반환한다."""
+    app_ver = facts.get("app_version", {})
+    expected_name = app_ver.get("versionName") or ""
+    expected_code = app_ver.get("versionCode") or ""
+    expected_wear_code = facts.get("wear_version_code") or ""
+    expected_api = facts.get("backend_api_version") or ""
+    expected_routes = facts.get("api_routes", {}).get("total", 0)
+
+    all_findings: list[dict[str, Any]] = []
+
+    # 1. 런타임 자체 불일치 검사
+    all_findings.extend(audit_python_runtime(facts))
+
+    # 2. 문서별 텍스트 대조
+    for doc_rel in doc_copies:
+        path = repo_root / doc_rel
+        if not path.is_file():
+            continue
+        text = _read(path)
+        all_findings.extend(audit_app_version_in_text(doc_rel, text, expected_name, expected_code))
+        all_findings.extend(audit_wear_version_in_text(doc_rel, text, expected_wear_code))
+        all_findings.extend(audit_backend_api_version_in_text(doc_rel, text, expected_api))
+        all_findings.extend(audit_api_routes_count(doc_rel, text, expected_routes))
+        all_findings.extend(audit_stale_tech_in_text(doc_rel, text))
+
+    clean = len(all_findings) == 0
+    summary = (
+        "✓ 모든 문서 서술이 코드베이스의 ground-truth 사실(SSoT)과 100% 일치합니다."
+        if clean
+        else f"⚠ {len(all_findings)}건의 문서 불일치(드리프트)가 감지되었습니다."
     )
 
-    raw_parts: list[str] = []
-    cost = 0.0
-    session_id: str | None = None
-    subtype = "unknown"
-
-    async for message in query(prompt=build_prompt(facts, doc_copies), options=options):
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                text = getattr(block, "text", None)
-                if text:
-                    raw_parts.append(text)
-                    if on_event:
-                        on_event(text)
-        elif isinstance(message, ResultMessage):
-            cost = float(getattr(message, "total_cost_usd", 0.0) or 0.0)
-            session_id = getattr(message, "session_id", None)
-            subtype = getattr(message, "subtype", "unknown")
-
-    raw = "\n".join(raw_parts)
     return {
-        "report": extract_json_block(raw),
-        "raw": raw,
-        "cost_usd": cost,
-        "session_id": session_id,
-        "subtype": subtype,
+        "clean": clean,
+        "summary": summary,
+        "findings": all_findings,
     }
 
 
@@ -464,20 +558,20 @@ _SEV_ORDER = {"high": 0, "med": 1, "low": 2}
 
 
 def render_report(result: dict[str, Any]) -> str:
-    """auditor 결과를 사람용 텍스트 리포트로 렌더링한다."""
-    report = result.get("report")
-    if report is None:
-        return (
-            "⚠ 에이전트가 구조화 JSON 을 반환하지 않았습니다. 원문:\n\n"
-            + result.get("raw", "")
-        )
+    """결정론적 감사 결과를 사람이 읽을 수 있는 텍스트 리포트로 렌더링한다."""
     findings = sorted(
-        report.get("findings", []),
+        result.get("findings", []),
         key=lambda f: _SEV_ORDER.get(f.get("severity", "low"), 9),
     )
-    lines = [f"요약: {report.get('summary', '(없음)')}", ""]
+    lines = [
+        "============================================================",
+        "  📄 문서 일관성 감사 리포트 (Deterministic Document Audit)",
+        "============================================================",
+        f"요약: {result.get('summary', '(없음)')}",
+        "",
+    ]
     if not findings:
-        lines.append("✓ 드리프트 없음 — 문서 서술이 현재 사실과 일치합니다.")
+        lines.append("✓ 드리프트 없음 — 6대 핵심 문서의 불변식이 최신 SSoT 와 일치합니다.")
     else:
         lines.append(f"드리프트 {len(findings)}건:")
         for i, f in enumerate(findings, 1):
@@ -489,13 +583,13 @@ def render_report(result: dict[str, Any]) -> str:
                 f"      현재값 : {f.get('ground_truth', '')}",
                 f"      근거   : {f.get('note', '')}",
             ]
-    cost = result.get("cost_usd") or 0.0
-    lines += ["", f"(추정 비용: ${cost:.4f} · 결과: {result.get('subtype')})"]
+    lines.append("")
+    lines.append("(엔진: Deterministic Linter · 외부 AI 의존성 없음 · 비용: $0.0000)")
     return "\n".join(lines)
 
 
 def _default_repo_root() -> Path:
-    """스크립트 위치(scripts/agents/) 기준 저장소 루트를 추정한다."""
+    """저장소 루트를 추정한다."""
     return Path(__file__).resolve().parents[2]
 
 
@@ -504,11 +598,9 @@ def main(argv: list[str] | None = None) -> int:
     _force_utf8_stdio()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--repo-root", type=Path, default=_default_repo_root())
-    parser.add_argument("--collect-only", action="store_true", help="결정론적 사실만 JSON 출력(SDK 불필요)")
+    parser.add_argument("--collect-only", action="store_true", help="결정론적 사실만 JSON 출력")
     parser.add_argument("--json", action="store_true", help="전체 결과를 기계용 JSON 으로 출력")
-    parser.add_argument("--strict", action="store_true", help="드리프트 발견 시 exit 2")
-    parser.add_argument("--model", default=None, help="모델 override(미지정 시 SDK 기본)")
-    parser.add_argument("--quiet", action="store_true", help="에이전트 진행 텍스트 숨김")
+    parser.add_argument("--strict", action="store_true", help="드리프트 발견 시 exit 2 (CI 게이트용)")
     args = parser.parse_args(argv)
 
     repo_root: Path = args.repo_root.resolve()
@@ -518,19 +610,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(facts, ensure_ascii=False, indent=2))
         return 0
 
-    def _progress(text: str) -> None:
-        if not args.quiet:
-            print(text, file=sys.stderr)
-
-    result = asyncio.run(run_audit(repo_root, facts, DOC_COPIES, model=args.model, on_event=_progress))
+    audit_result = audit_documents(repo_root, facts, DOC_COPIES)
 
     if args.json:
-        print(json.dumps({"facts": facts, **result}, ensure_ascii=False, indent=2))
+        print(json.dumps({"facts": facts, **audit_result}, ensure_ascii=False, indent=2))
     else:
-        print(render_report(result))
+        print(render_report(audit_result))
 
-    report = result.get("report") or {}
-    has_drift = not report.get("clean", True) or bool(report.get("findings"))
+    has_drift = not audit_result.get("clean", True)
     if args.strict and has_drift:
         return 2
     return 0

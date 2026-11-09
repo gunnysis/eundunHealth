@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
@@ -45,7 +47,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,14 +61,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
+import com.gunnys.eundunhealth.domain.model.formatDurationKorean
 import com.gunnys.eundunhealth.ui.home.PlanModeBadge
 import com.gunnys.eundunhealth.ui.theme.EundunTheme
+import com.gunnys.eundunhealth.wear.contract.BiometricDailySummaryRecord
 
 private val WEEK_DAYS_KOR = listOf("월", "화", "수", "목", "금", "토", "일")
 
@@ -82,7 +84,10 @@ fun ProgressHubScreen(
     viewModel: ProgressHubViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    RefreshProgressOnResume(onRefresh = viewModel::loadSummary)
+    LifecycleResumeEffect(viewModel) {
+        viewModel.loadSummary()
+        onPauseOrDispose {}
+    }
 
     Scaffold(
         topBar = {
@@ -120,6 +125,14 @@ fun ProgressHubScreen(
             )
 
             SectionHeader(
+                title = "워치 상시 생체 · 마음 상태",
+                subtitle = "착용 전 구간(휴식·활동·운동·수면) 5차원 연속 분석 요약",
+            )
+            WearBiometricMindProgressCard(
+                summary = uiState.latestWatchSummary,
+            )
+
+            SectionHeader(
                 title = "챌린지 배지",
                 subtitle = "운동 및 목표 달성 마일스톤 컬렉션",
             )
@@ -129,20 +142,6 @@ fun ProgressHubScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
-    }
-}
-
-@Composable
-private fun RefreshProgressOnResume(onRefresh: () -> Unit) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, onRefresh) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                onRefresh()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 }
 
@@ -478,6 +477,12 @@ private fun FourWeekTrendVisualTile(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 16.sp,
+                    maxFontSize = 24.sp,
+                    stepSize = 1.sp,
+                ),
             )
             Text(
                 text = state.recentFourWeeksSubLabel,
@@ -636,6 +641,12 @@ private fun GoalProgressVisualTile(
                 } else {
                     MaterialTheme.colorScheme.onSurface
                 },
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 16.sp,
+                    maxFontSize = 24.sp,
+                    stepSize = 1.sp,
+                ),
             )
             Text(
                 text = state.goalDeltaSubLabel,
@@ -677,11 +688,18 @@ private fun SmileTrainingProgressCard(
     onClick: () -> Unit,
 ) {
     val extendedColors = EundunTheme.extendedColors
+    val totalDurationSuffix = if (smileStats.totalDurationSec > 0) {
+        " · 총 ${formatDurationKorean(smileStats.totalDurationSec)}"
+    } else {
+        ""
+    }
     val summaryText = when {
         smileStats.isCompletedToday ->
-            "오늘 연습 완료 · 연속 ${smileStats.currentStreakDays}일째 (누적 ${smileStats.totalSessions}회)"
+            "오늘 연습 완료 · 연속 ${smileStats.currentStreakDays}일째 (누적 ${smileStats.totalSessions}회$totalDurationSuffix)"
         smileStats.currentStreakDays > 0 ->
-            "연속 ${smileStats.currentStreakDays}일 진행 중 · 오늘 10초 미소 연습을 이어가세요"
+            "연속 ${smileStats.currentStreakDays}일 진행 중 (누적 ${smileStats.totalSessions}회$totalDurationSuffix) · 오늘 10초 미소 연습을 이어가세요"
+        smileStats.totalSessions > 0 ->
+            "누적 ${smileStats.totalSessions}회$totalDurationSuffix · 오늘 10초 미소 연습을 시작해 보세요"
         else ->
             "2초 미소 × 3회 반복 온디바이스 표정 근육 및 마음 연습"
     }
@@ -954,5 +972,135 @@ private fun BadgeMiniChip(badge: BadgeMiniPreview) {
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun WearBiometricMindProgressCard(
+    summary: BiometricDailySummaryRecord?,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        shape = MaterialTheme.shapes.large,
+    ) {
+        if (summary == null) {
+            WearBiometricEmptyState()
+        } else {
+            WearBiometricSummaryContent(summary = summary)
+        }
+    }
+}
+
+@Composable
+private fun WearBiometricEmptyState() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Default.Watch,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "샤오미 워치 5 상시 생체·마음 분석 대기 중",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "워치를 착용하면 휴식·일상·운동·수면 전 구간 심박 변이와 마음 긴장·회복 점수가 자동 동기화됩니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WearBiometricSummaryContent(
+    summary: BiometricDailySummaryRecord,
+) {
+    val recoveryText = summary.recoveryScore?.let { "회복 ${it}점" } ?: "회복 산출 중"
+    val restingText = summary.restingBpm?.let { "안정 ${it}BPM" } ?: "안정 --"
+    val hrrText = summary.avgRecoveryDropBpm?.let { "운동후 회복 -${it}BPM" } ?: "운동후 회복 대기"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Watch,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+                Text(
+                    text = "${summary.recordDate} · $recoveryText",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = "$restingText · 평균 ${summary.avgBpm ?: "--"}BPM",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Text(
+            text = "착용 ${summary.totalMonitoredMinutes}분 — " +
+                "이완 ${summary.relaxedZoneMinutes}분 · 일상 ${summary.normalZoneMinutes}분 · " +
+                "마음긴장 ${summary.elevatedTensionMinutes}분 · 운동고부하 ${summary.highLoadMinutes}분",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            WearMetricChip("급상승 ${summary.rapidDeltaSpikeCount}회 (최대 +${summary.maxDeltaBpmPerMin})")
+            WearMetricChip("지속긴장 ${summary.tensionEpisodeCount}회 (${summary.tensionMinutes}분)")
+            WearMetricChip(hrrText)
+            WearMetricChip("야간각성 ${summary.sleepAwakeningCount}회")
+            WearMetricChip("${summary.totalSteps}보 · ${summary.activeCaloriesKcal.toInt()}kcal")
+        }
+    }
+}
+
+@Composable
+private fun WearMetricChip(label: String) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.75f),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
     }
 }

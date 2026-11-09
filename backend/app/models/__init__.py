@@ -1,5 +1,6 @@
 from app.database import Base
 from app.models.badge import Badge
+from app.models.biometric_summary import BiometricDailySummary
 from app.models.data_reset_audit import DataResetAudit
 from app.models.goal import Goal
 from app.models.meal_plan import MealPlan, MealPlanItem
@@ -14,6 +15,7 @@ __all__ = [
     "UserProfileHistory",
     "WeeklyPlan",
     "Badge",
+    "BiometricDailySummary",
     "DataResetAudit",
     "Goal",
     "MealPlan",

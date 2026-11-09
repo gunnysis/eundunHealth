@@ -83,6 +83,7 @@ done
 # INC-2026-06-19-28: versionCode 를 이전 업로드값과 대조 없이 빌드→업로드해 중복 거부됨.
 # 빌드(수 분) 전에 version.properties 의 versionCode 가 원장의 최고 업로드값보다 큰지 검증.
 # 원장: docs/ops/play-upload-ledger.md (업로드 성공 시마다 LAST_UPLOADED_VERSION_CODE 갱신).
+run "AGP 10 & 멀티모듈 불변식 가드" bash "$REPO_ROOT/scripts/check-agp10-compat.sh"
 run "versionCode 가드" bash "$REPO_ROOT/scripts/check-version-monotonic.sh"
 run "오픈 PR Triage 게이트 (룰 16)" bash "$REPO_ROOT/scripts/triage-prs.sh" --pre-release-gate
 # ---------------------------------------------------------------------------------------
@@ -95,9 +96,9 @@ source "$REPO_ROOT/scripts/ensure-java.sh"
 ensure_java
 # ---------------------------------------------------------------------------------------
 
-run "Spotless" "$GRADLEW" :app:spotlessCheck --quiet
-run "Detekt"   "$GRADLEW" :app:detektDebug --quiet
-run "Unit Tests" "$GRADLEW" :app:testDebugUnitTest --quiet
+run "Spotless (3 modules)" "$GRADLEW" :core:wear-contract:spotlessCheck :app:spotlessCheck :wear:spotlessCheck --quiet
+run "Detekt (3 modules)"   "$GRADLEW" :core:wear-contract:detektMain :app:detektDebug :wear:detektDebug --quiet
+run "Unit Tests (3 modules)" "$GRADLEW" :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest --quiet
 # -PsentryRelease=true: 출시 빌드에서만 Sentry ProGuard 매핑 생성 + 업로드 (build.gradle.kts sentry 블록).
 # 로컬 실험용 release 빌드는 이 플래그 없이 결정적 + 업로드 없음.
 run "Release artifacts (AAB + APK)" "$GRADLEW" :app:releaseArtifacts -PsentryRelease=true --quiet
@@ -136,6 +137,14 @@ echo "  versionName = $VN"
 echo "  AAB         = $AAB ($(stat -c%s "$AAB" 2>/dev/null || stat -f%z "$AAB") bytes)"
 echo "  APK         = $APK ($(stat -c%s "$APK" 2>/dev/null || stat -f%z "$APK") bytes)"
 echo "================================================================"
+
+# --- Android CLI Binary & R8 Full Mode Gate (룰 12·14·15) -------------------------------
+# android analyze 로 실제 컴파일된 APK 의 Package Name, versionName/Code (version.properties SSoT),
+# R8 Enabled=true, Full Mode=true 를 1초 내에 기계적으로 단언한다.
+if [ -f "$REPO_ROOT/scripts/android-cli-check.sh" ]; then
+    run "Android CLI APK Analyze (R8 Full Mode & Version SSoT)" bash "$REPO_ROOT/scripts/android-cli-check.sh" apk --module app "$APK"
+fi
+# ---------------------------------------------------------------------------------------
 
 # --- Cold-Start 스모크 검증 (연결된 기기/에뮬레이터가 있으면 즉시 실행) -----------------
 # INC-2026-10-29-34: 빌드가 성공해도 DI/Room/R8 런타임 초기화 결함으로 기동 즉시 죽는 사고 차단.

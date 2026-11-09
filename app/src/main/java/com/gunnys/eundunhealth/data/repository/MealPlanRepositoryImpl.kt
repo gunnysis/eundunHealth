@@ -2,6 +2,7 @@ package com.gunnys.eundunhealth.data.repository
 
 import com.gunnys.eundunhealth.api.generated.api.MealsApi
 import com.gunnys.eundunhealth.data.remote.util.bodyOrNull404
+import com.gunnys.eundunhealth.data.remote.util.bodyOrThrow
 import com.gunnys.eundunhealth.domain.model.DailyMealPlan
 import com.gunnys.eundunhealth.domain.model.MealInfo
 import com.gunnys.eundunhealth.domain.model.WeeklyMealPlan
@@ -18,54 +19,35 @@ class MealPlanRepositoryImpl @Inject constructor(
 
     override suspend fun getCurrentPlan(): Result<WeeklyMealPlan?> = runSuspendCatching {
         val dto: ApiWeeklyMealPlanResponse = api.getCurrentMealPlanMealsCurrentGet().bodyOrNull404() ?: return@runSuspendCatching null
-
-        WeeklyMealPlan(
-            summary = dto.summary,
-            weeklyPlan = dto.weeklyPlan.map { dailyDto: ApiDailyMealPlan ->
-                DailyMealPlan(
-                    day = dailyDto.day,
-                    isRestDay = dailyDto.isRestDay,
-                    meals = dailyDto.meals.map { mealDto: ApiMealInfo ->
-                        MealInfo(
-                            mealType = mealDto.mealType,
-                            menuName = mealDto.menuName,
-                            calories = mealDto.calories,
-                            proteinG = mealDto.proteinG,
-                            carbsG = mealDto.carbsG,
-                            fatG = mealDto.fatG,
-                        )
-                    },
-                )
-            },
-        )
+        dto.toDomain()
     }
 
     override suspend fun generatePlan(): Result<WeeklyMealPlan> = runSuspendCatching {
         // The UI presents a prominent disclosure immediately before this call.
         // The required header also blocks older clients that did not obtain affirmative consent.
-        val response = api.generateMealPlanMealsGeneratePost(xAIDataProcessingConsent = true)
-        if (!response.isSuccessful) throw retrofit2.HttpException(response)
-
-        val dto: ApiWeeklyMealPlanResponse = response.body() ?: error("Empty body")
-
-        WeeklyMealPlan(
-            summary = dto.summary,
-            weeklyPlan = dto.weeklyPlan.map { dailyDto: ApiDailyMealPlan ->
-                DailyMealPlan(
-                    day = dailyDto.day,
-                    isRestDay = dailyDto.isRestDay,
-                    meals = dailyDto.meals.map { mealDto: ApiMealInfo ->
-                        MealInfo(
-                            mealType = mealDto.mealType,
-                            menuName = mealDto.menuName,
-                            calories = mealDto.calories,
-                            proteinG = mealDto.proteinG,
-                            carbsG = mealDto.carbsG,
-                            fatG = mealDto.fatG,
-                        )
-                    },
-                )
-            },
-        )
+        val dto: ApiWeeklyMealPlanResponse = api.generateMealPlanMealsGeneratePost(
+            xAIDataProcessingConsent = true,
+        ).bodyOrThrow()
+        dto.toDomain()
     }
+
+    private fun ApiWeeklyMealPlanResponse.toDomain(): WeeklyMealPlan = WeeklyMealPlan(
+        summary = summary,
+        weeklyPlan = weeklyPlan.map { dailyDto: ApiDailyMealPlan ->
+            DailyMealPlan(
+                day = dailyDto.day,
+                isRestDay = dailyDto.isRestDay,
+                meals = dailyDto.meals.map { mealDto: ApiMealInfo ->
+                    MealInfo(
+                        mealType = mealDto.mealType,
+                        menuName = mealDto.menuName,
+                        calories = mealDto.calories,
+                        proteinG = mealDto.proteinG,
+                        carbsG = mealDto.carbsG,
+                        fatG = mealDto.fatG,
+                    )
+                },
+            )
+        },
+    )
 }

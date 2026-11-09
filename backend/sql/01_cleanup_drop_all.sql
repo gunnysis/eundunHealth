@@ -17,6 +17,7 @@ DROP VIEW IF EXISTS public.v_user_latest_metrics CASCADE;
 DROP TABLE IF EXISTS public.meal_plan_items CASCADE;
 DROP TABLE IF EXISTS public.meal_plans CASCADE;
 DROP TABLE IF EXISTS public.smile_training_sessions CASCADE;
+DROP TABLE IF EXISTS public.biometric_daily_summaries CASCADE;
 DROP TABLE IF EXISTS public.badges CASCADE;
 DROP TABLE IF EXISTS public.goals CASCADE;
 DROP TABLE IF EXISTS public.weekly_plans CASCADE;

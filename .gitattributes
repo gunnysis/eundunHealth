@@ -13,3 +13,9 @@ scripts/**/*.sh text eol=lf
 # autocrlf=true 는 checkout 시 CRLF 를 기대해 훅이 돌 때마다 내용 diff 0 인
 # phantom modified(EOL-only)가 재발 → LF 를 정본으로 고정해 근본 해결.
 docs/plans/**/*.md text eol=lf
+
+# Git hooks: 확장자가 없어 *.sh 에 안 걸리므로 CRLF 체크아웃 시 shebang 오류 방지
+.githooks/* text eol=lf
+
+# Gradle dependency lockfiles: --write-locks 가 항상 LF 로 기록하므로 CRLF 경고/오염 방지
+*.lockfile text eol=lf

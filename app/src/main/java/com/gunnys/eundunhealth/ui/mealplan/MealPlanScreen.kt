@@ -1,6 +1,7 @@
 package com.gunnys.eundunhealth.ui.mealplan
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,17 +62,16 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.DailyMealPlan
+import com.gunnys.eundunhealth.domain.model.KST_ZONE
 import com.gunnys.eundunhealth.domain.model.MealInfo
 import com.gunnys.eundunhealth.domain.model.WeeklyMealPlan
 import com.gunnys.eundunhealth.ui.components.AuthErrorBanner
 import com.gunnys.eundunhealth.ui.components.ErrorContent
 import com.gunnys.eundunhealth.ui.theme.EundunTheme
+import com.gunnys.eundunhealth.ui.theme.MotionTokens
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
-
-private val KST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -182,8 +183,15 @@ fun MealPlanScreen(
                             textAlign = TextAlign.Center,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { showAiDataConsent = true }) {
-                            Text("식단 자동 생성하기")
+                        Button(
+                            onClick = { showAiDataConsent = true },
+                            modifier = Modifier.heightIn(min = 52.dp),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Text(
+                                text = "식단 자동 생성하기",
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
                     }
                 }
@@ -240,6 +248,7 @@ private fun MealPlanLoadedContent(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -292,8 +301,11 @@ fun DailyMealCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = MotionTokens.standardSpring()),
         onClick = { expanded = !expanded },
+        shape = RoundedCornerShape(20.dp),
         border = border,
         colors = CardDefaults.cardColors(
             containerColor = if (isToday) {

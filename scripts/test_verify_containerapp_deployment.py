@@ -1,9 +1,17 @@
 import io
 import json
 import unittest
+import urllib.error
 from unittest.mock import patch
 
-from verify_containerapp_deployment import DeploymentState, probe, state_matches, wait_for_target
+from verify_containerapp_deployment import (
+    DeploymentState,
+    probe,
+    probe_auth_guarded,
+    read_android_version_code,
+    state_matches,
+    wait_for_target,
+)
 
 
 class DeploymentStateTest(unittest.TestCase):
@@ -52,18 +60,40 @@ class ProbeTest(unittest.TestCase):
         response.__enter__.return_value = response
         response.status = 200
         response.read.return_value = b'{"status":"wrong"}'
-        with patch("verify_containerapp_deployment.urllib.request.urlopen", return_value=response):
-            with self.assertRaisesRegex(RuntimeError, "status mismatch"):
-                probe("https://example.test/health", "ok")
+        with (
+            patch("verify_containerapp_deployment.urllib.request.urlopen", return_value=response),
+            self.assertRaisesRegex(RuntimeError, "status mismatch"),
+        ):
+            probe("https://example.test/health", "ok")
 
     def test_probe_accepts_expected_payload(self) -> None:
         response = unittest.mock.MagicMock()
         response.__enter__.return_value = response
         response.status = 200
         response.read.return_value = b'{"status":"ok"}'
-        with patch("verify_containerapp_deployment.urllib.request.urlopen", return_value=response):
-            with patch("sys.stdout", new=io.StringIO()):
-                probe("https://example.test/health", "ok")
+        with (
+            patch("verify_containerapp_deployment.urllib.request.urlopen", return_value=response),
+            patch("sys.stdout", new=io.StringIO()),
+        ):
+            probe("https://example.test/health", "ok")
+
+    def test_probe_auth_guarded_accepts_401_or_403_and_rejects_404(self) -> None:
+        err_401 = urllib.error.HTTPError("https://example.test/v2/biometrics/daily", 401, "Unauthorized", None, None)
+        with (
+            patch("verify_containerapp_deployment.urllib.request.urlopen", side_effect=err_401),
+            patch("sys.stdout", new=io.StringIO()),
+        ):
+            probe_auth_guarded("https://example.test/v2/biometrics/daily")
+
+        err_404 = urllib.error.HTTPError("https://example.test/v2/biometrics/daily", 404, "Not Found", None, None)
+        with (
+            patch("verify_containerapp_deployment.urllib.request.urlopen", side_effect=err_404),
+            self.assertRaisesRegex(RuntimeError, "expected HTTP 401/403"),
+        ):
+            probe_auth_guarded("https://example.test/v2/biometrics/daily")
+
+    def test_read_android_version_code_returns_positive_int(self) -> None:
+        self.assertGreaterEqual(read_android_version_code(), 44)
 
 
 if __name__ == "__main__":

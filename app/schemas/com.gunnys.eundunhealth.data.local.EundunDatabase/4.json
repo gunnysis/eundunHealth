@@ -1,0 +1,251 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "754198df6eca899b6f875389ac327bf5",
+    "entities": [
+      {
+        "tableName": "weekly_plans",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userId` TEXT NOT NULL, `weekStart` TEXT NOT NULL, `planMode` TEXT NOT NULL, `dayPlansJson` TEXT NOT NULL, `cachedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weekStart",
+            "columnName": "weekStart",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "planMode",
+            "columnName": "planMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dayPlansJson",
+            "columnName": "dayPlansJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedAt",
+            "columnName": "cachedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "wear_biometric_daily_summaries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`userId` TEXT NOT NULL, `recordDate` TEXT NOT NULL, `capturedAtEpochMs` INTEGER NOT NULL, `totalSteps` INTEGER NOT NULL, `activeCaloriesKcal` REAL NOT NULL, `restingBpm` INTEGER, `avgBpm` INTEGER, `minBpm` INTEGER, `maxBpm` INTEGER, `hrvRmssdMs` REAL, `totalMonitoredMinutes` INTEGER NOT NULL, `relaxedZoneMinutes` INTEGER NOT NULL, `normalZoneMinutes` INTEGER NOT NULL, `elevatedTensionMinutes` INTEGER NOT NULL, `highLoadMinutes` INTEGER NOT NULL, `tensionEpisodeCount` INTEGER NOT NULL, `tensionMinutes` INTEGER NOT NULL, `peakTensionBpm` INTEGER, `rapidDeltaSpikeCount` INTEGER NOT NULL, `maxDeltaBpmPerMin` INTEGER NOT NULL, `activityOverloadCount` INTEGER NOT NULL, `avgRecoveryDropBpm` INTEGER, `sleepAwakeningCount` INTEGER NOT NULL, `recoveryScore` INTEGER, `hourlyBpmBucketsJson` TEXT NOT NULL, `sourceDevicesJson` TEXT NOT NULL, `watchModel` TEXT NOT NULL, `syncStatus` TEXT NOT NULL, `syncedAtUtc` INTEGER, PRIMARY KEY(`userId`, `recordDate`))",
+        "fields": [
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordDate",
+            "columnName": "recordDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "capturedAtEpochMs",
+            "columnName": "capturedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalSteps",
+            "columnName": "totalSteps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeCaloriesKcal",
+            "columnName": "activeCaloriesKcal",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "restingBpm",
+            "columnName": "restingBpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "avgBpm",
+            "columnName": "avgBpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "minBpm",
+            "columnName": "minBpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "maxBpm",
+            "columnName": "maxBpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "hrvRmssdMs",
+            "columnName": "hrvRmssdMs",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "totalMonitoredMinutes",
+            "columnName": "totalMonitoredMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relaxedZoneMinutes",
+            "columnName": "relaxedZoneMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalZoneMinutes",
+            "columnName": "normalZoneMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elevatedTensionMinutes",
+            "columnName": "elevatedTensionMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "highLoadMinutes",
+            "columnName": "highLoadMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tensionEpisodeCount",
+            "columnName": "tensionEpisodeCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tensionMinutes",
+            "columnName": "tensionMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peakTensionBpm",
+            "columnName": "peakTensionBpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rapidDeltaSpikeCount",
+            "columnName": "rapidDeltaSpikeCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxDeltaBpmPerMin",
+            "columnName": "maxDeltaBpmPerMin",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityOverloadCount",
+            "columnName": "activityOverloadCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avgRecoveryDropBpm",
+            "columnName": "avgRecoveryDropBpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepAwakeningCount",
+            "columnName": "sleepAwakeningCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recoveryScore",
+            "columnName": "recoveryScore",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "hourlyBpmBucketsJson",
+            "columnName": "hourlyBpmBucketsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceDevicesJson",
+            "columnName": "sourceDevicesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "watchModel",
+            "columnName": "watchModel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncStatus",
+            "columnName": "syncStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedAtUtc",
+            "columnName": "syncedAtUtc",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "userId",
+            "recordDate"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_wear_biometric_daily_summaries_userId_syncStatus",
+            "unique": false,
+            "columnNames": [
+              "userId",
+              "syncStatus"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_wear_biometric_daily_summaries_userId_syncStatus` ON `${TABLE_NAME}` (`userId`, `syncStatus`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '754198df6eca899b6f875389ac327bf5')"
+    ]
+  }
+}

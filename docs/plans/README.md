@@ -5,16 +5,20 @@
 > 컨벤션: 본 README 의 "워크플로" 섹션 + memory `plans-folder-archive-preference.md` + `design-plan-docs-convention.md`.
 > 본 INDEX 는 frontmatter 기반 자동 생성 — 직접 편집 X. 재생성: `bash scripts/gen-plans-index.sh`.
 
-## 활성 작업 (페어 파일, 0)
+## 활성 작업 (페어 파일, 1)
 
-(없음 — 모든 작업이 ledger 에 흡수됨 또는 신규 작업 없음)
+### 진행 중 (1)
+
+| 날짜 | 주제 | type | status | tags |
+|---|---|---|---|---|
+| 2026-11-09 | wear-os-continuous-biometric-azure | plan | in-progress | wear-os, continuous-biometrics, health-services, data-layer, azure-container-apps, postgresql-18, xiaomi-watch-5 |
 
 ## Topic Ledgers (완료 작업 history)
 
-- [Android](logs/android.md) — recent 10, older 21
+- [Android](logs/android.md) — recent 14, older 21
 - [Backend](logs/backend.md) — recent 4, older 4
-- [Dependencies](logs/dependencies.md) — recent 4, older 6
-- [Process & Infra](logs/process-infra.md) — recent 6, older 23
+- [Dependencies](logs/dependencies.md) — recent 5, older 6
+- [Process & Infra](logs/process-infra.md) — recent 8, older 23
 
 ## 워크플로
 

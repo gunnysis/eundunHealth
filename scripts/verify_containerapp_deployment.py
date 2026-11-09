@@ -13,6 +13,23 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+VERSION_PROPERTIES_PATH = REPO_ROOT / "version.properties"
+
+
+def read_android_version_code(default_code: int = 45) -> int:
+    """version.properties에서 versionCode를 동적으로 읽되, SSoT 기본값(/app-compatibility?platform=android&versionCode=45)과 동기화한다."""
+    try:
+        if VERSION_PROPERTIES_PATH.is_file():
+            for raw_line in VERSION_PROPERTIES_PATH.read_text(encoding="utf-8").splitlines():
+                line = raw_line.strip()
+                if line.startswith("versionCode="):
+                    return int(line.split("=", 1)[1].strip())
+    except (OSError, ValueError):
+        pass
+    return default_code
 
 
 @dataclass(frozen=True)
@@ -132,13 +149,29 @@ def probe(url: str, expected_status: str | None = None) -> None:
     print(f"probe-ok {url}")
 
 
+def probe_auth_guarded(url: str) -> None:
+    """인증 보호 라우트(/v2/biometrics/daily 등)가 404/5xx가 아니라 401/403을 반환하는지 확인한다."""
+    request = urllib.request.Request(url, headers={"User-Agent": "eundunhealth-deploy-verifier/1"})
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            raise RuntimeError(f"{url} expected HTTP 401/403 without token, got {response.status}")
+    except urllib.error.HTTPError as exc:
+        if exc.code not in (401, 403):
+            raise RuntimeError(f"{url} expected HTTP 401/403 without token, got {exc.code}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"{url} request failed: {exc.reason}") from exc
+    print(f"probe-auth-guard-ok {url}")
+
+
 def verify_endpoints(fqdn: str) -> None:
     base_url = f"https://{fqdn}"
+    version_code = read_android_version_code()
     probe(f"{base_url}/health", "ok")
     probe(f"{base_url}/health/ready", "ready")
-    probe(f"{base_url}/app-compatibility?platform=android&versionCode=44")
+    probe(f"{base_url}/app-compatibility?platform=android&versionCode={version_code}")
     probe(f"{base_url}/privacy")
     probe(f"{base_url}/account-deletion")
+    probe_auth_guarded(f"{base_url}/v2/biometrics/daily")
 
 
 def parse_args() -> argparse.Namespace:

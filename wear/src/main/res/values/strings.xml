@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wear_app_name">은둔헬스 워치</string>
+    <string name="wear_diag_header">은둔헬스 워치</string>
+    <string name="wear_diag_env_title">런타임 환경</string>
+    <string name="wear_diag_env_version_api">v%1$s (%2$d) · API %3$d</string>
+    <string name="wear_diag_env_subtitle_compact">T%1$d · %2$s</string>
+    <string name="wear_diag_env_subtitle_expanded">min %1$d · target %2$d · %3$s</string>
+    <string name="wear_diag_status_title">상시 마음·생체 분석</string>
+    <string name="wear_diag_status_summary">착용 전 구간 5차원 연속 분석 활성</string>
+    <string name="wear_diag_status_subtitle">웰니스 참고 지표 (비의료)</string>
+    <string name="wear_diag_status_detail">휴식·이동·활동·수면 전 구간에서 심박 존 분포, 급격한 심박 변동, 지속 긴장, 활동 후 회복(HRR), 수면 각성을 상시 분석하여 스마트폰과 동기화합니다.</string>
+    <string name="wear_diag_action_expand">상세 정보 펼치기</string>
+    <string name="wear_diag_action_collapse">상세 정보 접기</string>
+    <string name="wear_diag_state_expanded">상세 정보 펼쳐짐</string>
+    <string name="wear_diag_state_collapsed">요약 정보 표시 중</string>
+</resources>

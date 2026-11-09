@@ -134,6 +134,7 @@ val detektCli =
 
 dependencies {
     detektCli("io.gitlab.arturbosch.detekt:detekt-cli:${libs.versions.detekt.get()}")
+    implementation(project(":core:wear-contract"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -173,8 +174,10 @@ dependencies {
     implementation(libs.play.app.update.ktx)
     implementation(libs.work.runtime.ktx)
 
-    // Health Connect
+    // Health Connect & Wear OS Data Layer
     implementation(libs.health.connect)
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Retrofit (Backend API + ExerciseDB)
     implementation(libs.retrofit)

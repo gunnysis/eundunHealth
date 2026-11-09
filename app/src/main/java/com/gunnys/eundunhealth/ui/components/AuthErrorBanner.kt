@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gunnys.eundunhealth.domain.model.AppError
+import com.gunnys.eundunhealth.ui.theme.EundunHealthTheme
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -86,7 +87,7 @@ fun AuthErrorBanner(
 @Preview(showBackground = true)
 @Composable
 private fun AuthErrorBannerPreview() {
-    MaterialTheme {
+    EundunHealthTheme {
         AuthErrorBanner(
             error = AppError.Auth("이메일 또는 비밀번호가 올바르지 않습니다"),
             screen = "login",

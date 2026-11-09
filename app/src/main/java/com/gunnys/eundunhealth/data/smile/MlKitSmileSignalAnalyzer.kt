@@ -12,6 +12,7 @@ import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.gunnys.eundunhealth.domain.smile.FrameSignal
 import java.io.Closeable
+import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -22,14 +23,22 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - 원본 비트맵이나 이미지를 디스크·네트워크·메모리 버퍼에 일절 저장하지 않는다.
  * - `STRATEGY_KEEP_ONLY_LATEST` 파이프라인이 멈추지 않도록 모든 성공/실패/예외 경로에서
  *   반드시 `imageProxy.close()` 를 호출한다.
+ * - [callbackExecutor] 지정 시 Google Play Services 기본 메인 스레드 대신 지정된 실행기에서
+ *   신호 변환 및 `imageProxy.close()` 를 즉시 수행해 UI 스레드 큐잉 지연을 줄인다.
+ * - [isPaused] 가 `true` 인 구간(예: `REP_SUCCESS` 휴식 구간)에는 ML Kit 추론을 건너뛰고
+ *   즉시 프레임을 반환하여 불필요한 연산·발열을 방지한다.
  */
 class MlKitSmileSignalAnalyzer(
     private val onSignal: (FrameSignal) -> Unit,
+    private val callbackExecutor: Executor? = null,
     detectorOverride: FaceDetector? = null,
 ) : ImageAnalysis.Analyzer,
     Closeable {
 
     private val isClosed = AtomicBoolean(false)
+
+    @Volatile
+    var isPaused: Boolean = false
 
     private val detector: FaceDetector = detectorOverride ?: FaceDetection.getClient(
         FaceDetectorOptions.Builder()
@@ -45,7 +54,7 @@ class MlKitSmileSignalAnalyzer(
     @Suppress("TooGenericExceptionCaught")
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
-        if (isClosed.get()) {
+        if (isClosed.get() || isPaused) {
             imageProxy.close()
             return
         }
@@ -72,15 +81,25 @@ class MlKitSmileSignalAnalyzer(
 
         val timestampMs = SystemClock.elapsedRealtime()
         try {
-            detector.process(inputImage)
-                .addOnSuccessListener { faces ->
-                    if (!isClosed.get()) {
+            val task = detector.process(inputImage)
+            val executor = callbackExecutor
+            if (executor != null) {
+                task.addOnSuccessListener(executor) { faces ->
+                    if (!isClosed.get() && !isPaused) {
                         onSignal(faces.toFrameSignal(timestampMs, frameWidth))
                     }
-                }
-                .addOnCompleteListener {
+                }.addOnCompleteListener(executor) {
                     imageProxy.close()
                 }
+            } else {
+                task.addOnSuccessListener { faces ->
+                    if (!isClosed.get() && !isPaused) {
+                        onSignal(faces.toFrameSignal(timestampMs, frameWidth))
+                    }
+                }.addOnCompleteListener {
+                    imageProxy.close()
+                }
+            }
         } catch (_: Throwable) {
             imageProxy.close()
         }

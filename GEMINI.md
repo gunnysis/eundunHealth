@@ -8,7 +8,7 @@ Gemini는 프로젝트의 아키텍처, 코드 리뷰, UI 및 IDE 통합 개발�
 Gemini는 작업을 시작하기 전 반드시 다음 문서를 스캔하고 세션 기준 환경으로 삼아야 합니다.
 
 1. 전역 워크스테이션 규칙(`C:\Users\Administrator\.gemini\config\GEMINI.md` 및 `C:\Users\Administrator\.claude\rules\*.md`): 호스트 PC 사양, Windows + WSL2 Ubuntu(`wsl -d Ubuntu`) 하이브리드 툴체인, 동적 실측 우선 원칙(환경·버전 변경 가능성 상시 고려), 작업 방식 및 프롬프트 계약을 준수합니다.
-2. `CLAUDE.md`: 본 프로젝트의 코딩 컨벤션, 아키텍처 제약, 보안 규칙(특히 룰 1~13)의 단일 진실 공급원입니다.
+2. `CLAUDE.md`: 본 프로젝트의 코딩 컨벤션, 아키텍처 제약, 보안 규칙(룰 1~16)의 단일 진실 공급원입니다.
 3. `docs/ops/operations-snapshot.md`: 인프라, 버전 등 최신 운영 상태 파악을 위해 참고합니다.
 4. 기존 코드베이스에 정의된 스타일과 아키텍처를 위반하지 않아야 합니다.
 
@@ -28,11 +28,22 @@ Claude 모델과의 작업 인계를 위해 `AI_HANDOFF.md`를 스캔하고 업�
 
 - 사용자가 `/plan` 명령을 사용하거나 작업 계획(Planning) 수립을 요청한 경우:
   1. 구현 코드를 작성하기 전에 작업 내용, 대상 파일, 검증 계획을 담은 계획 아티팩트를 먼저 작성합니다.
-  2. 아티팩트 작성 시 `RequestFeedback: true`를 설정하여 사용자 검토용 'Proceed' 버튼을 활성화합니다.
-  3. **사용자가 'Proceed' 버튼을 누르거나 채팅으로 명시적 승인을 하기 전까지는 파일 수정(`replace_file_content`, `write_to_file`)이나 부수효과 명령(`run_command`)을 실행하지 말고 대기해야 합니다.**
-  4. 사용자의 승인이 완료된 이후에만 계획에 따른 구현 작업을 시작합니다.
+  2. 아티팩트 작성 시 `RequestFeedback: true`를 설정합니다. (주의: 현재 Antigravity IDE UI 환경에는 별도의 'Proceed' 버튼이 존재하지 않으므로, 사용자에게 화면에 없는 'Proceed 버튼을 누르라'고 잘못 안내하지 말고 반드시 채팅으로 확인을 요청하십시오.)
+  3. **사용자가 채팅으로 명시적 승인(예: '진행해', '승인', '시작', 'ㅇㅇ')을 하기 전까지는 파일 수정(`replace_file_content`, `write_to_file`, `edit_file`)이나 부수효과 명령(`run_command`)을 실행하지 말고 대기해야 합니다.**
+  4. 사용자의 명시적 승인이 확인된 이후에만 계획에 따른 구현 작업을 시작합니다.
 
 ## 5. 호스트 WSL2 Ubuntu (`wsl -d Ubuntu`) 활용 및 동적 환경 실측
 
 - 본 PC에는 **WSL2 `Ubuntu` (`wsl -d Ubuntu`)** 및 **Docker Desktop**이 설치되어 있으나, PC 정보·설정·런타임 버전은 언제든 변경될 수 있으므로 스냅샷 값을 맹신하지 않고 필요 시 실시간 명령(`wsl -l -v`, `py -0p`, `fnm list` 등)으로 먼저 확인합니다.
 - GitHub Actions(`ubuntu-latest`)에서 검증되는 공급망 락 파일(`gradle/verification-metadata.xml`의 Linux 네이티브 아티팩트 `aapt2-*-linux.jar`, `backend/requirements.txt` 및 `backend/requirements-dev.txt`의 `--require-hashes` / `--allow-unsafe`), POSIX 셸 스크립트(`scripts/*.sh`), 또는 OS 종속 도구를 변경할 때는 Windows 로컬 검증에만 의존하지 말고 **PR/Push 전 `wsl -d Ubuntu -- bash -lc "..."`(또는 Linux 컨테이너)를 통해 Linux 러너 패리티를 사전 검증**하십시오.
+
+## 6. Android CLI (`v1.1.16717390`) & 실행 중인 Android Studio 하이브리드 통합
+
+- **통합 진입점 (`scripts/android-cli-check.sh`)**:
+  - `bash scripts/android-cli-check.sh status`: `android` CLI, SDK, AVD(모바일 `Galaxy_S25_Ultra`, 워치 `Wear_OS_Large_Round_API_36`), 실행 중인 Android Studio(`Rabbit 2 | 2026.2.2`, `eundunHealth` `READY`) 상태를 일괄 점검합니다.
+  - `bash scripts/android-cli-check.sh inspect <file.kt>`: Kotlin 파일 수정 직후 전체 Gradle 빌드 전에 실행하여 실행 중인 Studio의 K2 Analysis API(`android studio analyze-file`)로 ~1~2초 내에 컴파일·린트 결함을 즉시 확인합니다 (Studio 미실행 시 `./gradlew :core:wear-contract:detektMain :app:compileDebugKotlin :app:detektDebug :wear:compileDebugKotlin :wear:detektDebug` 자동 폴백).
+  - `bash scripts/android-cli-check.sh previews [app|wear] [--render [file] [preview_fn]]`: `android preview list "gradle://.?:{app,wear}@debug"`로 `@Preview` 인벤토리를 탐색하고, Studio의 Layoutlib 엔진 또는 `android preview render --component-tree` 폴백으로 `{app,wear}/build/reports/compose-previews/`에 PNG와 a11y 시맨틱 트리를 렌더링합니다.
+  - `bash scripts/android-cli-check.sh apk [--module app|wear] [apk_path]`: `android analyze`로 R8 fullMode, `version.properties` 버전 일치(`versionCode` / `wearVersionCode`), DEX/리소스 보존을 검증합니다 (`scripts/preflight-release.sh`에 자동 포함).
+  - `bash scripts/android-cli-check.sh versions` / `docs "<query>"`: Google Maven 안정판 버전 대조(룰 15) 및 Android 공식 문서 RAG 검색을 수행합니다.
+- **심볼릭 링크 경로 주의사항**:
+  - 워크스페이스가 `C:\Users\Administrator\apps_ln\eundunHealth`(심볼릭 링크)로 열려 있더라도 Android Studio는 정본 경로(`C:/programming/apps/eundunHealth`)로 프로젝트를 마운트합니다. `scripts/android-cli-check.sh`는 이를 자동 변환하므로 직접 `android studio` 하위 명령을 호출할 때도 정본 경로 또는 `scripts/android-cli-check.sh`를 사용하십시오.

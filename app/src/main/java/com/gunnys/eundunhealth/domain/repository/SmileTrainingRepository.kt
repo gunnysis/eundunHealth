@@ -5,7 +5,7 @@ import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import kotlinx.coroutines.flow.Flow
 
 interface SmileTrainingRepository {
-    fun observeSessions(): Flow<List<SmileSessionRecord>>
+    fun observeSessions(limit: Int = DEFAULT_RECENT_SESSION_LIMIT): Flow<List<SmileSessionRecord>>
 
     fun observeSummaryStats(): Flow<SmileSummaryStats>
 
@@ -22,6 +22,10 @@ interface SmileTrainingRepository {
     suspend fun retryBlockedSessions(): Result<Int>
 
     suspend fun deleteAllSessions(): Result<Unit>
+
+    companion object {
+        const val DEFAULT_RECENT_SESSION_LIMIT = 10
+    }
 }
 
 enum class SyncBatchOutcome {

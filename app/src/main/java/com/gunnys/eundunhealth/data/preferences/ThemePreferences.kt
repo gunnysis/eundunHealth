@@ -53,6 +53,7 @@ class ThemePreferences @Inject constructor(
         }
     }
 
+    @Suppress("RedundantSuspendModifier")
     suspend fun isSmileShortcutDismissed(today: LocalDate): Boolean {
         val prefs = context.dataStore.data.first()
         return prefs[smileDismissedDateKey] == today.toString()
@@ -66,6 +67,7 @@ class ThemePreferences @Inject constructor(
         }
     }
 
+    @Suppress("RedundantSuspendModifier")
     suspend fun hasAutoCreateAttempted(weekStart: LocalDate): Boolean {
         val prefs = context.dataStore.data.first()
         return prefs[autoCreateWeekKey] == weekStart.toString()
@@ -87,6 +89,7 @@ class ThemePreferences @Inject constructor(
         }
     }
 
+    @Suppress("RedundantSuspendModifier")
     suspend fun isV2LocalResetCompleted(): Boolean {
         val prefs = context.dataStore.data.first()
         return prefs[v2ResetCompletedKey] == true

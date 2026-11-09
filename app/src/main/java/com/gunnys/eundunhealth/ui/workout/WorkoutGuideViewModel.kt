@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.gunnys.eundunhealth.domain.model.AppError
 import com.gunnys.eundunhealth.domain.model.CurrentWeekPlanRead
 import com.gunnys.eundunhealth.domain.model.DayPlan
+import com.gunnys.eundunhealth.domain.model.KST_ZONE
 import com.gunnys.eundunhealth.domain.model.WorkoutPlanMode
 import com.gunnys.eundunhealth.domain.model.toReportedAppError
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
@@ -20,10 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
-
-private val KST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
 
 @Immutable
 sealed class WorkoutGuideSideEffect {

@@ -2,6 +2,7 @@ package com.gunnys.eundunhealth.data.local
 
 import androidx.work.WorkManager
 import com.gunnys.eundunhealth.data.local.dao.SmileSessionDao
+import com.gunnys.eundunhealth.data.local.dao.WearBiometricDao
 import com.gunnys.eundunhealth.data.local.dao.WeeklyPlanDao
 import com.gunnys.eundunhealth.data.preferences.ThemePreferences
 import com.gunnys.eundunhealth.data.sync.SmileSyncWorker
@@ -17,7 +18,7 @@ interface LocalDataWiper {
 /**
  * 계정 삭제 및 v2 로컬 리셋 경계의 Room/WorkManager/DataStore 정리를 담당한다.
  *
- * [weeklyPlanDao] 와 [smileSessionDao] 는 [Lazy] 로 주입받는다:
+ * [weeklyPlanDao], [smileSessionDao], [wearBiometricDao] 는 [Lazy] 로 주입받는다:
  * - [DefaultLocalDataWiper] 는 `AuthViewModel` 생성자에서 첫 Compose 프레임(메인 스레드)에 즉시 주입된다.
  * - Eager 주입 시 [ThemePreferences.isV2LocalResetCompleted] 가 이미 `true` 인 일반 기동에서도
  *   `EundunDatabase` 와 `SmileTrainingDatabase` 의 `Room.databaseBuilder().build()` 가 메인 스레드
@@ -27,6 +28,7 @@ interface LocalDataWiper {
 class DefaultLocalDataWiper @Inject constructor(
     private val weeklyPlanDao: Lazy<WeeklyPlanDao>,
     private val smileSessionDao: Lazy<SmileSessionDao>,
+    private val wearBiometricDao: Lazy<WearBiometricDao>,
     private val themePreferences: ThemePreferences,
     private val workManager: WorkManager,
 ) : LocalDataWiper {
@@ -36,9 +38,11 @@ class DefaultLocalDataWiper @Inject constructor(
         if (userId != null) {
             weeklyPlanDao.get().deleteAllByUser(userId)
             smileSessionDao.get().deleteAllByUser(userId)
+            wearBiometricDao.get().deleteAllByUser(userId)
         } else {
             weeklyPlanDao.get().clearAll()
             smileSessionDao.get().clearAll()
+            wearBiometricDao.get().clearAll()
         }
         themePreferences.clearAll()
     }
@@ -48,6 +52,7 @@ class DefaultLocalDataWiper @Inject constructor(
         workManager.cancelUniqueWork(SmileSyncWorker.UNIQUE_WORK_NAME)
         weeklyPlanDao.get().clearAll()
         smileSessionDao.get().clearAll()
+        wearBiometricDao.get().clearAll()
         themePreferences.markV2LocalResetCompleted()
     }
 }

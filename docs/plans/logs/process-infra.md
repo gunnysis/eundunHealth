@@ -4,6 +4,30 @@
 
 ## Recent (last 90 days)
 
+### 2026-11-04 — 전역 워크스테이션 & eundunHealth Android CLI (`v1.1.16717390`) + Android Studio Live Integration 2-Tier 통합
+
+- **Why**: IDE 인메모리 엔진(PSI 정적 분석, Compose `@Preview` 렌더링, Google Maven 버전 조회)과 터미널 CLI 간 단절을 해소하고, WSL2 Ubuntu ↔ Windows 호스트 Studio IPC 브리지 및 R8 Full Mode / Cold-Start UI 레이아웃 자동 검증을 구축해야 했다.
+- **What**:
+  - **Tier 1 (전역 워크스테이션)**: `windows-dev-setup`에 6번째 WSL2 래퍼 `~/.local/bin/android` 배포, `pwsh-doctor.ps1` / `wsl-doctor.ps1` 게이트 추가, 글로벌 에이전트 스코프에 공식 Android 도메인 스킬 6종(`camerax`, `jetpack-compose-performance`, `r8-analyzer`, `edge-to-edge`, `adaptive`, `play-policy-insights`) 설치.
+  - **Tier 2 (`eundunHealth`)**: `scripts/ensure-android-cli.sh` 및 단일 진입점 `scripts/android-cli-check.sh`(`status`, `versions`, `inspect`, `previews`, `apk`, `docs`) 구현(심볼릭 링크 `apps_ln` → Studio 정본 경로 자동 정규화 포함), `preflight-release.sh` 및 `smoke-cold-start.sh` 고도화.
+- **Outcome**: `pwsh-doctor.ps1` (`PASS 87 / FAIL 0`), `wsl-doctor.ps1` (`PASS 36 / FAIL 0`), `android-cli-check.sh` 6개 서브커맨드 및 `doc_audit.py --strict` 전수 통과.
+- **Files touched**: `scripts/{ensure-android-cli,android-cli-check,preflight-release,smoke-cold-start}.sh`, `.claude/settings.local.json`, `CLAUDE.md`, `GEMINI.md`, `docs/ops/operations-snapshot.md`, `AI_HANDOFF.md`
+- **설계 원문**: `2026-11-04-android-cli-integration-{design,plan}.md` (본 entry 로 흡수)
+
+---
+
+### 2026-11-02 — 문서 감사 도구(`scripts/agents/doc_audit.py`) Claude Agent SDK 의존성 제거 및 100% 결정론적 Python stdlib 린터 전환
+
+- **Why**: 기존 `scripts/agents/doc_audit.py`가 `claude-agent-sdk`와 유료 `ANTHROPIC_API_KEY`에 의존하여 로컬 무인증 환경 및 포크 PR CI에서 즉시 실행할 수 없고 비결정적 LLM 응답에 좌우되는 한계가 있었다.
+- **What**:
+  - `claude-agent-sdk` 및 외부 패키지 의존성을 전량 제거하고 100% Python 3.14 표준 라이브러리만 사용하는 결정론적 수집·교차 대조 린터(`collect_facts` + `check_drift` + `run_deterministic_audit`)로 전면 재작성.
+  - 버전(`versionName`/`versionCode`/`wearVersionCode`/`LAST_UPLOADED_VERSION_CODE`), 3모듈 SDK(`minSdk`/`targetSdk`), Gradle/AGP/Kotlin/FastAPI/Python 런타임, 백엔드 라우트 수(27개), 테스트 파일 수, JWT 알고리즘(`RS256`), 죽은 문서 링크를 1초 내 전수 검사(`--strict`, `--collect-only`, `--json`).
+  - `.github/workflows/doc-audit.yml`에서 유료 API 시크릿 의존을 제거하고 매 실행 결정론적 `--strict` 감사를 수행하도록 개선.
+- **Outcome**: `pytest scripts/agents/test_doc_audit.py` 13/13 PASS, `python scripts/agents/doc_audit.py --strict` 드리프트 0건 통과.
+- **Files touched**: `scripts/agents/{doc_audit.py,test_doc_audit.py,README.md}`, `.github/workflows/doc-audit.yml`, `CLAUDE.md`
+
+---
+
 ### 2026-10-27 — CI aggregate gate·Action pin·릴리스 원장 PR 전환
 
 - Android/backend path filter는 유지하면서 항상 완료되는 `Repository Gate`가 변경 영역의 결과를 집계해 필수 검사 pending 문제를 막도록 했다.

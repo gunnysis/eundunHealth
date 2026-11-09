@@ -12,6 +12,8 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'wear/**'
+      - 'core/**'
       - 'build.gradle.kts'
       - 'settings.gradle.kts'
       # `gradle/**` 는 디렉터리 gradle/ 만 매칭한다 — 루트의 gradle.properties 는 안 걸린다.
@@ -30,12 +32,10 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'wear/**'
+      - 'core/**'
       - 'build.gradle.kts'
       - 'settings.gradle.kts'
-      # `gradle/**` 는 디렉터리 gradle/ 만 매칭한다 — 루트의 gradle.properties 는 안 걸린다.
-      # AGP 호환 플래그·JVM 힙이 여기 있으므로 빠지면 빌드 설정 변경이 CI 를 통째로 우회한다
-      # (2026-09-02 실측 구멍). version.properties 는 versionCode/Name 의 SSoT 이고,
-      # gradlew 는 과거 CRLF 로 실제 사고가 났던 파일이다(INC 2026-06-19).
       - 'gradle/**'
       - 'gradle.properties'
       - 'version.properties'
@@ -72,23 +72,25 @@ jobs:
           SENTRY_DSN=
           EOF
 
-      - name: Spotless check
-        run: ./gradlew :app:spotlessCheck
+      - name: Spotless check (3 modules)
+        run: ./gradlew :core:wear-contract:spotlessCheck :app:spotlessCheck :wear:spotlessCheck
 
-      - name: Check AGP 10 compatibility invariants
-        run: bash scripts/check-agp10-compat.sh
+      - name: Check AGP 10 compatibility & 3-module invariants
+        run: |
+          bash scripts/check-agp10-compat.sh
+          bash scripts/check-version-monotonic.sh --check-ssot
 
       - name: Check collectAsState anti-pattern
         run: |
-          echo "Checking for banned collectAsState() usage..."
+          echo "Checking for banned collectAsState() usage in :app and :wear..."
           FAIL=0
           # 1) Import 검사 — collectAsState 단독 import ($ anchor: collectAsStateWithLifecycle 제외)
-          if grep -rn 'import androidx.compose.runtime.collectAsState$' app/src/main/java/; then
+          if grep -rn 'import androidx.compose.runtime.collectAsState$' app/src/main/java/ wear/src/main/java/; then
             echo "::error::Found banned 'import collectAsState'. Use collectAsStateWithLifecycle instead."
             FAIL=1
           fi
           # 2) 호출부 검사 — .collectAsState( 호출 (collectAsStateWithLifecycle 제외)
-          if grep -rn '\.collectAsState(' app/src/main/java/ | grep -v 'collectAsStateWithLifecycle('; then
+          if grep -rn '\.collectAsState(' app/src/main/java/ wear/src/main/java/ | grep -v 'collectAsStateWithLifecycle('; then
             echo "::error::Found banned '.collectAsState()' call. Use collectAsStateWithLifecycle instead."
             FAIL=1
           fi
@@ -97,32 +99,27 @@ jobs:
           fi
           echo "No collectAsState anti-pattern found."
 
-      - name: Detekt
-        run: ./gradlew :app:detektDebug
+      - name: Detekt (3 modules)
+        run: ./gradlew :core:wear-contract:detektMain :app:detektDebug :wear:detektDebug
 
-      - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest
+      - name: Unit tests (3 modules)
+        run: ./gradlew :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+      - name: Build debug APKs (:app & :wear)
+        run: ./gradlew :app:assembleDebug :wear:assembleDebug
 
       # 이 저장소의 릴리스 사고는 전부 R8 에서만 재현됐다 — 룰 12(2026-06-15 빈 운동계획,
       # Gson 래퍼 keep 누락)·INC-2026-07-02-29. debug 빌드와 단위 테스트는 R8 을 타지 않으므로
       # 이 스텝이 없으면 minify/keep/`-dontwarn` 설정 회귀가 **출시 빌드에서야** 드러난다.
-      # (실제로 Entra 전환의 `Missing class com.google.crypto.tink.subtle.**` 도 로컬 릴리스
-      #  빌드를 직접 돌려서야 발견됐다.)
-      #
-      # 서명 키 없이 돌아간다 — INC-2026-07-02-29 수정으로 release 서명이 keystore 존재-조건부가
-      # 되어 clean checkout 에서는 unsigned 로 빌드된다(CodeQL autobuild 도 같은 경로).
-      # 목적은 R8 설정 검증이지 배포물 생산이 아니므로 **산출물은 업로드하지 않는다** —
-      # 출시 산출물의 유일한 경로는 preflight-release.sh 다(룰 2).
-      - name: Build release (R8) — 룰 12 회귀 가드
-        run: ./gradlew :app:assembleRelease
+      - name: Build release (R8) — 룰 12 회귀 가드 (:app & :wear)
+        run: ./gradlew :app:assembleRelease :wear:assembleRelease
 
       - name: Upload debug APK artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: app-debug-${{ github.sha }}
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            wear/build/outputs/apk/debug/wear-debug.apk
           retention-days: 7

@@ -80,6 +80,7 @@ class MlKitFaceModuleInstaller @Inject constructor(
         }
     }
 
+    @Suppress("RedundantSuspendModifier")
     private suspend fun checkAvailability(
         client: ModuleInstallClient,
         detector: FaceDetector,
@@ -93,6 +94,7 @@ class MlKitFaceModuleInstaller @Inject constructor(
             }
     }
 
+    @Suppress("RedundantSuspendModifier")
     private suspend fun requestInstall(
         client: ModuleInstallClient,
         detector: FaceDetector,
