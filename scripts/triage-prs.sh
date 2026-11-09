@@ -34,6 +34,13 @@ fi
 
 PR_JSON="$(gh pr list --state open --limit 50 --json number,title,headRefName,author,createdAt,mergeStateStatus,files,statusCheckRollup 2>/dev/null || echo "[]")"
 
+# GitHub GraphQL은 main 브랜치 병합 직후 mergeStateStatus를 'UNKNOWN'으로 반환하고
+# 백그라운드에서 재계산하므로, UNKNOWN이 감지되면 2초 대기 후 1회 재조회하여 오분류를 방지한다.
+if echo "$PR_JSON" | grep -q '"mergeStateStatus":"UNKNOWN"'; then
+    sleep 2
+    PR_JSON="$(gh pr list --state open --limit 50 --json number,title,headRefName,author,createdAt,mergeStateStatus,files,statusCheckRollup 2>/dev/null || echo "[]")"
+fi
+
 "$PYTHON_BIN" - "$MODE" "$PR_JSON" <<'PY'
 import json
 import sys
@@ -67,8 +74,8 @@ for pr in prs:
         buckets["RELEASE-LEDGER"].append((num, merge_state, head, title))
     elif not is_bot:
         buckets["ACTIVE-WORK"].append((num, merge_state, head, title))
-    elif head.startswith("dependabot/gradle/") and (
-        "gradle/libs.versions.toml" in files or "app/gradle.lockfile" in files
+    elif head.startswith("dependabot/gradle/") and any(
+        p == "gradle/libs.versions.toml" or p.endswith("gradle.lockfile") for p in files
     ):
         buckets["GRADLE-LOCKFILE-BATCH"].append((num, merge_state, head, title))
     elif head.startswith("dependabot/pip/"):
@@ -95,9 +102,20 @@ if buckets["CLEAN-DIRECT"]:
 if buckets["GRADLE-LOCKFILE-BATCH"]:
     nums = ", ".join(f"#{x[0]}" for x in buckets["GRADLE-LOCKFILE-BATCH"])
     print(
-        f"\n💡 Gradle 공급망 배치 흡수 대상 ({nums}):\n"
-        "   Dependabot은 gradle/verification-metadata.xml 해시를 갱신하지 못해 단독 PR CI가 실패합니다.\n"
-        "   -> gradle/libs.versions.toml 버전 반영 후 './gradlew :app:dependencies --write-locks --write-verification-metadata sha256' 실행하여 단일 배치 PR로 흡수하세요."
+        f"\n💡 Gradle 3-모듈 공급망 배치 흡수 대상 ({nums}):\n"
+        "   Dependabot은 다중 모듈(:core:wear-contract, :app, :wear) lockfile 및 gradle/verification-metadata.xml(플러그인 detachedConfiguration 포함) 해시를 동시 갱신하지 못해 단독 PR CI가 실패합니다.\n"
+        "   -> 1) gradle/libs.versions.toml 버전 반영\n"
+        "   -> 2) './gradlew :core:wear-contract:dependencies :app:dependencies :wear:dependencies :app:spotlessCheck :app:testDebugUnitTest :wear:testDebugUnitTest --write-locks --write-verification-metadata sha256' 실행 (+ Linux aapt2 해시 보존 점검)\n"
+        "   -> 3) 'python scripts/agents/doc_audit.py --strict'로 SSoT 문서 버전 동기화 확인 후 단일 배치 PR(Closes #...)로 흡수하세요."
+    )
+
+if buckets["PIP-HASH-BATCH"]:
+    nums = ", ".join(f"#{x[0]}" for x in buckets["PIP-HASH-BATCH"])
+    print(
+        f"\n💡 Python/Pip 해시 락 배치 점검 대상 ({nums}):\n"
+        "   Dependabot(Linux)이 생성한 requirements*.txt에는 Windows 미지원 'uvloop'가 무조건부로 포함되거나 SSoT 문서 드리프트가 발생할 수 있습니다.\n"
+        "   -> 1) requirements*.in 반영 후 Windows .venv에서 'pip-compile --generate-hashes --strip-extras'(dev는 '--allow-unsafe' 추가)로 재컴파일하여 'colorama==0.4.6' 보존 및 'uvloop' Windows 충돌 제거\n"
+        "   -> 2) CLAUDE.md / docs/TRD.md / docs/SPEC.md / docs/ops/operations-snapshot.md 버전 표기를 동기화하고 'python scripts/agents/doc_audit.py --strict' 통과 확인 후 배치 PR(Closes #...)로 흡수하세요."
     )
 
 if buckets["RELEASE-LEDGER"] and mode == "--pre-release-gate":

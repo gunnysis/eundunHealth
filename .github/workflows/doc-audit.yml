@@ -18,6 +18,9 @@ on:
       - 'scripts/agents/**'
       - '.github/workflows/doc-audit.yml'
       - 'version.properties'
+      - 'gradle/libs.versions.toml'
+      - 'backend/requirements.in'
+      - 'backend/requirements-dev.in'
       - 'CLAUDE.md'
       - 'README.md'
       - 'docs/ops/operations-snapshot.md'
@@ -35,6 +38,9 @@ on:
       - 'scripts/agents/**'
       - '.github/workflows/doc-audit.yml'
       - 'version.properties'
+      - 'gradle/libs.versions.toml'
+      - 'backend/requirements.in'
+      - 'backend/requirements-dev.in'
       - 'CLAUDE.md'
       - 'README.md'
       - 'docs/ops/operations-snapshot.md'
@@ -64,8 +70,10 @@ jobs:
 
       - name: Install pytest
         # scripts/ 테스트는 백엔드 의존성 없이 표준 라이브러리만 검증하므로 pytest 만 설치한다.
-        # 버전은 backend/requirements-dev.txt 와 동일한 9.1.1 로 고정한다.
-        run: pip install 'pytest==9.1.1'
+        # 버전은 backend/requirements-dev.in 의 pytest== 핀을 단일 진실 공급원(SSoT)으로 읽어 설치한다.
+        run: |
+          PYTEST_SPEC="$(grep -E '^pytest==' backend/requirements-dev.in)"
+          pip install "${PYTEST_SPEC}"
 
       - name: Unit tests (collector & audit rules)
         run: python -m pytest scripts/agents/test_doc_audit.py -v
