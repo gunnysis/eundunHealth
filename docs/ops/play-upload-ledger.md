@@ -13,7 +13,7 @@
 다음 두 줄이 모바일(`:app`)과 워치(`:wear`) 각각의 **단일 출처**다. Play 업로드가 **성공**할 때마다 해당 versionCode 로 갱신한다.
 
 ```
-LAST_UPLOADED_VERSION_CODE=44
+LAST_UPLOADED_VERSION_CODE=45
 LAST_UPLOADED_WEAR_VERSION_CODE=10002
 ```
 
@@ -25,6 +25,7 @@ LAST_UPLOADED_WEAR_VERSION_CODE=10002
 
 | versionName | versionCode | 트랙 | 상태 | 비고 |
 |---|---|---|---|---|
+| 0.8.0 | 45 | production | **사용됨** | 2026-11-10 release.yml 자동 갱신 (룰 13) |
 | 0.8.0 | 10002 | wear:production | **사용됨** | 2026-11-09 Wear OS 프로덕션 트랙 첫 출시 수동 업로드 (룰 13) |
 | 0.7.3 | 10001 | wear:internal | **사용됨** | 2026-11-06 Wear OS 내부 테스트 트랙 첫 수동 업로드 (룰 13) |
 | 0.7.3 | 44 | production | **사용됨** | 2026-10-29 release.yml 자동 갱신 (룰 13) |
