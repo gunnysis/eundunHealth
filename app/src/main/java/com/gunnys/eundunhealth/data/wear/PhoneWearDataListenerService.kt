@@ -2,15 +2,16 @@ package com.gunnys.eundunhealth.data.wear
 
 import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
+import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import com.gunnys.eundunhealth.di.IoDispatcher
 import com.gunnys.eundunhealth.domain.repository.WearBiometricRepository
 import com.gunnys.eundunhealth.wear.contract.WearContractConstants
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
@@ -22,8 +23,9 @@ class PhoneWearDataListenerService : WearableListenerService() {
     @Inject
     lateinit var wearBiometricRepository: WearBiometricRepository
 
-    @Suppress("InjectDispatcher")
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         super.onMessageReceived(messageEvent)
@@ -31,21 +33,35 @@ class PhoneWearDataListenerService : WearableListenerService() {
         val rawBytes = messageEvent.data
         if (rawBytes.isEmpty()) return
 
-        serviceScope.launch {
-            wearBiometricRepository
-                .ingestFromWatchEnvelope(rawBytes)
-                .onFailure { err ->
-                    Log.w(TAG, "Failed to ingest watch biometric envelope: ${err.javaClass.simpleName}")
-                }
+        // WearableListenerService.onMessageReceived runs on a background Binder thread.
+        // Returning immediately allows GMS to unbind and destroy the service before async ingestion finishes.
+        runBlocking(ioDispatcher) {
+            withTimeoutOrNull(INGEST_TIMEOUT_MS) {
+                wearBiometricRepository
+                    .ingestFromWatchEnvelope(rawBytes)
+                    .onSuccess { ingestedCount ->
+                        val sourceNodeId = messageEvent.sourceNodeId
+                        if (ingestedCount > 0 && sourceNodeId.isNotBlank()) {
+                            runCatching {
+                                Wearable.getMessageClient(this@PhoneWearDataListenerService)
+                                    .sendMessage(
+                                        sourceNodeId,
+                                        WearContractConstants.SYNC_ACK_MESSAGE_PATH,
+                                        ingestedCount.toString().encodeToByteArray(),
+                                    )
+                                    .await()
+                            }
+                        }
+                    }
+                    .onFailure { err ->
+                        Log.w(TAG, "Failed to ingest watch biometric envelope: ${err.javaClass.simpleName}")
+                    }
+            }
         }
-    }
-
-    override fun onDestroy() {
-        serviceScope.cancel()
-        super.onDestroy()
     }
 
     companion object {
         private const val TAG = "PhoneWearDataListener"
+        private const val INGEST_TIMEOUT_MS = 8_000L
     }
 }

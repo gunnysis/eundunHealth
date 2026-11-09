@@ -566,7 +566,7 @@ Samsung Health Data SDK는 **도입하지 않는다**. 갤럭시 워치/삼성�
 │  • Navigation (MainAppShell 4대 허브: 오늘·식단·진행·프로필)           │
 ├────────────────────────────────────────────────────────────────────────┤
 │                   Domain & Shared Contract Layer                       │
-│  • :core:wear-contract (순수 JVM 17: WearTimeConstants.kt KST_ZONE)    │
+│  • :core:wear-contract (순수 JVM 17: 5차원 생체 분석기 & GZIP 코덱)    │
 │  • Domain Models (WeeklyPlan, DayPlan, Exercise, Badge, UserProfile)   │
 │  • Repository Interfaces (순수 코틀린 계약)                            │
 │  • Use Cases (LoadCurrentWeekPlan, CreateWeeklyPlan, SyncHealth 등)    │
@@ -575,13 +575,13 @@ Samsung Health Data SDK는 **도입하지 않는다**. 갤럭시 워치/삼성�
 │    - SmileSignalEvaluator (온디바이스 미소 유지 판단 규칙)             │
 ├────────────────────────────────────────────────────────────────────────┤
 │                              Data Layer                                │
-│  • Repository Implementations (Workout, Meal, Smile, User 등)          │
-│  • Remote Data Sources: OpenAPI 생성 8개 API + ExerciseDbApi, MSAL     │
+│  • Repository Implementations (Workout, Meal, Smile, WearBiometric 등) │
+│  • Remote Data Sources: OpenAPI 생성 9개 API + ExerciseDbApi, MSAL     │
 │  • Local Storage:                                                      │
-│    - Room Database v3 (eundunhealth.db: 주간 운동 계획 weekly_plans)   │
+│    - Room Database v4 (eundunhealth.db: 주간 계획 + 워치 생체 요약)    │
 │    - Room Database v2 (smile_training.db: 스마일 트레이닝 세션 이력)   │
 │    - DataStore Preferences (theme_preferences.pb: 테마 및 플래그)      │
-│  • Hardware & Sensors: Health Connect Client, CameraX Vision Engine    │
+│  • Hardware & Sensors: Health Connect Client, CameraX, WHS (:wear)     │
 │  • Background Sync: WorkManager (SmileSyncWorker 멱등 동기화)          │
 ├────────────────────────────────────────────────────────────────────────┤
 │                               DI Layer                                 │
@@ -593,9 +593,9 @@ Samsung Health Data SDK는 **도입하지 않는다**. 갤럭시 워치/삼성�
 
 | Hilt 모듈 | 제공 컴포넌트 및 바인딩 |
 | :--- | :--- |
-| **`NetworkModule`** | OkHttpClient 3종, Retrofit, OpenAPI 생성 8개 API (`ProfileApi`, `WeeklyPlanV2Api`, `AppCompatibilityApi`, `BadgesApi`, `GoalsApi`, `AccountApi`, `MealsApi`, `SmileTrainingApi`), `ExerciseDbApi`, `AuthInterceptor`, `TokenAuthenticator`, `TokenHolder` |
-| **`DatabaseModule`** | `EundunDatabase` (v3), `SmileTrainingDatabase` (v2), `WeeklyPlanDao`, `SmileSessionDao` |
-| **`RepositoryModule`** | `AuthRepository`, `WorkoutRepository`, `MealPlanRepository`, `SmileTrainingRepository`, `GoalRepository`, `ProfileRepository`, `BadgeRepository`, `HealthRepository`, `LocalDataWiper`, `ExerciseTranslationProvider` |
+| **`NetworkModule`** | OkHttpClient 3종, Retrofit, OpenAPI 생성 9개 API (`ProfileApi`, `WeeklyPlanV2Api`, `AppCompatibilityApi`, `BadgesApi`, `GoalsApi`, `AccountApi`, `MealsApi`, `SmileTrainingApi`, `BiometricsApi`), `ExerciseDbApi`, `AuthInterceptor`, `TokenAuthenticator`, `TokenHolder` |
+| **`DatabaseModule`** | `EundunDatabase` (v4), `SmileTrainingDatabase` (v2), `WeeklyPlanDao`, `WearBiometricDao`, `SmileSessionDao` |
+| **`RepositoryModule`** | `AuthRepository`, `WorkoutRepository`, `MealPlanRepository`, `SmileTrainingRepository`, `WearBiometricRepository`, `GoalRepository`, `ProfileRepository`, `BadgeRepository`, `HealthRepository`, `LocalDataWiper`, `ExerciseTranslationProvider` |
 | **`CoroutineModule`** | `@IoDispatcher`, `@DefaultDispatcher`, `@MainDispatcher` CoroutineContext 주입 |
 
 ### 3.3. 단방향 데이터 흐름 (UDF) & 동기화 패턴
@@ -1098,11 +1098,11 @@ Android 앱과 FastAPI 백엔드의 성능 트랜잭션과 에러를 독립된 �
 - **Compile / Target SDK:** 37 (Android 17) / **Min SDK:** `:app` 26 (Android 8.0) · `:wear` 36 (Wear OS 6.0)
 - **빌드 도구:** Gradle 9.8.2 + AGP 9.5.1 (Kotlin 2.4.21 내장)
 - **자바 런타임:** Eclipse Temurin 17 (Java 17 바이트코드)
-- **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.7.3`, `VERSION_CODE=44`, `WEAR_VERSION_CODE=10001`)
+- **버전 관리 SSoT:** 루트 `version.properties` (`VERSION_NAME=0.8.0`, `VERSION_CODE=45`, `WEAR_VERSION_CODE=10001`)
 
 #### [주요 CLI 명령어]
 ```bash
-# 1. 3모듈 단위 테스트 실행 (266 @Test)
+# 1. 3모듈 단위 테스트 실행 (273 @Test)
 ./gradlew :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest
 
 # 2. 코드 스타일, 정적 분석 및 3모듈 아키텍처 가드 검증
@@ -1130,7 +1130,7 @@ bash scripts/android-cli-check.sh apk --module wear
 #### [런타임 및 테스트]
 - **런타임:** Python 3.14 (venv)
 - **의존성 락:** `pip-compile --generate-hashes` 기반 `requirements.txt` / `requirements-dev.txt`
-- **테스트:** `pytest tests -q --cov=app` (147 테스트, PEP 669 sysmon 코어 커버리지 94%+)
+- **테스트:** `pytest tests -q --cov=app` (151 테스트, PEP 669 sysmon 코어 커버리지 94%+)
 
 #### [주요 CLI 명령어]
 ```bash
@@ -1158,10 +1158,10 @@ python backend/scripts/seed_edge_cases.py
 
 | 영역 | 프레임워크 | 검증 대상 및 특성 |
 | :--- | :--- | :--- |
-| **Android / Wear 단위 테스트** | **JUnit 4.13.2 + MockK 1.14.11** | `:app`, `:wear`, `:core:wear-contract` Use Case, Repository, 14 ViewModel, 빌드 계약 검증 (266 `@Test`) |
+| **Android / Wear 단위 테스트** | **JUnit 4.13.2 + MockK 1.14.11** | `:app`, `:wear`, `:core:wear-contract` Use Case, Repository, 14 ViewModel, 빌드 계약 검증 (273 `@Test`) |
 | **Android 비동기 테스트** | **kotlinx-coroutines-test 1.11.0** | `StandardTestDispatcher`, Flow 상태 방출 및 SideEffect 채널 검증 |
 | **Android Compose 테스트** | **Compose UI Test (JUnit4)** | 스마일 트레이닝, 다중 휴식 요일 선택기 UI 인터랙션 검증 |
-| **Backend 비동기 테스트** | **pytest 9.1.1 + pytest-asyncio** | 9개 도메인 라우터(27개 엔드포인트), SQLAlchemy 비동기 세션, 422 개인정보 마스킹 검증 (147 PASS) |
+| **Backend 비동기 테스트** | **pytest 9.1.1 + pytest-asyncio** | 10개 도메인 라우터(30개 엔드포인트), SQLAlchemy 비동기 세션, 422 개인정보 마스킹 검증 (151 PASS) |
 | **Backend 통합 테스트** | **httpx (ASGITransport)** | 실제 인메모리 ASGI 통신을 통한 엔드투엔드 HTTP 요청/응답 검증 |
 
 ---
@@ -1182,13 +1182,14 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 │       │   │   ├── data/
 │       │   │   │   ├── auth/          # MSAL 브라우저 위임 및 토큰 홀더 (AuthRepositoryImpl)
 │       │   │   │   ├── healthconnect/ # Health Connect DataSource (READ_EXERCISE)
-│       │   │   │   ├── local/         # Room DB v3 (EundunDatabase) & v2 (SmileTrainingDatabase)
+│       │   │   │   ├── local/         # Room DB v4 (EundunDatabase) & v2 (SmileTrainingDatabase)
 │       │   │   │   ├── preferences/   # DataStore (테마, 리셋 감사 플래그)
 │       │   │   │   ├── remote/        # OpenAPI 생성 클라이언트 연동, ExerciseDbApi, 인터셉터
 │       │   │   │   ├── repository/    # 도메인 Repository 구현체
 │       │   │   │   ├── smile/         # MlKitFaceModuleInstaller, MlKitSmileSignalAnalyzer
-│       │   │   │   ├── sync/          # SmileSyncWorker (WorkManager 오프라인 세션 멱등 동기화)
-│       │   │   │   └── translation/   # ExerciseTranslationProvider (46종 한국어 번들)
+│       │   │   │   ├── sync/          # SmileSyncWorker (WorkManager 오프라인 세션·생체 요약 동기화)
+│       │   │   │   ├── translation/   # ExerciseTranslationProvider (46종 한국어 번들)
+│       │   │   │   └── wear/          # PhoneWearDataListenerService (워치 Data Layer 수신)
 │       │   │   ├── di/                # Hilt Modules (Network, Database, Repository, Coroutine)
 │       │   │   ├── domain/
 │       │   │   │   ├── model/         # WeeklyPlan, MealPlan, UserProfile, TimeConstants
@@ -1232,7 +1233,10 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 ├── core/wear-contract/                # 순수 JVM 17 공유 계약 모듈 (:core:wear-contract)
 │   ├── build.gradle.kts               # org.jetbrains.kotlin.jvm (안드로이드/GMS 의존성 0)
 │   └── src/main/kotlin/com/gunnys/eundunhealth/wear/contract/
-│       └── WearTimeConstants.kt       # KST_ZONE (Asia/Seoul) SSoT
+│       ├── WearTimeConstants.kt       # KST_ZONE (Asia/Seoul) SSoT
+│       ├── BiometricSummaryContract.kt # 5차원 생체·마음 상태 DTO 및 Data Layer 경로 상수
+│       ├── ContinuousBiometricAnalyzer.kt # 24/7 5차원 연속 생체 분석기 (순수 Kotlin)
+│       └── BiometricPayloadCodec.kt   # GZIP + SHA-256 봉투 직렬화·무결성 코덱
 ├── backend/                           # FastAPI 독립 백엔드 서비스
 │   ├── app/
 │   │   ├── __init__.py                # __version__ = "1.0.0" (독립 API 버전 SSoT)
@@ -1241,18 +1245,18 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 │   │   ├── database.py                # SQLAlchemy 2.0 비동기 엔진 & asyncpg 커넥션 풀
 │   │   ├── dependencies.py            # Entra OIDC/JWKS 4단계 RS256 JWT 인증 검증기
 │   │   ├── exceptions.py              # 도메인 예외 계층 구조 (AppException)
-│   │   ├── schema_bootstrap.py        # 9개 테이블 멱등 부트스트랩 엔진
-│   │   ├── models/                    # SQLAlchemy ORM 테이블 (user_profiles, weekly_plans 등)
+│   │   ├── schema_bootstrap.py        # 10개 테이블 멱등 부트스트랩 엔진
+│   │   ├── models/                    # SQLAlchemy ORM 테이블 (user_profiles, biometric_daily_summaries 등)
 │   │   ├── schemas/                   # Pydantic v2 CamelSchema (in/out DTO)
-│   │   └── routers/                   # 9개 라우터 파일 (27개 엔드포인트)
+│   │   └── routers/                   # 10개 라우터 파일 (30개 엔드포인트)
 │   ├── sql/
 │   │   ├── 01_cleanup_drop_all.sql    # 하드 리셋 Step 1: 클린 정리
-│   │   └── 02_schema_create_all.sql   # 하드 리셋 Step 2: 3NF 정규화 9개 테이블 DDL
+│   │   └── 02_schema_create_all.sql   # 하드 리셋 Step 2: 3NF 정규화 10개 테이블 DDL
 │   ├── scripts/
 │   │   ├── hard_reset_db.py           # DB 하드 리셋 CLI
 │   │   ├── seed_edge_cases.py         # 100건 엣지케이스 검증 시더
 │   │   └── reap_orphaned_accounts.py  # 주간 고아 계정 자동 청소 잡 스크립트
-│   ├── tests/                         # pytest 9.1.1 + pytest-asyncio (147 테스트)
+│   ├── tests/                         # pytest 9.1.1 + pytest-asyncio (151 테스트)
 │   ├── Dockerfile                     # python:3.14-slim 멀티스테이지 컨테이너 빌드
 │   ├── requirements.txt               # pip-compile 해시 락 프로덕션 의존성
 │   └── requirements-dev.txt           # 개발/테스트 의존성

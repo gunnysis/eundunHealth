@@ -43,8 +43,7 @@ jobs:
     name: Lint, Type, Test
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     defaults:
       run:
         working-directory: ${{ env.BACKEND_DIR }}

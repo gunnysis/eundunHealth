@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -76,6 +77,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -218,9 +220,13 @@ fun HomeScreen(
                     }
                     val showSmileCard = !state.isSmileCompletedToday && !state.isSmileShortcutDismissedToday
 
-                    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+                    val listState = rememberLazyListState()
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                    ) {
                         state.toggleError?.let { err ->
-                            item {
+                            item(key = "toggle_error", contentType = "error_banner") {
                                 AuthErrorBanner(
                                     error = err,
                                     screen = "home_toggle",
@@ -228,7 +234,7 @@ fun HomeScreen(
                                 )
                             }
                         }
-                        item {
+                        item(key = "today_hero", contentType = "today_hero") {
                             TodayHeroCard(
                                 todayPlan = todayPlan,
                                 todayDate = state.today,
@@ -239,7 +245,7 @@ fun HomeScreen(
                             )
                         }
                         if (showSmileCard) {
-                            item {
+                            item(key = "smile_card", contentType = "smile_card") {
                                 SmileTrainingContextualCard(
                                     todayPlan = todayPlan,
                                     onStartSmile = onNavigateToSmileTraining,
@@ -247,7 +253,7 @@ fun HomeScreen(
                                 )
                             }
                         }
-                        item {
+                        item(key = "weekly_progress", contentType = "weekly_progress") {
                             WeeklyProgressCard(
                                 plan = state.plan,
                                 completedCount = state.completedCount,
@@ -257,18 +263,26 @@ fun HomeScreen(
                             )
                         }
                         if (!state.isHealthConnectAvailable) {
-                            item { HealthConnectUnavailableCard() }
+                            item(key = "hc_unavailable", contentType = "hc_card") {
+                                HealthConnectUnavailableCard()
+                            }
                         } else if (!state.hasHealthPermission) {
-                            item { HealthConnectPromptCard(onRequest = onRequestHealthPermissions) }
+                            item(key = "hc_prompt", contentType = "hc_card") {
+                                HealthConnectPromptCard(onRequest = onRequestHealthPermissions)
+                            }
                         }
-                        item {
+                        item(key = "weekly_expand_header", contentType = "weekly_expand_header") {
                             WeeklyPlanExpandHeader(
                                 isExpanded = state.isWeeklyListExpanded,
                                 onToggle = viewModel::toggleWeeklyListExpanded,
                             )
                         }
                         if (state.isWeeklyListExpanded) {
-                            items(state.plan.days, key = { it.date.toString() }) { day ->
+                            items(
+                                items = state.plan.days,
+                                key = { it.date.toEpochDay() },
+                                contentType = { "day_plan_card" },
+                            ) { day ->
                                 DayPlanCard(
                                     day = day,
                                     isToday = day.date == state.today,
@@ -425,7 +439,10 @@ private fun WeeklyPlanExpandHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .heightIn(min = 48.dp),
+            .heightIn(min = 48.dp)
+            .semantics {
+                stateDescription = if (isExpanded) "펼쳐짐" else "접혀 있음"
+            },
     ) {
         Row(
             modifier = Modifier
@@ -442,7 +459,7 @@ private fun WeeklyPlanExpandHeader(
             )
             Icon(
                 imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (isExpanded) "접기" else "펼치기",
+                contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

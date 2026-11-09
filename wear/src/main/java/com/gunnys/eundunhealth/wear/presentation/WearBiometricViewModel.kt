@@ -96,27 +96,31 @@ class WearBiometricViewModel(application: Application) : AndroidViewModel(applic
         val appContext = getApplication<Application>().applicationContext
         val granted = WearHealthSensorGateway.hasAllSensorPermissions(appContext)
         viewModelScope.launch {
-            val db = WearBiometricDatabase.getInstance(appContext)
-            val passiveRegistered =
-                if (granted) {
-                    withContext(Dispatchers.IO) {
-                        WearHealthSensorGateway.ensurePassiveMonitoringRegistered(appContext)
-                    }
-                } else {
-                    false
+            val snapshot =
+                withContext(Dispatchers.IO) {
+                    val db = WearBiometricDatabase.getInstance(appContext)
+                    val registered =
+                        if (granted) {
+                            WearHealthSensorGateway.ensurePassiveMonitoringRegistered(appContext)
+                        } else {
+                            false
+                        }
+                    RefreshSnapshot(
+                        passiveRegistered = registered,
+                        summary = db.getTodaySummary(),
+                        lastBpm = db.getLastRecordedHeartRateBpm(),
+                        currentCtx = db.getCurrentActivityContext(),
+                    )
                 }
-            val summary = withContext(Dispatchers.IO) { db.getTodaySummary() }
-            val lastBpm = withContext(Dispatchers.IO) { db.getLastRecordedHeartRateBpm() }
-            val currentCtx = withContext(Dispatchers.IO) { db.getCurrentActivityContext() }
 
             _uiState.update { prev ->
                 prev.copy(
                     hasPermissions = granted,
-                    passiveMonitoringActive = passiveRegistered,
-                    liveBpm = prev.liveBpm ?: lastBpm ?: summary.avgBpm,
-                    sensorStatusText = if (granted) "상시 백그라운드 감시 활성" else "센서 권한 허용 필요",
-                    currentContext = currentCtx,
-                    todaySummary = summary,
+                    passiveMonitoringActive = snapshot.passiveRegistered,
+                    liveBpm = prev.liveBpm ?: snapshot.lastBpm ?: snapshot.summary.avgBpm,
+                    sensorStatusText = if (granted) "상시 감시 중" else "센서 권한 허용 필요",
+                    currentContext = snapshot.currentCtx,
+                    todaySummary = snapshot.summary,
                 )
             }
         }
@@ -133,11 +137,13 @@ class WearBiometricViewModel(application: Application) : AndroidViewModel(applic
             WearHealthSensorGateway.flushPassiveBatches(appContext)
             val db = WearBiometricDatabase.getInstance(appContext)
             val summary = db.getTodaySummary()
+            val lastBpm = db.getLastRecordedHeartRateBpm()
             val ctx = db.getCurrentActivityContext()
-            _uiState.update {
-                it.copy(
+            _uiState.update { prev ->
+                prev.copy(
                     hasPermissions = true,
                     passiveMonitoringActive = true,
+                    liveBpm = prev.liveBpm ?: lastBpm ?: summary.avgBpm,
                     currentContext = ctx,
                     todaySummary = summary,
                 )
@@ -148,26 +154,58 @@ class WearBiometricViewModel(application: Application) : AndroidViewModel(applic
         measureJob =
             viewModelScope.launch {
                 val db = WearBiometricDatabase.getInstance(appContext)
+                var lastPersistedMinute = -1L
+                var lastPersistedAtMs = 0L
+
                 WearHealthSensorGateway.observeForegroundHeartRate(appContext).collect { reading ->
-                    val updatedSummary =
-                        withContext(Dispatchers.IO) {
-                            db.getTodaySummary()
+                    val bpm = reading.bpm
+                    if (bpm == null) {
+                        _uiState.update { prev ->
+                            prev.copy(sensorStatusText = reading.statusText)
                         }
-                    val currentCtx =
-                        withContext(Dispatchers.IO) {
-                            db.getCurrentActivityContext()
+                        return@collect
+                    }
+
+                    val nowMs = System.currentTimeMillis()
+                    val currentMinute = nowMs / 60_000L
+                    val shouldPersist =
+                        currentMinute != lastPersistedMinute || (nowMs - lastPersistedAtMs) >= 15_000L
+
+                    if (shouldPersist) {
+                        lastPersistedMinute = currentMinute
+                        lastPersistedAtMs = nowMs
+                        val (updatedSummary, currentCtx) =
+                            withContext(Dispatchers.IO) {
+                                val summary = db.recordHeartRateSample(bpm = bpm, sampleEpochMs = nowMs) ?: db.getTodaySummary(nowMs)
+                                val ctx = db.getCurrentActivityContext()
+                                summary to ctx
+                            }
+                        _uiState.update { prev ->
+                            prev.copy(
+                                liveBpm = bpm,
+                                sensorStatusText = reading.statusText,
+                                currentContext = currentCtx,
+                                todaySummary = updatedSummary,
+                            )
                         }
-                    _uiState.update { prev ->
-                        prev.copy(
-                            liveBpm = reading.bpm ?: prev.liveBpm,
-                            sensorStatusText = reading.statusText,
-                            currentContext = currentCtx,
-                            todaySummary = updatedSummary,
-                        )
+                    } else {
+                        _uiState.update { prev ->
+                            prev.copy(
+                                liveBpm = bpm,
+                                sensorStatusText = reading.statusText,
+                            )
+                        }
                     }
                 }
             }
     }
+
+    private data class RefreshSnapshot(
+        val passiveRegistered: Boolean,
+        val summary: BiometricDailySummaryRecord,
+        val lastBpm: Int?,
+        val currentCtx: WearActivityContext,
+    )
 
     fun onForegroundStop() {
         measureJob?.cancel()

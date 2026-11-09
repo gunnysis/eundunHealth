@@ -7,12 +7,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gunnys.eundunhealth.wear.BuildConfig
 import com.gunnys.eundunhealth.wear.presentation.theme.EundunWearTheme
@@ -34,7 +31,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val uiState by biometricViewModel.uiState.collectAsStateWithLifecycle()
-            val lifecycleOwner = LocalLifecycleOwner.current
             val permissionLauncher =
                 rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -49,18 +45,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            DisposableEffect(lifecycleOwner) {
-                val observer =
-                    LifecycleEventObserver { _, event ->
-                        when (event) {
-                            Lifecycle.Event.ON_START -> biometricViewModel.onForegroundStart()
-                            Lifecycle.Event.ON_STOP -> biometricViewModel.onForegroundStop()
-                            else -> Unit
-                        }
-                    }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
+            LifecycleStartEffect(biometricViewModel) {
+                biometricViewModel.onForegroundStart()
+                onStopOrDispose {
                     biometricViewModel.onForegroundStop()
                 }
             }

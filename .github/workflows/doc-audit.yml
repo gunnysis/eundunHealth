@@ -23,6 +23,13 @@ on:
       - 'docs/ops/operations-snapshot.md'
       - 'docs/TRD.md'
       - 'docs/PRD.md'
+      - 'docs/SPEC.md'
+      - 'docs/CHANGELOG.md'
+      - 'docs/conventions/versioning.md'
+      - 'backend/app/config.py'
+      - 'backend/containerapp.yaml'
+      - 'backend/docker-compose.yml'
+      - 'backend/app/routers/**'
   pull_request:
     paths:
       - 'scripts/agents/**'
@@ -33,6 +40,13 @@ on:
       - 'docs/ops/operations-snapshot.md'
       - 'docs/TRD.md'
       - 'docs/PRD.md'
+      - 'docs/SPEC.md'
+      - 'docs/CHANGELOG.md'
+      - 'docs/conventions/versioning.md'
+      - 'backend/app/config.py'
+      - 'backend/containerapp.yaml'
+      - 'backend/docker-compose.yml'
+      - 'backend/app/routers/**'
 
 permissions:
   contents: read
@@ -59,7 +73,7 @@ jobs:
       - name: Run documentation audit
         run: |
           set -o pipefail
-          python scripts/agents/doc_audit.py | tee audit-report.txt
+          python scripts/agents/doc_audit.py --strict | tee audit-report.txt
           {
             echo '## 📄 문서 일관성 감사 리포트 (Deterministic Document Audit)'
             echo ''

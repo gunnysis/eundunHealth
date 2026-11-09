@@ -285,10 +285,14 @@ class TestAuditAppVersionInText:
         assert "0.7.2/43" in findings[0]["doc_says"]
 
     def test_trd_drift_detected(self):
-        text = "> **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.2/43 (`completed` 100%)**"
+        text = (
+            "> **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.2/43 (`completed` 100%)**\n"
+            "`VERSION_NAME=0.7.2`, `VERSION_CODE=43`\n"
+        )
         findings = audit_app_version_in_text("docs/TRD.md", text, "0.7.3", "44")
-        assert len(findings) == 1
+        assert len(findings) == 2
         assert findings[0]["doc_says"] == "v0.7.2/43"
+        assert findings[1]["doc_says"] == "VERSION_NAME=0.7.2, VERSION_CODE=43"
 
     def test_readme_stage_narrative_drift_detected(self):
         text = "- **현재 단계** — **v0.7.3 (versionCode 44, `wearVersionCode=10001`)**\n"

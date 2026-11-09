@@ -131,7 +131,7 @@
                 <data
                     android:scheme="wear"
                     android:host="*"
-                    android:pathPrefix="/eundunhealth/v1/biometric/daily_summary_gzip" />
+                    android:pathPrefix="/eundunhealth/v1/biometric/" />
             </intent-filter>
         </service>
     </application>

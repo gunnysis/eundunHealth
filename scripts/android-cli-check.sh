@@ -7,6 +7,7 @@
 #   inspect [file...]                   실행 중인 Android Studio PSI/Lint 엔진으로 파일 정적 분석 (미지정 시 git diff .kt)
 #   previews [--render [file fn]]       Compose @Preview 인벤토리 조회 및 Studio Layoutlib 기반 PNG + Semantics 렌더링
 #   apk [--module app|wear] [path]      android analyze 기반 Package / Version SSoT / R8 Full Mode / 난독화율 검증 게이트
+#   watch-dev [serial]                  연결된 Wear OS 실기기 개발 환경 일괄 설정 (Tier A 영구 설정 + Tier B ADB 연동 화면/Wi-Fi 자동 제어 데몬)
 #   docs <query...>                     공식 Android Knowledge Base (kb://) 문서 검색
 #
 # 근본 원인 방어 (2026-11-04 실측):
@@ -359,22 +360,133 @@ cmd_docs() {
     "$ANDROID_CLI" docs search "$*" | tr -d '\r'
 }
 
+cmd_watch_dev() {
+    local adb_bin=""
+    if command -v adb >/dev/null 2>&1; then
+        adb_bin="$(command -v adb)"
+    elif [ -n "${LOCALAPPDATA:-}" ] && [ -x "$(cygpath -u "$LOCALAPPDATA" 2>/dev/null)/Android/Sdk/platform-tools/adb.exe" ]; then
+        adb_bin="$(cygpath -u "$LOCALAPPDATA")/Android/Sdk/platform-tools/adb.exe"
+    else
+        echo "ERROR: adb 실행 파일을 찾을 수 없습니다." >&2
+        return 1
+    fi
+
+    local serial="${1:-}"
+    if [ -z "$serial" ]; then
+        for s in $("$adb_bin" devices | awk 'NR>1 && $2=="device" {print $1}' | tr -d '\r'); do
+            local chars
+            chars=$("$adb_bin" -s "$s" shell getprop ro.build.characteristics 2>/dev/null | tr -d '\r')
+            if [[ "$chars" == *watch* ]]; then
+                serial="$s"
+                break
+            fi
+        done
+    fi
+
+    if [ -z "$serial" ]; then
+        echo "ERROR: 연결된 Wear OS 워치(device 상태)를 찾을 수 없습니다." >&2
+        return 1
+    fi
+
+    local pkg="com.gunnys.eundunhealth"
+    local model sdk
+    model=$("$adb_bin" -s "$serial" shell getprop ro.product.model 2>/dev/null | tr -d '\r')
+    sdk=$("$adb_bin" -s "$serial" shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')
+    echo "==> [Wear OS Dev Setup] 대상 기기: $model ($serial, SDK $sdk)"
+
+    echo "==> [1/3] Tier A 영구 개발/진단 설정 및 Doze 예외 적용"
+    "$adb_bin" -s "$serial" shell "
+        settings put global verifier_verify_adb_installs 0
+        settings put global package_verifier_user_consent -1
+        settings put global adb_allowed_connection_time 0
+        settings put secure dropbox:data_app_anr enabled
+        logcat -G 4M
+        dumpsys deviceidle whitelist +$pkg >/dev/null 2>&1 || true
+        am set-standby-bucket $pkg active >/dev/null 2>&1 || true
+    "
+
+    if "$adb_bin" -s "$serial" shell pm list packages 2>/dev/null | tr -d '\r' | grep -q "^package:${pkg}$"; then
+        echo "==> [2/3] $pkg 런타임 헬스 권한 4종 보장"
+        for perm in \
+            android.permission.BODY_SENSORS \
+            android.permission.ACTIVITY_RECOGNITION \
+            android.permission.health.READ_HEART_RATE \
+            android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND; do
+            "$adb_bin" -s "$serial" shell "pm grant $pkg $perm" 2>/dev/null || true
+        done
+    else
+        echo "==> [2/3] $pkg 미설치 상태 (권한 부여 건너뜀)"
+    fi
+
+    echo "==> [3/3] Tier B 동적 ADB 세션 연동 데몬(/data/local/tmp/adb_stayon_daemon.sh) 배포 및 기동"
+    local old_pids
+    old_pids=$("$adb_bin" -s "$serial" shell "ps -A -o PID,ARGS | grep '/data/local/tmp/adb_stayon_daemon.sh' | grep -v grep" 2>/dev/null | tr -d '\r' | awk '{print $1}' || true)
+    if [ -n "$old_pids" ]; then
+        for p in $old_pids; do
+            "$adb_bin" -s "$serial" shell "kill -9 $p" 2>/dev/null || true
+        done
+    fi
+    cat <<'EOF' | "$adb_bin" -s "$serial" shell "cat > /data/local/tmp/adb_stayon_daemon.sh && chmod 755 /data/local/tmp/adb_stayon_daemon.sh"
+#!/system/bin/sh
+CUR_TIMEOUT=$(settings get system screen_off_timeout 2>/dev/null)
+if [ -n "$CUR_TIMEOUT" ] && [ "$CUR_TIMEOUT" != "null" ] && [ "$CUR_TIMEOUT" -gt 0 ] && [ "$CUR_TIMEOUT" -lt 3600000 ] 2>/dev/null; then
+    ORIG_TIMEOUT="$CUR_TIMEOUT"
+else
+    ORIG_TIMEOUT=10000
+fi
+ACTIVE=0
+LOG=/data/local/tmp/adb_stayon_daemon.log
+echo "$(date '+%Y-%m-%d %H:%M:%S') DAEMON_STARTED (v2: stayon + ungaze + wifi_always_requested, orig_timeout=${ORIG_TIMEOUT}ms)" > "$LOG"
+while true; do
+    if ss -tn state established 2>/dev/null | grep -E -q '^0[[:space:]]+[0-9]{1,3}[[:space:]]+.*(192\.168\.[0-9]+\.|10\.[0-9]+\.[0-9]+\.|172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]+\.)'; then
+        if [ "$ACTIVE" -eq 0 ]; then
+            dumpsys battery set ac 1
+            svc power stayon true
+            settings put global stay_on_while_plugged_in 7
+            settings put system screen_off_timeout 2147483647
+            settings put global ungaze_sleep_enabled 0
+            settings put global wifi_always_requested 1
+            input keyevent KEYCODE_WAKEUP
+            ACTIVE=1
+            echo "$(date '+%Y-%m-%d %H:%M:%S') ADB_CONNECTED -> stayon=true timeout=MAX ungaze=0 wifi_always=1" >> "$LOG"
+        fi
+    else
+        if [ "$ACTIVE" -eq 1 ]; then
+            dumpsys battery reset
+            svc power stayon false
+            settings put global stay_on_while_plugged_in 0
+            settings put system screen_off_timeout "$ORIG_TIMEOUT"
+            settings put global ungaze_sleep_enabled 1
+            settings put global wifi_always_requested 0
+            ACTIVE=0
+            echo "$(date '+%Y-%m-%d %H:%M:%S') ADB_DISCONNECTED -> stayon=false timeout=$ORIG_TIMEOUT ungaze=1 wifi_always=0 battery=reset" >> "$LOG"
+        fi
+    fi
+    sleep 2
+done
+EOF
+    "$adb_bin" -s "$serial" shell "setsid /system/bin/sh /data/local/tmp/adb_stayon_daemon.sh >/dev/null 2>&1 </dev/null &"
+    sleep 3
+    "$adb_bin" -s "$serial" shell "cat /data/local/tmp/adb_stayon_daemon.log" | tr -d '\r'
+}
+
 SUBCOMMAND="${1:-status}"
 shift || true
 
 case "$SUBCOMMAND" in
-    status)   cmd_status "$@" ;;
-    versions) cmd_versions "$@" ;;
-    inspect)  cmd_inspect "$@" ;;
-    previews) cmd_previews "$@" ;;
-    apk)      cmd_apk "$@" ;;
-    docs)     cmd_docs "$@" ;;
+    status)    cmd_status "$@" ;;
+    versions)  cmd_versions "$@" ;;
+    inspect)   cmd_inspect "$@" ;;
+    previews)  cmd_previews "$@" ;;
+    apk)       cmd_apk "$@" ;;
+    watch-dev) cmd_watch_dev "$@" ;;
+    docs)      cmd_docs "$@" ;;
     -h|--help|help)
-        sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
         ;;
     *)
         echo "ERROR: 알 수 없는 서브커맨드: $SUBCOMMAND" >&2
-        echo "사용 가능 서브커맨드: status | versions | inspect | previews | apk | docs" >&2
+        echo "사용 가능 서브커맨드: status | versions | inspect | previews | apk | watch-dev | docs" >&2
         exit 1
         ;;
 esac

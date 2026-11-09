@@ -166,6 +166,7 @@
           "hourlyBpmBucketsJson": {
             "default": "[]",
             "description": "시간대별 요약 버킷 JSON 문자열",
+            "maxLength": 8192,
             "minLength": 2,
             "title": "Hourlybpmbucketsjson",
             "type": "string"
@@ -303,6 +304,7 @@
           "sourceDevicesJson": {
             "default": "[\"Xiaomi Watch 5 (M2501W1)\"]",
             "description": "수집 기기 목록 JSON 문자열",
+            "maxLength": 1024,
             "minLength": 2,
             "title": "Sourcedevicesjson",
             "type": "string"

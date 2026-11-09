@@ -168,4 +168,56 @@ class ContinuousBiometricAnalyzerTest {
         assertTrue(summary.recoveryScore!! in 0..100)
         assertTrue(summary.hourlyBuckets.isNotEmpty())
     }
+
+    @Test
+    fun `classifyZones excludes brisk walking and post-exercise cooldown from elevatedTensionMinutes`() {
+        val baseMinute = 29_378_000L
+        val buckets =
+            listOf(
+                // 5 minutes calm resting at 60 BPM
+                MinuteBiometricBucket(baseMinute + 0L, avgBpm = 60, stepsDelta = 0, activityContext = WearActivityContext.PASSIVE),
+                MinuteBiometricBucket(baseMinute + 1L, avgBpm = 60, stepsDelta = 0, activityContext = WearActivityContext.PASSIVE),
+                MinuteBiometricBucket(baseMinute + 2L, avgBpm = 60, stepsDelta = 0, activityContext = WearActivityContext.PASSIVE),
+                MinuteBiometricBucket(baseMinute + 3L, avgBpm = 60, stepsDelta = 0, activityContext = WearActivityContext.PASSIVE),
+                MinuteBiometricBucket(baseMinute + 4L, avgBpm = 60, stepsDelta = 0, activityContext = WearActivityContext.PASSIVE),
+                // 2 minutes brisk walking in UNKNOWN context (stepsDelta=95, avgBpm=105) -> should be normalZone, NOT tension
+                MinuteBiometricBucket(baseMinute + 5L, avgBpm = 105, stepsDelta = 95, activityContext = WearActivityContext.UNKNOWN),
+                MinuteBiometricBucket(baseMinute + 6L, avgBpm = 108, stepsDelta = 100, activityContext = WearActivityContext.UNKNOWN),
+                // 1 minute EXERCISE followed by 2 minutes post-exercise cooldown at 105 BPM -> should be normalZone, NOT tension
+                MinuteBiometricBucket(baseMinute + 10L, avgBpm = 145, stepsDelta = 120, activityContext = WearActivityContext.EXERCISE),
+                MinuteBiometricBucket(baseMinute + 11L, avgBpm = 110, stepsDelta = 5, activityContext = WearActivityContext.PASSIVE),
+                MinuteBiometricBucket(baseMinute + 12L, avgBpm = 102, stepsDelta = 0, activityContext = WearActivityContext.PASSIVE),
+            )
+
+        val summary =
+            ContinuousBiometricAnalyzer.analyzeDay(
+                recordDate = "2026-11-09",
+                capturedAtEpochMs = 1_762_680_000_000L,
+                buckets = buckets,
+            )
+
+        assertEquals(0, summary.elevatedTensionMinutes)
+        assertEquals(0, summary.tensionEpisodeCount)
+        assertEquals(4, summary.normalZoneMinutes)
+        assertEquals(5, summary.relaxedZoneMinutes)
+        assertEquals(1, summary.highLoadMinutes)
+    }
+
+    @Test
+    fun `encode and decode hourlyBucketsJson and sourceDevicesJson round-trip losslessly`() {
+        val buckets =
+            listOf(
+                HourlyBiometricBucket(hour = 9, avgBpm = 72, maxBpm = 88, dominantContext = WearActivityContext.PASSIVE, monitoredMinutes = 45),
+                HourlyBiometricBucket(hour = 20, avgBpm = 84, maxBpm = 112, dominantContext = WearActivityContext.EXERCISE, monitoredMinutes = 30),
+            )
+        val devices = listOf("Xiaomi Watch 5", "Galaxy S25 Ultra")
+
+        val encodedHourly = BiometricPayloadCodec.encodeHourlyBucketsJson(buckets)
+        val decodedHourly = BiometricPayloadCodec.decodeHourlyBucketsJson(encodedHourly)
+        assertEquals(buckets, decodedHourly)
+
+        val encodedDevices = BiometricPayloadCodec.encodeSourceDevicesJson(devices)
+        val decodedDevices = BiometricPayloadCodec.decodeSourceDevicesJson(encodedDevices)
+        assertEquals(devices, decodedDevices)
+    }
 }

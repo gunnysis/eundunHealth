@@ -9,7 +9,7 @@
 
 ## 0. 한눈에 보는 실행 순서 & 현재 위치(외부 vs 귀가 후) 매트릭스
 
-**Action 1 ~ Action 3(GitHub Actions 운영 Azure 배포 승인 및 Google Play Console 게시 개요 제출)은 2026-11-09 전수 완료**되었으며, **Action 4(워치 실기기 확인)는 워치 Play 스토어(내부 테스트) 또는 귀가 후 무선 ADB로 확인**하실 수 있습니다.
+**Action 1 ~ Action 4(운영 Azure 배포, Play Console 게시 개요 제출, Xiaomi Watch 5 실기기 무선 ADB 페어링·권한 부여·`watch-dev` 동적 화면 유지 데몬 및 5차원 WHS 센서 측정 검증)가 2026-11-09 전수 완료**되었습니다.
 
 ```mermaid
 flowchart LR
@@ -20,8 +20,8 @@ flowchart LR
         A1 --> A2 --> A3
     end
 
-    subgraph Watch["⌚ 실기기 확인 (Xiaomi Watch 5)"]
-        A4["Action 4\nXiaomi Watch 5 (M2501W1)\n권한 '항상 허용' + 배터리 설정\n+ 폰↔워치↔Azure E2E 확인"]
+    subgraph Watch["⌚ 실기기 확인 (2026-11-09 완료)"]
+        A4["✅ Action 4 (완료)\nXiaomi Watch 5 (M2501W1)\n무선 ADB · 권한 4종 · watch-dev\n& WHS 실시간 측정/동기화 검증"]
     end
 
     A3 --> A4
@@ -32,7 +32,7 @@ flowchart LR
 | **Action 1** | **운영 Azure 백엔드(`/v2/biometrics/*`) 배포 및 `biometric_daily_summaries` 테이블 부트스트랩** | Git Push + GitHub 웹/앱 (`backend-production` 승인) | 완료 | ✅ **완료 (`run 42596583922` → `eundunhealth-api--0000070`, `8968394`)** | 모바일/워치 클라우드 동기화 전 |
 | **Action 2** | **Google Play Console `건강 앱` 및 `데이터 안전` 섹션 갱신** | [Google Play Console](https://play.google.com/console) 웹 | 완료 | ✅ **완료 (2026-11-09 적용 및 심사 제출 완료)** | Play 스토어 신규 버전 제출 전 |
 | **Action 3** | **Google Play Console `Wear OS` 양식 요소(Form Factor) 추가·옵트인 및 AAB(`10001`) 등록** | [Google Play Console](https://play.google.com/console) 웹 | 완료 | ✅ **완료 (2026-11-09 5개 항목 게시 개요 제출 완료)** | Play 스토어로 워치 앱 배포 시 |
-| **Action 4** | **Xiaomi Watch 5 (`M2501W1`) 실기기 설정·권한 허용 및 E2E 동기화 확인** | Xiaomi Watch 5 + 스마트폰 | 약 3분 | ⏳ **운영 배포 완료 — 외부/귀가 후 언제든 가능** | 최종 실기기 검증 시 |
+| **Action 4** | **Xiaomi Watch 5 (`M2501W1`) 실기기 설정·권한 허용 및 E2E 동기화 확인** | Xiaomi Watch 5 + 무선 ADB (`192.168.0.9:46825`) | 완료 | ✅ **완료 (2026-11-09 실기기 설치·권한 4종·`watch-dev`·WHS 측정/폰 동기화 완료)** | 최종 실기기 검증 시 |
 
 ---
 

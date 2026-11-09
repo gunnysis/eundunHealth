@@ -1,5 +1,6 @@
 package com.gunnys.eundunhealth.wear.sensor
 
+import android.os.SystemClock
 import androidx.health.services.client.PassiveListenerService
 import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
@@ -12,7 +13,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.time.Instant
 import kotlin.math.roundToInt
 
 /**
@@ -33,13 +36,27 @@ class EundunPassiveListenerService(
     override fun onNewDataPointsReceived(dataPoints: DataPointContainer) {
         val db = WearBiometricDatabase.getInstance(applicationContext)
         val nowMs = System.currentTimeMillis()
+        val bootInstant = Instant.ofEpochMilli((nowMs - SystemClock.elapsedRealtime()).coerceAtLeast(0L))
+        val minValidEpochMs = (nowMs - 86_400_000L).coerceAtLeast(1L)
 
-        val heartRateSamples = dataPoints.getData(DataType.HEART_RATE_BPM)
-        for (sample in heartRateSamples) {
-            val bpm = sample.value.roundToInt()
-            if (bpm in 25..260) {
-                db.recordHeartRateSample(bpm = bpm, sampleEpochMs = nowMs)
-            }
+        val heartRateSamples =
+            dataPoints
+                .getData(DataType.HEART_RATE_BPM)
+                .mapNotNull { sample ->
+                    val bpm = sample.value.roundToInt()
+                    if (bpm in 30..220) {
+                        val sampleEpochMs =
+                            runCatching { sample.getTimeInstant(bootInstant).toEpochMilli() }
+                                .getOrDefault(nowMs)
+                                .coerceIn(minValidEpochMs, nowMs)
+                        bpm to sampleEpochMs
+                    } else {
+                        null
+                    }
+                }
+
+        if (heartRateSamples.isNotEmpty()) {
+            db.recordHeartRateSamplesBatch(samples = heartRateSamples)
         }
 
         val latestSteps =
@@ -67,12 +84,17 @@ class EundunPassiveListenerService(
         if (goal.dataTypeCondition.dataType == DataType.HEART_RATE_BPM) {
             val db = WearBiometricDatabase.getInstance(applicationContext)
             val thresholdBpm = WearContractConstants.PASSIVE_HEART_RATE_GOAL_BPM.roundToInt()
-            val currentBpm = (db.getLastRecordedHeartRateBpm() ?: thresholdBpm).coerceAtLeast(thresholdBpm)
+            val currentBpm = (db.getLastRecordedHeartRateBpm() ?: thresholdBpm).coerceIn(thresholdBpm, 220)
             db.recordHeartRateSample(bpm = currentBpm)
 
             serviceScope.launch {
                 WearDataLayerSender.syncRecentSummariesToPhone(applicationContext)
             }
         }
+    }
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
     }
 }

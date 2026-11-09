@@ -27,6 +27,7 @@ on:
       - 'gradlew.bat'
       - 'config/detekt/**'
       - 'scripts/check-agp10-compat.sh'
+      - 'scripts/check-version-monotonic.sh'
       - '.github/workflows/android.yml'
   pull_request:
     branches: [main]
@@ -43,6 +44,7 @@ on:
       - 'gradlew.bat'
       - 'config/detekt/**'
       - 'scripts/check-agp10-compat.sh'
+      - 'scripts/check-version-monotonic.sh'
       - '.github/workflows/android.yml'
 
 jobs:

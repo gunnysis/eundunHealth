@@ -29,6 +29,8 @@ jobs:
           filters: |
             android:
               - 'app/**'
+              - 'wear/**'
+              - 'core/**'
               - 'build.gradle.kts'
               - 'settings.gradle.kts'
               - 'gradle/**'
@@ -64,7 +66,11 @@ jobs:
           BACKEND_BASE_URL=http://10.0.2.2:8080/
           SENTRY_DSN=
           EOF
-      - run: ./gradlew :app:spotlessCheck :app:detektDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
+      - name: Check AGP 10 compatibility & version SSoT invariants
+        run: |
+          bash scripts/check-agp10-compat.sh
+          bash scripts/check-version-monotonic.sh --check-ssot
+      - run: ./gradlew :core:wear-contract:spotlessCheck :app:spotlessCheck :wear:spotlessCheck :core:wear-contract:detektMain :app:detektDebug :wear:detektDebug :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest :app:assembleDebug :wear:assembleDebug :app:assembleRelease :wear:assembleRelease
 
   backend:
     name: Backend required checks

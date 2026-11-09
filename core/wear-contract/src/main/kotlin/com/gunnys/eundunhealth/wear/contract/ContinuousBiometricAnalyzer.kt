@@ -54,10 +54,10 @@ object ContinuousBiometricAnalyzer {
             )
         }
 
-        val restingBpm = computeAdaptiveRestingBpm(dedupedSorted)
-        val avgBpm = dedupedSorted.map { it.avgBpm }.average().roundToInt()
-        val minBpm = dedupedSorted.minOf { it.minBpm }
-        val maxBpm = dedupedSorted.maxOf { it.maxBpm }
+        val restingBpm = computeAdaptiveRestingBpm(dedupedSorted).coerceIn(30, 220)
+        val avgBpm = dedupedSorted.map { it.avgBpm }.average().roundToInt().coerceIn(30, 240)
+        val minBpm = dedupedSorted.minOf { it.minBpm }.coerceIn(25, 240)
+        val maxBpm = max(avgBpm, dedupedSorted.maxOf { it.maxBpm }.coerceIn(30, 260))
 
         val zones = classifyZones(dedupedSorted, restingBpm)
         val rapidSpikeResult = detectRapidDeltaSpikes(dedupedSorted, restingBpm)
@@ -174,11 +174,18 @@ object ContinuousBiometricAnalyzer {
     /**
      * ② 착용 전 구간 4-Zone 연속 시간 분포:
      * 모든 착용 분(`totalMonitoredMinutes`)을 누락 없이 4개 구간으로 상호배타 분류한다.
+     * 비운동 저움직임(`PASSIVE` 또는 저걸음 `UNKNOWN`)이면서 운동 직후 쿨다운(5분)이 아닌 경우에만
+     * `elevatedTensionMinutes`(비활동 마음 긴장 구간)로 분류하며, 보행·이동·쿨다운 중 심박 상승은
+     * `normalMinutes`로 분류하여 회복 점수 왜곡을 방지한다.
      */
     private fun classifyZones(buckets: List<MinuteBiometricBucket>, restingBpm: Int): ZoneDistribution {
         val relaxedCeiling = restingBpm + 10
         val tensionFloor = max(restingBpm + 20, 95)
         val highLoadFloor = max(restingBpm + 45, 130)
+        val exerciseMinutes =
+            buckets
+                .filter { it.activityContext == WearActivityContext.EXERCISE }
+                .map { it.epochMinute }
 
         var relaxed = 0
         var normal = 0
@@ -186,11 +193,22 @@ object ContinuousBiometricAnalyzer {
         var highLoad = 0
 
         for (bucket in buckets) {
+            val isLowMovementNonExercise =
+                bucket.activityContext == WearActivityContext.PASSIVE ||
+                    (
+                        bucket.activityContext == WearActivityContext.UNKNOWN &&
+                            bucket.stepsDelta <= LIGHT_STEP_THRESHOLD_PER_MIN
+                        )
+            val isPostExerciseCooldown =
+                exerciseMinutes.any { exMin ->
+                    bucket.epochMinute - exMin in 1L..POST_EXERCISE_COOLDOWN_MINUTES
+                }
+
             when {
                 bucket.activityContext == WearActivityContext.EXERCISE || bucket.avgBpm >= highLoadFloor -> {
                     highLoad++
                 }
-                bucket.avgBpm >= tensionFloor -> {
+                bucket.avgBpm >= tensionFloor && isLowMovementNonExercise && !isPostExerciseCooldown -> {
                     elevated++
                 }
                 bucket.avgBpm < relaxedCeiling -> {
@@ -363,14 +381,16 @@ object ContinuousBiometricAnalyzer {
             val recoveryTarget =
                 buckets
                     .subList(i + 1, min(buckets.size, i + 5))
-                    .filter { it.epochMinute - current.epochMinute in 1L..HRR_LOOKAHEAD_MINUTES }
-                    .minByOrNull { it.avgBpm }
+                    .filter {
+                        it.activityContext != WearActivityContext.EXERCISE &&
+                            it.epochMinute - current.epochMinute in 1L..HRR_LOOKAHEAD_MINUTES
+                    }.minByOrNull { it.avgBpm }
 
             if (recoveryTarget != null) {
-                drops.add(current.avgBpm - recoveryTarget.avgBpm)
+                drops.add((current.avgBpm - recoveryTarget.avgBpm).coerceIn(0, 180))
             }
         }
-        return if (drops.isNotEmpty()) drops.average().roundToInt() else null
+        return if (drops.isNotEmpty()) drops.average().roundToInt().coerceIn(0, 180) else null
     }
 
     /**

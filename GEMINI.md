@@ -8,7 +8,7 @@ Gemini는 프로젝트의 아키텍처, 코드 리뷰, UI 및 IDE 통합 개발�
 Gemini는 작업을 시작하기 전 반드시 다음 문서를 스캔하고 세션 기준 환경으로 삼아야 합니다.
 
 1. 전역 워크스테이션 규칙(`C:\Users\Administrator\.gemini\config\GEMINI.md` 및 `C:\Users\Administrator\.claude\rules\*.md`): 호스트 PC 사양, Windows + WSL2 Ubuntu(`wsl -d Ubuntu`) 하이브리드 툴체인, 동적 실측 우선 원칙(환경·버전 변경 가능성 상시 고려), 작업 방식 및 프롬프트 계약을 준수합니다.
-2. `CLAUDE.md`: 본 프로젝트의 코딩 컨벤션, 아키텍처 제약, 보안 규칙(룰 1~16)의 단일 진실 공급원입니다.
+2. `CLAUDE.md`: 본 프로젝트의 코딩 컨벤션, 아키텍처 제약, 보안 규칙(룰 1~17)의 단일 진실 공급원입니다.
 3. `docs/ops/operations-snapshot.md`: 인프라, 버전 등 최신 운영 상태 파악을 위해 참고합니다.
 4. 기존 코드베이스에 정의된 스타일과 아키텍처를 위반하지 않아야 합니다.
 
@@ -45,5 +45,6 @@ Claude 모델과의 작업 인계를 위해 `AI_HANDOFF.md`를 스캔하고 업�
   - `bash scripts/android-cli-check.sh previews [app|wear] [--render [file] [preview_fn]]`: `android preview list "gradle://.?:{app,wear}@debug"`로 `@Preview` 인벤토리를 탐색하고, Studio의 Layoutlib 엔진 또는 `android preview render --component-tree` 폴백으로 `{app,wear}/build/reports/compose-previews/`에 PNG와 a11y 시맨틱 트리를 렌더링합니다.
   - `bash scripts/android-cli-check.sh apk [--module app|wear] [apk_path]`: `android analyze`로 R8 fullMode, `version.properties` 버전 일치(`versionCode` / `wearVersionCode`), DEX/리소스 보존을 검증합니다 (`scripts/preflight-release.sh`에 자동 포함).
   - `bash scripts/android-cli-check.sh versions` / `docs "<query>"`: Google Maven 안정판 버전 대조(룰 15) 및 Android 공식 문서 RAG 검색을 수행합니다.
+  - `bash scripts/android-cli-check.sh watch-dev [serial]`: 연결된 Wear OS 실기기(예: Xiaomi Watch 5 `M2501W1`)에 2-Tier 개발자 설정(Doze 예외, 런타임 권한 4종, 무선 ADB 연결 중에만 화면을 켜두고 연결 해제 후 2초 내 `screen_off_timeout=10000`·`dumpsys battery reset`으로 자동 복원하는 `/data/local/tmp/adb_stayon_daemon.sh`)을 일괄 프로비저닝합니다.
 - **심볼릭 링크 경로 주의사항**:
   - 워크스페이스가 `C:\Users\Administrator\apps_ln\eundunHealth`(심볼릭 링크)로 열려 있더라도 Android Studio는 정본 경로(`C:/programming/apps/eundunHealth`)로 프로젝트를 마운트합니다. `scripts/android-cli-check.sh`는 이를 자동 변환하므로 직접 `android studio` 하위 명령을 호출할 때도 정본 경로 또는 `scripts/android-cli-check.sh`를 사용하십시오.

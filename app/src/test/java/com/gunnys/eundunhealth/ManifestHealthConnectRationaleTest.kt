@@ -141,4 +141,23 @@ class ManifestHealthConnectRationaleTest {
         assertFalse("제거된 걸음 수 문구가 남아 있으면 안 됩니다.", source.contains("걸음 수"))
         assertFalse("제거된 심박수 문구가 남아 있으면 안 됩니다.", source.contains("심박수"))
     }
+
+    @Test
+    fun `manifest PhoneWearDataListenerService pathPrefix matches DAILY_SUMMARY_CHANNEL_PATH`() {
+        val doc = parseManifestDoc()
+        val dataNodes = doc.getElementsByTagName("data")
+        val wearPathPrefixes = (0 until dataNodes.length)
+            .map { dataNodes.item(it) as Element }
+            .filter { it.getAttribute("android:scheme") == "wear" }
+            .map { it.getAttribute("android:pathPrefix") }
+            .filter { it.isNotBlank() }
+
+        assertTrue(
+            "PhoneWearDataListenerService 의 android:pathPrefix 가 DAILY_SUMMARY_CHANNEL_PATH(" +
+                "${com.gunnys.eundunhealth.wear.contract.WearContractConstants.DAILY_SUMMARY_CHANNEL_PATH}) 를 매칭해야 합니다.",
+            wearPathPrefixes.any {
+                com.gunnys.eundunhealth.wear.contract.WearContractConstants.DAILY_SUMMARY_CHANNEL_PATH.startsWith(it)
+            },
+        )
+    }
 }

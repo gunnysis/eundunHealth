@@ -394,8 +394,8 @@ def audit_app_version_in_text(file_rel: str, text: str, expected_name: str, expe
                     "severity": "high",
                     "note": "TRD 상단 현재 상태의 앱 릴리스 버전이 version.properties 와 불일치합니다.",
                 })
-        # VERSION_NAME=0.7.2, VERSION_CODE=43
-        ssot_match = re.search(r"VERSION_NAME=([^\s,`]+)[,\s]+VERSION_CODE=([^\s\)`]+)", text)
+        # VERSION_NAME=0.7.2, VERSION_CODE=43 (또는 `VERSION_NAME=0.7.2`, `VERSION_CODE=43`)
+        ssot_match = re.search(r"VERSION_NAME=([^\s,`]+)[`,\s]+VERSION_CODE=([^\s\)`]+)", text)
         if ssot_match:
             doc_n, doc_c = ssot_match.group(1), ssot_match.group(2)
             if doc_n != expected_name or doc_c != expected_code:
@@ -499,7 +499,7 @@ def audit_python_runtime(facts: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def audit_api_routes_count(file_rel: str, text: str, expected_total: int) -> list[dict[str, Any]]:
-    """CLAUDE.md 나 README.md 의 엔드포인트 총 개수 서술을 검사한다."""
+    """CLAUDE.md, README.md, PRD.md, TRD.md, SPEC.md 의 엔드포인트 총 개수 서술을 검사한다."""
     findings: list[dict[str, Any]] = []
     if file_rel == "CLAUDE.md":
         m = re.search(r"API Endpoints \(총 (\d+) =", text)
@@ -524,6 +524,18 @@ def audit_api_routes_count(file_rel: str, text: str, expected_total: int) -> lis
                 "kind": "endpoint-count",
                 "severity": "med",
                 "note": f"README.md API 엔드포인트 총수 서술({m.group(1)}개)이 실제 라우터 합계({expected_total}개)와 불일치합니다.",
+            })
+    elif file_rel in {"docs/PRD.md", "docs/TRD.md", "docs/SPEC.md"}:
+        m = re.search(r"총\s*(\d+)\s*개\s*엔드포인트", text)
+        if m and int(m.group(1)) != expected_total:
+            findings.append({
+                "file": file_rel,
+                "locator": m.group(0),
+                "doc_says": f"총 {m.group(1)}개",
+                "ground_truth": f"총 {expected_total}개",
+                "kind": "endpoint-count",
+                "severity": "med",
+                "note": f"{file_rel} API 엔드포인트 총수 서술({m.group(1)}개)이 실제 라우터 합계({expected_total}개)와 불일치합니다.",
             })
     return findings
 

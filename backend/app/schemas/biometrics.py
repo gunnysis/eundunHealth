@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 
 from app.schemas.base import CamelSchema
 
@@ -71,16 +72,51 @@ class BiometricDailySummaryItem(CamelSchema):
     ]
     hourly_bpm_buckets_json: Annotated[
         str,
-        Field(default="[]", min_length=2, description="시간대별 요약 버킷 JSON 문자열"),
+        Field(default="[]", min_length=2, max_length=8192, description="시간대별 요약 버킷 JSON 문자열"),
     ]
     source_devices_json: Annotated[
         str,
-        Field(default='["Xiaomi Watch 5 (M2501W1)"]', min_length=2, description="수집 기기 목록 JSON 문자열"),
+        Field(
+            default='["Xiaomi Watch 5 (M2501W1)"]',
+            min_length=2,
+            max_length=1024,
+            description="수집 기기 목록 JSON 문자열",
+        ),
     ]
     watch_model: Annotated[
         str,
         Field(default="Xiaomi Watch 5 (M2501W1)", max_length=64, description="측정 워치 기기 모델명"),
     ]
+
+    @field_validator("hourly_bpm_buckets_json", "source_devices_json")
+    @classmethod
+    def _validate_json_list_str(cls, v: str) -> str:
+        try:
+            parsed = json.loads(v)
+        except ValueError as exc:
+            raise ValueError("유효한 JSON 배열 문자열이어야 합니다.") from exc
+        if not isinstance(parsed, list):
+            raise ValueError("최상위 JSON 구조는 배열(list)이어야 합니다.")
+        return v
+
+    @model_validator(mode="after")
+    def _validate_physiological_invariants(self) -> BiometricDailySummaryItem:
+        if self.min_bpm is not None and self.max_bpm is not None and self.min_bpm > self.max_bpm:
+            raise ValueError("min_bpm은 max_bpm을 초과할 수 없습니다.")
+        if self.avg_bpm is not None:
+            if self.min_bpm is not None and self.avg_bpm < self.min_bpm:
+                raise ValueError("avg_bpm은 min_bpm보다 작을 수 없습니다.")
+            if self.max_bpm is not None and self.avg_bpm > self.max_bpm:
+                raise ValueError("avg_bpm은 max_bpm을 초과할 수 없습니다.")
+        zone_sum = (
+            self.relaxed_zone_minutes
+            + self.normal_zone_minutes
+            + self.elevated_tension_minutes
+            + self.high_load_minutes
+        )
+        if zone_sum > 1440:
+            raise ValueError("일일 4개 심박 구간 분 합계는 1440분을 초과할 수 없습니다.")
+        return self
 
 
 class BiometricSyncRequest(CamelSchema):
