@@ -1,9 +1,14 @@
 package com.gunnys.eundunhealth.wear
 
+import androidx.health.services.client.data.UserActivityState
 import com.gunnys.eundunhealth.wear.contract.KST_ZONE
+import com.gunnys.eundunhealth.wear.contract.WearActivityContext
+import com.gunnys.eundunhealth.wear.presentation.WearBiometricUiState
 import com.gunnys.eundunhealth.wear.presentation.WearEnvironmentSpec
+import com.gunnys.eundunhealth.wear.sensor.WearHealthSensorGateway
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -47,7 +52,7 @@ class WearEnvironmentSpecTest {
     }
 
     @Test
-    fun `wear strings and version properties align with foundation pre-measurement diagnostic contract`() {
+    fun `wear strings and version properties align with continuous 5-dimensional wellness biometric contract`() {
         val repoRoot =
             listOf(File("."), File("..")).firstOrNull { File(it, "version.properties").isFile }
                 ?: error("version.properties 를 찾을 수 없습니다")
@@ -63,18 +68,44 @@ class WearEnvironmentSpecTest {
                 wearVersionCode = expectedWearCode,
                 runtimeSdkInt = 36,
             )
-        assertEquals(10001, spec.wearVersionCode)
+        assertTrue(spec.wearVersionCode >= 10001)
 
         val stringsXml = File(repoRoot, "wear/src/main/res/values/strings.xml").readText()
         assertTrue(
-            "wear strings.xml 은 마음(스트레스·공황)·생체 측정 연결 전 환경 점검 화면임을 명시해야 합니다 (D6)",
-            stringsXml.contains("마음·생체 측정 준비") &&
-                stringsXml.contains("측정·동기화 연결 전 단계") &&
-                stringsXml.contains("스트레스·공황"),
+            "wear strings.xml 은 착용 전 구간 5차원 연속 분석 및 비의료 웰니스 참고 지표임을 명시해야 합니다",
+            stringsXml.contains("상시 마음·생체 분석") &&
+                stringsXml.contains("착용 전 구간 5차원 연속 분석 활성") &&
+                stringsXml.contains("웰니스 참고 지표 (비의료)"),
         )
         assertFalse(
-            "wear strings.xml 에 폐기된 루틴 문구나 거짓 센서 활성 문구가 포함되면 안 됩니다",
-            Regex("""정서 안정 루틴|호흡 루틴|측정 중|수집 활성""").containsMatchIn(stringsXml),
+            "wear strings.xml 에 의료 진단·처방 문구가 포함되면 안 됩니다",
+            Regex("""의학적 진단|질병 진단|처방""").containsMatchIn(stringsXml),
+        )
+    }
+
+    @Test
+    fun `WearBiometricUiState previewSample and activity context mapping preserve all-state invariants`() {
+        val preview = WearBiometricUiState.previewSample()
+        val summary = preview.todaySummary
+        assertNotNull(summary)
+        assertEquals(summary!!.totalMonitoredMinutes, summary.zoneMinutesSum)
+        assertEquals("휴식·안정 구간", preview.currentContextKoreanLabel)
+
+        assertEquals(
+            WearActivityContext.PASSIVE,
+            WearHealthSensorGateway.mapUserActivityState(UserActivityState.USER_ACTIVITY_PASSIVE),
+        )
+        assertEquals(
+            WearActivityContext.EXERCISE,
+            WearHealthSensorGateway.mapUserActivityState(UserActivityState.USER_ACTIVITY_EXERCISE),
+        )
+        assertEquals(
+            WearActivityContext.ASLEEP,
+            WearHealthSensorGateway.mapUserActivityState(UserActivityState.USER_ACTIVITY_ASLEEP),
+        )
+        assertEquals(
+            WearActivityContext.UNKNOWN,
+            WearHealthSensorGateway.mapUserActivityState(UserActivityState.USER_ACTIVITY_UNKNOWN),
         )
     }
 }

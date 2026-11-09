@@ -91,3 +91,8 @@ class SmileTrainingRepository:
         """사용자의 모든 스마일 트레이닝 세션을 삭제하고 삭제된 행 수를 반환한다."""
         result = await self.db.execute(delete(SmileTrainingSession).where(SmileTrainingSession.user_id == user_id))
         return int(result.rowcount or 0)  # type: ignore[attr-defined]
+
+    async def list_all_user_ids(self) -> list[str]:
+        """테이블에 존재하는 고유 `user_id` 목록을 반환한다 (고아 리퍼 전수 스캔용)."""
+        result = await self.db.execute(select(SmileTrainingSession.user_id).distinct())
+        return [str(uid) for uid in result.scalars().all() if uid]

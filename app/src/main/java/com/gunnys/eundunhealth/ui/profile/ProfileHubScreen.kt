@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SettingsBrightness
+import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -99,9 +100,12 @@ fun ProfileHubScreen(
     onToggleDynamicColor: (Boolean) -> Unit = {},
     onLogout: () -> Unit,
     onUpdateDefaultWorkoutPlanMode: (WorkoutPlanMode?) -> Unit = {},
+    onSyncWatchBiometrics: () -> Unit = {},
+    onDeleteWatchBiometrics: () -> Unit = {},
 ) {
     var showModeDialog by rememberSaveable { mutableStateOf(false) }
     var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteWatchDialog by rememberSaveable { mutableStateOf(false) }
 
     LifecycleResumeEffect(onRefreshHealthConnectStatus) {
         onRefreshHealthConnectStatus()
@@ -143,6 +147,8 @@ fun ProfileHubScreen(
                 onOpenModeDialog = { showModeDialog = true },
                 onRequestHealthPermissions = onRequestHealthPermissions,
                 onOpenHealthConnectManagement = onOpenHealthConnectManagement,
+                onSyncWatchBiometrics = onSyncWatchBiometrics,
+                onRequestDeleteWatchBiometrics = { showDeleteWatchDialog = true },
             )
 
             // 3. 화면 스타일 (테마 3버튼 직접 선택 + Dynamic Color 통합 카드)
@@ -192,6 +198,33 @@ fun ProfileHubScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showLogoutDialog = false }) {
+                        Text("취소")
+                    }
+                },
+            )
+        }
+
+        if (showDeleteWatchDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteWatchDialog = false },
+                title = { Text("워치 생체 요약 기록을 삭제할까요?") },
+                text = {
+                    Text(
+                        "계정은 유지한 채 스마트폰과 서버에 저장된 워치 일일 생체·마음 상태 요약 기록만 모두 영구 삭제합니다.",
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteWatchDialog = false
+                            onDeleteWatchBiometrics()
+                        },
+                    ) {
+                        Text("기록 삭제")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteWatchDialog = false }) {
                         Text("취소")
                     }
                 },
@@ -473,6 +506,8 @@ private fun WorkoutAndHealthIntegrationCard(
     onOpenModeDialog: () -> Unit,
     onRequestHealthPermissions: () -> Unit,
     onOpenHealthConnectManagement: () -> Unit,
+    onSyncWatchBiometrics: () -> Unit,
+    onRequestDeleteWatchBiometrics: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -499,6 +534,75 @@ private fun WorkoutAndHealthIntegrationCard(
                 onRequestHealthPermissions = onRequestHealthPermissions,
                 onOpenHealthConnectManagement = onOpenHealthConnectManagement,
             )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            )
+
+            WearOsWatchIntegrationRow(
+                state = state,
+                onSyncWatchBiometrics = onSyncWatchBiometrics,
+                onRequestDeleteWatchBiometrics = onRequestDeleteWatchBiometrics,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WearOsWatchIntegrationRow(
+    state: ProfileHubUiState,
+    onSyncWatchBiometrics: () -> Unit,
+    onRequestDeleteWatchBiometrics: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            TintedIconBadge(
+                icon = Icons.Default.Watch,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Wear OS 워치 상시 생체·마음 분석",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = state.watchStatusMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = onSyncWatchBiometrics,
+                enabled = !state.isSyncingWatch,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(if (state.isSyncingWatch) "동기화 중..." else "워치 지금 동기화")
+            }
+            if (state.watchSummaryCount > 0) {
+                TextButton(
+                    onClick = onRequestDeleteWatchBiometrics,
+                    enabled = !state.isSyncingWatch,
+                ) {
+                    Text("워치 기록 삭제")
+                }
+            }
         }
     }
 }

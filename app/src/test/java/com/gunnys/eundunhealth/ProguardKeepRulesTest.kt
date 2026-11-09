@@ -39,6 +39,7 @@ class ProguardKeepRulesTest {
             "com.gunnys.eundunhealth.data.remote.exercisedb.**",
             "com.gunnys.eundunhealth.data.remote.api.dto.**",
             "com.gunnys.eundunhealth.api.generated.model.**",
+            "com.gunnys.eundunhealth.wear.contract.**",
         )
         requiredKeeps.forEach { pkg ->
             assertTrue(

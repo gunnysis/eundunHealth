@@ -393,6 +393,7 @@ class HomeViewModel @Inject constructor(
         applyDayCompletion(current, date, newCompleted, emitUndoOnUncomplete = true)
     }
 
+    @Suppress("UnreachableCode")
     fun undoUncomplete(date: LocalDate) {
         val current = _uiState.value
         if (current !is HomeUiState.Success) return

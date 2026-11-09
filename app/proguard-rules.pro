@@ -15,6 +15,10 @@
 # generator 설정/버전 변경 시 같은 silent 결함이 재발하므로 방어적으로 명시 keep.
 -keep class com.gunnys.eundunhealth.api.generated.model.** { *; }
 
+# Wear OS Data Layer 공유 계약 모델 및 WearableListenerService 진입점 보존
+-keep class com.gunnys.eundunhealth.wear.contract.** { *; }
+-keep class com.gunnys.eundunhealth.data.wear.PhoneWearDataListenerService { <init>(); *; }
+
 # ML Kit 내부 DI(firebase-components 16.1.0)는 MlKitComponentDiscoveryService 메타데이터에 등록된
 # ComponentRegistrar 구현체(FaceRegistrar, VisionCommonRegistrar, CommonComponentRegistrar)를
 # Class.forName(...).getDeclaredConstructor().newInstance() 리플렉션으로 인스턴스화한다.

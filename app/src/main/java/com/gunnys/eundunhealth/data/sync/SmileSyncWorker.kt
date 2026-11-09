@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.SyncBatchOutcome
+import com.gunnys.eundunhealth.domain.repository.WearBiometricRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
@@ -22,18 +23,25 @@ class SmileSyncWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val repository: SmileTrainingRepository,
+    private val wearBiometricRepository: WearBiometricRepository,
 ) : CoroutineWorker(appContext, workerParams) {
 
-    override suspend fun doWork(): Result = when (repository.syncPendingSessions(MAX_BATCH_SIZE)) {
-        SyncBatchOutcome.ALL_SYNCED -> Result.success()
-        SyncBatchOutcome.RETRY_NEEDED -> Result.retry()
-        SyncBatchOutcome.AUTH_REQUIRED -> Result.failure()
-        SyncBatchOutcome.SKIPPED_NO_USER -> Result.success()
+    override suspend fun doWork(): Result {
+        val smileOutcome = repository.syncPendingSessions(MAX_BATCH_SIZE)
+        val wearOutcome = wearBiometricRepository.syncPendingSummaries(MAX_WEAR_BATCH_DAYS)
+        return when {
+            smileOutcome == SyncBatchOutcome.AUTH_REQUIRED || wearOutcome == SyncBatchOutcome.AUTH_REQUIRED ->
+                Result.failure()
+            smileOutcome == SyncBatchOutcome.RETRY_NEEDED || wearOutcome == SyncBatchOutcome.RETRY_NEEDED ->
+                Result.retry()
+            else -> Result.success()
+        }
     }
 
     companion object {
         const val UNIQUE_WORK_NAME = "smile-sync"
         private const val MAX_BATCH_SIZE = 10
+        private const val MAX_WEAR_BATCH_DAYS = 14
         private const val INITIAL_BACKOFF_SECONDS = 30L
 
         fun buildRequest(): OneTimeWorkRequest {

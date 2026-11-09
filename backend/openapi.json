@@ -76,6 +76,353 @@
         "title": "BadgeResponse",
         "type": "object"
       },
+      "BiometricDailyListResponse": {
+        "description": "GET /v2/biometrics/daily 응답.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BiometricDailySummaryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BiometricDailyListResponse",
+        "type": "object"
+      },
+      "BiometricDailySummaryItem": {
+        "description": "Wear OS 6 상시 생체·마음 상태 일일 집계 요약 레코드 (요청/응답 공용).",
+        "properties": {
+          "activeCaloriesKcal": {
+            "default": 0.0,
+            "description": "당일 활동 칼로리 (kcal)",
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Activecalorieskcal",
+            "type": "number"
+          },
+          "activityOverloadCount": {
+            "default": 0,
+            "description": "활동·운동 중 과부하 급등 횟수",
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Activityoverloadcount",
+            "type": "integer"
+          },
+          "avgBpm": {
+            "anyOf": [
+              {
+                "maximum": 240.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "일일 평균 심박수 (BPM)",
+            "title": "Avgbpm"
+          },
+          "avgRecoveryDropBpm": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -100.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "운동 종료 후 심박 회복(HRR) 평균 강하폭 (BPM)",
+            "title": "Avgrecoverydropbpm"
+          },
+          "capturedAtEpochMs": {
+            "description": "워치 로컬 최종 집계 시각 (epoch ms)",
+            "format": "int64",
+            "minimum": 0.0,
+            "title": "Capturedatepochms",
+            "type": "integer"
+          },
+          "elevatedTensionMinutes": {
+            "default": 0,
+            "description": "Zone 3 비활동 마음 긴장 시간(분)",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Elevatedtensionminutes",
+            "type": "integer"
+          },
+          "highLoadMinutes": {
+            "default": 0,
+            "description": "Zone 4 운동·고부하 시간(분)",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Highloadminutes",
+            "type": "integer"
+          },
+          "hourlyBpmBucketsJson": {
+            "default": "[]",
+            "description": "시간대별 요약 버킷 JSON 문자열",
+            "minLength": 2,
+            "title": "Hourlybpmbucketsjson",
+            "type": "string"
+          },
+          "hrvRmssdMs": {
+            "anyOf": [
+              {
+                "maximum": 500.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "일일 HRV RMSSD (ms)",
+            "title": "Hrvrmssdms"
+          },
+          "maxBpm": {
+            "anyOf": [
+              {
+                "maximum": 260.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "일일 최고 심박수 (BPM)",
+            "title": "Maxbpm"
+          },
+          "maxDeltaBpmPerMin": {
+            "default": 0,
+            "description": "분당 최대 심박 상승폭 (ΔBPM/min)",
+            "maximum": 180.0,
+            "minimum": 0.0,
+            "title": "Maxdeltabpmpermin",
+            "type": "integer"
+          },
+          "minBpm": {
+            "anyOf": [
+              {
+                "maximum": 240.0,
+                "minimum": 25.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "일일 최저 심박수 (BPM)",
+            "title": "Minbpm"
+          },
+          "normalZoneMinutes": {
+            "default": 0,
+            "description": "Zone 2 일상 활성 시간(분)",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Normalzoneminutes",
+            "type": "integer"
+          },
+          "peakTensionBpm": {
+            "anyOf": [
+              {
+                "maximum": 260.0,
+                "minimum": 40.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "마음 긴장 구간 최고 심박수 (BPM)",
+            "title": "Peaktensionbpm"
+          },
+          "rapidDeltaSpikeCount": {
+            "default": 0,
+            "description": "전 구간 급격한 심박 상승 스파이크 횟수",
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Rapiddeltaspikecount",
+            "type": "integer"
+          },
+          "recordDate": {
+            "description": "집계 기준일 (KST YYYY-MM-DD)",
+            "format": "date",
+            "title": "Recorddate",
+            "type": "string"
+          },
+          "recoveryScore": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "일일 자율신경 회복 점수 (0~100)",
+            "title": "Recoveryscore"
+          },
+          "relaxedZoneMinutes": {
+            "default": 0,
+            "description": "Zone 1 이완·회복 시간(분)",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Relaxedzoneminutes",
+            "type": "integer"
+          },
+          "restingBpm": {
+            "anyOf": [
+              {
+                "maximum": 220.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "적응형 안정시 심박수 (BPM)",
+            "title": "Restingbpm"
+          },
+          "sleepAwakeningCount": {
+            "default": 0,
+            "description": "수면 중 야간 각성 의심 횟수",
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Sleepawakeningcount",
+            "type": "integer"
+          },
+          "sourceDevicesJson": {
+            "default": "[\"Xiaomi Watch 5 (M2501W1)\"]",
+            "description": "수집 기기 목록 JSON 문자열",
+            "minLength": 2,
+            "title": "Sourcedevicesjson",
+            "type": "string"
+          },
+          "tensionEpisodeCount": {
+            "default": 0,
+            "description": "지속성 마음 긴장 에피소드 횟수",
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Tensionepisodecount",
+            "type": "integer"
+          },
+          "tensionMinutes": {
+            "default": 0,
+            "description": "지속성 마음 긴장 누적 시간(분)",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Tensionminutes",
+            "type": "integer"
+          },
+          "totalMonitoredMinutes": {
+            "default": 0,
+            "description": "총 착용·관측 시간(분)",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Totalmonitoredminutes",
+            "type": "integer"
+          },
+          "totalSteps": {
+            "default": 0,
+            "description": "당일 누적 걸음 수",
+            "maximum": 200000.0,
+            "minimum": 0.0,
+            "title": "Totalsteps",
+            "type": "integer"
+          },
+          "watchModel": {
+            "default": "Xiaomi Watch 5 (M2501W1)",
+            "description": "측정 워치 기기 모델명",
+            "maxLength": 64,
+            "title": "Watchmodel",
+            "type": "string"
+          },
+          "zoneId": {
+            "default": "Asia/Seoul",
+            "description": "집계 타임존 ID",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Zoneid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recordDate",
+          "capturedAtEpochMs"
+        ],
+        "title": "BiometricDailySummaryItem",
+        "type": "object"
+      },
+      "BiometricDeleteResponse": {
+        "description": "DELETE /v2/biometrics/daily 응답.",
+        "properties": {
+          "deletedCount": {
+            "title": "Deletedcount",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "deletedCount"
+        ],
+        "title": "BiometricDeleteResponse",
+        "type": "object"
+      },
+      "BiometricSyncRequest": {
+        "description": "POST /v2/biometrics/sync — 워치 일일 생체·마음 상태 요약 배치 멱등 업서트 요청.",
+        "properties": {
+          "summaries": {
+            "description": "최대 30일치 일일 생체 요약 배치",
+            "items": {
+              "$ref": "#/components/schemas/BiometricDailySummaryItem"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Summaries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summaries"
+        ],
+        "title": "BiometricSyncRequest",
+        "type": "object"
+      },
+      "BiometricSyncResponse": {
+        "description": "POST /v2/biometrics/sync 응답.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BiometricDailySummaryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "upsertedCount": {
+            "title": "Upsertedcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "upsertedCount",
+          "items"
+        ],
+        "title": "BiometricSyncResponse",
+        "type": "object"
+      },
       "ClientUpdateRequiredErrorResponse": {
         "properties": {
           "code": {
@@ -1405,6 +1752,129 @@
         "summary": "Get Profile History",
         "tags": [
           "profile"
+        ]
+      }
+    },
+    "/v2/biometrics/daily": {
+      "delete": {
+        "description": "인증 사용자의 모든 워치 일일 생체·마음 상태 요약 기록을 삭제한다 (Play 데이터 안전 단독 삭제 지원).",
+        "operationId": "deleteBiometricDailySummaries",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BiometricDeleteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Biometric Daily Summaries",
+        "tags": [
+          "biometrics"
+        ]
+      },
+      "get": {
+        "description": "인증 사용자의 최근 `days`일치 워치 일일 생체·마음 상태 요약을 최신순으로 조회한다.",
+        "operationId": "getBiometricDailySummaries",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 14,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BiometricDailyListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Biometric Daily Summaries",
+        "tags": [
+          "biometrics"
+        ]
+      }
+    },
+    "/v2/biometrics/sync": {
+      "post": {
+        "description": "Wear OS 6 워치에서 수집된 일일 생체·마음 상태 요약을 `(user_id, record_date)` 기준으로 멱등 업서트한다.",
+        "operationId": "syncBiometricDailySummaries",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BiometricSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BiometricSyncResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync Biometric Summaries",
+        "tags": [
+          "biometrics"
         ]
       }
     },

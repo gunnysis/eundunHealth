@@ -1,7 +1,7 @@
 # eundunHealth 기능 명세서
 
-> **문서 버전:** v2.2 (현행 아키텍처 정본, 2026-11-06 최신화)  
-> **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스를 거쳐 **v0.7.0 (스마일 트레이닝 v2 및 PostgreSQL 18.4 하드 리셋)**, **v0.7.1 (콜드 스타트 크래시 핫픽스)**, **v0.7.2 (진행·프로필 허브 비주얼 대시보드 개편 및 AI 식단 `gpt-5.4-mini` 100K TPM 전환)**, **v0.7.3 (구 버전(≤43) 전수 차단 Strict Mandatory Update)** 프로덕션 배포 및 **2026-11-06 (Wear OS 6 3모듈 Foundation 구축 및 스마일 트레이닝 `INTRO`/`COMPLETED` 제거 무중단 직행)** 완료. 자세한 기술 아키텍처는 [TRD.md](./TRD.md) 참조.
+> **문서 버전:** v2.3 (현행 아키텍처 정본, 2026-11-09 최신화)  
+> **현재 제품 상태:** 최신 버전·구현 상태의 단일 출처(SSoT)는 [ops/operations-snapshot.md](./ops/operations-snapshot.md) + [CHANGELOG.md](./CHANGELOG.md) — 본 명세 작성 이후 v0.1.x 다수 릴리스를 거쳐 **v0.7.0 (스마일 트레이닝 v2 및 PostgreSQL 18.4 하드 리셋)**, **v0.7.1 (콜드 스타트 크래시 핫픽스)**, **v0.7.2 (진행·프로필 허브 비주얼 대시보드 개편 및 AI 식단 `gpt-5.4-mini` 100K TPM 전환)**, **v0.7.3 (구 버전(≤43) 전수 차단 Strict Mandatory Update)** 프로덕션 배포 및 **2026-11-09 (Wear OS 6 상시 전 구간 5차원 생체·마음 상태 런타임 `:core:wear-contract` + `:wear` + `:app` + 백엔드 `/v2/biometrics/*` 10번째 정규 테이블 `biometric_daily_summaries`)** 구현 완료. 자세한 기술 아키텍처는 [TRD.md](./TRD.md) 참조.
 >
 > **인증 제공자 (2026-09 전환):** Supabase Auth → **Microsoft Entra External ID**(외부 테넌트 `eundunhealthciam`, 브라우저 위임). IdP는 JWT 발급(RS256/JWKS) + 가입·이메일 검증·비밀번호 재설정 페이지만 담당하며, 모든 비즈니스 데이터는 Azure PostgreSQL(`healthapp`)에 저장한다(범위는 전환 전후 동일). **아래 인증 관련 본문(로그인/회원가입 화면, 이메일 확인 흐름, App Links)은 전환 이전 설계 기록이며** — 현행은 `AuthGateScreen` 단일화 및 Microsoft Graph API `DELETE /users/{oid}` 계정 탈퇴 파이프라인(`DELETE /account`)으로 완전 일원화되었다.
 > 
@@ -15,11 +15,11 @@
 >
 > **PostgreSQL 18 하드 리셋 & 스키마 라이프사이클 현대화 (2026-10-29, v0.7.0 / v0.7.1):** Azure PostgreSQL 18.4 Flexible Server 도입과 함께 과거 Alembic 마이그레이션 체계를 완전 폐기하고 **Drop & Recreate 전용 하드 리셋 파이프라인(`02_schema_create_all.sql`, `DEFAULT uuidv7()` PK)** 및 `python -m app.schema_bootstrap` 멱등 부트스트랩으로 전환하여 Zero-Legacy 스키마 거버넌스를 확립했다.
 >
-> **Wear OS 6 (API 36) 3모듈 Foundation (2026-11-06, `PROP-06` Phase 0):** 모바일 `:app`(`versionCode=44`), 스마트워치 `:wear`(`wearVersionCode=10001`, `minSdk=36`, Wear Compose Material 3 `1.7.1`, `WearEnvironmentStatusScreen`), 순수 JVM 17 공유 계약 `:core:wear-contract`(`WearTimeConstants.kt` `KST_ZONE` SSoT) 3모듈 멀티모듈 아키텍처로 전환되었다.
+> **Wear OS 6 (API 36) 상시 5차원 생체·마음 상태 런타임 & 3모듈 아키텍처 (2026-11-06 ~ 2026-11-09, `PROP-06`):** 모바일 `:app`(`versionCode=44`, `EundunDatabase` v4 + `PhoneWearDataListenerService` + 진행/프로필 허브 워치 상시 생체 대시보드), 스마트워치 `:wear`(`wearVersionCode=10001`, `minSdk=36`, Wear Compose Material 3 `1.7.1`, `PassiveMonitoringClient` 24/7 백그라운드 + `MeasureClient` 실시간 심박 + `WearBiometricDatabase`), 순수 JVM 17 공유 계약 `:core:wear-contract`(`ContinuousBiometricAnalyzer` 5차원 분석 엔진 + `BiometricPayloadCodec` GZIP/SHA-256 코덱) 및 백엔드 `/v2/biometrics/*` 3개 API(10번째 정규 테이블 `biometric_daily_summaries`)로 통합되었다.
 
 ## 프로젝트 개요
 
-**은둔헬스(eundunHealth)** 는 사용자의 신체 정보와 운동 환경(`헬스장` / `홈트레이닝`)을 기반으로 맞춤 주간 운동 계획과 AI 주간 식단 가이드를 생성하고, 운동 달성을 추적하는 Android + Wear OS 6 멀티모듈 앱입니다.
+**은둔헬스(eundunHealth)** 는 사용자의 신체 정보와 운동 환경(`헬스장` / `홈트레이닝`)을 기반으로 맞춤 주간 운동 계획과 AI 주간 식단 가이드를 생성하고, 운동 달성 및 Wear OS 6 스마트워치 상시 생체·마음 상태 추세를 추적하는 Android + Wear OS 6 멀티모듈 앱입니다.
 
 - **패키지**: `com.gunnys.eundunhealth` (`:app`, `:wear` 동일 `applicationId` 공유)
 - **최소 SDK**: `:app` 26 (Android 8.0 Oreo) / `:wear` 36 (Wear OS 6.0 / Android 16)
@@ -42,9 +42,10 @@
 | Kotlin (2.4.21 내장) | 언어 (`:app`, `:wear`, `:core:wear-contract`) |
 | Jetpack Compose (BOM 2026.09.00) + Material 3 | `:app` UI 프레임워크 (Modern Forest & Mint 36슬롯 + Pretendard Variable) |
 | Wear Compose Material 3 (1.7.1) + Foundation (1.7.1) | `:wear` 원형 워치 UI (`AppScaffold`, `ScreenScaffold`, `TransformingLazyColumn`, 29슬롯 OLED 다크 토큰) |
-| `:core:wear-contract` (Pure JVM 17) | `:app`·`:wear` 공유 상수 계약 (`WearTimeConstants.KST_ZONE`) |
+| Wear Health Services (`1.1.0-rc01`) + Play Services Wearable (`19.0.0`) | `:wear` 24/7 상시 생체 수집(`PassiveMonitoringClient` + `MeasureClient`) 및 `:wear`↔`:app` 양방향 Data Layer 동기화 |
+| `:core:wear-contract` (Pure JVM 17) | `:app`·`:wear` 공유 계약 (`WearTimeConstants.KST_ZONE`, `ContinuousBiometricAnalyzer` 5차원 분석기, `BiometricPayloadCodec` GZIP+SHA-256 코덱) |
 | Hilt (2.60.1) | 의존성 주입 (`:app`) |
-| Room (2.8.5) + WorkManager (2.12.0) | 로컬 데이터베이스 (오프라인 캐시) 및 백그라운드 동기화 |
+| Room (2.8.5) + WorkManager (2.12.0) | 로컬 데이터베이스 (`EundunDatabase` v4, `SmileTrainingDatabase` v2) 및 백그라운드 동기화 (`SmileSyncWorker`) |
 | CameraX (1.6.2) + ML Kit Face Detection (17.1.0) | 온디바이스 전면 카메라 미소 검출 (무저장·무전송) |
 | Retrofit (3.0.0) + OkHttp (5.5.1) + OpenAPI Generator (7.26.0) | 백엔드 API 통신 및 정적 타입 안전한 클라이언트 코드젠 |
 | Coil 3 (3.6.3) | 이미지/GIF 로딩 |
@@ -62,7 +63,7 @@
 | ------ | ------ |
 | FastAPI 0.162.0 / Starlette 1.10.0 (Python 3.14) + uvicorn | 비동기 고성능 HTTP 서버 |
 | SQLAlchemy 2.0 async + asyncpg 0.32.0 | 비동기 ORM 및 연결 풀 관리 |
-| PostgreSQL 18 DDL (`02_schema_create_all.sql`) | 엄격한 3NF 9개 도메인 테이블 생성 (Zero-Legacy Drop & Recreate) |
+| PostgreSQL 18 DDL (`02_schema_create_all.sql`) | 엄격한 3NF 10개 도메인 테이블 생성 (`biometric_daily_summaries` 포함, Zero-Legacy Drop & Recreate) |
 | `python -m app.schema_bootstrap` | 기동 시 멱등 스키마 테이블 검증 |
 | PyJWT (JWKS, RS256) | Entra CIAM 액세스 토큰 서명/클레임(`oid`, `scp`) 검증 |
 | OpenAI Python SDK (`AsyncOpenAI`) + Tenacity | AI 식단 생성 (Azure AI Foundry gpt-5.4-mini (GlobalStandard)) |

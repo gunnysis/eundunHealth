@@ -1,7 +1,7 @@
 # 은둔헬스(eundunHealth) - 기술 요구사항 문서 (TRD)
 
-> **문서 버전:** v2.2 (현행 아키텍처 정본, 2026-11-06 최신화)  
-> **현재 상태:** Google Play 프로덕션 및 저장소 최신 릴리스 **v0.7.3/44 (`completed` 100%, 원장 PR #226 · Wear `:wear` `wearVersionCode=10001`)**, 백엔드 활성 리비전 **`eundunhealth-api--0000069` (`6357981`)**  
+> **문서 버전:** v2.3 (현행 아키텍처 정본, 2026-11-09 최신화)  
+> **현재 상태:** 저장소 최신 릴리스 **v0.8.0/45 (Wear `:wear` `wearVersionCode=10001` 상시 생체·마음 상태 5차원 런타임 및 `/v2/biometrics/*` · 직전 Play 프로덕션 `v0.7.3/44` `completed` 100%, 원장 PR #226)**, 백엔드 활성 리비전 **`eundunhealth-api--0000069` (`6357981`)**  
 > **패키지 명:** `com.gunnys.eundunhealth`  
 > **관련 문서:** [PRD.md](./PRD.md) | [SPEC.md](./SPEC.md) | [CHANGELOG.md](./CHANGELOG.md) | [ops/operations-snapshot.md](./ops/operations-snapshot.md)
 
@@ -20,7 +20,7 @@
 | **Backend 런타임** | Ktor 3.4.3 + Netty (Kotlin) | **FastAPI 0.162.0 (Python 3.14)** + uvicorn 0.54.0 | 비동기 고성능 처리, Pydantic v2 선언적 검증, AI SDK 통합 용이성 |
 | **Backend API 버전** | (미정) | **`1.0.0`** (앱 버전과 분리된 독립 SSoT) | 모바일 클라이언트와 백엔드 배포 라이프사이클 디커플링 |
 | **데이터베이스 엔진** | PostgreSQL 16 (추정) | **PostgreSQL 18.4 Flexible Server (`healthapp`)** | `DEFAULT uuidv7()` 네이티브 PK, `wal_compression=zstd`, B1ms 특화 튜닝 |
-| **ORM & DB 드라이버** | Exposed 0.61.0 + HikariCP | **SQLAlchemy 2.0 Async + asyncpg 0.32.0** | 순수 비동기 I/O, 연결 풀 3+2 안정화, 엄격한 3NF 정규화 9개 테이블 |
+| **ORM & DB 드라이버** | Exposed 0.61.0 + HikariCP | **SQLAlchemy 2.0 Async + asyncpg 0.32.0** | 순수 비동기 I/O, 연결 풀 3+2 안정화, 엄격한 3NF 정규화 10개 테이블 (`biometric_daily_summaries` 포함) |
 | **스키마 라이프사이클** | 점진적 Alembic 마이그레이션 | **Drop & Recreate 전용 하드 리셋 파이프라인** | 레거시 마이그레이션 부채 0(Zero-Legacy), 멱등 부트스트랩(`schema_bootstrap`) |
 | **인증 시스템** | Supabase Auth (ES256) | **Microsoft Entra External ID (CIAM)** | 엔터프라이즈 OIDC/PKCE 브라우저 위임, RS256 JWKS 서명 검증, `oid` SSoT |
 | **회원 탈퇴 파이프라인** | Supabase Admin API | **Microsoft Graph API `DELETE /users/{oid}`** | 204 No Content 처리 및 `deletedItems` 즉시 파기 (30일 보관 완전 우회) |
@@ -1301,7 +1301,7 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 | `ENVIRONMENT` | `production` | 실행 환경 구분 (`production` / `development`) |
 | `MEAL_AI_MODEL` | `ep-eundunhealth-meal-ai` | Azure AI Foundry 식단 생성 모델 배포명 (`gpt-5.4-mini`, `GlobalStandard` 100K TPM) |
 | `MEAL_AI_ENABLED` | `true` | AI 식단 생성 긴급 차단 킬 스위치 (`false` 설정 시 503 반환) |
-| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | `44` | 지원 최소 Android 클라이언트 `versionCode` |
+| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | `45` | 지원 최소 Android 클라이언트 `versionCode` |
 | `CORS_ORIGINS` | `[]` | CORS 허용 오리진 (네이티브 앱 전용이므로 빈 배열로 와일드카드 전면 차단) |
 
 <details>

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
@@ -68,6 +69,7 @@ import com.gunnys.eundunhealth.domain.model.SmileSummaryStats
 import com.gunnys.eundunhealth.domain.model.formatDurationKorean
 import com.gunnys.eundunhealth.ui.home.PlanModeBadge
 import com.gunnys.eundunhealth.ui.theme.EundunTheme
+import com.gunnys.eundunhealth.wear.contract.BiometricDailySummaryRecord
 
 private val WEEK_DAYS_KOR = listOf("월", "화", "수", "목", "금", "토", "일")
 
@@ -120,6 +122,14 @@ fun ProgressHubScreen(
             SmileTrainingProgressCard(
                 smileStats = uiState.smileStats,
                 onClick = onSmileTrainingClick,
+            )
+
+            SectionHeader(
+                title = "워치 상시 생체 · 마음 상태",
+                subtitle = "착용 전 구간(휴식·활동·운동·수면) 5차원 연속 분석 요약",
+            )
+            WearBiometricMindProgressCard(
+                summary = uiState.latestWatchSummary,
             )
 
             SectionHeader(
@@ -962,5 +972,135 @@ private fun BadgeMiniChip(badge: BadgeMiniPreview) {
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun WearBiometricMindProgressCard(
+    summary: BiometricDailySummaryRecord?,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        shape = MaterialTheme.shapes.large,
+    ) {
+        if (summary == null) {
+            WearBiometricEmptyState()
+        } else {
+            WearBiometricSummaryContent(summary = summary)
+        }
+    }
+}
+
+@Composable
+private fun WearBiometricEmptyState() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Default.Watch,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "샤오미 워치 5 상시 생체·마음 분석 대기 중",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "워치를 착용하면 휴식·일상·운동·수면 전 구간 심박 변이와 마음 긴장·회복 점수가 자동 동기화됩니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WearBiometricSummaryContent(
+    summary: BiometricDailySummaryRecord,
+) {
+    val recoveryText = summary.recoveryScore?.let { "회복 ${it}점" } ?: "회복 산출 중"
+    val restingText = summary.restingBpm?.let { "안정 ${it}BPM" } ?: "안정 --"
+    val hrrText = summary.avgRecoveryDropBpm?.let { "운동후 회복 -${it}BPM" } ?: "운동후 회복 대기"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Watch,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+                Text(
+                    text = "${summary.recordDate} · $recoveryText",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = "$restingText · 평균 ${summary.avgBpm ?: "--"}BPM",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Text(
+            text = "착용 ${summary.totalMonitoredMinutes}분 — " +
+                "이완 ${summary.relaxedZoneMinutes}분 · 일상 ${summary.normalZoneMinutes}분 · " +
+                "마음긴장 ${summary.elevatedTensionMinutes}분 · 운동고부하 ${summary.highLoadMinutes}분",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            WearMetricChip("급상승 ${summary.rapidDeltaSpikeCount}회 (최대 +${summary.maxDeltaBpmPerMin})")
+            WearMetricChip("지속긴장 ${summary.tensionEpisodeCount}회 (${summary.tensionMinutes}분)")
+            WearMetricChip(hrrText)
+            WearMetricChip("야간각성 ${summary.sleepAwakeningCount}회")
+            WearMetricChip("${summary.totalSteps}보 · ${summary.activeCaloriesKcal.toInt()}kcal")
+        }
+    }
+}
+
+@Composable
+private fun WearMetricChip(label: String) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.75f),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
     }
 }

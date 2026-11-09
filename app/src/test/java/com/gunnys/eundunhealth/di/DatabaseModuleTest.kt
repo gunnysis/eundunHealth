@@ -47,6 +47,7 @@ class DatabaseModuleTest {
         val db = DatabaseModule.provideDatabase(context)
         assertNotNull(db)
         assertNotNull(DatabaseModule.provideWeeklyPlanDao(db))
+        assertNotNull(DatabaseModule.provideWearBiometricDao(db))
     }
 
     @Test
@@ -77,10 +78,12 @@ class DatabaseModuleTest {
     @Test
     fun `exported Room schema files exist for current database versions`() {
         val eundunV3 = File(schemaDir, "com.gunnys.eundunhealth.data.local.EundunDatabase/3.json")
+        val eundunV4 = File(schemaDir, "com.gunnys.eundunhealth.data.local.EundunDatabase/4.json")
         val smileV1 = File(schemaDir, "com.gunnys.eundunhealth.data.local.SmileTrainingDatabase/1.json")
         val smileV2 = File(schemaDir, "com.gunnys.eundunhealth.data.local.SmileTrainingDatabase/2.json")
 
         assertTrue("EundunDatabase v3 스키마 JSON이 존재해야 합니다", eundunV3.isFile)
+        assertTrue("EundunDatabase v4 스키마 JSON이 존재해야 합니다", eundunV4.isFile)
         assertTrue("SmileTrainingDatabase v1 스키마 JSON이 존재해야 합니다", smileV1.isFile)
         assertTrue("SmileTrainingDatabase v2 스키마 JSON이 존재해야 합니다", smileV2.isFile)
     }

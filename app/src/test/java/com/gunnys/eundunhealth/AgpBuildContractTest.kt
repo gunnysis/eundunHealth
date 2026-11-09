@@ -130,25 +130,25 @@ class AgpBuildContractTest {
             Regex("""com\.android\.|androidx\.|play-services|health-services|serialization""").containsMatchIn(contractBuild),
         )
         val contractMainFiles = File(repoRoot, "core/wear-contract/src/main").walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "java") }.toList()
+        val expectedContractFiles = setOf(
+            "WearTimeConstants.kt",
+            "BiometricSummaryContract.kt",
+            "ContinuousBiometricAnalyzer.kt",
+            "BiometricPayloadCodec.kt",
+        )
         assertTrue(
-            "Foundation 단계(D1/AC-09)에서 core:wear-contract/src/main 은 WearTimeConstants.kt 단일 SSoT 파일만 유지해야 하며Android/Google Play import 가 없어야 합니다",
-            contractMainFiles.map { it.name } == listOf("WearTimeConstants.kt") &&
+            "core:wear-contract/src/main 은 순수 JVM 계약 파일 4종을 포함하며 Android/Google Play import 가 없어야 합니다 (룰 17)",
+            contractMainFiles.map { it.name }.toSet() == expectedContractFiles &&
                 contractMainFiles.none {
                     Regex("""^\s*import\s+(android\.|androidx\.|com\.google\.android\.|kotlinx\.serialization\.)""", RegexOption.MULTILINE)
                         .containsMatchIn(it.readText())
                 },
         )
-        assertFalse(
-            "Foundation 단계의 wear 모듈에는 Health Services / Play Services Wearable 런타임 의존성을 조기 추가하지 않아야 합니다 (AC-09)",
-            Regex("""health-services|play-services-wearable|kotlinx-coroutines-play-services|kotlinx-coroutines-guava""").containsMatchIn(wearBuild),
-        )
-        val wearMainFiles = File(repoRoot, "wear/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         assertTrue(
-            "Foundation 단계의 :wear 소스에는 센서 수집(PassiveMonitoring) 및 Data Layer 전송 클라이언트가 유입되면 안 됩니다 (AC-09)",
-            wearMainFiles.none {
-                Regex("""PassiveMonitoringClient|PassiveListenerService|MessageClient|DataClient|ChannelClient|Wearable\.""")
-                    .containsMatchIn(it.readText())
-            },
+            "wear 모듈은 Health Services Client 및 Play Services Wearable 런타임 의존성을 포함해야 합니다 (룰 17)",
+            wearBuild.contains("libs.health.services.client") &&
+                wearBuild.contains("libs.play.services.wearable") &&
+                wearBuild.contains("libs.kotlinx.coroutines.play.services"),
         )
         val wearStatusScreen = File(repoRoot, "wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt").readText()
         assertTrue(
@@ -171,16 +171,17 @@ class AgpBuildContractTest {
 
         val wearManifest = File(repoRoot, "wear/src/main/AndroidManifest.xml").readText()
         assertTrue(
-            "wear 매니페스트는 android.hardware.type.watch 필수 피처(required=true)와 standalone=false 를 포함해야 합니다",
+            "wear 매니페스트는 android.hardware.type.watch 필수 피처(required=true), standalone=false 및 Wear OS 6 상시 생체 수집 권한/서비스를 포함해야 합니다 (룰 17)",
             wearManifest.contains("""android:name="android.hardware.type.watch"""") &&
                 wearManifest.contains("""android:required="true"""") &&
                 wearManifest.contains("""android:name="com.google.android.wearable.standalone"""") &&
-                wearManifest.contains("""android:value="false""""),
-        )
-        assertFalse(
-            "Foundation 단계의 wear 매니페스트에는 어떠한 <uses-permission 태그나 백그라운드 <service/<receiver/<provider 컴포넌트도 선언하지 않아야 합니다 (D3 / AC-04 / AC-09)",
-            Regex("""<\s*uses-permission(-sdk-23)?\b|<\s*(service|receiver|provider)\b|READ_HEART_RATE|READ_HEALTH_DATA_IN_BACKGROUND|BODY_SENSORS|ACTIVITY_RECOGNITION|RECEIVE_BOOT_COMPLETED|WAKE_LOCK""")
-                .containsMatchIn(wearManifest),
+                wearManifest.contains("""android:value="false"""") &&
+                wearManifest.contains("android.permission.health.READ_HEART_RATE") &&
+                wearManifest.contains("android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND") &&
+                wearManifest.contains("android.permission.ACTIVITY_RECOGNITION") &&
+                wearManifest.contains("android.permission.RECEIVE_BOOT_COMPLETED") &&
+                wearManifest.contains("EundunPassiveListenerService") &&
+                wearManifest.contains("PhoneSyncCommandListenerService"),
         )
 
         val appWearXml = File(repoRoot, "app/src/main/res/values/wear.xml").readText()

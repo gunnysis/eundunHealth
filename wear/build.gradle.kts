@@ -93,6 +93,10 @@ android {
             useLegacyPackaging = false
         }
     }
+    lint {
+        // :wear is a pure Compose + ComponentActivity module with zero androidx.fragment dependency
+        disable += "InvalidFragmentVersionForActivityResult"
+    }
 }
 
 dependencyLocking {
@@ -112,6 +116,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -121,6 +126,10 @@ dependencies {
     implementation(libs.wear.compose.foundation)
     implementation(libs.wear.compose.navigation)
     implementation(libs.wear.tooling.preview)
+    implementation(libs.play.services.wearable)
+    implementation(libs.health.services.client)
+    implementation(libs.concurrent.futures.ktx)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
 

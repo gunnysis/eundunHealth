@@ -173,6 +173,8 @@ private fun MainContent(
                 onToggleDynamicColor = viewModel::setDynamicColorEnabled,
                 onLogout = onLogout,
                 onUpdateDefaultWorkoutPlanMode = viewModel::updateDefaultWorkoutPlanMode,
+                onSyncWatchBiometrics = viewModel::syncWatchBiometricsNow,
+                onDeleteWatchBiometrics = viewModel::deleteAllWatchBiometrics,
             )
         }
         composable(Screen.ProfileEdit.route) {

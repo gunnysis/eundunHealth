@@ -16,7 +16,9 @@ import com.gunnys.eundunhealth.domain.repository.BadgeRepository
 import com.gunnys.eundunhealth.domain.repository.GoalRepository
 import com.gunnys.eundunhealth.domain.repository.SmileTrainingRepository
 import com.gunnys.eundunhealth.domain.repository.UserRepository
+import com.gunnys.eundunhealth.domain.repository.WearBiometricRepository
 import com.gunnys.eundunhealth.domain.repository.WorkoutRepository
+import com.gunnys.eundunhealth.wear.contract.BiometricDailySummaryRecord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,6 +64,7 @@ data class ProgressHubUiState(
     val latestBadgeName: String? = null,
     val badgePreviews: List<BadgeMiniPreview> = emptyList(),
     val smileStats: SmileSummaryStats = SmileSummaryStats(),
+    val latestWatchSummary: BiometricDailySummaryRecord? = null,
     val isLoading: Boolean = true,
 )
 
@@ -72,6 +75,7 @@ class ProgressHubViewModel @Inject constructor(
     private val userRepo: UserRepository,
     private val smileTrainingRepo: SmileTrainingRepository,
     private val badgeRepo: BadgeRepository? = null,
+    private val wearBiometricRepo: WearBiometricRepository? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProgressHubUiState())
@@ -80,12 +84,25 @@ class ProgressHubViewModel @Inject constructor(
     init {
         loadSummary()
         observeSmileTrainingStats()
+        observeWatchBiometrics()
     }
 
     private fun observeSmileTrainingStats() {
         viewModelScope.launch {
             smileTrainingRepo.observeSummaryStats().collect { stats ->
                 _uiState.update { it.copy(smileStats = stats) }
+            }
+        }
+    }
+
+    private fun observeWatchBiometrics() {
+        val repo = wearBiometricRepo ?: return
+        viewModelScope.launch {
+            repo.refreshRemoteIfEmpty(days = 14)
+        }
+        viewModelScope.launch {
+            repo.observeRecentSummaries(limitDays = 14).collect { items ->
+                _uiState.update { it.copy(latestWatchSummary = items.firstOrNull()) }
             }
         }
     }

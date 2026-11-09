@@ -22,7 +22,7 @@ BOOTSTRAP_ADVISORY_LOCK_KEY = 918273645
 
 
 async def ensure_schema(database_url: str | None = None) -> None:
-    """현재 연결된 데이터베이스에 9개 정규 테이블이 존재하도록 멱등 생성한다."""
+    """현재 연결된 데이터베이스에 10개 정규 테이블이 존재하도록 멱등 생성한다."""
     url = database_url or os.environ.get("DATABASE_URL") or get_settings().database_url
     engine = create_async_engine(url, pool_pre_ping=True)
     try:

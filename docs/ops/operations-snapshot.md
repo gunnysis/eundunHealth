@@ -1,6 +1,6 @@
 # 운영 상태 스냅샷
 
-> 작성일: 2026-05-25 / 최근 갱신: **2026-11-06 — Wear OS 6 (API 36) 3모듈(`:app` + `:wear` + `:core:wear-contract`) Foundation(`2a49cea`) · 스마일 트레이닝 `INTRO`/`COMPLETED` 정적 단계 제거 무중단 직행(`2f63aec`) · AGP `9.5.1`(`4a3af8b`) · Android CLI `v1.1.16717390` + Android Studio `2026.2.2` 하이브리드 워크플로 · 결정론적 문서 감사기(`doc_audit.py`) · v0.7.3/44 Strict Mandatory Update 출시 완료**
+> 작성일: 2026-05-25 / 최근 갱신: **2026-11-09 — Wear OS 6 (API 36, Xiaomi Watch 5 `M2501W1`) 상시 생체·마음 상태 5차원 분석 런타임(`:core:wear-contract` + `:wear` + `:app`) 및 백엔드 `/v2/biometrics/*`·10번째 정규 테이블 `biometric_daily_summaries` 구현 · 3모듈 Foundation(`2a49cea`) · 스마일 트레이닝 `INTRO`/`COMPLETED` 정적 단계 제거 무중단 직행(`2f63aec`) · AGP `9.5.1`(`4a3af8b`) · Android CLI `v1.1.16717390` + Android Studio `2026.2.2` 하이브리드 워크플로 · 결정론적 문서 감사기(`doc_audit.py`) · v0.7.3/44 Strict Mandatory Update 출시 완료**
 > 작성 기준: 태그 `v0.7.3`의 **v0.7.3/44**가 release workflow run `40868910274`로 Play production `completed`(100%) 업로드됐고, 원장 PR #226이 `LAST_UPLOADED_VERSION_CODE=44`를 기록한다. 백엔드는 run `40868854537`로 revision `eundunhealth-api--0000069`(이미지 `6357981`, digest `sha256:8be02b3bc8a8693fa2d60f53e9466277b37fc568781c750cbe918fc4ba16e00c`)에 배포 및 reaper Job 동기화 완료됐다.
 > 갱신 정책: 인프라 / 시크릿 / 외부 통합 변경 시 본 문서 동시 갱신. 운영 결정의 단일 출처.
 
@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |---|---|
 | Application ID | `com.gunnys.eundunhealth` (모바일 `:app` & 워치 `:wear` 동일 패키지; 공유 계약 `:core:wear-contract` Pure JVM 17) |
-| versionName / versionCode | **`0.7.3` / `44` (태그 `v0.7.3`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=44` |
+| versionName / versionCode | **`0.8.0` / `45` (태그 `v0.7.3`, Play production `completed` 업로드 성공)** — SSoT 루트 `version.properties`; 원장 `LAST_UPLOADED_VERSION_CODE=44` |
 | Min SDK / Target SDK | 26 / 37 (`:app` 모바일) · 36 / 37 (`:wear` Wear OS 6+, `wearVersionCode=10001`, Wear Compose M3 `1.7.1`) |
 | Kotlin / AGP / Gradle | **2.4.21 / 9.5.1 / 9.8.2** (KSP 2.3.12, Hilt 2.60.1, AGP 내장 Kotlin + 새 DSL 기본 활성, `org.jetbrains.kotlin.android` 제거, dependency lock + SHA-256 verification) |
 | Compose BOM | **2026.09.00** (Wear Compose Material 3 / Foundation / Navigation **1.7.1**, Wear Tooling Preview **1.0.0**) |
@@ -19,7 +19,7 @@
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
 | 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.4** + ktlint 1.5.0 |
 | Android CLI / IDE 통합 | **`android-cli 1.1.16717390`** + **Android Studio `Rabbit 2 \| 2026.2.2`** (`scripts/ensure-android-cli.sh`, `scripts/android-cli-check.sh` 하이브리드 K2 파일 진단·듀얼 엔진 `@Preview`·APK R8 분석·`smoke-cold-start.sh` UI 트리/스크린샷 증적) |
-| API client | openapi-generator **7.26.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 8개 generated client |
+| API client | openapi-generator **7.26.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 9개 generated client (`BiometricsApi` 포함) |
 | Sentry SDK | 운영 Android **8.61.1** / Gradle plugin **6.24.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
@@ -67,7 +67,7 @@
 | `DEEPSEEK_KEY` | secretref | `deepseek-key` |
 | `MEAL_AI_MODEL` | value | `ep-eundunhealth-meal-ai` (`gpt-5.4-mini`, `2026-03-17`, `GlobalStandard` `capacity: 100` = 100K TPM) |
 | `MEAL_AI_ENABLED` | value | `true` (AI 식단 생성 긴급 kill switch — `'false'` 설정 시 즉시 503 차단) |
-| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `44` (`backend/containerapp.yaml` 정의값; `version.properties` 최신 `versionCode`와 SSoT 동기화) |
+| `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE` | value | `45` (`backend/containerapp.yaml` 정의값; `version.properties` 최신 `versionCode`와 SSoT 동기화) |
 | `ENVIRONMENT` | value | `production` |
 | `CORS_ORIGINS` | value | `[]` (PR #123 — 와일드카드 차단; 네이티브 앱이라 웹 origin 불필요. live 검증: 임의 origin 에 `Access-Control-Allow-Origin` 미반환) |
 
@@ -233,7 +233,7 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 > **회전 이력**
 > — **2026-09-02**: 로컬 백업 아카이브 두 벌의 `.env` 에 당시 유효한 자격증명이 평문으로 있었다(sha256 대조 확인). `.env` 삭제 + 암호 회전. git 노출은 0(두 아카이브 모두 저장소 밖, 저장소 이력에 `.env` 커밋 없음). 다운타임 0 — 옛 복제본이 기존 연결 풀로 계속 응답하는 사이 새 복제본이 교체됐다.
 
-### 테이블 목록 (총 9개 정규 테이블 = 앱 데이터 8개 + 감사 1개, `alembic_version` 제거됨)
+### 테이블 목록 (총 10개 정규 테이블 = 앱 데이터 9개 + 감사 1개, `alembic_version` 제거됨)
 
 | 테이블 | 비고 |
 |--------|------|
@@ -245,6 +245,7 @@ CI(`backend.yml`)는 정리하지 않는다(룰 1).
 | `meal_plans` | AI 주간 식단 메타 (`718783053fcd`, v0.3.0) |
 | `meal_plan_items` | AI 주간 식단 끼니별 항목 (`718783053fcd`, v0.3.0) |
 | `smile_training_sessions` | 스마일 트레이닝 v2 세션 요약 (`a3869f575d6a` 생성 → `e8b2c4d6f1a0` v2 단일 스펙 컷오버) |
+| `biometric_daily_summaries` | Wear OS 6 상시 생체·마음 상태 5차원 일일 요약 (`(user_id, record_date)` 복합 UNIQUE, `captured_at_epoch_ms` 단조 업서트, 4-Zone 시간합 == `total_monitored_minutes` CHECK 제약) |
 
 | `data_reset_audits` | 하드 리셋 및 데이터 초기화 감사 이력 (`reset_id` PK, 2026-10-29 운영 `healthapp` 하드 리셋 `hard-reset-v2-pg18-prod-20261029` 완료) |
 
@@ -623,4 +624,5 @@ MCP 서버 3종 운영 활용:
 | 2026-10-29 | **v0.7.3/44 — 구 버전(≤43) 전수 차단 Strict Mandatory Update · Play In-App Updates `2.1.0` 연동 · 버전 SSoT 원자적 동기화 가드 및 프로덕션 배포 완료 (PR #225·#226)**. ① 백엔드 `MINIMUM_SUPPORTED_ANDROID_VERSION_CODE=44`(`backend/app/config.py`, `backend/containerapp.yaml`) 상향 및 `bump-version.sh`·`check-version-monotonic.sh --check-ssot` 원자적 SSoT 동기화 가드 구축 ② Android `MandatoryUpdateScreen` + `UpdateGateViewModel` + Google Play In-App Updates(`com.google.android.play:app-update-ktx:2.1.0`) 연동 ③ 백엔드 배포(run `40868854537`) → 활성 revision **`eundunhealth-api--0000069`**(이미지 `6357981`, reaper Job 동기화) ④ 태그 `v0.7.3` `release.yml`(run `40868910274`) → Play 프로덕션 `completed`(100%) 업로드 성공 + 원장 PR #226 병합(`LAST_UPLOADED_VERSION_CODE=44`). backend pytest **147/147** · android @Test **256/256** |
 | 2026-11-02 | **문서 감사기(`scripts/agents/doc_audit.py`) Claude Agent SDK 의존성 제거 및 100% 결정론적 Python stdlib 린터 전환**. 외부 AI API 키(`ANTHROPIC_API_KEY`) 및 서드파티 패키지 의존성을 완전 제거하고 14개 SSoT 지점 교차 대조 결정론적 린터로 재설계(`test_doc_audit.py` 13건 PASS, `.github/workflows/doc-audit.yml` 무과금 CI 게이트화) |
 | 2026-11-04 | **Android CLI (`v1.1.16717390`) & Android Studio (`Rabbit 2 \| 2026.2.2`) 하이브리드 워크플로 통합 및 AGP 9.5.0 / Gradle 9.8.2 업그레이드**. `scripts/ensure-android-cli.sh`·`scripts/android-cli-check.sh`(`status`/`inspect`/`previews`/`apk`/`versions`/`docs`) 신설, `smoke-cold-start.sh` `android layout`·`android screen capture` 증적 자동화, AGP 9.5.0 + Gradle 9.8.2 + `fastapi 0.162.0` / `starlette 1.10.0` 업그레이드 |
-| 2026-11-06 | **스마일 트레이닝 `INTRO`/`COMPLETED` 제거 무중단 직행(`2f63aec`) · AGP `9.5.1`(`4a3af8b`) · Wear OS 6 (API 36) 3모듈(`:app` + `:wear` + `:core:wear-contract`) Foundation(`2a49cea`) 및 환경설정 구현 설계(`PROP-06` / `PROP-06-A` 경계 통합) 완료**. ① 스마일 트레이닝 진입 즉시 `READY`(1.0초 얼굴 정렬 자동 시작) → `ACTIVE`(3회 완료 시 `NonCancellable` Room 저장 후 즉시 `NavigateBack`) 무중단 직행 전환 및 Compose BOM `2026.09.00` `ModalBottomSheet`·`HorizontalPager` 시그니처 현대화 ② AGP `9.5.1` 패치 업그레이드(Rule 15 6단계 게이트 통과) ③ `:core:wear-contract`(Pure JVM 17, `WearTimeConstants.KST_ZONE` SSoT) 및 `:wear`(`minSdk=36`, `targetSdk=37`, `wearVersionCode=10001`, Wear Compose M3 `1.7.1`, `WearEnvironmentStatusScreen` `LocalScrollCaptureInProgress` 가드 및 TalkBack `stateDescription`, OLED 29슬롯 `EundunWearColorScheme`, `res/raw/keep_wear_capabilities.xml`) 신설 + Linux CI `aapt2-9.5.1-16666295-linux.jar` SHA-256 검증 메타데이터 동기화 ④ `docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md` 환경설정 구현 설계 고도화(`PROP-06-A` 기존 Azure Container Apps + PostgreSQL 18 재사용 환경 경계 `D9` 및 6대 트러블슈팅/재발방지 가드 `T1~T6` 통합). backend pytest **147/147** · android/wear @Test **266/266** |
+| 2026-11-06 | **스마일 트레이닝 `INTRO`/`COMPLETED` 제거 무중단 직행(`2f63aec`) · AGP `9.5.1`(`4a3af8b`) · Wear OS 6 (API 36) 3모듈(`:app` + `:wear` + `:core:wear-contract`) Foundation(`2a49cea`) 및 환경설정 구현 설계(`PROP-06` / `PROP-06-A` 경계 통합) 완료**. ① 스마일 트레이닝 진입 즉시 `READY`(1.0초 얼굴 정렬 자동 시작) → `ACTIVE`(3회 완료 시 `NonCancellable` Room 저장 후 즉시 `NavigateBack`) 무중단 직행 전환 및 Compose BOM `2026.09.00` `ModalBottomSheet`·`HorizontalPager` 시그니처 현대화 ② AGP `9.5.1` 패치 업그레이드(Rule 15 6단계 게이트 통과) ③ `:core:wear-contract`(Pure JVM 17, `WearTimeConstants.KST_ZONE` SSoT) 및 `:wear`(`minSdk=36`, `targetSdk=37`, `wearVersionCode=10001`, Wear Compose M3 `1.7.1`, `WearEnvironmentStatusScreen` `LocalScrollCaptureInProgress` 가드 및 TalkBack `stateDescription`, OLED 29슬롯 `EundunWearColorScheme`, `res/raw/keep_wear_capabilities.xml`) 신설 + Linux CI `aapt2-9.5.1-16666295-linux.jar` SHA-256 검증 메타데이터 동기화 ④ `docs/plans/2026-11-06-wear-os-foundation-env-setup-plan.md`(→ `docs/plans/logs/android.md`) 환경설정 구현 설계 고도화(`PROP-06-A` 기존 Azure Container Apps + PostgreSQL 18 재사용 환경 경계 `D9` 및 6대 트러블슈팅/재발방지 가드 `T1~T6` 통합). backend pytest **147/147** · android/wear @Test **266/266** |
+| 2026-11-09 | **Wear OS 6 (API 36, Xiaomi Watch 5 `M2501W1`) 상시 전 구간(All-State) 5차원 생체·마음 상태 런타임 & 운영 Azure `/v2/biometrics/*` 10번째 정규 테이블 `biometric_daily_summaries` 구현 완료**. ① `:core:wear-contract` 전 구간(`PASSIVE`/`EXERCISE`/`ASLEEP`/`UNKNOWN`) 5차원 분석기(`ContinuousBiometricAnalyzer`) 및 GZIP+SHA-256 코덱(`BiometricPayloadCodec`) 구현 ② `:wear` 24/7 `PassiveMonitoringClient` + 100 BPM 코프로세서 `PassiveGoal` + `MeasureClient` 실시간 BPM + `flushAsync()` + 7일 롤링 SQLite(`WearBiometricDatabase`) + 원형 상시 생체 대시보드(`WearEnvironmentStatusScreen`) 구현 ③ 백엔드 PostgreSQL 18 10번째 정규 테이블 `public.biometric_daily_summaries`(21개 `CHECK` 제약) 및 `/v2/biometrics/sync`·`/v2/biometrics/daily`(GET/DELETE) 3개 API(총 30개 API = 25 JWT + 5 공개), `account_service._purge_app_data`·`reap_orphaned_data`·`seed_edge_cases.py`(10개 테이블 100건 시딩 + 12개 SAVEPOINT 제약 검증)·`verify_containerapp_deployment.py`(`/v2/biometrics/daily` 보호 라우트 마운트 실측) 동기화 ④ 모바일 `:app` Room `EundunDatabase` v4(`MIGRATION_3_4`, `4.json`)·`PhoneWearDataListenerService`·`WearBiometricRepositoryImpl`·`SmileSyncWorker`·`ProgressHubScreen`·`ProfileHubScreen` 통합 및 `CLAUDE.md` 룰 17 신설. backend pytest **149/149** · android/wear @Test **270/270** |

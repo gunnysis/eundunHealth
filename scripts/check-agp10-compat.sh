@@ -112,18 +112,15 @@ if grep -rnE '^[[:space:]]*import[[:space:]]+(android\.|androidx\.|com\.google\.
     echo 'ERROR: core/wear-contract/src/main 내부에 Android/Google Play 프레임워크 import가 유입되었습니다 (AC-09).'
     failed=1
 fi
-if grep -nE 'health-services|play-services-wearable' wear/build.gradle.kts || \
-   grep -rnE 'PassiveMonitoringClient|PassiveListenerService|MessageClient|DataClient|ChannelClient' wear/src/main/; then
-    echo 'ERROR: Foundation 단계의 :wear 모듈에는 센서/Data Layer 런타임 구현을 조기 유입할 수 없습니다 (AC-09).'
-    failed=1
-fi
 if ! grep -q 'android\.hardware\.type\.watch' wear/src/main/AndroidManifest.xml || \
    ! grep -q 'com\.google\.android\.wearable\.standalone' wear/src/main/AndroidManifest.xml; then
     echo 'ERROR: wear/src/main/AndroidManifest.xml에 watch 필수 피처 또는 standalone 메타데이터가 누락되었습니다 (AC-03).'
     failed=1
 fi
-if grep -nE 'READ_HEART_RATE|READ_HEALTH_DATA_IN_BACKGROUND|BODY_SENSORS|ACTIVITY_RECOGNITION|RECEIVE_BOOT_COMPLETED|WAKE_LOCK' wear/src/main/AndroidManifest.xml; then
-    echo 'ERROR: Foundation 단계의 wear 매니페스트에 민감 건강/신체활동/부팅/WakeLock 권한이 선언되었습니다 (AC-04).'
+if ! grep -q 'android\.permission\.health\.READ_HEART_RATE' wear/src/main/AndroidManifest.xml || \
+   ! grep -q 'android\.permission\.health\.READ_HEALTH_DATA_IN_BACKGROUND' wear/src/main/AndroidManifest.xml || \
+   ! grep -q 'android\.permission\.ACTIVITY_RECOGNITION' wear/src/main/AndroidManifest.xml; then
+    echo 'ERROR: wear/src/main/AndroidManifest.xml에 Wear OS 6 상시 생체 수집 권한(READ_HEART_RATE, READ_HEALTH_DATA_IN_BACKGROUND, ACTIVITY_RECOGNITION)이 누락되었습니다 (룰 17).'
     failed=1
 fi
 for keep_file in app/src/main/res/values/wear.xml wear/src/main/res/values/wear.xml app/src/main/res/raw/keep_wear_capabilities.xml wear/src/main/res/raw/keep_wear_capabilities.xml; do
@@ -135,10 +132,6 @@ done
 if ! grep -q '<item>eundun_phone_companion</item>' app/src/main/res/values/wear.xml || \
    ! grep -q '<item>eundun_wear_companion</item>' wear/src/main/res/values/wear.xml; then
     echo 'ERROR: app과 wear의 capability 이름이 구분되어 있지 않습니다 (AC-05).'
-    failed=1
-fi
-if grep -nE '<[[:space:]]*uses-permission| <[[:space:]]*(service|receiver|provider)' wear/src/main/AndroidManifest.xml; then
-    echo 'ERROR: Foundation 단계의 wear 매니페스트에는 <uses-permission> 또는 백그라운드 컴포넌트 태그를 선언할 수 없습니다 (D3/AC-04).'
     failed=1
 fi
 if ! grep -q 'LocalScrollCaptureInProgress\.current' wear/src/main/java/com/gunnys/eundunhealth/wear/presentation/WearEnvironmentStatusScreen.kt; then

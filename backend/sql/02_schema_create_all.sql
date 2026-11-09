@@ -200,7 +200,72 @@ CREATE INDEX ix_smile_training_sessions_user_occurred
     ON public.smile_training_sessions (user_id, occurred_at DESC);
 
 -- ----------------------------------------------------------------------------
--- 9. data_reset_audits (Idempotent Hard-Reset & Cutover Audit Ledger)
+-- 9. biometric_daily_summaries (Wear OS 6 Continuous All-State Daily Summary)
+-- ----------------------------------------------------------------------------
+CREATE TABLE public.biometric_daily_summaries (
+    id UUID NOT NULL DEFAULT uuidv7(),
+    user_id VARCHAR(128) NOT NULL,
+    record_date DATE NOT NULL,
+    zone_id VARCHAR(64) NOT NULL DEFAULT 'Asia/Seoul',
+    total_steps INTEGER NOT NULL DEFAULT 0,
+    active_calories_kcal DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    resting_bpm INTEGER NULL,
+    avg_bpm INTEGER NULL,
+    min_bpm INTEGER NULL,
+    max_bpm INTEGER NULL,
+    hrv_rmssd_ms DOUBLE PRECISION NULL,
+    total_monitored_minutes INTEGER NOT NULL DEFAULT 0,
+    relaxed_zone_minutes INTEGER NOT NULL DEFAULT 0,
+    normal_zone_minutes INTEGER NOT NULL DEFAULT 0,
+    elevated_tension_minutes INTEGER NOT NULL DEFAULT 0,
+    high_load_minutes INTEGER NOT NULL DEFAULT 0,
+    tension_episode_count INTEGER NOT NULL DEFAULT 0,
+    tension_minutes INTEGER NOT NULL DEFAULT 0,
+    peak_tension_bpm INTEGER NULL,
+    rapid_delta_spike_count INTEGER NOT NULL DEFAULT 0,
+    max_delta_bpm_per_min INTEGER NULL,
+    activity_overload_count INTEGER NOT NULL DEFAULT 0,
+    avg_recovery_drop_bpm INTEGER NULL,
+    sleep_awakening_count INTEGER NOT NULL DEFAULT 0,
+    recovery_score INTEGER NULL,
+    hourly_bpm_buckets_json TEXT NOT NULL DEFAULT '[]',
+    source_devices_json TEXT NOT NULL DEFAULT '[]',
+    client_captured_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_biometric_daily_summaries PRIMARY KEY (id),
+    CONSTRAINT uq_biometric_daily_summaries_user_date UNIQUE (user_id, record_date),
+    CONSTRAINT ck_biometric_daily_summaries_user_id_nonempty CHECK (length(trim(user_id)) >= 1),
+    CONSTRAINT ck_biometric_daily_summaries_zone_id_nonempty CHECK (length(trim(zone_id)) >= 1),
+    CONSTRAINT ck_biometric_daily_summaries_total_steps_range CHECK (total_steps >= 0 AND total_steps <= 200000),
+    CONSTRAINT ck_biometric_daily_summaries_active_calories_range CHECK (active_calories_kcal >= 0.0 AND active_calories_kcal <= 20000.0),
+    CONSTRAINT ck_biometric_daily_summaries_resting_bpm_range CHECK (resting_bpm IS NULL OR (resting_bpm >= 30 AND resting_bpm <= 220)),
+    CONSTRAINT ck_biometric_daily_summaries_avg_bpm_range CHECK (avg_bpm IS NULL OR (avg_bpm >= 30 AND avg_bpm <= 240)),
+    CONSTRAINT ck_biometric_daily_summaries_min_bpm_range CHECK (min_bpm IS NULL OR (min_bpm >= 25 AND min_bpm <= 240)),
+    CONSTRAINT ck_biometric_daily_summaries_max_bpm_range CHECK (max_bpm IS NULL OR (max_bpm >= 30 AND max_bpm <= 260)),
+    CONSTRAINT ck_biometric_daily_summaries_hrv_rmssd_range CHECK (hrv_rmssd_ms IS NULL OR (hrv_rmssd_ms >= 0.0 AND hrv_rmssd_ms <= 500.0)),
+    CONSTRAINT ck_biometric_daily_summaries_monitored_min_range CHECK (total_monitored_minutes >= 0 AND total_monitored_minutes <= 1440),
+    CONSTRAINT ck_biometric_daily_summaries_relaxed_min_range CHECK (relaxed_zone_minutes >= 0 AND relaxed_zone_minutes <= 1440),
+    CONSTRAINT ck_biometric_daily_summaries_normal_min_range CHECK (normal_zone_minutes >= 0 AND normal_zone_minutes <= 1440),
+    CONSTRAINT ck_biometric_daily_summaries_elevated_min_range CHECK (elevated_tension_minutes >= 0 AND elevated_tension_minutes <= 1440),
+    CONSTRAINT ck_biometric_daily_summaries_high_load_min_range CHECK (high_load_minutes >= 0 AND high_load_minutes <= 1440),
+    CONSTRAINT ck_biometric_daily_summaries_tension_count_range CHECK (tension_episode_count >= 0 AND tension_episode_count <= 500),
+    CONSTRAINT ck_biometric_daily_summaries_tension_min_range CHECK (tension_minutes >= 0 AND tension_minutes <= 1440),
+    CONSTRAINT ck_biometric_daily_summaries_peak_tension_bpm_range CHECK (peak_tension_bpm IS NULL OR (peak_tension_bpm >= 40 AND peak_tension_bpm <= 260)),
+    CONSTRAINT ck_biometric_daily_summaries_rapid_spike_count_range CHECK (rapid_delta_spike_count >= 0 AND rapid_delta_spike_count <= 500),
+    CONSTRAINT ck_biometric_daily_summaries_max_delta_bpm_range CHECK (max_delta_bpm_per_min IS NULL OR (max_delta_bpm_per_min >= 0 AND max_delta_bpm_per_min <= 180)),
+    CONSTRAINT ck_biometric_daily_summaries_overload_count_range CHECK (activity_overload_count >= 0 AND activity_overload_count <= 500),
+    CONSTRAINT ck_biometric_daily_summaries_recovery_drop_range CHECK (avg_recovery_drop_bpm IS NULL OR (avg_recovery_drop_bpm >= -100 AND avg_recovery_drop_bpm <= 180)),
+    CONSTRAINT ck_biometric_daily_summaries_sleep_awakening_range CHECK (sleep_awakening_count >= 0 AND sleep_awakening_count <= 500),
+    CONSTRAINT ck_biometric_daily_summaries_recovery_score_range CHECK (recovery_score IS NULL OR (recovery_score >= 0 AND recovery_score <= 100)),
+    CONSTRAINT ck_biometric_daily_summaries_hourly_json_nonempty CHECK (length(trim(hourly_bpm_buckets_json)) >= 2),
+    CONSTRAINT ck_biometric_daily_summaries_devices_json_nonempty CHECK (length(trim(source_devices_json)) >= 2)
+);
+
+CREATE INDEX ix_biometric_daily_summaries_user_date
+    ON public.biometric_daily_summaries (user_id, record_date DESC);
+
+-- ----------------------------------------------------------------------------
+-- 10. data_reset_audits (Idempotent Hard-Reset & Cutover Audit Ledger)
 -- ----------------------------------------------------------------------------
 CREATE TABLE public.data_reset_audits (
     reset_id VARCHAR(128) NOT NULL,

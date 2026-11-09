@@ -50,7 +50,7 @@ def test_canonical_sql_files_exist_and_parse_cleanly() -> None:
     cleanup_stmts = split_sql_statements(CLEANUP_SQL_PATH.read_text(encoding="utf-8"))
     create_stmts = split_sql_statements(CREATE_SQL_PATH.read_text(encoding="utf-8"))
     assert any("DO $$" in s for s in cleanup_stmts)
-    assert sum(1 for s in create_stmts if s.upper().startswith("CREATE TABLE")) == 9
+    assert sum(1 for s in create_stmts if s.upper().startswith("CREATE TABLE")) == 10
 
 
 def test_validate_reset_args_accepts_valid_inputs() -> None:
@@ -86,7 +86,7 @@ async def test_hard_reset_and_100_edge_case_seeder_end_to_end(db_engine) -> None
         image_sha="8bbc7ca",
         execution_id="pytest-suite",
     )
-    assert summary["tables_created"] == 9
+    assert summary["tables_created"] == 10
     assert all(cnt == 0 for cnt in summary["post_reset_counts"].values())
 
     report = await run_seeder_on_engine(db_engine, verify_constraints=True)

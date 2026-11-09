@@ -38,6 +38,9 @@ import com.gunnys.eundunhealth.wear.presentation.theme.EundunWearTheme
 fun WearEnvironmentStatusScreen(
     spec: WearEnvironmentSpec,
     modifier: Modifier = Modifier,
+    biometricState: WearBiometricUiState = WearBiometricUiState.previewSample(),
+    onRequestPermissions: () -> Unit = {},
+    onSyncNow: () -> Unit = {},
     columnState: TransformingLazyColumnState = rememberTransformingLazyColumnState(),
     initialEnvExpanded: Boolean = false,
     initialStatusExpanded: Boolean = false,
@@ -82,6 +85,53 @@ fun WearEnvironmentStatusScreen(
                             textAlign = TextAlign.Center,
                         )
                     }
+                }
+
+                item(key = "live_biometric_card") {
+                    LiveBiometricCard(
+                        biometricState = biometricState,
+                        transformation = SurfaceTransformation(transformationSpec),
+                        modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec)
+                            .minimumVerticalContentPadding(
+                                CardDefaults.minimumVerticalListContentPadding,
+                            ),
+                        onRequestPermissions = onRequestPermissions,
+                        onSyncNow = onSyncNow,
+                    )
+                }
+
+                item(key = "zone_distribution_card") {
+                    ZoneDistributionCard(
+                        biometricState = biometricState,
+                        transformation = SurfaceTransformation(transformationSpec),
+                        modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec)
+                            .minimumVerticalContentPadding(
+                                CardDefaults.minimumVerticalListContentPadding,
+                            ),
+                        onSyncNow = onSyncNow,
+                    )
+                }
+
+                item(key = "sync_action_card") {
+                    SyncActionCard(
+                        biometricState = biometricState,
+                        transformation = SurfaceTransformation(transformationSpec),
+                        modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec)
+                            .minimumVerticalContentPadding(
+                                CardDefaults.minimumVerticalListContentPadding,
+                            ),
+                        onRequestPermissions = onRequestPermissions,
+                        onSyncNow = onSyncNow,
+                    )
                 }
 
                 item(key = "env_card") {
@@ -190,6 +240,130 @@ fun WearEnvironmentStatusScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LiveBiometricCard(
+    biometricState: WearBiometricUiState,
+    transformation: SurfaceTransformation,
+    modifier: Modifier,
+    onRequestPermissions: () -> Unit,
+    onSyncNow: () -> Unit,
+) {
+    val summary = biometricState.todaySummary
+    val bpmText = biometricState.liveBpm?.let { "$it BPM" } ?: "-- BPM"
+    val recoveryText = summary?.recoveryScore?.let { "회복 ${it}점" } ?: "회복 산출 중"
+    val restingText = summary?.restingBpm?.let { "안정 $it" } ?: "안정 --"
+    val steps = summary?.totalSteps ?: 0
+    val cal = summary?.activeCaloriesKcal?.toInt() ?: 0
+
+    TitleCard(
+        onClick = {
+            if (!biometricState.hasPermissions) {
+                onRequestPermissions()
+            } else {
+                onSyncNow()
+            }
+        },
+        title = {
+            Text(text = "$bpmText · $recoveryText")
+        },
+        subtitle = {
+            Text(
+                text = "${biometricState.currentContextKoreanLabel} · $restingText",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        },
+        transformation = transformation,
+        modifier = modifier,
+    ) {
+        Text(
+            text = "${biometricState.sensorStatusText} · ${steps}보 · ${cal}kcal",
+            style = MaterialTheme.typography.bodyExtraSmall,
+        )
+    }
+}
+
+@Composable
+private fun ZoneDistributionCard(
+    biometricState: WearBiometricUiState,
+    transformation: SurfaceTransformation,
+    modifier: Modifier,
+    onSyncNow: () -> Unit,
+) {
+    val summary = biometricState.todaySummary
+    val monitored = summary?.totalMonitoredMinutes ?: 0
+    val relaxed = summary?.relaxedZoneMinutes ?: 0
+    val normal = summary?.normalZoneMinutes ?: 0
+    val elevated = summary?.elevatedTensionMinutes ?: 0
+    val highLoad = summary?.highLoadMinutes ?: 0
+    val rapidSpikes = summary?.rapidDeltaSpikeCount ?: 0
+    val tensionCount = summary?.tensionEpisodeCount ?: 0
+    val hrrLabel = summary?.avgRecoveryDropBpm?.let { "회복폭 -${it}BPM" } ?: "회복폭 대기"
+
+    TitleCard(
+        onClick = onSyncNow,
+        title = {
+            Text(text = "착용 ${monitored}분 전 구간 분석")
+        },
+        subtitle = {
+            Text(
+                text = "이완 ${relaxed}분 · 일상 ${normal}분 · 긴장 ${elevated}분 · 운동 ${highLoad}분",
+                style = MaterialTheme.typography.bodyExtraSmall,
+            )
+        },
+        transformation = transformation,
+        modifier = modifier,
+    ) {
+        Text(
+            text = "급상승 ${rapidSpikes}회 · 지속긴장 ${tensionCount}회 · $hrrLabel",
+            style = MaterialTheme.typography.bodyExtraSmall,
+        )
+    }
+}
+
+@Composable
+private fun SyncActionCard(
+    biometricState: WearBiometricUiState,
+    transformation: SurfaceTransformation,
+    modifier: Modifier,
+    onRequestPermissions: () -> Unit,
+    onSyncNow: () -> Unit,
+) {
+    val summary = biometricState.todaySummary
+    val actionTitle =
+        when {
+            !biometricState.hasPermissions -> "센서 권한 허용하기"
+            biometricState.isSyncing -> "동기화 진행 중..."
+            else -> "스마트폰 즉시 동기화"
+        }
+    val sleepAwakenings = summary?.sleepAwakeningCount ?: 0
+
+    TitleCard(
+        onClick = {
+            if (!biometricState.hasPermissions) {
+                onRequestPermissions()
+            } else {
+                onSyncNow()
+            }
+        },
+        title = {
+            Text(text = actionTitle)
+        },
+        subtitle = {
+            Text(
+                text = biometricState.syncStatusMessage,
+                style = MaterialTheme.typography.bodyExtraSmall,
+            )
+        },
+        transformation = transformation,
+        modifier = modifier,
+    ) {
+        Text(
+            text = "야간 각성 ${sleepAwakenings}회 · 24시간 자동 감시",
+            style = MaterialTheme.typography.bodyExtraSmall,
+        )
     }
 }
 

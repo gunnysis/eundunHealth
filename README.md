@@ -6,8 +6,8 @@
 
 [![Android CI](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/android.yml)
 [![Backend CI/CD](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml/badge.svg)](https://github.com/gunnysis/eundunHealth/actions/workflows/backend.yml)
-![versionName](https://img.shields.io/badge/versionName-0.7.3-blue)
-![versionCode](https://img.shields.io/badge/versionCode-44-blue)
+![versionName](https://img.shields.io/badge/versionName-0.8.0-blue)
+![versionCode](https://img.shields.io/badge/versionCode-45-blue)
 ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB)
@@ -50,6 +50,7 @@
 - **적응형 주간 운동 계획 v2 (`헬스장` / `홈트레이닝`) & 다중 휴식 요일(`restDays`)** — 매주 첫 진입 시 `헬스장`(OSS ExerciseDB + 추천 운동 46종 한국어 번들 `korean_exercises.json` v2) 또는 `홈트레이닝`(앱 내장 18종 무장비 카탈로그 `local:home:<slug>:v2.0`, `REPS`/`SECONDS` 단위 지원)을 선택해 계획을 생성하거나, 프로필의 `기본 운동 환경` 설정으로 주간 자동 생성. 주 1~6일 원하는 휴식 요일(`restDays`)을 자유롭게 지정하고 대근육 우선순위 큐로 운동을 균형 배치
 - **AI 맞춤 주간 식단** (v0.3.0 / v0.3.1 / v0.7.2) — 신체 지표·목표·주간 운동량을 바탕으로 Azure AI Foundry `gpt-5.4-mini` (`GlobalStandard` 100K TPM) 모델이 7일×3끼 맞춤 식단과 영양소(칼로리·탄단지)를 생성 (국외 이전 사전 고지 및 `X-AI-Data-Processing-Consent: true` 명시적 동의 기반)
 - **온디바이스 스마일 트레이닝 v2** (v0.5.0 / v2 / 2026-11-06 무중단 직행) — 전면 카메라(`CameraX` 1.6.2)와 온디바이스 `ML Kit Face Detection`(17.1.0)으로 사진·영상 저장/전송 없이 실시간 미소 근육 운동(단일 표준 스펙 `SmileTrainingSpec`: `2.0초 유지 × 3회 반복`, `INTRO`/`COMPLETED` 중간 대기·완료 화면 제거, 진입 즉시 `READY` 1.0초 자동 시작 → `ACTIVE` → `NonCancellable` 저장 직후 이전 화면 자동 복귀 `NavigateBack`)을 코칭하고, 오프라인 우선 Room DB(`smile_training.db` v2) 및 `WorkManager`로 세션 요약·연속일을 서버(`/v2/smile-training/*`)와 동기화
+- **Wear OS 6 상시 생체·마음 상태 5차원 분석 (`:wear` ↔ `:app` ↔ `/v2/biometrics/*`)** — Xiaomi Watch 5(`M2501W1`, Wear OS 6 API 36+) 착용 중 모든 상태(`PASSIVE`, `EXERCISE`, `ASLEEP`, `UNKNOWN`)를 24/7 백그라운드(`PassiveMonitoringClient` + 하드웨어 `PassiveGoal`) 및 포그라운드(`MeasureClient` + `flushAsync()`) 이중 경로로 연속 수집·분석하여 4-Zone 시간 분포, 급격한 심박 변화(`rapidDeltaSpikeCount`), 지속 마음 긴장 에피소드, 활동 후 심박 회복(HRR), 자율신경 회복 점수(`recoveryScore`)를 산출하고 Data Layer GZIP+SHA-256 봉투로 모바일(`EundunDatabase` v4)과 운영 Azure(`biometric_daily_summaries`)에 동기화
 - **Health Connect 연동** — 운동 세션 자동 감지 및 완료 추적
 - **통계 대시보드** (v0.2) — 12 주간 완료율 + 스트릭 차트
 - **목표 설정 및 진행 시각화** (v0.3) — 체중 / 체지방률 목표 + 프로필 변화 이력 차트
@@ -71,15 +72,15 @@
 | DI | Hilt 2.60.1 | 4개 모듈 (`NetworkModule`, `DatabaseModule`, `RepositoryModule`, `CoroutineModule`) |
 | 비동기 | kotlinx-coroutines 1.11.0 + Flow | |
 | 네트워크 | Retrofit 3.0.0 + OkHttp 5.5.1 + Sentry-OkHttp | `TokenAuthenticator` 401 자동 갱신 + `Eundun-Client-Version-Code` 헤더 |
-| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v3, KSP 스키마 export) + `SmileTrainingDatabase` (v2, KSP 스키마 export) |
+| 로컬 DB & 백그라운드 동기화 | Room 2.8.5 + WorkManager 2.12.0 (`hilt-work` 1.4.0) + DataStore 1.3.0 | `EundunDatabase` (v4, KSP 스키마 export) + `SmileTrainingDatabase` (v2, KSP 스키마 export) |
 | 카메라 & 온디바이스 비전 | CameraX 1.6.2 (`camera-compose`) + ML Kit Face Detection 17.1.0 | Google Play services unbundled (`ModuleInstallClient`) |
 | 인앱 업데이트 | Google Play In-App Updates 2.1.0 (`app-update-ktx`) | `PlayInAppUpdateChecker` (`AppUpdateType.IMMEDIATE` + `/app-compatibility` 이중 채널) |
 | 차트 | Vico 3.3.1 (compose-m3) | 통계 + 목표 진행 |
 | Auth | MSAL Android 8.6.0 | RS256 JWT · `oid` claim |
 | 건강 데이터 | Health Connect 1.1.0 (stable) | `READ_EXERCISE` 단독 권한 |
 | 모니터링 | Sentry Android 8.61.1 (Gradle plugin 6.24.0) | 16KB page-aligned native libs |
-| API 클라이언트 | OpenAPI Generator 7.26.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동, 8개 generated API |
-| 품질 도구 & CLI | Detekt 1.23.8 (`detekt-cli` + `androidComponents`) + Spotless 8.10.4 + ktlint 1.5.0 + Android CLI `v1.1.16717390` | pre-commit hook + `check-agp10-compat.sh` + `android-cli-check.sh` · 단위 테스트 266 `@Test` |
+| API 클라이언트 | OpenAPI Generator 7.26.0 (`api.generated.*`) | `backend/openapi.json` 입력, `preBuild` 자동, 9개 generated API |
+| 품질 도구 & CLI | Detekt 1.23.8 (`detekt-cli` + `androidComponents`) + Spotless 8.10.4 + ktlint 1.5.0 + Android CLI `v1.1.16717390` | pre-commit hook + `check-agp10-compat.sh` + `android-cli-check.sh` · 단위 테스트 270 `@Test` |
 
 ### Backend (`backend/`)
 
@@ -89,12 +90,12 @@
 | 프레임워크 | FastAPI 0.162.0 + uvicorn 0.54.0 | hash lock 공통 설치 |
 | API 버전 | `1.0.0` (`backend/app/__init__.py:__version__`) | OpenAPI `info.version`, 앱과 독립 |
 | ORM | SQLAlchemy 2.1.6 async + asyncpg 0.32.0 | `Mapped[T]` 패턴 |
-| 스키마 파이프라인 | Drop & Recreate 전용 (`02_schema_create_all.sql`) | PostgreSQL 18 `DEFAULT uuidv7()` + `app.schema_bootstrap` 멱등 기동 + `hard_reset_db.py` / `seed_edge_cases.py`(100건 시딩·11개 제약 검증) |
+| 스키마 파이프라인 | Drop & Recreate 전용 (`02_schema_create_all.sql`) | PostgreSQL 18 `DEFAULT uuidv7()` + `app.schema_bootstrap` 멱등 기동 + `hard_reset_db.py` / `seed_edge_cases.py`(100건 시딩·12개 제약 검증) |
 | HTTP 코어 | starlette 1.10.0 | |
 | Auth 검증 | PyJWT[crypto] 2.15.1 + JWKS | **RS256** (Entra External ID), 24h TTL 캐시 |
 | AI 클라이언트 | openai 3.37.0 (`AsyncOpenAI`) | Azure AI Foundry `gpt-5.4-mini` (`GlobalStandard` 100K TPM, Strict JSON Schema) 연동 |
 | 모니터링 | Sentry SDK 2.73.0 (`sentry-sdk[fastapi]`) | `eundunhealth-backend` 프로젝트 |
-| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 147/147 PASS, coverage 94%+ (sysmon core) |
+| 품질 도구 | ruff 0.17.2 + mypy 2.4.0 strict + bandit 1.9.4 + pip-audit 2.10.1 | pytest 9.1.1 — 149/149 PASS, coverage 94%+ (sysmon core) |
 
 ### 인프라
 

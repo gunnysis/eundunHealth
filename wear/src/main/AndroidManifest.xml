@@ -5,6 +5,13 @@
         android:name="android.hardware.type.watch"
         android:required="true" />
 
+    <!-- Wear OS 6 (API 36+) 상시 심박·걸음·활동/수면 맥락 수집 및 부팅 후 자동 재등록 권한 -->
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:allowBackup="false"
         android:label="@string/wear_app_name"
@@ -24,6 +31,39 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- AndroidX Health Services 24/7 상시 백그라운드 수집 및 PassiveGoal 임계치 수신 서비스 -->
+        <service
+            android:name=".sensor.EundunPassiveListenerService"
+            android:exported="true"
+            android:permission="com.google.android.wearable.healthservices.permission.PASSIVE_DATA_BINDING">
+            <intent-filter>
+                <action android:name="androidx.health.services.client.PASSIVE_LISTENER" />
+            </intent-filter>
+        </service>
+
+        <!-- 모바일(:app) 원격 동기화 요청 및 ACK 수신 WearableListenerService -->
+        <service
+            android:name=".sync.PhoneSyncCommandListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:host="*"
+                    android:pathPrefix="/eundunhealth/v1/biometric/"
+                    android:scheme="wear" />
+            </intent-filter>
+        </service>
+
+        <!-- 기기 재부팅 또는 앱 업데이트 직후 PassiveMonitoringClient 자동 재등록 리시버 -->
+        <receiver
+            android:name=".sensor.PassiveMonitoringBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

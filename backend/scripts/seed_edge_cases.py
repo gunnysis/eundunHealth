@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 
 from app.models.badge import Badge  # noqa: E402
+from app.models.biometric_summary import BiometricDailySummary  # noqa: E402
 from app.models.data_reset_audit import DataResetAudit  # noqa: E402
 from app.models.goal import Goal  # noqa: E402
 from app.models.meal_plan import MealPlan, MealPlanItem  # noqa: E402
@@ -47,7 +48,8 @@ EXPECTED_TABLE_COUNTS: dict[str, int] = {
     "badges": 15,
     "meal_plans": 5,
     "meal_plan_items": 10,
-    "smile_training_sessions": 14,
+    "smile_training_sessions": 9,
+    "biometric_daily_summaries": 5,
     "data_reset_audits": 1,
 }
 EXPECTED_TOTAL_ROWS = 100
@@ -439,7 +441,7 @@ def _build_100_edge_records() -> dict[str, list[Any]]:
         )
 
     # -------------------------------------------------------------------------
-    # 8. smile_training_sessions (14 rows — min 0s/1rep to max 1800s/5reps)
+    # 8. smile_training_sessions (9 rows — min 0s/1rep to max 1800s/5reps)
     # -------------------------------------------------------------------------
     smile_sessions: list[SmileTrainingSession] = [
         # Row 1: Absolute minimum boundary (duration_sec=0, completed_reps=1)
@@ -461,7 +463,7 @@ def _build_100_edge_records() -> dict[str, list[Any]]:
             created_at=base_utc,
         ),
     ]
-    for i in range(3, 15):
+    for i in range(3, 10):
         ts = base_utc - datetime.timedelta(days=i - 2, minutes=i * 3)
         smile_sessions.append(
             SmileTrainingSession(
@@ -475,7 +477,111 @@ def _build_100_edge_records() -> dict[str, list[Any]]:
         )
 
     # -------------------------------------------------------------------------
-    # 9. data_reset_audits (1 row)
+    # 9. biometric_daily_summaries (5 rows — min/null boundary to max boundary)
+    # -------------------------------------------------------------------------
+    biometric_summaries: list[BiometricDailySummary] = [
+        # Row 1: All nullable BPM/recovery fields NULL, zero steps/calories
+        BiometricDailySummary(
+            id=_deterministic_uuid("biometric", 1),
+            user_id=user_ids[0],
+            record_date=datetime.date(2026, 10, 25),
+            zone_id="Asia/Seoul",
+            total_steps=0,
+            active_calories_kcal=0.0,
+            resting_bpm=None,
+            avg_bpm=None,
+            min_bpm=None,
+            max_bpm=None,
+            hrv_rmssd_ms=None,
+            total_monitored_minutes=0,
+            relaxed_zone_minutes=0,
+            normal_zone_minutes=0,
+            elevated_tension_minutes=0,
+            high_load_minutes=0,
+            tension_episode_count=0,
+            tension_minutes=0,
+            peak_tension_bpm=None,
+            rapid_delta_spike_count=0,
+            max_delta_bpm_per_min=0,
+            activity_overload_count=0,
+            avg_recovery_drop_bpm=None,
+            sleep_awakening_count=0,
+            recovery_score=None,
+            hourly_bpm_buckets_json="[]",
+            source_devices_json='["Xiaomi Watch 5 (M2501W1)"]',
+            client_captured_at=kst_midnight_utc,
+            updated_at=base_utc,
+        ),
+        # Row 2: Maximum physiological boundary values (1440 monitored minutes, recovery_score=100)
+        BiometricDailySummary(
+            id=_deterministic_uuid("biometric", 2),
+            user_id=user_ids[1],
+            record_date=datetime.date(2026, 10, 26),
+            zone_id="Asia/Seoul",
+            total_steps=32000,
+            active_calories_kcal=1850.5,
+            resting_bpm=220,
+            avg_bpm=240,
+            min_bpm=25,
+            max_bpm=260,
+            hrv_rmssd_ms=120.5,
+            total_monitored_minutes=1440,
+            relaxed_zone_minutes=600,
+            normal_zone_minutes=600,
+            elevated_tension_minutes=120,
+            high_load_minutes=120,
+            tension_episode_count=4,
+            tension_minutes=120,
+            peak_tension_bpm=260,
+            rapid_delta_spike_count=5,
+            max_delta_bpm_per_min=45,
+            activity_overload_count=2,
+            avg_recovery_drop_bpm=180,
+            sleep_awakening_count=3,
+            recovery_score=100,
+            hourly_bpm_buckets_json="[]",
+            source_devices_json='["Xiaomi Watch 5 (M2501W1)"]',
+            client_captured_at=base_utc,
+            updated_at=base_utc,
+        ),
+    ]
+    for idx in range(3, 6):
+        biometric_summaries.append(
+            BiometricDailySummary(
+                id=_deterministic_uuid("biometric", idx),
+                user_id=user_ids[idx],
+                record_date=datetime.date(2026, 10, 24 + idx),
+                zone_id="Asia/Seoul",
+                total_steps=4500 + idx * 800,
+                active_calories_kcal=220.0 + idx * 35.0,
+                resting_bpm=58 + idx,
+                avg_bpm=72 + idx,
+                min_bpm=52 + idx,
+                max_bpm=142 + idx * 3,
+                hrv_rmssd_ms=42.0 + idx,
+                total_monitored_minutes=720,
+                relaxed_zone_minutes=420,
+                normal_zone_minutes=240,
+                elevated_tension_minutes=30,
+                high_load_minutes=30,
+                tension_episode_count=1,
+                tension_minutes=12,
+                peak_tension_bpm=104,
+                rapid_delta_spike_count=1,
+                max_delta_bpm_per_min=21,
+                activity_overload_count=0,
+                avg_recovery_drop_bpm=24,
+                sleep_awakening_count=1,
+                recovery_score=80 + idx,
+                hourly_bpm_buckets_json="[]",
+                source_devices_json='["Xiaomi Watch 5 (M2501W1)"]',
+                client_captured_at=base_utc,
+                updated_at=base_utc,
+            )
+        )
+
+    # -------------------------------------------------------------------------
+    # 10. data_reset_audits (1 row)
     # -------------------------------------------------------------------------
     audits: list[DataResetAudit] = [
         DataResetAudit(
@@ -496,6 +602,7 @@ def _build_100_edge_records() -> dict[str, list[Any]]:
         "meal_plans": meal_plans,
         "meal_plan_items": meal_items,
         "smile_training_sessions": smile_sessions,
+        "biometric_daily_summaries": biometric_summaries,
         "data_reset_audits": audits,
     }
     total = sum(len(v) for v in records.values())
@@ -650,6 +757,33 @@ async def verify_schema_constraints_and_cascades(session: AsyncSession) -> list[
         ),
     )
 
+    # 9-B. UNIQUE Violation: duplicate (user_id, record_date) in biometric_daily_summaries
+    await _expect_integrity_error(
+        "uq_biometric_daily_summaries_user_date",
+        BiometricDailySummary(
+            id=uuid.uuid4(),
+            user_id="edge-user-01-null-optout",
+            record_date=datetime.date(2026, 10, 25),
+            total_steps=100,
+            active_calories_kcal=10.0,
+            client_captured_at=now_utc,
+        ),
+    )
+
+    # 9-C. CHECK Violation: biometric_daily_summaries.recovery_score > 100
+    await _expect_integrity_error(
+        "ck_biometric_daily_summaries_recovery_score_range",
+        BiometricDailySummary(
+            id=uuid.uuid4(),
+            user_id="edge-user-01-null-optout",
+            record_date=datetime.date(2099, 12, 31),
+            total_steps=100,
+            active_calories_kcal=10.0,
+            recovery_score=101,
+            client_captured_at=now_utc,
+        ),
+    )
+
     # 10. ON DELETE CASCADE Verification (inside rolled-back savepoint so 100 rows stay intact)
     async with session.begin_nested() as sp:
         temp_uid = "cascade-verify-temp-user"
@@ -732,6 +866,7 @@ async def run_seeder_on_engine(
             MealPlanItem,
             MealPlan,
             SmileTrainingSession,
+            BiometricDailySummary,
             Badge,
             Goal,
             WeeklyPlan,
@@ -758,6 +893,7 @@ async def run_seeder_on_engine(
             "badges",
             "meal_plan_items",
             "smile_training_sessions",
+            "biometric_daily_summaries",
             "data_reset_audits",
         ):
             for entity in records_by_table[key]:

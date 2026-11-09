@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.exceptions import AppException
 from app.repositories.badge_repo import BadgeRepository
+from app.repositories.biometric_repo import BiometricRepository
 from app.repositories.goal_repo import GoalRepository
 from app.repositories.profile_history_repo import ProfileHistoryRepository
 from app.repositories.profile_repo import ProfileRepository
@@ -30,6 +31,7 @@ class AccountService:
         self.goal_repo = GoalRepository(db)
         self.history_repo = ProfileHistoryRepository(db)
         self.smile_training_repo = SmileTrainingRepository(db)
+        self.biometric_repo = BiometricRepository(db)
         from app.services.meal_plan_service import MealPlanService
 
         self.meal_plan_service = MealPlanService(db)
@@ -84,6 +86,7 @@ class AccountService:
         await self.history_repo.delete_all_by_user(user_id)
         await self.meal_plan_service.delete_all_by_user(user_id)
         await self.smile_training_repo.delete_all_by_user(user_id)
+        await self.biometric_repo.delete_all_by_user(user_id)
         await self.profile_repo.delete_by_user_id(user_id)
 
     async def reap_orphaned_data(self) -> list[str]:
@@ -97,7 +100,10 @@ class AccountService:
         sweep 을 중단하거나 이미 정리한 사용자를 롤백하지 않게 한다(배치 잡이 세션을 소유하므로
         메서드가 직접 commit/rollback — 요청 UoW 와 다른 경계). 반환: 실제 purge 한 user_id 목록.
         """
-        candidate_ids = await self.profile_repo.list_all_user_ids()
+        profile_ids = await self.profile_repo.list_all_user_ids()
+        smile_ids = await self.smile_training_repo.list_all_user_ids()
+        biometric_ids = await self.biometric_repo.list_all_user_ids()
+        candidate_ids = sorted(set(profile_ids) | set(smile_ids) | set(biometric_ids))
         reaped: list[str] = []
         # 스윕 전체가 클라이언트 하나를 공유한다 — 사용자마다 새로 열면 TLS 핸드셰이크가
         # 사용자 수에 비례해 늘어난다.

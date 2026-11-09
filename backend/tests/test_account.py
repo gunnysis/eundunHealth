@@ -56,6 +56,38 @@ async def test_delete_account_purges_all_user_data(client, db_engine, sample_pro
             "occurredAt": datetime.datetime.now(datetime.UTC).isoformat(),
         },
     )  # smile_training_sessions
+    await client.post(
+        "/v2/biometrics/sync",
+        json={
+            "summaries": [
+                {
+                    "recordDate": "2026-11-09",
+                    "capturedAtEpochMs": 1762680000000,
+                    "totalSteps": 4200,
+                    "activeCaloriesKcal": 210.5,
+                    "restingBpm": 62,
+                    "avgBpm": 74,
+                    "minBpm": 56,
+                    "maxBpm": 132,
+                    "totalMonitoredMinutes": 480,
+                    "relaxedZoneMinutes": 280,
+                    "normalZoneMinutes": 150,
+                    "elevatedTensionMinutes": 25,
+                    "highLoadMinutes": 25,
+                    "tensionEpisodeCount": 1,
+                    "tensionMinutes": 12,
+                    "peakTensionBpm": 106,
+                    "rapidDeltaSpikeCount": 1,
+                    "maxDeltaBpmPerMin": 22,
+                    "activityOverloadCount": 0,
+                    "avgRecoveryDropBpm": 20,
+                    "sleepAwakeningCount": 1,
+                    "recoveryScore": 84,
+                    "watchModel": "Xiaomi Watch 5 (M2501W1)",
+                }
+            ]
+        },
+    )  # biometric_daily_summaries
 
     # 식단 자동 생성 API는 외부 연동을 타므로, 직접 DB에 밀어넣는다
     import datetime
