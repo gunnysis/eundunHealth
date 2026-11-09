@@ -101,22 +101,25 @@ run "Detekt (3 modules)"   "$GRADLEW" :core:wear-contract:detektMain :app:detekt
 run "Unit Tests (3 modules)" "$GRADLEW" :core:wear-contract:test :app:testDebugUnitTest :wear:testDebugUnitTest --quiet
 # -PsentryRelease=true: 출시 빌드에서만 Sentry ProGuard 매핑 생성 + 업로드 (build.gradle.kts sentry 블록).
 # 로컬 실험용 release 빌드는 이 플래그 없이 결정적 + 업로드 없음.
-run "Release artifacts (AAB + APK)" "$GRADLEW" :app:releaseArtifacts -PsentryRelease=true --quiet
+run "Release artifacts (:app & :wear AAB + APK)" "$GRADLEW" :app:releaseArtifacts :wear:bundleRelease :wear:assembleRelease -PsentryRelease=true --quiet
 
-# versionCode/versionName 추출 — SSoT 인 version.properties 에서 직접 읽는다.
+# versionCode/versionName/wearVersionCode 추출 — SSoT 인 version.properties 에서 직접 읽는다.
 # (PR #102 에서 버전이 build.gradle.kts 리터럴 → version.properties 로 이동: build.gradle.kts 는
 #  이제 `versionProps.getProperty(...)` 라 숫자 리터럴이 없어 옛 grep 은 빈값/오표시였다.)
 VERSION_PROPS="version.properties"
 VC=$(grep -E "^versionCode=" "$VERSION_PROPS" | head -1 | cut -d= -f2 | tr -d ' \r')
 VN=$(grep -E "^versionName=" "$VERSION_PROPS" | head -1 | cut -d= -f2 | tr -d ' \r')
+WVC=$(grep -E "^wearVersionCode=" "$VERSION_PROPS" | head -1 | cut -d= -f2 | tr -d ' \r')
 
-if [ -z "$VC" ] || [ -z "$VN" ]; then
-    echo "ERROR: version.properties 에서 versionCode/versionName 을 읽지 못했습니다."
+if [ -z "$VC" ] || [ -z "$VN" ] || [ -z "$WVC" ]; then
+    echo "ERROR: version.properties 에서 versionCode/versionName/wearVersionCode 를 읽지 못했습니다."
     exit 1
 fi
 
 AAB="app/build/outputs/bundle/release/app-release.aab"
 APK="app/build/outputs/apk/release/app-release.apk"
+WEAR_AAB="wear/build/outputs/bundle/release/wear-release.aab"
+WEAR_APK="wear/build/outputs/apk/release/wear-release.apk"
 
 if [ ! -f "$AAB" ]; then
     echo "ERROR: AAB 산출물이 없습니다: $AAB"
@@ -126,23 +129,35 @@ if [ ! -f "$APK" ]; then
     echo "ERROR: APK 산출물이 없습니다: $APK"
     exit 1
 fi
+if [ ! -f "$WEAR_AAB" ]; then
+    echo "ERROR: Wear AAB 산출물이 없습니다: $WEAR_AAB"
+    exit 1
+fi
+if [ ! -f "$WEAR_APK" ]; then
+    echo "ERROR: Wear APK 산출물이 없습니다: $WEAR_APK"
+    exit 1
+fi
 
 # 동일 빌드 그래프에서 나왔으므로 build.gradle.kts 값이 양쪽에 동일하게 박힌다.
 # 한 번 더 명시적으로 출력 + 동일성 어서션.
 echo ""
 echo "================================================================"
 echo "Build successful. Artifact summary:"
-echo "  versionCode = $VC"
-echo "  versionName = $VN"
-echo "  AAB         = $AAB ($(stat -c%s "$AAB" 2>/dev/null || stat -f%z "$AAB") bytes)"
-echo "  APK         = $APK ($(stat -c%s "$APK" 2>/dev/null || stat -f%z "$APK") bytes)"
+echo "  versionName     = $VN"
+echo "  versionCode     = $VC (:app)"
+echo "  wearVersionCode = $WVC (:wear)"
+echo "  AAB (:app)      = $AAB ($(stat -c%s "$AAB" 2>/dev/null || stat -f%z "$AAB") bytes)"
+echo "  APK (:app)      = $APK ($(stat -c%s "$APK" 2>/dev/null || stat -f%z "$APK") bytes)"
+echo "  AAB (:wear)     = $WEAR_AAB ($(stat -c%s "$WEAR_AAB" 2>/dev/null || stat -f%z "$WEAR_AAB") bytes)"
+echo "  APK (:wear)     = $WEAR_APK ($(stat -c%s "$WEAR_APK" 2>/dev/null || stat -f%z "$WEAR_APK") bytes)"
 echo "================================================================"
 
 # --- Android CLI Binary & R8 Full Mode Gate (룰 12·14·15) -------------------------------
 # android analyze 로 실제 컴파일된 APK 의 Package Name, versionName/Code (version.properties SSoT),
 # R8 Enabled=true, Full Mode=true 를 1초 내에 기계적으로 단언한다.
 if [ -f "$REPO_ROOT/scripts/android-cli-check.sh" ]; then
-    run "Android CLI APK Analyze (R8 Full Mode & Version SSoT)" bash "$REPO_ROOT/scripts/android-cli-check.sh" apk --module app "$APK"
+    run "Android CLI APK Analyze (:app R8 Full Mode & Version SSoT)" bash "$REPO_ROOT/scripts/android-cli-check.sh" apk --module app "$APK"
+    run "Android CLI APK Analyze (:wear R8 Full Mode & Version SSoT)" bash "$REPO_ROOT/scripts/android-cli-check.sh" apk --module wear "$WEAR_APK"
 fi
 # ---------------------------------------------------------------------------------------
 
