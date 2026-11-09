@@ -129,6 +129,7 @@ CHANGED_ANDROID_BUILD=$(git diff --cached --name-only --diff-filter=ACMD \
 if [ -n "$CHANGED_ANDROID_BUILD" ]; then
     echo "[pre-commit] Android build/contract changes detected → AGP 10 & 3-module compatibility check"
     bash "$REPO_ROOT/scripts/check-agp10-compat.sh"
+    bash "$REPO_ROOT/scripts/check-version-monotonic.sh" --check-ssot
 fi
 
 # ---------- 6) Azure 구독 GUID 평문 가드 ----------

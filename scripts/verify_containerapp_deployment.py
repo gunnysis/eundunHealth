@@ -19,8 +19,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 VERSION_PROPERTIES_PATH = REPO_ROOT / "version.properties"
 
 
-def read_android_version_code(default_code: int = 44) -> int:
-    """version.properties에서 versionCode를 동적으로 읽어 하드코딩 드리프트를 방지한다."""
+def read_android_version_code(default_code: int = 45) -> int:
+    """version.properties에서 versionCode를 동적으로 읽되, SSoT 기본값(/app-compatibility?platform=android&versionCode=45)과 동기화한다."""
     try:
         if VERSION_PROPERTIES_PATH.is_file():
             for raw_line in VERSION_PROPERTIES_PATH.read_text(encoding="utf-8").splitlines():
