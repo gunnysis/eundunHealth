@@ -71,7 +71,7 @@ graph TB
         Worker["WorkManager (SmileSyncWorker)<br/>스마일 세션 & 워치 생체 요약 멱등 백그라운드 동기화"]
         HC["Health Connect Client (1.1.0 stable)<br/>운동 완료 자동 연동 (READ_EXERCISE 단독)"]
         MSAL["MSAL Android SDK (8.6.0)<br/>브라우저 위임 인증 (PKCE)"]
-        SentryApp["Sentry Android SDK (8.61.1)<br/>크래시 / ANR / R8 역난독화 매핑 / 성능 트레이싱"]
+        SentryApp["Sentry Android SDK (8.63.0)<br/>크래시 / ANR / R8 역난독화 매핑 / 성능 트레이싱"]
         Catalogs["Bundled Catalogs<br/>• 추천 운동 46종 한국어 번들 (korean_exercises.json v2)<br/>• 내장 무장비 홈트 18종 (HomeWeeklyPlanGenerator v2.0)"]
     end
 
@@ -264,8 +264,8 @@ graph TB
 | **테스트 디바이스** | **Samsung Galaxy Phone (Android 14 / One UI 6.1)** | Health Connect 및 실제 카메라 센서 실기기 검증 |
 | **빌드 자동화 도구** | **Gradle 9.8.2** (Android) / **pip-compile** (Backend) | Gradle Hash Verification (`gradle/verification-metadata.xml`) |
 | **Android 빌드 플러그인** | **AGP 9.5.1** | Kotlin 내장 툴체인, `detekt-cli` + `androidComponents` 통합 |
-| **코드 정적 분석 & 포맷터** | **Detekt 1.23.8 + Spotless 8.10.4 + ktlint 1.5.0** | 빌드 파이프라인 무결성 게이트 강제 |
-| **모니터링 / 에러 추적** | **Sentry** (Android `8.61.1` / Backend `2.73.0`) | R8 ProGuard 매핑 자동 업로드 및 풀스택 분산 추적 |
+| **코드 정적 분석 & 포맷터** | **Detekt 1.23.8 + Spotless 8.11.0 + ktlint 1.5.0** | 빌드 파이프라인 무결성 게이트 강제 |
+| **모니터링 / 에러 추적** | **Sentry** (Android `8.63.0` / Backend `2.74.0`) | R8 ProGuard 매핑 자동 업로드 및 풀스택 분산 추적 |
 | **형상 관리 & CI/CD** | **Git + GitHub Actions** | Entra OIDC 무암호 Azure 배포 및 Google Play 내부/프로덕션 트랙 자동 릴리스 |
 
 ### 2.2. 클라이언트 개발 언어 및 프레임워크 (`:app`, `:wear`, `:core:wear-contract`)
@@ -668,8 +668,8 @@ WorkManager (SmileSyncWorker) 백그라운드 멱등 동기화 (POST /v2/smile-t
 | **언어 및 런타임** | **Python 3.14** | GIL 최적화 및 최신 비동기 구문 지원 |
 | **데이터 검증** | **Pydantic v2 (CamelSchema)** | Rust 코어 기반 고속 데이터 검증, 모바일 camelCase ↔ 백엔드 snake_case 자동 양방향 매핑 |
 | **ORM / DB 계층** | **SQLAlchemy 2.0 Async + asyncpg 0.32.0** | 순수 비동기 SQL 세션, 커넥션 풀 3+2 제한으로 B1ms 메모리 완벽 보호 |
-| **테스트 프레임워크** | **pytest 9.1.1 + pytest-asyncio** | 147 테스트 통과, 코드 커버리지 94%+ (PEP 669 sysmon 코어 고정) |
-| **코드 품질 도구** | **Ruff 0.17.2 + mypy 2.4.0 (strict)** | 초고속 린트 및 엄격한 정적 타입 검증 |
+| **테스트 프레임워크** | **pytest 9.2.0 + pytest-asyncio** | 151 테스트 통과, 코드 커버리지 94%+ (PEP 669 sysmon 코어 고정) |
+| **코드 품질 도구** | **Ruff 0.17.4 + mypy 2.4.1 (strict)** | 초고속 린트 및 엄격한 정적 타입 검증 |
 
 ### 4.2. 서버 라이프사이클 및 기동 시퀀스 (`app/main.py`)
 
@@ -1071,7 +1071,7 @@ Android 앱과 FastAPI 백엔드의 성능 트랜잭션과 에러를 독립된 �
 | 구분 | Android 프로젝트 | Backend 프로젝트 |
 | :--- | :--- | :--- |
 | **프로젝트 식별자** | `gunnys / eundunhealth` | `gunnys / eundunhealth-backend` |
-| **SDK 버전** | **Sentry Android 8.61.1** (Gradle 플러그인 6.24.0) | **sentry-sdk (Python) 2.73.0** |
+| **SDK 버전** | **Sentry Android 8.63.0** (Gradle 플러그인 6.26.0) | **sentry-sdk (Python) 2.74.0** |
 | **초기화 방식** | `SentryInitProvider` 비활성화(`tools:node="remove"`) 후 `EundunHealthApplication.onCreate()`에서 DSN 검사 후 수동 초기화 | FastAPI 기동 시 `sentry_sdk.init` |
 | **트레이스 샘플링** | Development: 100% / Production: 20% | Development: 100% / Production: 20% |
 | **크래시 / ANR 감지** | NDK 크래시, Java/Kotlin 미처리 예외, ANR 감시 | ASGI 미들웨어 미처리 5xx 예외 자동 수집 |
@@ -1161,7 +1161,7 @@ python backend/scripts/seed_edge_cases.py
 | **Android / Wear 단위 테스트** | **JUnit 4.13.2 + MockK 1.14.11** | `:app`, `:wear`, `:core:wear-contract` Use Case, Repository, 14 ViewModel, 빌드 계약 검증 (273 `@Test`) |
 | **Android 비동기 테스트** | **kotlinx-coroutines-test 1.11.0** | `StandardTestDispatcher`, Flow 상태 방출 및 SideEffect 채널 검증 |
 | **Android Compose 테스트** | **Compose UI Test (JUnit4)** | 스마일 트레이닝, 다중 휴식 요일 선택기 UI 인터랙션 검증 |
-| **Backend 비동기 테스트** | **pytest 9.1.1 + pytest-asyncio** | 10개 도메인 라우터(30개 엔드포인트), SQLAlchemy 비동기 세션, 422 개인정보 마스킹 검증 (151 PASS) |
+| **Backend 비동기 테스트** | **pytest 9.2.0 + pytest-asyncio** | 10개 도메인 라우터(30개 엔드포인트), SQLAlchemy 비동기 세션, 422 개인정보 마스킹 검증 (151 PASS) |
 | **Backend 통합 테스트** | **httpx (ASGITransport)** | 실제 인메모리 ASGI 통신을 통한 엔드투엔드 HTTP 요청/응답 검증 |
 
 ---
@@ -1173,7 +1173,7 @@ python backend/scripts/seed_edge_cases.py
 ```text
 eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Python 하이브리드)
 ├── app/                               # 모바일 Android 네이티브 앱 (:app 모듈, Min SDK 26)
-│   ├── build.gradle.kts               # AGP 9.5.1 + Kotlin 2.4.21 + R8 + Sentry 6.24.0
+│   ├── build.gradle.kts               # AGP 9.5.1 + Kotlin 2.4.21 + R8 + Sentry 6.26.0
 │   └── src/
 │       ├── main/
 │       │   ├── java/com/gunnys/eundunhealth/
@@ -1256,7 +1256,7 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 │   │   ├── hard_reset_db.py           # DB 하드 리셋 CLI
 │   │   ├── seed_edge_cases.py         # 100건 엣지케이스 검증 시더
 │   │   └── reap_orphaned_accounts.py  # 주간 고아 계정 자동 청소 잡 스크립트
-│   ├── tests/                         # pytest 9.1.1 + pytest-asyncio (151 테스트)
+│   ├── tests/                         # pytest 9.2.0 + pytest-asyncio (151 테스트)
 │   ├── Dockerfile                     # python:3.14-slim 멀티스테이지 컨테이너 빌드
 │   ├── requirements.txt               # pip-compile 해시 락 프로덕션 의존성
 │   └── requirements-dev.txt           # 개발/테스트 의존성
@@ -1280,7 +1280,7 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 | 변수 키 | 필수 여부 | 설명 및 설정 가이드 |
 | :--- | :---: | :--- |
 | `BACKEND_BASE_URL` | 필수 | 백엔드 API 호스트 URL (`https://api.eundunhealth.com/` 또는 `http://10.0.2.2:8080/`) |
-| `eundunhealth-app_SENTRY_DSN` | 필수 | Sentry Android DSN (공식 Sentry Gradle 플러그인 6.24.0용) |
+| `eundunhealth-app_SENTRY_DSN` | 필수 | Sentry Android DSN (공식 Sentry Gradle 플러그인 6.26.0용) |
 | `ENTRA_API_SCOPE` | 선택 | Entra 백엔드 접근 권한 스코프 (`api://<backend_client_id>/access_as_user`) |
 | `RELEASE_STORE_PASSWORD` | 릴리스 필수 | 릴리스 서명 키스토어 비밀번호 (CI GitHub Secrets 주입) |
 | `RELEASE_KEY_ALIAS` | 릴리스 필수 | 서명 키 별칭 (`eundunhealth_sign_key`) |
@@ -1367,4 +1367,4 @@ eundunHealth/                          # 루트 저장소 (Gradle 3모듈 & Pyth
 | **BADGE-02** | 배지 컬렉션 조회 | `BadgeScreen` → `GET /badges` (달성 배지 활성화 및 미달성 흑백 처리) |
 | **ETC-01** | 다크/라이트 테마 제어 | `ThemePreferences` (DataStore) 인라인 1-Tap 3단 세그먼트 선택 (`SYSTEM`/`LIGHT`/`DARK`) + DayNight 점멸 제거 |
 | **ETC-02** | 데이터 로딩 스켈레톤 UI | `SkeletonUi.kt` (ShimmerBox 애니메이션 효과) |
-| **ETC-03** | 풀스택 에러 모니터링 | Sentry Android 8.61.1 (R8 난독화 매핑) + Sentry Backend 2.73.0 (분산 추적) |
+| **ETC-03** | 풀스택 에러 모니터링 | Sentry Android 8.63.0 (R8 난독화 매핑) + Sentry Backend 2.74.0 (분산 추적) |

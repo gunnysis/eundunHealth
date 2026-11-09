@@ -47,13 +47,13 @@
 | Hilt (2.60.1) | 의존성 주입 (`:app`) |
 | Room (2.8.5) + WorkManager (2.12.0) | 로컬 데이터베이스 (`EundunDatabase` v4, `SmileTrainingDatabase` v2) 및 백그라운드 동기화 (`SmileSyncWorker`) |
 | CameraX (1.6.2) + ML Kit Face Detection (17.1.0) | 온디바이스 전면 카메라 미소 검출 (무저장·무전송) |
-| Retrofit (3.0.0) + OkHttp (5.5.1) + OpenAPI Generator (7.26.0) | 백엔드 API 통신 및 정적 타입 안전한 클라이언트 코드젠 |
+| Retrofit (3.0.0) + OkHttp (5.5.1) + OpenAPI Generator (7.27.0) | 백엔드 API 통신 및 정적 타입 안전한 클라이언트 코드젠 |
 | Coil 3 (3.6.3) | 이미지/GIF 로딩 |
 | DataStore (1.3.0) | 설정 영속화 (테마/리셋 플래그) |
 | MSAL Android (8.6.0) | 인증 (Entra External ID OIDC/PKCE 브라우저 위임) |
 | Health Connect (1.1.0) | 활동 자동 추적 (운동 세션 읽기 단독) |
 | Google Play In-App Updates (2.1.0) | 강제 업데이트 체크 및 Play 스토어 인앱 업데이트 연동 |
-| Sentry Android SDK (8.61.1) | 크래시/ANR/네트워크 분산 추적 모니터링 |
+| Sentry Android SDK (8.63.0) | 크래시/ANR/네트워크 분산 추적 모니터링 |
 | Navigation Compose (2.10.2) | 최상위 4대 목적지 라우팅 (`:app`) |
 | Vico (3.3.1, compose-m3) | 통계·목표 차트 시각화 |
 
@@ -67,11 +67,11 @@
 | `python -m app.schema_bootstrap` | 기동 시 멱등 스키마 테이블 검증 |
 | PyJWT (JWKS, RS256) | Entra CIAM 액세스 토큰 서명/클레임(`oid`, `scp`) 검증 |
 | OpenAI Python SDK (`AsyncOpenAI`) + Tenacity | AI 식단 생성 (Azure AI Foundry gpt-5.4-mini (GlobalStandard)) |
-| Sentry Python SDK (2.73.0) | 서버 예외 및 분산 추적 모니터링 |
+| Sentry Python SDK (2.74.0) | 서버 예외 및 분산 추적 모니터링 |
 
 ### 빌드 도구
 
-AGP 9.5.1 · Gradle 9.8.2 · KSP 2.3.12 · Sentry Gradle Plugin 6.24.0 · Detekt 1.23.8 · Spotless 8.10.4 — 버전은 `gradle/libs.versions.toml` 참조.
+AGP 9.5.1 · Gradle 9.8.2 · KSP 2.3.12 · Sentry Gradle Plugin 6.26.0 · Detekt 1.23.8 · Spotless 8.11.0 — 버전은 `gradle/libs.versions.toml` 참조.
 
 ### 인프라
 

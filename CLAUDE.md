@@ -215,14 +215,14 @@ DELETE /account
 - **Gradle 9.8.2**, AGP 9.5.1 (2026-11-06 9.5.0→9.5.1, AGP 9.5 최소 Gradle 9.6.0 충족; 내장 Kotlin + 새 DSL 기본 활성; dependency lock + SHA-256 verification)
 - **Min SDK 26** (`:app`) / **Min SDK 36** (`:wear`, Wear OS 6+), Target SDK 37, Java 17
 - **Compose BOM 2026.09.00**, Activity Compose 1.13.0, Navigation Compose 2.10.2, Lifecycle 2.11.0, Core KTX 1.19.1, **Wear Compose Material 3 / Foundation / Navigation 1.7.1**, Wear Tooling Preview 1.0.0
-- **Hilt 2.60.1**, Room 2.8.5, WorkManager 2.12.0 (`hilt-work` 1.4.0), CameraX 1.6.2 (`camera-compose`), ML Kit Face Detection 17.1.0 (`play-services-mlkit-face-detection`, unbundled `play-services-base` 18.11.1), DataStore 1.3.0, Health Connect 1.1.0, Retrofit 3.0.0, MSAL 8.6.0, OpenAPI Generator 7.26.0
+- **Hilt 2.60.1**, Room 2.8.5, WorkManager 2.12.0 (`hilt-work` 1.4.0), CameraX 1.6.2 (`camera-compose`), ML Kit Face Detection 17.1.0 (`play-services-mlkit-face-detection`, unbundled `play-services-base` 18.11.1), DataStore 1.3.0, Health Connect 1.1.0, Retrofit 3.0.0, MSAL 8.6.0, OpenAPI Generator 7.27.0
 - **버전 관리**: SSoT = 루트 `version.properties`(앱 `versionName`/`versionCode` 및 워치 명시적 `wearVersionCode=10001`) + `backend/app/__init__.py:__version__`(API, 앱과 독립). 정책·bump·프론트 표시 절차는 `docs/conventions/versioning.md`. bump 은 `bash scripts/bump-version.sh <new-version>`.
 - **App version**: 저장소 versionName **`0.8.0`**, versionCode **`45`** (Wear `:wear` `wearVersionCode=10001`) — SSoT 는 루트 `version.properties`, 업로드 최고값은 원장 `LAST_UPLOADED_VERSION_CODE=44`. 후보를 운영 완료로 기록하지 않는다.
-- **Sentry Android 8.61.1** (Sentry Gradle plugin 6.24.0, eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
+- **Sentry Android 8.63.0** (Sentry Gradle plugin 6.26.0, eundunhealth 프로젝트) — 16KB page-aligned native libs; `packaging.jniLibs.useLegacyPackaging = false`
 - **Vico 3.3.1** (compose-m3) — 통계 + 목표 진행 차트
 - **OkHttp 5.5.1** + **Coil 3.6.3** (coil3 module group `io.coil-kt.coil3`, `coil-network-okhttp` 포함)
-- **Detekt 1.23.8 (`detekt-cli` + `androidComponents` 커스텀 태스크) + Spotless 8.10.4 + ktlint 1.5.0**
-- **Android 단위 테스트**: 270 `@Test` 케이스 (`:app` 261 + `:wear` 3 + `:core:wear-contract` 6 합산, JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
+- **Detekt 1.23.8 (`detekt-cli` + `androidComponents` 커스텀 태스크) + Spotless 8.11.0 + ktlint 1.5.0**
+- **Android 단위 테스트**: 273 `@Test` 케이스 (`:app` 262 + `:wear` 3 + `:core:wear-contract` 8 합산, JUnit 4.13.2, MockK 1.14.11, coroutines-test 1.11.0)
 - Entra JWT algorithm: **RS256** — backend 는 OIDC discovery 로 얻은 `jwks_uri`/`issuer` 로 검증. **issuer 를 문자열로 조합하지 말 것** — 서브도메인이 tenantId 라 조합하면 전 API 401 이 되고 서명·audience 는 통과해 추적이 어렵다
 - Network security config disables cleartext except localhost/10.0.2.2 in debug
 - 시간대: 한국(KST)
@@ -230,11 +230,11 @@ DELETE /account
 - pre-commit hook (`.githooks/pre-commit`)이 .kt 변경 시 spotlessApply + detektDebug + **collectAsState anti-pattern 검사** (룰 11) 자동 실행
 
 ### Backend (FastAPI)
-- **Python 3.14**, FastAPI 0.162.0, Starlette 1.10.0, Uvicorn 0.54.0, SQLAlchemy 2.1.6 async + asyncpg 0.32.0 (PostgreSQL 18 네이티브 `DEFAULT uuidv7()` + Drop & Recreate 전용 스키마 파이프라인)
+- **Python 3.14**, FastAPI 0.162.0, Starlette 1.10.0, Uvicorn 0.54.0, SQLAlchemy 2.1.8 async + asyncpg 0.32.0 (PostgreSQL 18 네이티브 `DEFAULT uuidv7()` + Drop & Recreate 전용 스키마 파이프라인)
 - **API version `1.0.0`** — `backend/app/__init__.py:__version__` → `FastAPI(version=)` → OpenAPI `info.version`. 앱(`version.properties`)과 **독립**. bump 시 `bash scripts/sync-openapi.sh` 재싱크 필수(drift 가드). Dockerfile 은 `apt-get upgrade` 레이어로 base-image OS CVE 자가치유(Trivy HIGH 차단 회피)
-- **pydantic-settings 2.16.1**, **PyJWT[crypto] 2.15.1** (JWKS), **httpx 0.28.1**, **markdown 3.11.2**, **openai 3.37.0**
-- **Sentry SDK 2.73.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
-- mypy 2.4.0 strict, ruff 0.17.2 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.1.1 — 150/150 PASS**. `requirements.in`/`requirements-dev.in`을 원본으로 하고 생성된 hash lock을 CI/Docker에서 `--require-hashes`로 설치한다.
+- **pydantic-settings 2.16.2**, **PyJWT[crypto] 2.15.1** (JWKS), **httpx 0.28.1**, **markdown 3.11.3**, **openai 3.46.0**
+- **Sentry SDK 2.74.0** (eundunhealth-backend 프로젝트) — DSN secretref `sentry-dsn-backend`
+- mypy 2.4.1 strict, ruff 0.17.4 / bandit 1.9.4 / pip-audit 2.10.1 clean, **pytest 9.2.0 — 151/151 PASS**. `requirements.in`/`requirements-dev.in`을 원본으로 하고 생성된 hash lock을 CI/Docker에서 `--require-hashes`로 설치한다.
 - 정규 DB 스키마 SSoT: `backend/sql/02_schema_create_all.sql` (`01_cleanup_drop_all.sql` + `app/schema_bootstrap.py` + `scripts/hard_reset_db.py` + `scripts/seed_edge_cases.py` 100건 시더·12개 제약 조건 검증, 점진적 `ALTER TABLE`/Alembic 폐기)
 - `/health` (process liveness) + `/health/ready` (DB `SELECT 1` → 200/503, readiness probe 전용)
 

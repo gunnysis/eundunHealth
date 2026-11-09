@@ -17,10 +17,10 @@
 | Compose BOM | **2026.09.00** (Wear Compose Material 3 / Foundation / Navigation **1.7.1**, Wear Tooling Preview **1.0.0**) |
 | 차트 | Vico 3.3.1 (compose-m3) — 통계 + 목표 진행 |
 | Health Connect | 1.1.0 stable — v0.1.5 에서 1.1.0-rc01 → 1.1.0 stable 승격 |
-| 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.10.4** + ktlint 1.5.0 |
+| 정적 분석 | Detekt 1.23.8 (**`detekt-cli` + `androidComponents` 커스텀 태스크**, baseline-debug.xml `<CurrentIssues/>` = 0건) + Spotless **8.11.0** + ktlint 1.5.0 |
 | Android CLI / IDE 통합 | **`android-cli 1.1.16717390`** + **Android Studio `Rabbit 2 \| 2026.2.2`** (`scripts/ensure-android-cli.sh`, `scripts/android-cli-check.sh` 하이브리드 K2 파일 진단·듀얼 엔진 `@Preview`·APK R8 분석·`smoke-cold-start.sh` UI 트리/스크린샷 증적) |
-| API client | openapi-generator **7.26.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 9개 generated client (`BiometricsApi` 포함) |
-| Sentry SDK | 운영 Android **8.61.1** / Gradle plugin **6.24.0** |
+| API client | openapi-generator **7.27.0** (jvm-retrofit2 + gson + coroutines) — preBuild 자동, 9개 generated client (`BiometricsApi` 포함) |
+| Sentry SDK | 운영 Android **8.63.0** / Gradle plugin **6.26.0** |
 | Keystore | `.key/eundunhealth_upload_key` (alias `eundunhealth_sign_key`) — 로컬 전용(gitignored). 비밀번호 2026-07-02 회전(public 전환 감사). **빌드는 keystore 존재-조건부 서명**(없으면 unsigned — INC-2026-07-02-29) |
 
 산출물 경로 (모바일 프로덕션 최신 = **v0.7.3/44 R8 빌드, 2026-10-29 출시** / 워치 내부 테스트 & 로컬 최신 = **2026-11-09 `v0.8.0/45` `:app` + `:wear` `10001` R8 빌드 실측** — **단일 정규 위치**). ⚠️ **모바일 Play 프로덕션에 올라간 산출물은 v0.7.3/44 CI 빌드(`release.yml` run `40868910274`)이며 이 로컬 파일이 아니다** — `release.yml` CI 러너가 태그 시점에 별도로 빌드한다. ProGuard 매핑 UUID 가 다르므로 **프로덕션 크래시 역난독화는 CI 업로드본 기준**이며, 로컬 AAB 로 재현하려 하면 어긋난다:
